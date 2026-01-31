@@ -1,125 +1,64 @@
 
-# Plano: Seletor de Modo Dev (Mentor/Mentorado)
+# Plano: Corrigir Sobreposicao Visual do Floating Dock
 
-## Objetivo
-Criar um componente flutuante que permite alternar entre as visoes de Mentor e Mentorado sem precisar fazer logout. Util para desenvolvimento e testes internos.
+## Problema Identificado
 
----
+O Floating Dock (barra lateral de navegacao) usa efeito glassmorphism com:
+- Background semi-transparente (`hsl(var(--glass-bg))` = 60% opacidade)
+- Blur de fundo (`backdrop-filter: blur(24px)`)
+- `z-index: 50`
 
-## Componente a Criar
-
-### DevModeSelector (`src/components/DevModeSelector.tsx`)
-
-Caracteristicas:
-- Botao flutuante no canto inferior direito
-- Design premium com glassmorphism
-- Mostra o modo atual (Mentor/Mentorado)
-- Toggle para alternar instantaneamente
-- Redireciona automaticamente para o painel correto
+Isso faz com que o conteudo por tras fique visivel atraves da barra, criando uma sobreposicao visual confusa.
 
 ---
 
-## Implementacao Tecnica
+## Solucao Proposta
 
-### 1. Criar Hook de Dev Mode
+Tornar o Floating Dock com background **solido** (sem transparencia), mantendo o visual premium.
 
-**Arquivo:** `src/hooks/useDevMode.tsx`
+---
 
-```typescript
-// Armazena override de role no localStorage
-// Permite simular qualquer role sem mudar DB
-// Funciona apenas em desenvolvimento
+## Alteracao Necessaria
+
+**Arquivo:** `src/index.css`
+
+Alterar a classe `.floating-dock` de:
+```css
+background: hsl(var(--glass-bg)); /* 60% transparente */
+backdrop-filter: blur(24px) saturate(180%);
 ```
 
-### 2. Criar Componente Visual
-
-**Arquivo:** `src/components/DevModeSelector.tsx`
-
-Elementos:
-- Icone de ferramenta/dev
-- Label do modo atual
-- Switch/Toggle para alternar
-- Badge indicando "DEV MODE"
-
-### 3. Modificar useAuth
-
-Adicionar suporte a role override:
-- Verificar se existe override no localStorage
-- Usar override ao inves de role real do DB
-- Manter funcionalidade normal quando nao ha override
-
-### 4. Adicionar aos Layouts
-
-Incluir o DevModeSelector em:
-- `AdminLayout.tsx`
-- `MemberLayout.tsx`
-
----
-
-## Fluxo de Uso
-
-```text
-Usuario logado como Mentor
-        |
-        v
-Clica no seletor "Mudar para Mentorado"
-        |
-        v
-Override salvo no localStorage
-        |
-        v
-Redirecionado para /app
-        |
-        v
-Ve a interface de Mentorado
+Para:
+```css
+background: hsl(var(--card)); /* Solido, cor do card */
+/* Remover backdrop-filter */
 ```
 
 ---
 
-## Design do Componente
+## Codigo Atual vs Novo
 
-```text
-+----------------------------------+
-|  [Icone]  Modo: MENTOR     [X]  |
-|  --------------------------------|
-|  [o----] Mentor                  |
-|  [----o] Mentorado               |
-+----------------------------------+
-```
-
-- Botao minimizado: apenas icone com indicador
-- Ao clicar: expande com opcoes
-- Cores distintas para cada modo
+| Propriedade | Atual | Novo |
+|-------------|-------|------|
+| Background | `hsl(240 10% 8% / 0.6)` | `hsl(240 10% 8%)` (100% opaco) |
+| Backdrop Filter | `blur(24px) saturate(180%)` | Removido |
+| Border | Mantido | Mantido |
+| Shadow | Mantido | Mantido |
 
 ---
 
-## Arquivos a Criar/Modificar
+## Resultado Esperado
 
-| Arquivo | Acao |
-|---------|------|
-| `src/hooks/useDevMode.tsx` | Criar |
-| `src/components/DevModeSelector.tsx` | Criar |
-| `src/hooks/useAuth.tsx` | Modificar (suporte a override) |
-| `src/components/layouts/AdminLayout.tsx` | Modificar (adicionar componente) |
-| `src/components/layouts/MemberLayout.tsx` | Modificar (adicionar componente) |
-| `src/components/ProtectedRoute.tsx` | Modificar (respeitar override) |
+- Barra lateral totalmente opaca
+- Conteudo atras nao sera mais visivel
+- Visual ainda premium com sombra e borda sutil
+- Melhor separacao visual entre navegacao e conteudo
 
 ---
 
-## Seguranca
+## Arquivos a Modificar
 
-- Override funciona apenas no client-side (localStorage)
-- Nao afeta dados reais do banco
-- Pode ser facilmente desativado removendo o componente
-- Recomendado remover antes de ir para producao
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/index.css` | Alterar `.floating-dock` para background solido |
 
----
-
-## Bonus: Indicador Visual
-
-Quando o dev mode estiver ativo, mostrar uma barra sutil no topo:
-```text
-[DEV MODE] Visualizando como: Mentorado | Voltar ao normal
-```
-
-Isso evita confusao sobre qual modo esta ativo.
