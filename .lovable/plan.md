@@ -1,229 +1,314 @@
 
+# Plano de Implementação Completo - MentorHub Pro
 
-# MentorHub Pro - Plataforma SaaS de Mentoria com IA
+## Resumo
 
-Sistema multi-tenant completo para mentores escalarem seus negócios com inteligência artificial.
-
----
-
-## 🎯 Visão Geral
-
-Uma plataforma profissional premium onde **mentores podem gerenciar seus programas de mentoria** e **mentorados têm uma experiência completa de evolução**. Cada mentor terá seu próprio ambiente isolado com sua marca.
+Implementar a plataforma completa com dois portais distintos:
+- **Você (Mentor)**: Dashboard Admin com todas as métricas e gestão
+- **Seus 39 mentorados**: Area de Membros com trilhas, ranking, CRM pessoal e Centro SOS
 
 ---
 
-## 👥 Dois Portais Principais
+## Fase 1: Estrutura do Banco de Dados
 
-### Portal do Mentor (Admin)
-Dashboard completo com métricas, gestão de mentorados e configurações
+### 1.1 Sistema de Roles e Perfis
 
-### Portal do Mentorado (Área de Membros)
-Experiência focada em evolução com todas as ferramentas de aprendizado
+```text
++------------------+       +------------------+       +------------------+
+|   auth.users     |       |   user_roles     |       |    profiles      |
++------------------+       +------------------+       +------------------+
+| id (uuid)        |<----->| user_id (uuid)   |       | id (uuid)        |
+| email            |       | role (enum)      |       | user_id (uuid)   |
+| ...              |       +------------------+       | full_name        |
++------------------+              |                   | avatar_url       |
+                                  |                   | phone            |
+                          mentor / mentorado          | created_at       |
+                                                      +------------------+
+```
 
----
+**Tabelas a criar:**
+- `app_role` (enum): mentor, mentorado
+- `user_roles`: controle de permissoes (separado do profile por seguranca)
+- `profiles`: dados basicos do usuario
+- `mentors`: configuracoes especificas do mentor (logo, cores, bio)
+- `mentorados`: vinculo mentorado -> mentor + status onboarding
 
-## 📊 Módulo 1: CRM Inteligente
+### 1.2 Modulo CRM
 
-**Para o Mentor:**
-- Pipeline visual de prospecção e vendas (Kanban)
-- Histórico completo de interações com cada lead/mentorado
-- **IA analisa padrões**: identifica leads quentes, sugere próximos passos
-- Métricas de conversão e funil de vendas
+- `crm_leads`: pipeline de vendas do mentor
+- `crm_prospections`: prospeccoes dos mentorados (alimenta ranking)
+- `crm_interactions`: historico de interacoes
 
-**Para o Mentorado:**
-- Registro de suas prospecções (alimenta o ranking)
-- Acompanhamento de seus próprios resultados
+### 1.3 Modulo Trilhas e Conteudo
 
----
+- `trails`: trilhas de aprendizado
+- `trail_modules`: modulos dentro de cada trilha
+- `trail_lessons`: aulas/conteudos
+- `trail_progress`: progresso de cada mentorado
+- `certificates`: certificados emitidos
 
-## 🚀 Módulo 2: Onboarding & Jornada de Sucesso
+### 1.4 Modulo Calendario
 
-**Fluxo automatizado:**
-1. Boas-vindas personalizada
-2. Teste de perfil comportamental (DISC + Eneagrama + Traços)
-3. Definição de metas iniciais
-4. Trilha de conteúdos desbloqueada progressivamente
+- `meetings`: encontros agendados
+- `meeting_attendees`: confirmacao de presenca
+- `meeting_recordings`: gravacoes salvas
 
-**IA gera relatório personalizado:**
-- Pontos comportamentais que impactam vendas
-- Recomendações específicas de melhoria
-- Plano de ação customizado
+### 1.5 Modulo Centro de Treinamento (IA)
 
----
+- `call_transcripts`: transcricoes enviadas
+- `call_analyses`: analises geradas pela IA
 
-## 📚 Módulo 3: Materiais & Trilhas de Aprendizado
+### 1.6 Modulo Centro SOS
 
-**Organização:**
-- Trilhas temáticas (ex: Prospecção, Fechamento, Mindset)
-- Módulos com vídeos, PDFs, exercícios
-- Progresso salvo automaticamente
-- Certificados de conclusão
+- `sos_requests`: solicitacoes urgentes
+- `sos_responses`: respostas/atendimentos
 
-**Gravações automáticas:**
-- Encontros ao vivo ficam salvos nas trilhas
-- Organizados por data e tema
+### 1.7 Modulo Gamificacao
 
----
+- `ranking_entries`: entradas do ranking (prospeccoes)
+- `badges`: conquistas disponiveis
+- `user_badges`: conquistas desbloqueadas
 
-## 📅 Módulo 4: Calendário de Mentoria
+### 1.8 Modulo Email Marketing
 
-**Funcionalidades:**
-- Agenda de encontros em grupo
-- Integração com Zoom/Google Meet
-- Lembretes automáticos por email
-- Confirmação de presença
+- `email_templates`: templates de email
+- `email_automations`: gatilhos automaticos
+- `email_logs`: historico de envios
 
-**Para o Mentor:**
-- Visão geral de todos os encontros
-- Controle de presença dos mentorados
+### 1.9 Teste Comportamental
 
----
-
-## 🎯 Módulo 5: Centro de Treinamento com IA
-
-**Upload de Transcrições de Calls:**
-- Mentorado sobe transcrição de suas calls de vendas
-- **IA analisa automaticamente:**
-  - Pontos fortes da abordagem
-  - Objeções não tratadas
-  - Sugestões de melhoria
-  - Score de performance
-
-**Histórico de evolução:**
-- Comparativo entre calls
-- Gráfico de progresso ao longo do tempo
+- `behavioral_questions`: perguntas DISC/Eneagrama
+- `behavioral_responses`: respostas dos mentorados
+- `behavioral_reports`: relatorios gerados pela IA
 
 ---
 
-## 🆘 Módulo 6: Centro SOS
+## Fase 2: Sistema de Autenticacao e Roteamento
 
-**Urgências:**
-- Mentorado solicita call individual urgente
-- Descreve o problema/situação
-- Define prioridade
+### 2.1 Fluxo de Login
 
-**Roteamento inteligente (escalável):**
-- Inicialmente: vai direto para o mentor
-- Futuro: categoriza por tema e direciona para especialista da equipe
+```text
+Usuario faz login
+       |
+       v
+Verifica role na tabela user_roles
+       |
+       +---> role = 'mentor' ---> /admin (Dashboard do Mentor)
+       |
+       +---> role = 'mentorado' ---> /app (Area de Membros)
+```
 
-**Fila de atendimento:**
-- Mentor visualiza solicitações pendentes
-- Histórico de atendimentos
+### 2.2 Rotas da Aplicacao
 
----
+**Portal Admin (Mentor):**
+- `/admin` - Dashboard principal
+- `/admin/crm` - CRM e Pipeline
+- `/admin/mentorados` - Gestao de mentorados
+- `/admin/trilhas` - Gestao de conteudos
+- `/admin/calendario` - Agenda de encontros
+- `/admin/sos` - Fila de atendimentos SOS
+- `/admin/ranking` - Visualizacao do ranking
+- `/admin/emails` - Campanhas de email
+- `/admin/relatorios` - Analytics e relatorios
 
-## 🎮 Módulo 7: Gamificação & Rankings
-
-**Ranking de Prospecção:**
-- Atualização em tempo real
-- Baseado em leads cadastrados no CRM
-- Visualização mensal/semanal/all-time
-
-**Sistema de conquistas:**
-- Badges por metas atingidas
-- Níveis de evolução
-- Celebração de marcos importantes
-
-**Leaderboard público:**
-- Top performers do mês
-- Incentivo à competição saudável
-
----
-
-## 📧 Módulo 8: Email Marketing Inteligente
-
-**Automações baseadas em comportamento:**
-- IA mapeia desenvoltura do mentorado
-- Envia emails pontuais e relevantes:
-  - "Você não acessou a trilha X há 5 dias"
-  - "Parabéns! Você subiu no ranking"
-  - "Novo conteúdo baseado em seu perfil"
-
-**Sequências configuráveis:**
-- Mentor define gatilhos e templates
-- Personalização com merge tags
+**Portal Mentorado (Area de Membros):**
+- `/app` - Dashboard do mentorado
+- `/app/trilhas` - Trilhas de aprendizado
+- `/app/meu-crm` - CRM pessoal (prospeccoes)
+- `/app/calendario` - Proximos encontros
+- `/app/treinamento` - Upload de calls + analise IA
+- `/app/ranking` - Leaderboard
+- `/app/sos` - Solicitar ajuda urgente
+- `/app/perfil` - Teste comportamental e configuracoes
 
 ---
 
-## 📈 Módulo 9: Dashboard do Mentor (Analytics)
+## Fase 3: Portal do Mentor (Dashboard Admin)
 
-**Métricas principais:**
-- Total de mentorados ativos
-- Taxa de engajamento
-- Progresso médio nas trilhas
-- Performance do CRM/funil
+### 3.1 Dashboard Principal
+- Cards com metricas: mentorados ativos, engajamento, calls agendadas
+- Grafico de evolucao mensal
+- Alertas de mentorados em risco (IA)
+- Atalhos rapidos
 
-**Insights de IA:**
-- Mentorados em risco de abandono
-- Padrões de sucesso identificados
-- Recomendações de ação
+### 3.2 CRM Kanban
+- Pipeline visual: Lead > Qualificado > Negociacao > Fechado
+- Drag and drop entre colunas
+- Historico de interacoes por lead
+- Insights de IA sobre leads quentes
 
-**Relatórios:**
-- Exportação em PDF
-- Comparativos mensais
+### 3.3 Gestao de Mentorados
+- Lista com filtros e busca
+- Status de onboarding
+- Progresso nas trilhas
+- Acoes: enviar email, agendar call, ver historico
 
----
+### 3.4 Gestao de Trilhas
+- CRUD de trilhas, modulos e licoes
+- Upload de videos e PDFs
+- Ordenacao drag and drop
+- Preview do conteudo
 
-## 🏢 Módulo 10: Multi-Tenancy (SaaS)
+### 3.5 Calendario
+- Criar/editar encontros
+- Integracao Zoom/Meet (link externo inicialmente)
+- Lista de presenca
+- Salvar gravacoes nas trilhas
 
-**Cada mentor tem:**
-- Subdomínio próprio (mentor.plataforma.com)
-- Personalização de marca (logo, cores)
-- Dados completamente isolados
-- Configurações independentes
+### 3.6 Centro SOS
+- Fila de solicitacoes pendentes
+- Prioridade (alta/media/baixa)
+- Historico de atendimentos
+- Marcar como resolvido
 
-**Super Admin (você):**
-- Gestão de todos os tenants
-- Métricas globais da plataforma
-- Controle de planos/assinaturas
+### 3.7 Rankings
+- Visualizar ranking geral
+- Filtros: semanal/mensal/all-time
+- Distribuir badges manualmente
 
----
-
-## 🎨 Design: Profissional Premium
-
-**Estilo visual:**
-- Tons escuros elegantes (dark mode)
-- Acentos dourados/azuis sofisticados
-- Tipografia limpa e moderna
-- Animações sutis e profissionais
-- Interface responsiva (desktop + mobile)
-
----
-
-## 🔧 Tecnologia
-
-**Frontend:** React + TypeScript + Tailwind CSS
-**Backend:** Lovable Cloud (Supabase)
-**IA:** Lovable AI (Gemini) para análises e automações
-**Integrações:** Zoom/Google Meet API, Email (Resend)
-**Autenticação:** Multi-tenant com Supabase Auth
+### 3.8 Email Marketing
+- Criar templates com merge tags
+- Configurar automacoes
+- Ver logs de envios
+- Metricas de abertura
 
 ---
 
-## 📋 Fases de Implementação
+## Fase 4: Portal do Mentorado (Area de Membros)
 
-### Fase 1: Fundação
-- Autenticação multi-tenant
-- Estrutura de banco de dados
-- Design system premium
+### 4.1 Dashboard
+- Boas-vindas personalizada
+- Progresso geral nas trilhas
+- Proximos encontros
+- Posicao no ranking
+- Badges conquistados
 
-### Fase 2: Portal do Mentorado
-- Área de membros
-- Trilhas e materiais
-- Calendário
+### 4.2 Trilhas de Aprendizado
+- Lista de trilhas disponiveis
+- Progresso visual (barra)
+- Player de video
+- Marcar como concluido
+- Certificados
 
-### Fase 3: CRM & Gamificação
-- Pipeline de vendas
-- Rankings em tempo real
-- Integrações básicas
+### 4.3 Meu CRM (Prospeccoes)
+- Registrar novas prospeccoes
+- Ver historico
+- Pontos acumulados no ranking
 
-### Fase 4: Inteligência Artificial
-- Análise de calls
-- Teste comportamental
-- Email marketing inteligente
+### 4.4 Calendario
+- Visualizar encontros agendados
+- Confirmar presenca
+- Link para Zoom/Meet
+- Gravacoes anteriores
 
-### Fase 5: Centro SOS & Polimento
-- Sistema de urgências
-- Dashboard avançado
-- Otimizações
+### 4.5 Centro de Treinamento
+- Upload de transcricao de call
+- Aguardar analise da IA
+- Ver relatorio: pontos fortes, objecoes, score
+- Historico de evolucao com grafico
+
+### 4.6 Ranking
+- Leaderboard em tempo real
+- Sua posicao destacada
+- Top 10 do mes
+- Historico de colocacoes
+
+### 4.7 Centro SOS
+- Solicitar call urgente
+- Descrever problema
+- Definir prioridade
+- Acompanhar status
+
+### 4.8 Perfil e Teste Comportamental
+- Editar dados pessoais
+- Fazer teste DISC/Eneagrama
+- Ver relatorio personalizado gerado por IA
+- Recomendacoes de melhoria
+
+---
+
+## Fase 5: Integracao com IA
+
+### 5.1 Analise de Calls
+- Edge function que recebe transcricao
+- Usa Lovable AI (Gemini) para analisar
+- Retorna: pontos fortes, objecoes, sugestoes, score 0-100
+
+### 5.2 Teste Comportamental
+- Edge function que processa respostas
+- Calcula perfil DISC + Eneagrama
+- Gera relatorio focado em vendas
+
+### 5.3 Insights do Dashboard (Mentor)
+- Edge function que analisa dados agregados
+- Identifica mentorados em risco
+- Sugere acoes
+
+### 5.4 Email Marketing Inteligente
+- Edge function que monitora comportamento
+- Dispara emails automaticos via Resend
+
+---
+
+## Fase 6: Design Premium
+
+### 6.1 Portal do Mentor
+- Dark mode elegante
+- Sidebar com navegacao
+- Cards com glassmorphism
+- Gradientes gold/blue nos CTAs
+- Graficos com recharts
+
+### 6.2 Portal do Mentorado
+- Dark mode consistente
+- Navegacao simplificada
+- Foco em progresso e conquistas
+- Animacoes de celebracao
+- Mobile-first
+
+---
+
+## Ordem de Implementacao
+
+1. **Banco de dados**: criar todas as tabelas com RLS
+2. **Autenticacao**: sistema de roles e redirecionamento
+3. **Portal Mentor - Estrutura**: sidebar, layout, navegacao
+4. **Portal Mentor - CRM**: pipeline Kanban funcional
+5. **Portal Mentor - Mentorados**: CRUD e listagem
+6. **Portal Mentor - Trilhas**: CRUD de conteudos
+7. **Portal Mentorado - Estrutura**: sidebar, layout, navegacao
+8. **Portal Mentorado - Trilhas**: visualizacao e progresso
+9. **Portal Mentorado - CRM**: registro de prospeccoes
+10. **Gamificacao**: ranking em tempo real
+11. **Calendario**: agendamento e confirmacao
+12. **Centro SOS**: solicitacoes e fila
+13. **Centro Treinamento**: upload e analise IA
+14. **Teste Comportamental**: questionario e relatorio IA
+15. **Email Marketing**: templates e automacoes
+16. **Dashboard Analytics**: metricas e insights IA
+
+---
+
+## Detalhes Tecnicos
+
+**Frontend:**
+- React + TypeScript + Tailwind CSS
+- React Router para rotas protegidas
+- TanStack Query para cache e sincronizacao
+- Recharts para graficos
+- Lucide React para icones
+
+**Backend:**
+- Lovable Cloud (Supabase)
+- RLS policies para seguranca
+- Edge functions para IA
+- Realtime para ranking
+
+**IA:**
+- Lovable AI (Gemini 2.5 Flash) para analises rapidas
+- Gemini 2.5 Pro para relatorios complexos
+
+**Integrações:**
+- Zoom/Meet: links externos (v1)
+- Resend: envio de emails
 
