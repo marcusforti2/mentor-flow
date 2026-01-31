@@ -1,1 +1,7 @@
 project_id = "kovjaodhpnnmtrtbrwnf"
+
+[functions.ai-analysis]
+verify_jwt = true
+
+[functions.analyze-lead-screenshots]
+verify_jwt = false

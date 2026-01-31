@@ -25,6 +25,7 @@ import AdminTrilhas from "./pages/admin/Trilhas";
 // Member Pages
 import MemberDashboard from "./pages/member/MemberDashboard";
 import Trilhas from "./pages/member/Trilhas";
+import MeuCRM from "./pages/member/MeuCRM";
 
 const queryClient = new QueryClient();
 
@@ -73,7 +74,7 @@ const App = () => (
             >
               <Route index element={<MemberDashboard />} />
               <Route path="trilhas" element={<Trilhas />} />
-              <Route path="meu-crm" element={<PlaceholderPage title="Meu CRM" />} />
+              <Route path="meu-crm" element={<MeuCRM />} />
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
               <Route path="treinamento" element={<PlaceholderPage title="Centro de Treinamento" />} />
               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
