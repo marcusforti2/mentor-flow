@@ -18,6 +18,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  realRole: AppRole | null; // Role real do banco
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
@@ -153,18 +154,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  // Check for dev mode override
+  const DEV_MODE_KEY = 'dev_mode_role_override';
+  const overrideRole = typeof window !== 'undefined' 
+    ? localStorage.getItem(DEV_MODE_KEY) as AppRole | null 
+    : null;
+  
+  const effectiveRole = overrideRole || role;
+
   const value = {
     user,
     session,
     profile,
-    role,
+    role: effectiveRole, // Role efetiva (com override se houver)
+    realRole: role, // Role real do banco
     isLoading,
     signIn,
     signUp,
     signOut,
     assignRole,
-    isMentor: role === 'mentor',
-    isMentorado: role === 'mentorado',
+    isMentor: effectiveRole === 'mentor',
+    isMentorado: effectiveRole === 'mentorado',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
