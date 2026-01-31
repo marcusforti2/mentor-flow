@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { DevModeProvider } from "@/hooks/useDevMode";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Public Pages
@@ -32,6 +33,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <DevModeProvider>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
@@ -83,6 +85,7 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </DevModeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

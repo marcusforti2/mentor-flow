@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { FloatingDock } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
+import { DevModeSelector } from '@/components/DevModeSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
@@ -74,6 +75,9 @@ export function MemberLayout() {
       <main className="ml-20 pt-20 pr-6 pb-6 min-h-screen">
         <Outlet />
       </main>
+
+      {/* Dev Mode Selector */}
+      <DevModeSelector />
     </div>
   );
 }
