@@ -125,7 +125,7 @@ export default function MeuCRM() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 md:px-8 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
