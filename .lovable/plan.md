@@ -1,65 +1,125 @@
 
-# Plano: Setup Inicial de Mentor e Aprovacao de Mentorados
+# Plano: Seletor de Modo Dev (Mentor/Mentorado)
 
-## Status: ✅ IMPLEMENTADO
+## Objetivo
+Criar um componente flutuante que permite alternar entre as visoes de Mentor e Mentorado sem precisar fazer logout. Util para desenvolvimento e testes internos.
 
 ---
 
-## O Que Foi Implementado
+## Componente a Criar
 
-### 1. Funções RPC no Banco de Dados
-- `is_first_mentor()` - Verifica se existe mentor no sistema
-- `assign_role(_user_id, _role)` - Atribui role com validação
-- `approve_mentorado(_user_id, _mentor_id)` - Aprova mentorado e cria registro
-- `get_pending_users()` - Lista usuários aguardando aprovação
+### DevModeSelector (`src/components/DevModeSelector.tsx`)
 
-### 2. Página de Setup Inicial (`/setup`)
-- Verifica automaticamente se já existe mentor
-- Redireciona para `/auth` se mentor existir
-- Formulário premium com campos: Nome da Mentoria, Nome, Email, Senha
-- Atribui role `mentor` automaticamente após signup
+Caracteristicas:
+- Botao flutuante no canto inferior direito
+- Design premium com glassmorphism
+- Mostra o modo atual (Mentor/Mentorado)
+- Toggle para alternar instantaneamente
+- Redireciona automaticamente para o painel correto
 
-### 3. Página de Gestão de Mentorados (`/admin/mentorados`)
-- Lista usuários pendentes de aprovação
-- Lista mentorados ativos
-- Cards com avatar, email, data de cadastro
-- Botão de aprovação com feedback visual
-- Estatísticas: Pendentes, Ativos, Total
+---
 
-### 4. Hook useAuth Atualizado
-- Nova função `assignRole(role)` para atribuir roles
-- Integração com RPC functions
+## Implementacao Tecnica
 
-### 5. Rotas Atualizadas
-- `/setup` - Rota pública para setup inicial
-- `/admin/mentorados` - Página real (não mais placeholder)
+### 1. Criar Hook de Dev Mode
+
+**Arquivo:** `src/hooks/useDevMode.tsx`
+
+```typescript
+// Armazena override de role no localStorage
+// Permite simular qualquer role sem mudar DB
+// Funciona apenas em desenvolvimento
+```
+
+### 2. Criar Componente Visual
+
+**Arquivo:** `src/components/DevModeSelector.tsx`
+
+Elementos:
+- Icone de ferramenta/dev
+- Label do modo atual
+- Switch/Toggle para alternar
+- Badge indicando "DEV MODE"
+
+### 3. Modificar useAuth
+
+Adicionar suporte a role override:
+- Verificar se existe override no localStorage
+- Usar override ao inves de role real do DB
+- Manter funcionalidade normal quando nao ha override
+
+### 4. Adicionar aos Layouts
+
+Incluir o DevModeSelector em:
+- `AdminLayout.tsx`
+- `MemberLayout.tsx`
 
 ---
 
 ## Fluxo de Uso
 
-### Primeiro Acesso (Mentor):
-1. Acesse `/setup`
-2. Preencha os dados
-3. Confirme email
-4. Faça login em `/auth`
-5. Será redirecionado para `/admin`
-
-### Novos Mentorados:
-1. Acessam `/auth` e criam conta
-2. Após confirmar email e fazer login, veem "Aguardando aprovação"
-3. Mentor acessa `/admin/mentorados`
-4. Mentor clica em "Aprovar"
-5. Mentorado pode acessar `/app`
+```text
+Usuario logado como Mentor
+        |
+        v
+Clica no seletor "Mudar para Mentorado"
+        |
+        v
+Override salvo no localStorage
+        |
+        v
+Redirecionado para /app
+        |
+        v
+Ve a interface de Mentorado
+```
 
 ---
 
-## Arquivos Criados/Modificados
+## Design do Componente
 
-| Arquivo | Status |
-|---------|--------|
-| `src/pages/Setup.tsx` | ✅ Criado |
-| `src/pages/admin/Mentorados.tsx` | ✅ Criado |
-| `src/hooks/useAuth.tsx` | ✅ Modificado |
-| `src/App.tsx` | ✅ Modificado |
-| Migração SQL | ✅ Executada |
+```text
++----------------------------------+
+|  [Icone]  Modo: MENTOR     [X]  |
+|  --------------------------------|
+|  [o----] Mentor                  |
+|  [----o] Mentorado               |
++----------------------------------+
+```
+
+- Botao minimizado: apenas icone com indicador
+- Ao clicar: expande com opcoes
+- Cores distintas para cada modo
+
+---
+
+## Arquivos a Criar/Modificar
+
+| Arquivo | Acao |
+|---------|------|
+| `src/hooks/useDevMode.tsx` | Criar |
+| `src/components/DevModeSelector.tsx` | Criar |
+| `src/hooks/useAuth.tsx` | Modificar (suporte a override) |
+| `src/components/layouts/AdminLayout.tsx` | Modificar (adicionar componente) |
+| `src/components/layouts/MemberLayout.tsx` | Modificar (adicionar componente) |
+| `src/components/ProtectedRoute.tsx` | Modificar (respeitar override) |
+
+---
+
+## Seguranca
+
+- Override funciona apenas no client-side (localStorage)
+- Nao afeta dados reais do banco
+- Pode ser facilmente desativado removendo o componente
+- Recomendado remover antes de ir para producao
+
+---
+
+## Bonus: Indicador Visual
+
+Quando o dev mode estiver ativo, mostrar uma barra sutil no topo:
+```text
+[DEV MODE] Visualizando como: Mentorado | Voltar ao normal
+```
+
+Isso evita confusao sobre qual modo esta ativo.
