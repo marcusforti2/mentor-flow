@@ -31,20 +31,40 @@ export default function MemberDashboard() {
       if (!user) return;
       
       try {
-        // Get mentorado ID
-        const { data: mentorado } = await supabase
+        // Get mentorado ID (or auto-link if missing)
+        let mentoradoId: string | null = null;
+
+        const { data: mentorado, error: mentoradoError } = await supabase
           .from("mentorados")
           .select("id")
           .eq("user_id", user.id)
-          .single();
-        
-        if (!mentorado) return;
+          .maybeSingle();
+
+        if (mentorado?.id) {
+          mentoradoId = mentorado.id;
+        } else {
+          if (mentoradoError) {
+            console.warn("Mentorado fetch error:", mentoradoError);
+          }
+          const { data: ensured, error: ensureError } = await supabase.functions.invoke(
+            "ensure-mentorado",
+            { body: {} }
+          );
+          if (!ensureError && ensured?.mentorado_id) {
+            mentoradoId = ensured.mentorado_id;
+          }
+        }
+
+        if (!mentoradoId) {
+          setIsLoadingStats(false);
+          return;
+        }
         
         // Get training analyses stats
         const { data: analyses } = await supabase
           .from("training_analyses")
           .select("nota_geral")
-          .eq("mentorado_id", mentorado.id);
+          .eq("mentorado_id", mentoradoId);
         
         if (analyses && analyses.length > 0) {
           const avg = Math.round(
@@ -52,6 +72,9 @@ export default function MemberDashboard() {
           );
           setAvgScore(avg);
           setTotalAnalyses(analyses.length);
+        } else {
+          setAvgScore(null);
+          setTotalAnalyses(0);
         }
       } catch (error) {
         console.error("Error fetching stats:", error);

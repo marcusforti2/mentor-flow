@@ -89,12 +89,37 @@ export default function Treinamento() {
   useEffect(() => {
     const fetchMentoradoId = async () => {
       if (!user) return;
-      const { data } = await supabase
+
+      // First try to find the mentorado row
+      const { data: mentorado, error: mentoradoError } = await supabase
         .from("mentorados")
         .select("id")
         .eq("user_id", user.id)
-        .single();
-      if (data) setMentoradoId(data.id);
+        .maybeSingle();
+
+      if (mentorado?.id) {
+        setMentoradoId(mentorado.id);
+        return;
+      }
+
+      // If not found, try to auto-link (only works when there is exactly 1 mentor)
+      if (mentoradoError) {
+        console.warn("Mentorado fetch error:", mentoradoError);
+      }
+
+      const { data: ensured, error: ensureError } = await supabase.functions.invoke(
+        "ensure-mentorado",
+        { body: {} }
+      );
+
+      if (ensureError) {
+        console.error("ensure-mentorado error:", ensureError);
+        return;
+      }
+
+      if (ensured?.mentorado_id) {
+        setMentoradoId(ensured.mentorado_id);
+      }
     };
     fetchMentoradoId();
   }, [user]);
@@ -199,7 +224,10 @@ export default function Treinamento() {
 
   // Auto-save analysis to database
   const autoSaveAnalysis = async (result: AnalysisResult, type: string) => {
-    if (!mentoradoId) return;
+    if (!mentoradoId) {
+      toast.error("Seu usuário ainda não está vinculado como mentorado. Não dá pra salvar.");
+      return;
+    }
     
     try {
       const { error } = await supabase.from("training_analyses").insert({
@@ -336,7 +364,7 @@ export default function Treinamento() {
       await loadHistory();
     } catch (error) {
       console.error("Error deleting:", error);
-      toast.error("Erro ao excluir análise");
+      toast.error("Erro ao excluir análise (sem permissão ou já removida)");
     } finally {
       setIsDeleting(null);
     }
