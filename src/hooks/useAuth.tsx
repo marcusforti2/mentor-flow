@@ -1,7 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 type AppRole = 'mentor' | 'mentorado';
 
@@ -23,6 +22,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  assignRole: (role: AppRole) => Promise<{ error: Error | null }>;
   isMentor: boolean;
   isMentorado: boolean;
 }
@@ -134,6 +134,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
   };
 
+  const assignRole = async (roleToAssign: AppRole) => {
+    if (!user) {
+      return { error: new Error('Usuário não autenticado') };
+    }
+    
+    const { error } = await supabase.rpc('assign_role', {
+      _user_id: user.id,
+      _role: roleToAssign
+    });
+    
+    if (!error) {
+      setRole(roleToAssign);
+      // Refresh user data to get updated profile/mentor info
+      await fetchUserData(user.id);
+    }
+    
+    return { error };
+  };
+
   const value = {
     user,
     session,
@@ -143,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    assignRole,
     isMentor: role === 'mentor',
     isMentorado: role === 'mentorado',
   };
