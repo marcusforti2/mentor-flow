@@ -114,18 +114,29 @@ export default function CentroSOS() {
     setTriageStarted(true);
 
     try {
-      // Get business context
+      // Get full business context
       const { data: businessProfile } = await supabase
         .from("mentorado_business_profiles")
-        .select("business_name, business_type, main_offer")
+        .select("*")
         .eq("mentorado_id", mentoradoId)
         .single();
+
+      const businessContext = businessProfile ? {
+        businessName: businessProfile.business_name,
+        businessType: businessProfile.business_type,
+        targetAudience: businessProfile.target_audience,
+        mainOffer: businessProfile.main_offer,
+        priceRange: businessProfile.price_range,
+        uniqueValueProposition: businessProfile.unique_value_proposition,
+        painPointsSolved: businessProfile.pain_points_solved,
+        idealClientProfile: businessProfile.ideal_client_profile,
+      } : undefined;
 
       const { data, error } = await supabase.functions.invoke("sos-triage", {
         body: {
           problemDescription,
           chatHistory: [],
-          businessContext: businessProfile || undefined,
+          businessContext,
         },
       });
 
@@ -165,15 +176,26 @@ export default function CentroSOS() {
     try {
       const { data: businessProfile } = await supabase
         .from("mentorado_business_profiles")
-        .select("business_name, business_type, main_offer")
+        .select("*")
         .eq("mentorado_id", mentoradoId)
         .single();
+
+      const businessContext = businessProfile ? {
+        businessName: businessProfile.business_name,
+        businessType: businessProfile.business_type,
+        targetAudience: businessProfile.target_audience,
+        mainOffer: businessProfile.main_offer,
+        priceRange: businessProfile.price_range,
+        uniqueValueProposition: businessProfile.unique_value_proposition,
+        painPointsSolved: businessProfile.pain_points_solved,
+        idealClientProfile: businessProfile.ideal_client_profile,
+      } : undefined;
 
       const { data, error } = await supabase.functions.invoke("sos-triage", {
         body: {
           problemDescription: "",
           chatHistory: newHistory,
-          businessContext: businessProfile || undefined,
+          businessContext,
         },
       });
 
