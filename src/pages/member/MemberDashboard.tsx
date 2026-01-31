@@ -12,13 +12,62 @@ import {
   Zap,
   Clock,
   Star,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const [avgScore, setAvgScore] = useState<number | null>(null);
+  const [totalAnalyses, setTotalAnalyses] = useState(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+      
+      try {
+        // Get mentorado ID
+        const { data: mentorado } = await supabase
+          .from("mentorados")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (!mentorado) return;
+        
+        // Get training analyses stats
+        const { data: analyses } = await supabase
+          .from("training_analyses")
+          .select("nota_geral")
+          .eq("mentorado_id", mentorado.id);
+        
+        if (analyses && analyses.length > 0) {
+          const avg = Math.round(
+            analyses.reduce((acc, a) => acc + (a.nota_geral || 0), 0) / analyses.length
+          );
+          setAvgScore(avg);
+          setTotalAnalyses(analyses.length);
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    
+    fetchStats();
+  }, [user]);
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-emerald-500";
+    if (score >= 60) return "text-amber-500";
+    return "text-red-500";
+  };
 
   return (
     <div className="space-y-8">
@@ -162,13 +211,22 @@ export default function MemberDashboard() {
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-foreground text-sm">Performance Semanal</h3>
+              <h3 className="font-semibold text-foreground text-sm">Nota Média IA</h3>
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <p className="stat-value text-gradient-premium">92</p>
-                <p className="text-xs text-muted-foreground mt-1">Score médio nas calls</p>
-              </div>
+              {isLoadingStats ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : avgScore !== null ? (
+                <div className="text-center">
+                  <p className={`stat-value ${getScoreColor(avgScore)}`}>{avgScore}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{totalAnalyses} análise{totalAnalyses !== 1 ? 's' : ''} de treinamento</p>
+                </div>
+              ) : (
+                <Link to="/app/treinamento" className="text-center">
+                  <p className="text-muted-foreground text-sm">Nenhuma análise</p>
+                  <p className="text-xs text-primary mt-1 hover:underline">Fazer primeira análise →</p>
+                </Link>
+              )}
             </div>
           </div>
         </BentoCard>
