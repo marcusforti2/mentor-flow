@@ -16,22 +16,18 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
-  const { profile, user, isMentor } = useAuth();
+  const { profile, user } = useAuth();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (isMentor) {
-        setIsLoadingStats(false);
-        return;
-      }
       if (!user) return;
       
       try {
@@ -88,18 +84,13 @@ export default function MemberDashboard() {
     };
     
     fetchStats();
-  }, [user, isMentor]);
+  }, [user]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
     if (score >= 60) return "text-amber-500";
     return "text-red-500";
   };
-
-  // Safety guard: if a mentor ends up here (e.g., dev mode override), redirect to admin.
-  if (isMentor) {
-    return <Navigate to="/admin" replace />;
-  }
 
   return (
     <div className="space-y-8">
