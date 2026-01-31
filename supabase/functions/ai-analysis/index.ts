@@ -11,7 +11,8 @@ serve(async (req) => {
   }
 
   try {
-    const { type, data } = await req.json();
+    const body = await req.json();
+    const { type, data, analysis_type, transcription, images, pdf_base64 } = body;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -20,10 +21,62 @@ serve(async (req) => {
 
     let systemPrompt = "";
     let userPrompt = "";
+    let messageContent: any[] = [];
 
-    switch (type) {
-      case "call_analysis":
-        systemPrompt = `Você é um especialista em análise de vendas e comunicação comercial. 
+    // Training analysis (new type)
+    if (type === "training_analysis") {
+      systemPrompt = `Você é um coach de vendas expert, direto e incisivo. Analise a conversa/transcrição fornecida e retorne OBRIGATORIAMENTE um JSON válido com a seguinte estrutura exata:
+
+{
+  "nota_geral": (número de 0 a 100),
+  "resumo": "(resumo executivo em 2-3 frases)",
+  "ouro_nao_mude": ["(coisas que o vendedor fez MUITO BEM e deve continuar fazendo)"],
+  "pontos_fortes": ["(outros pontos positivos identificados)"],
+  "muda_urgente": ["(comportamentos que precisam mudar IMEDIATAMENTE para não perder vendas)"],
+  "errou_feio": ["(erros graves que podem ter custado a venda ou prejudicado a relação)"],
+  "pontos_fracos": ["(áreas que precisam desenvolvimento)"],
+  "como_melhorar": ["(sugestões práticas e acionáveis para melhorar)"]
+}
+
+REGRAS:
+- Seja DIRETO e ESPECÍFICO, cite exemplos da conversa
+- Use linguagem informal e impactante
+- Cada item deve ter no máximo 2 frases
+- Mínimo 2 itens por categoria, máximo 5
+- A nota deve refletir a qualidade geral da abordagem de vendas
+- RETORNE APENAS O JSON, sem texto adicional`;
+
+      if (analysis_type === "transcricao") {
+        userPrompt = `Analise esta transcrição de chamada/reunião de vendas:\n\n${transcription || ""}`;
+        
+        if (pdf_base64) {
+          messageContent = [
+            { type: "text", text: systemPrompt + "\n\n" + "Analise este documento PDF de transcrição:" },
+            { type: "image_url", image_url: { url: pdf_base64 } }
+          ];
+        } else {
+          messageContent = [{ type: "text", text: systemPrompt + "\n\n" + userPrompt }];
+        }
+      } else if (analysis_type === "prints") {
+        userPrompt = "Analise estas conversas de prospecção/vendas:";
+        messageContent = [
+          { type: "text", text: systemPrompt + "\n\n" + userPrompt }
+        ];
+        
+        if (images && Array.isArray(images)) {
+          for (const img of images) {
+            messageContent.push({
+              type: "image_url",
+              image_url: { url: img }
+            });
+          }
+        }
+      }
+    } else {
+      // Original analysis types
+      switch (type) {
+        case "call_analysis":
+          systemPrompt = `Você é um especialista em análise de vendas e comunicação comercial. 
 Analise a transcrição da chamada fornecida e forneça:
 1. Pontuação geral (0-100)
 2. Pontos fortes identificados
@@ -35,11 +88,12 @@ Analise a transcrição da chamada fornecida e forneça:
 
 Seja específico e forneça exemplos da transcrição quando possível.
 Responda em português brasileiro de forma profissional.`;
-        userPrompt = `Analise esta transcrição de chamada de vendas:\n\n${data.transcript}`;
-        break;
+          userPrompt = `Analise esta transcrição de chamada de vendas:\n\n${data?.transcript}`;
+          messageContent = [{ type: "text", text: systemPrompt + "\n\n" + userPrompt }];
+          break;
 
-      case "behavioral_report":
-        systemPrompt = `Você é um especialista em análise comportamental DISC e Eneagrama focado em vendas.
+        case "behavioral_report":
+          systemPrompt = `Você é um especialista em análise comportamental DISC e Eneagrama focado em vendas.
 Com base nas respostas do questionário comportamental, gere um relatório completo incluindo:
 1. Perfil DISC (Dominância, Influência, Estabilidade, Conformidade) com percentuais
 2. Tipo de Eneagrama provável
@@ -51,19 +105,22 @@ Com base nas respostas do questionário comportamental, gere um relatório compl
 
 Seja detalhado e prático nas recomendações.
 Responda em português brasileiro de forma profissional.`;
-        userPrompt = `Respostas do questionário comportamental:\n\n${JSON.stringify(data.responses, null, 2)}`;
-        break;
+          userPrompt = `Respostas do questionário comportamental:\n\n${JSON.stringify(data?.responses, null, 2)}`;
+          messageContent = [{ type: "text", text: systemPrompt + "\n\n" + userPrompt }];
+          break;
 
-      case "chat":
-        systemPrompt = `Você é um assistente de IA especializado em vendas e mentoria.
+        case "chat":
+          systemPrompt = `Você é um assistente de IA especializado em vendas e mentoria.
 Ajude o usuário com dúvidas sobre técnicas de vendas, objeções, abordagem de clientes, etc.
 Seja direto, prático e forneça exemplos quando possível.
 Responda em português brasileiro de forma profissional e amigável.`;
-        userPrompt = data.message;
-        break;
+          userPrompt = data?.message;
+          messageContent = [{ type: "text", text: systemPrompt + "\n\n" + userPrompt }];
+          break;
 
-      default:
-        throw new Error("Tipo de análise não suportado");
+        default:
+          throw new Error("Tipo de análise não suportado");
+      }
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -75,8 +132,7 @@ Responda em português brasileiro de forma profissional e amigável.`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: messageContent },
         ],
         stream: false,
       }),
@@ -101,7 +157,30 @@ Responda em português brasileiro de forma profissional e amigável.`;
     }
 
     const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
+    let content = aiResponse.choices?.[0]?.message?.content;
+
+    // Try to parse JSON from the response for training_analysis
+    if (type === "training_analysis" && content) {
+      // Extract JSON from markdown code blocks if present
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        content = jsonMatch[1].trim();
+      }
+      
+      try {
+        const parsed = JSON.parse(content);
+        return new Response(
+          JSON.stringify({ success: true, result: parsed }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch {
+        // Return as string if not valid JSON
+        return new Response(
+          JSON.stringify({ success: true, result: content }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     return new Response(
       JSON.stringify({ success: true, result: content }),
