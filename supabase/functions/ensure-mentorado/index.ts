@@ -37,58 +37,83 @@ serve(async (req) => {
       });
     }
 
-    // Must already have the mentorado role
-    const { data: roleRow, error: roleError } = await supabase
+    console.log("ensure-mentorado called for user:", user.id);
+
+    // Check if user is already a mentor (should not auto-link mentors as mentorados)
+    const { data: mentorRole } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "mentorado")
+      .eq("role", "mentor")
       .maybeSingle();
 
-    if (roleError) throw roleError;
-    if (!roleRow) {
-      return new Response(JSON.stringify({ error: "User is not a mentorado" }), {
+    if (mentorRole) {
+      return new Response(JSON.stringify({ error: "User is a mentor, not a mentorado" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // If mentorado already exists, return it
+    // Check if mentorado record already exists
     const { data: existing, error: existingError } = await supabase
       .from("mentorados")
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (existingError) throw existingError;
+    if (existingError) {
+      console.error("Error checking existing mentorado:", existingError);
+      throw existingError;
+    }
+
     if (existing?.id) {
+      console.log("Mentorado already exists:", existing.id);
       return new Response(JSON.stringify({ success: true, mentorado_id: existing.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Auto-link only when there is exactly ONE mentor in the system.
+    // Auto-link only works when there is exactly ONE mentor in the system
     const { data: mentors, error: mentorsError } = await supabase
       .from("mentors")
       .select("id")
       .limit(2);
 
     if (mentorsError) throw mentorsError;
-    if (!mentors || mentors.length !== 1) {
+
+    if (!mentors || mentors.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Nenhum mentor cadastrado no sistema ainda." }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (mentors.length > 1) {
       return new Response(
         JSON.stringify({
-          error:
-            "Não foi possível vincular automaticamente. Peça para o mentor aprovar seu acesso (ou defina um mentor padrão).",
+          error: "Existem múltiplos mentores. Aguarde aprovação manual do seu mentor.",
         }),
-        {
-          status: 409,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const mentorId = mentors[0].id as string;
+    console.log("Auto-linking to mentor:", mentorId);
 
+    // Ensure user has the mentorado role (insert if not exists)
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .upsert(
+        { user_id: user.id, role: "mentorado" },
+        { onConflict: "user_id,role", ignoreDuplicates: true }
+      );
+
+    if (roleError) {
+      console.error("Error assigning mentorado role:", roleError);
+      throw roleError;
+    }
+
+    // Create the mentorado record
     const { data: created, error: insertError } = await supabase
       .from("mentorados")
       .insert({
@@ -100,7 +125,12 @@ serve(async (req) => {
       .select("id")
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error("Error creating mentorado record:", insertError);
+      throw insertError;
+    }
+
+    console.log("Mentorado created successfully:", created.id);
 
     return new Response(JSON.stringify({ success: true, mentorado_id: created.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -109,10 +139,7 @@ serve(async (req) => {
     console.error("Error in ensure-mentorado:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
