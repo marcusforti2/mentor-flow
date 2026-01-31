@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,22 +26,19 @@ const Auth = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, role, isLoading: authLoading, signIn, signUp } = useAuth();
 
+  // Redirect based on role when user is authenticated
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        navigate("/dashboard");
+    if (!authLoading && user) {
+      if (role === 'mentor') {
+        navigate('/admin');
+      } else if (role === 'mentorado') {
+        navigate('/app');
       }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate("/dashboard");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+      // If no role yet, stay on auth page - ProtectedRoute will handle it
+    }
+  }, [user, role, authLoading, navigate]);
 
   const validateForm = (isSignup: boolean) => {
     const newErrors: { email?: string; password?: string; fullName?: string } = {};
@@ -76,10 +73,7 @@ const Auth = () => {
     
     setIsLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await signIn(email, password);
 
     setIsLoading(false);
 
@@ -106,18 +100,7 @@ const Auth = () => {
     
     setIsLoading(true);
     
-    const redirectUrl = `${window.location.origin}/dashboard`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-        }
-      }
-    });
+    const { error } = await signUp(email, password, fullName);
 
     setIsLoading(false);
 
@@ -143,6 +126,15 @@ const Auth = () => {
       description: "Verifique seu email para confirmar o cadastro.",
     });
   };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">

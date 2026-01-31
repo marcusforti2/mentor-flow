@@ -2,11 +2,24 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+
+// Public Pages
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+
+// Layouts
+import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { MemberLayout } from "@/components/layouts/MemberLayout";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
+// Member Pages
+import MemberDashboard from "./pages/member/MemberDashboard";
 
 const queryClient = new QueryClient();
 
@@ -16,16 +29,73 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Admin Routes (Mentor) */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['mentor']}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="crm" element={<PlaceholderPage title="CRM" />} />
+              <Route path="mentorados" element={<PlaceholderPage title="Mentorados" />} />
+              <Route path="trilhas" element={<PlaceholderPage title="Trilhas" />} />
+              <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
+              <Route path="sos" element={<PlaceholderPage title="Centro SOS" />} />
+              <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
+              <Route path="emails" element={<PlaceholderPage title="Email Marketing" />} />
+              <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
+            </Route>
+
+            {/* Member Routes (Mentorado) */}
+            <Route
+              path="/app"
+              element={
+                <ProtectedRoute allowedRoles={['mentorado']}>
+                  <MemberLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<MemberDashboard />} />
+              <Route path="trilhas" element={<PlaceholderPage title="Trilhas" />} />
+              <Route path="meu-crm" element={<PlaceholderPage title="Meu CRM" />} />
+              <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
+              <Route path="treinamento" element={<PlaceholderPage title="Centro de Treinamento" />} />
+              <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
+              <Route path="sos" element={<PlaceholderPage title="Centro SOS" />} />
+              <Route path="perfil" element={<PlaceholderPage title="Meu Perfil" />} />
+            </Route>
+
+            {/* Legacy route redirect */}
+            <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
+
+            {/* Catch-all */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
+
+// Placeholder component for routes not yet implemented
+function PlaceholderPage({ title }: { title: string }) {
+  return (
+    <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+      <div className="text-center space-y-4">
+        <h1 className="text-2xl font-display font-bold text-foreground">{title}</h1>
+        <p className="text-muted-foreground">Esta página será implementada em breve.</p>
+      </div>
+    </div>
+  );
+}
 
 export default App;
