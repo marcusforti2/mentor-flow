@@ -51,12 +51,7 @@ export function MemberLayout() {
       <div className="animated-gradient-bg" />
       
       {/* Floating Dock - only visible on dashboard */}
-      <div className={cn(
-        "transition-all duration-300",
-        isDashboard ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-full pointer-events-none"
-      )}>
-        <FloatingDock items={menuItems} position="left" />
-      </div>
+      {isDashboard && <FloatingDock items={menuItems} position="left" />}
 
       {/* Back Header - visible on sub-pages */}
       {!isDashboard && (
