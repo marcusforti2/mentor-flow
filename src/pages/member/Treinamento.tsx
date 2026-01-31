@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { Navigate } from "react-router-dom";
 import {
   Upload,
   X,
@@ -63,7 +64,7 @@ interface SavedAnalysis {
 }
 
 export default function Treinamento() {
-  const { user } = useAuth();
+  const { user, isMentor } = useAuth();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"transcricao" | "prints">("transcricao");
   const [viewMode, setViewMode] = useState<"new" | "history">("new");
@@ -88,6 +89,7 @@ export default function Treinamento() {
 
   useEffect(() => {
     const fetchMentoradoId = async () => {
+      if (isMentor) return;
       if (!user) return;
 
       // First try to find the mentorado row
@@ -122,7 +124,7 @@ export default function Treinamento() {
       }
     };
     fetchMentoradoId();
-  }, [user]);
+  }, [user, isMentor]);
 
   // Load history when switching to history tab
   useEffect(() => {
@@ -552,6 +554,10 @@ export default function Treinamento() {
       )}
     </div>
   );
+
+  if (isMentor) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <div className="space-y-6 px-4 md:px-8 max-w-[1400px] mx-auto">
