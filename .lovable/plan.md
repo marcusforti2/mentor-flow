@@ -1,70 +1,119 @@
 
-# Plano: Ajustar Espacamento do Conteudo para Nao Sobrepor a Sidebar
+# Plano: Floating Dock Premium com Efeito Vidro
 
-## Problema Identificado
+## Efeitos a Implementar
 
-Nas imagens, o conteudo "Ola, MARCUS" e os cards estao sendo cobertos pela sidebar porque:
+### 1. Glassmorphism Avancado
+- Blur de fundo (backdrop-filter)
+- Transparencia elegante
+- Reflexo de luz no topo
 
-- **Floating Dock ocupa**: left 24px + padding 16px + item 48px = ~88px
-- **Conteudo tem**: ml-20 = 80px (margem insuficiente)
-- **Resultado**: Sobreposicao de ~8-10px
+### 2. Borda com Gradiente Animado
+- Borda que brilha sutilmente
+- Gradiente dourado/azul rotacionando
 
----
+### 3. Glow Externo Sutil
+- Sombra colorida ao redor
+- Pulsa suavemente
 
-## Solucao
-
-Aumentar a margem esquerda do conteudo principal de `ml-20` (80px) para `ml-28` (112px), garantindo espaco entre o dock e o conteudo.
-
----
-
-## Alteracoes Necessarias
-
-### 1. AdminLayout - Aumentar margem do main
-
-**Arquivo:** `src/components/layouts/AdminLayout.tsx`
-
-Linha 90 - Alterar:
-```tsx
-<main className="ml-20 pt-20 pr-6 pb-6 min-h-screen">
-```
-
-Para:
-```tsx
-<main className="ml-28 pt-20 px-6 pb-6 min-h-screen">
-```
-
-### 2. MemberLayout - Mesma alteracao
-
-**Arquivo:** `src/components/layouts/MemberLayout.tsx`
-
-Linha 75 - Alterar:
-```tsx
-<main className="ml-20 pt-20 pr-6 pb-6 min-h-screen">
-```
-
-Para:
-```tsx
-<main className="ml-28 pt-20 px-6 pb-6 min-h-screen">
-```
+### 4. Hover Magnetico nos Itens
+- Itens crescem ao passar o mouse (efeito macOS Dock)
+- Itens vizinhos tambem crescem um pouco
 
 ---
 
-## Comparacao Visual
+## Alteracoes no CSS
 
-| Propriedade | Antes | Depois |
-|-------------|-------|--------|
-| Margem esquerda | ml-20 (80px) | ml-28 (112px) |
-| Espaco livre | ~0px (sobreposto) | ~24px de respiro |
-| Padding horizontal | pr-6 apenas | px-6 (ambos os lados) |
+**Arquivo:** `src/index.css`
+
+### Floating Dock Principal
+```css
+.floating-dock {
+  /* Glassmorphism */
+  background: hsl(240 10% 8% / 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  
+  /* Borda com gradiente */
+  border: 1px solid transparent;
+  background-image: 
+    linear-gradient(hsl(240 10% 8% / 0.7), hsl(240 10% 8% / 0.7)),
+    linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--accent) / 0.3), hsl(var(--primary) / 0.2));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  
+  /* Sombra com glow */
+  box-shadow: 
+    0 8px 32px hsl(0 0% 0% / 0.4),
+    0 0 60px hsl(var(--primary) / 0.1),
+    inset 0 1px 0 hsl(0 0% 100% / 0.1);
+}
+```
+
+### Reflexo de Luz no Topo
+```css
+.floating-dock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    hsl(0 0% 100% / 0.1) 0%,
+    transparent 40%
+  );
+  pointer-events: none;
+}
+```
+
+### Animacao de Glow Pulsante
+```css
+.floating-dock::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  z-index: -1;
+  opacity: 0.3;
+  filter: blur(15px);
+  animation: dock-glow 3s ease-in-out infinite;
+}
+
+@keyframes dock-glow {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.02); }
+}
+```
+
+### Efeito Hover Magnetico nos Itens
+```css
+.dock-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dock-item:hover {
+  transform: scale(1.25);
+  background: hsl(var(--primary) / 0.15);
+}
+
+/* Itens vizinhos tambem crescem */
+.dock-item:hover + .dock-item,
+.dock-item:has(+ .dock-item:hover) {
+  transform: scale(1.1);
+}
+```
 
 ---
 
-## Resultado Esperado
+## Resultado Visual Esperado
 
-- Conteudo fica completamente a direita do Floating Dock
-- Espaco de ~24px entre a sidebar e o conteudo
-- Layout equilibrado e sem sobreposicao
-- Aplica para ambos: Admin e Member
+| Efeito | Descricao |
+|--------|-----------|
+| Vidro fosco | Fundo semi-transparente com blur |
+| Borda brilhante | Gradiente dourado/azul sutil |
+| Reflexo superior | Linha de luz no topo |
+| Glow pulsante | Brilho suave ao redor |
+| Hover magnetico | Itens crescem estilo macOS |
 
 ---
 
@@ -72,5 +121,4 @@ Para:
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/components/layouts/AdminLayout.tsx` | Linha 90: ml-20 -> ml-28, pr-6 -> px-6 |
-| `src/components/layouts/MemberLayout.tsx` | Linha 75: ml-20 -> ml-28, pr-6 -> px-6 |
+| `src/index.css` | Reescrever secao `.floating-dock` com efeitos premium |
