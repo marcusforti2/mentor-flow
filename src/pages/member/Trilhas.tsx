@@ -49,7 +49,7 @@ export default function Trilhas() {
   const totalHours = Math.floor(featuredTrail.total_duration / 60);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background -mt-16">
       {/* Hero Banner */}
       <section 
         className="trail-hero relative"
