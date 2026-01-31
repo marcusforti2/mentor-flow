@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.analyze-lead-screenshots]
 verify_jwt = false
+
+[functions.ensure-mentorado]
+verify_jwt = false
+
+[functions.sos-triage]
+verify_jwt = false
