@@ -601,3 +601,85 @@
     background: linear-gradient(180deg, hsl(240 10% 8%) 0%, hsl(240 10% 4%) 100%);
   }
 }
+
+/* ========================================
+   NETFLIX-STYLE TRAIL COMPONENTS
+   ======================================== */
+@layer components {
+  /* Trail Card */
+  .trail-card {
+    aspect-ratio: 16/9;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    scroll-snap-align: start;
+  }
+
+  .trail-card:hover {
+    transform: scale(1.05);
+    z-index: 10;
+    box-shadow: 
+      0 20px 40px hsl(0 0% 0% / 0.5),
+      0 0 30px hsl(var(--primary) / 0.2);
+  }
+
+  /* Trail Carousel */
+  .trail-carousel {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .trail-carousel::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Trail Hero Banner */
+  .trail-hero {
+    height: 70vh;
+    min-height: 500px;
+    max-height: 800px;
+    background-size: cover;
+    background-position: center top;
+    position: relative;
+  }
+
+  .trail-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.7) 30%,
+      transparent 70%
+    );
+  }
+
+  .trail-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.8) 15%,
+      transparent 50%,
+      hsl(var(--background) / 0.3) 100%
+    );
+  }
+
+  /* Lesson Progress States */
+  .lesson-completed {
+    background: hsl(var(--emerald) / 0.15);
+    border-color: hsl(var(--emerald) / 0.3);
+  }
+
+  .lesson-in-progress {
+    border-left: 3px solid hsl(var(--primary));
+  }
+}
