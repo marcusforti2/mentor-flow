@@ -28,6 +28,7 @@ import Trilhas from "./pages/member/Trilhas";
 import MeuCRM from "./pages/member/MeuCRM";
 import Treinamento from "./pages/member/Treinamento";
 import CentroSOS from "./pages/member/CentroSOS";
+import Perfil from "./pages/member/Perfil";
 
 // Admin Pages (additional)
 import AdminCentroSOS from "./pages/admin/CentroSOS";
@@ -84,7 +85,7 @@ const App = () => (
               <Route path="treinamento" element={<Treinamento />} />
               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
               <Route path="sos" element={<CentroSOS />} />
-              <Route path="perfil" element={<PlaceholderPage title="Meu Perfil" />} />
+              <Route path="perfil" element={<Perfil />} />
             </Route>
 
             {/* Legacy route redirect */}

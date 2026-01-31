@@ -11,14 +11,21 @@ interface ChatMessage {
   content: string;
 }
 
+interface BusinessContext {
+  businessName?: string;
+  businessType?: string;
+  targetAudience?: string;
+  mainOffer?: string;
+  priceRange?: string;
+  uniqueValueProposition?: string;
+  painPointsSolved?: string[];
+  idealClientProfile?: string;
+}
+
 interface TriageRequest {
   problemDescription: string;
   chatHistory: ChatMessage[];
-  businessContext?: {
-    businessName?: string;
-    businessType?: string;
-    mainOffer?: string;
-  };
+  businessContext?: BusinessContext;
 }
 
 serve(async (req) => {
@@ -43,11 +50,18 @@ serve(async (req) => {
 4. Preparar um resumo estruturado para o mentor
 
 ${businessContext ? `
-CONTEXTO DO NEGÓCIO DO MENTORADO:
+CONTEXTO COMPLETO DO NEGÓCIO DO MENTORADO:
 - Nome do negócio: ${businessContext.businessName || "Não informado"}
-- Tipo: ${businessContext.businessType || "Não informado"}
+- Tipo de negócio: ${businessContext.businessType || "Não informado"}
+- Público-alvo: ${businessContext.targetAudience || "Não informado"}
 - Oferta principal: ${businessContext.mainOffer || "Não informado"}
-` : ""}
+- Faixa de preço: ${businessContext.priceRange || "Não informado"}
+- Diferencial/Proposta de valor: ${businessContext.uniqueValueProposition || "Não informado"}
+- Dores que resolve: ${businessContext.painPointsSolved?.join(", ") || "Não informado"}
+- Perfil do cliente ideal: ${businessContext.idealClientProfile || "Não informado"}
+
+Use essas informações para contextualizar suas perguntas e direcionamentos. Entenda o modelo de negócio do mentorado para dar conselhos mais precisos.
+` : "O mentorado ainda não preencheu o perfil do negócio."}
 
 REGRAS IMPORTANTES:
 - Seja empático e acolhedor
