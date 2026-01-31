@@ -1,0 +1,284 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+interface BusinessProfile {
+  business_name: string | null;
+  business_type: string | null;
+  target_audience: string | null;
+  main_offer: string | null;
+  price_range: string | null;
+  unique_value_proposition: string | null;
+  pain_points_solved: string[] | null;
+  ideal_client_profile: string | null;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get user from token
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { images } = await req.json();
+
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return new Response(JSON.stringify({ error: "No images provided" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (images.length > 10) {
+      return new Response(JSON.stringify({ error: "Maximum 10 images allowed" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`Processing ${images.length} images for user ${user.id}`);
+
+    // Get mentorado record
+    const { data: mentorado, error: mentoradoError } = await supabase
+      .from("mentorados")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (mentoradoError || !mentorado) {
+      return new Response(JSON.stringify({ error: "Mentorado not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get business profile for context
+    const { data: businessProfile } = await supabase
+      .from("mentorado_business_profiles")
+      .select("*")
+      .eq("mentorado_id", mentorado.id)
+      .single();
+
+    // Build context from business profile
+    const businessContext = businessProfile ? buildBusinessContext(businessProfile) : "Nenhum perfil de negócio cadastrado.";
+
+    // Build multimodal content
+    const content: any[] = [
+      {
+        type: "text",
+        text: buildPrompt(businessContext),
+      },
+    ];
+
+    // Add images
+    for (const image of images) {
+      content.push({
+        type: "image_url",
+        image_url: { url: image },
+      });
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    console.log("Calling Lovable AI Gateway...");
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "user", content }],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extract_lead_data",
+              description: "Extrair dados estruturados do lead a partir das imagens analisadas",
+              parameters: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string",
+                    description: "Nome completo do lead detectado nas imagens",
+                  },
+                  phone: {
+                    type: "string",
+                    description: "Telefone do lead se visível",
+                  },
+                  email: {
+                    type: "string",
+                    description: "Email do lead se visível",
+                  },
+                  company: {
+                    type: "string",
+                    description: "Empresa ou ocupação do lead",
+                  },
+                  temperature: {
+                    type: "string",
+                    enum: ["cold", "warm", "hot"],
+                    description: "Nível de interesse: cold (frio), warm (morno), hot (quente)",
+                  },
+                  interests: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Lista de interesses identificados do lead",
+                  },
+                  objections: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Objeções ou resistências detectadas",
+                  },
+                  insights: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Insights úteis para vender para este lead",
+                  },
+                  suggested_approach: {
+                    type: "string",
+                    description: "Sugestão de abordagem personalizada para este lead",
+                  },
+                  conversation_summary: {
+                    type: "string",
+                    description: "Resumo da conversa ou conteúdo das imagens",
+                  },
+                  source_type: {
+                    type: "string",
+                    enum: ["whatsapp", "instagram", "linkedin", "facebook", "twitter", "other"],
+                    description: "Origem do print (rede social identificada)",
+                  },
+                },
+                required: ["name", "temperature", "insights", "suggested_approach"],
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "extract_lead_data" } },
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add funds to continue." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errorText = await response.text();
+      console.error("AI Gateway error:", response.status, errorText);
+      throw new Error(`AI Gateway error: ${response.status}`);
+    }
+
+    const aiResponse = await response.json();
+    console.log("AI Response received");
+
+    // Extract the tool call result
+    const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== "extract_lead_data") {
+      throw new Error("Invalid AI response format");
+    }
+
+    const leadData = JSON.parse(toolCall.function.arguments);
+    console.log("Lead data extracted:", leadData);
+
+    return new Response(JSON.stringify({ success: true, data: leadData }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error in analyze-lead-screenshots:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});
+
+function buildBusinessContext(profile: BusinessProfile): string {
+  const parts: string[] = [];
+  
+  if (profile.business_name) parts.push(`Negócio: ${profile.business_name}`);
+  if (profile.business_type) parts.push(`Tipo: ${profile.business_type}`);
+  if (profile.target_audience) parts.push(`Público-alvo: ${profile.target_audience}`);
+  if (profile.main_offer) parts.push(`Oferta principal: ${profile.main_offer}`);
+  if (profile.price_range) parts.push(`Faixa de preço: ${profile.price_range}`);
+  if (profile.unique_value_proposition) parts.push(`Diferencial: ${profile.unique_value_proposition}`);
+  if (profile.pain_points_solved?.length) parts.push(`Dores que resolve: ${profile.pain_points_solved.join(", ")}`);
+  if (profile.ideal_client_profile) parts.push(`Cliente ideal: ${profile.ideal_client_profile}`);
+  
+  return parts.length > 0 ? parts.join("\n") : "Nenhum perfil de negócio cadastrado.";
+}
+
+function buildPrompt(businessContext: string): string {
+  return `Você é um assistente de vendas especializado em analisar screenshots de conversas e redes sociais para extrair informações de leads.
+
+## CONTEXTO DO NEGÓCIO DO VENDEDOR
+${businessContext}
+
+## SUA TAREFA
+Analise cuidadosamente todas as imagens fornecidas. Elas podem ser:
+- Prints de conversas do WhatsApp
+- Screenshots de perfis ou conversas do Instagram
+- Prints de conversas ou perfis do LinkedIn
+- Screenshots de outras redes sociais
+- Qualquer combinação das anteriores
+
+## O QUE VOCÊ DEVE EXTRAIR
+1. **Nome do lead**: Identifique o nome da pessoa nas conversas ou perfis
+2. **Contato**: Se houver telefone ou email visível
+3. **Empresa/Ocupação**: Profissão ou empresa do lead
+4. **Temperatura do lead**: 
+   - HOT: Demonstrou interesse claro, pediu proposta, está pronto para comprar
+   - WARM: Mostrou curiosidade, fez perguntas, mas ainda não decidiu
+   - COLD: Apenas conversou, não demonstrou interesse específico
+5. **Interesses**: O que o lead parece querer ou precisar
+6. **Objeções**: Resistências ou preocupações mencionadas
+7. **Insights para venda**: Informações úteis para personalizar a abordagem
+8. **Sugestão de abordagem**: Como o vendedor deve abordar este lead
+9. **Origem**: De qual rede social é o print
+
+## IMPORTANTE
+- Se não conseguir identificar alguma informação, deixe em branco ou use valores padrão
+- Seja específico nos insights - use informações das conversas
+- A sugestão de abordagem deve ser prática e acionável
+- Considere o contexto do negócio do vendedor para personalizar as sugestões`;
+}

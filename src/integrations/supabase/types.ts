@@ -415,6 +415,7 @@ export type Database = {
       }
       crm_prospections: {
         Row: {
+          ai_insights: Json | null
           company: string | null
           contact_email: string | null
           contact_name: string
@@ -424,10 +425,13 @@ export type Database = {
           mentorado_id: string
           notes: string | null
           points: number | null
+          screenshot_urls: string[] | null
           status: string | null
+          temperature: string | null
           updated_at: string | null
         }
         Insert: {
+          ai_insights?: Json | null
           company?: string | null
           contact_email?: string | null
           contact_name: string
@@ -437,10 +441,13 @@ export type Database = {
           mentorado_id: string
           notes?: string | null
           points?: number | null
+          screenshot_urls?: string[] | null
           status?: string | null
+          temperature?: string | null
           updated_at?: string | null
         }
         Update: {
+          ai_insights?: Json | null
           company?: string | null
           contact_email?: string | null
           contact_name?: string
@@ -450,7 +457,9 @@ export type Database = {
           mentorado_id?: string
           notes?: string | null
           points?: number | null
+          screenshot_urls?: string[] | null
           status?: string | null
+          temperature?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -749,6 +758,59 @@ export type Database = {
             columns: ["mentor_id"]
             isOneToOne: false
             referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentorado_business_profiles: {
+        Row: {
+          business_name: string | null
+          business_type: string | null
+          created_at: string | null
+          id: string
+          ideal_client_profile: string | null
+          main_offer: string | null
+          mentorado_id: string
+          pain_points_solved: string[] | null
+          price_range: string | null
+          target_audience: string | null
+          unique_value_proposition: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_name?: string | null
+          business_type?: string | null
+          created_at?: string | null
+          id?: string
+          ideal_client_profile?: string | null
+          main_offer?: string | null
+          mentorado_id: string
+          pain_points_solved?: string[] | null
+          price_range?: string | null
+          target_audience?: string | null
+          unique_value_proposition?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_name?: string | null
+          business_type?: string | null
+          created_at?: string | null
+          id?: string
+          ideal_client_profile?: string | null
+          main_offer?: string | null
+          mentorado_id?: string
+          pain_points_solved?: string[] | null
+          price_range?: string | null
+          target_audience?: string | null
+          unique_value_proposition?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_business_profiles_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: true
+            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
