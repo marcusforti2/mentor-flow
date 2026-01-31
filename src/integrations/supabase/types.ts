@@ -1238,6 +1238,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_mentorado: {
+        Args: { _mentor_id: string; _user_id: string }
+        Returns: undefined
+      }
+      assign_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      get_pending_users: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1249,6 +1270,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_first_mentor: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "mentor" | "mentorado"

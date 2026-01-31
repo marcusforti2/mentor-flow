@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 // Public Pages
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Setup from "./pages/Setup";
 import NotFound from "./pages/NotFound";
 
 // Layouts
@@ -17,6 +18,7 @@ import { MemberLayout } from "@/components/layouts/MemberLayout";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import Mentorados from "./pages/admin/Mentorados";
 
 // Member Pages
 import MemberDashboard from "./pages/member/MemberDashboard";
@@ -34,6 +36,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/setup" element={<Setup />} />
             
             {/* Admin Routes (Mentor) */}
             <Route
@@ -46,7 +49,7 @@ const App = () => (
             >
               <Route index element={<AdminDashboard />} />
               <Route path="crm" element={<PlaceholderPage title="CRM" />} />
-              <Route path="mentorados" element={<PlaceholderPage title="Mentorados" />} />
+              <Route path="mentorados" element={<Mentorados />} />
               <Route path="trilhas" element={<PlaceholderPage title="Trilhas" />} />
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
               <Route path="sos" element={<PlaceholderPage title="Centro SOS" />} />
