@@ -1,124 +1,190 @@
 
-# Plano: Floating Dock Premium com Efeito Vidro
+# Plano: Pagina de Trilhas Estilo Netflix
 
-## Efeitos a Implementar
+## Objetivo
 
-### 1. Glassmorphism Avancado
-- Blur de fundo (backdrop-filter)
-- Transparencia elegante
-- Reflexo de luz no topo
-
-### 2. Borda com Gradiente Animado
-- Borda que brilha sutilmente
-- Gradiente dourado/azul rotacionando
-
-### 3. Glow Externo Sutil
-- Sombra colorida ao redor
-- Pulsa suavemente
-
-### 4. Hover Magnetico nos Itens
-- Itens crescem ao passar o mouse (efeito macOS Dock)
-- Itens vizinhos tambem crescem um pouco
+Criar uma experiencia visual premium para o mentorado consumir trilhas de conteudo sobre estruturacao de negocios de educacao high ticket (mentorias, conselhos, consultorias). Design inspirado na Netflix com carrosseis horizontais, capas atrativas e player de video integrado.
 
 ---
 
-## Alteracoes no CSS
+## Estrutura de Dados Existente
 
-**Arquivo:** `src/index.css`
+O banco ja possui as tabelas necessarias:
 
-### Floating Dock Principal
-```css
-.floating-dock {
-  /* Glassmorphism */
-  background: hsl(240 10% 8% / 0.7);
-  backdrop-filter: blur(20px) saturate(180%);
-  
-  /* Borda com gradiente */
-  border: 1px solid transparent;
-  background-image: 
-    linear-gradient(hsl(240 10% 8% / 0.7), hsl(240 10% 8% / 0.7)),
-    linear-gradient(135deg, hsl(var(--primary) / 0.5), hsl(var(--accent) / 0.3), hsl(var(--primary) / 0.2));
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  
-  /* Sombra com glow */
-  box-shadow: 
-    0 8px 32px hsl(0 0% 0% / 0.4),
-    0 0 60px hsl(var(--primary) / 0.1),
-    inset 0 1px 0 hsl(0 0% 100% / 0.1);
-}
+```text
+trails (Trilhas)
+  |-- id, title, description, thumbnail_url
+  |
+  +-- trail_modules (Modulos)
+        |-- id, title, description, order_index
+        |
+        +-- trail_lessons (Aulas)
+              |-- id, title, content_url (YouTube), duration_minutes
+              |
+              +-- trail_progress (Progresso do Mentorado)
+                    |-- mentorado_id, lesson_id, completed, progress_percent
 ```
 
-### Reflexo de Luz no Topo
+---
+
+## Componentes a Criar
+
+### 1. Pagina Principal - Trilhas.tsx
+
+Layout estilo Netflix com:
+
+- **Hero Banner**: Trilha em destaque com gradiente, titulo grande e botao "Continuar Assistindo"
+- **Carrosseis Horizontais**: Uma linha para cada categoria
+  - Continuar Assistindo (baseado no progresso)
+  - Trilha em Destaque
+  - Todas as Trilhas
+- **Scroll horizontal suave** com setas de navegacao
+
+### 2. TrailCard Component
+
+Card de trilha com:
+- Thumbnail (imagem de capa)
+- Titulo e descricao curta
+- Barra de progresso
+- Badge de quantidade de aulas
+- Efeito hover com scale e glow
+
+### 3. LessonCard Component
+
+Card de aula individual:
+- Thumbnail do video YouTube (gerado automaticamente)
+- Titulo e duracao
+- Icone de play overlay
+- Status (concluido/em andamento/novo)
+
+### 4. VideoPlayerModal Component
+
+Modal fullscreen para assistir videos:
+- Player do YouTube embed responsivo
+- Titulo da aula
+- Botao de fechar
+- Marcacao automatica de progresso
+
+### 5. TrailDetailSheet Component
+
+Sheet lateral (drawer) ao clicar em uma trilha:
+- Header com capa e titulo
+- Lista de modulos expansiveis
+- Lista de aulas com status
+- Botao "Continuar de onde parou"
+
+---
+
+## Dados Mock para Simulacao
+
+Trilhas de exemplo sobre educacao high ticket:
+
+| Trilha | Modulos | Aulas |
+|--------|---------|-------|
+| Fundamentos do High Ticket | 4 | 16 |
+| Prospecao de Clientes Premium | 3 | 12 |
+| Fechamento de Vendas Consultivas | 3 | 10 |
+| Estruturando sua Mentoria | 4 | 14 |
+| Posicionamento e Autoridade | 3 | 9 |
+
+Videos simulados com thumbnails do YouTube (usando IDs reais de videos publicos sobre o tema).
+
+---
+
+## Estilizacao Premium
+
+### CSS Novo (index.css)
+
 ```css
-.floating-dock::before {
+/* Netflix-style Trail Cards */
+.trail-card {
+  aspect-ratio: 16/9;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.trail-card:hover {
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 20px 40px hsl(0 0% 0% / 0.5);
+}
+
+/* Carousel */
+.trail-carousel {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+/* Hero Banner */
+.trail-hero {
+  height: 60vh;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.trail-hero::after {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: inherit;
   background: linear-gradient(
-    180deg,
-    hsl(0 0% 100% / 0.1) 0%,
-    transparent 40%
+    to top,
+    hsl(var(--background)) 0%,
+    transparent 50%,
+    hsl(var(--background) / 0.5) 100%
   );
-  pointer-events: none;
 }
 ```
 
-### Animacao de Glow Pulsante
-```css
-.floating-dock::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
-  z-index: -1;
-  opacity: 0.3;
-  filter: blur(15px);
-  animation: dock-glow 3s ease-in-out infinite;
-}
+---
 
-@keyframes dock-glow {
-  0%, 100% { opacity: 0.2; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.02); }
-}
-```
+## Estrutura de Arquivos
 
-### Efeito Hover Magnetico nos Itens
-```css
-.dock-item {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/pages/member/Trilhas.tsx` | Pagina principal com hero e carrosseis |
+| `src/components/trails/TrailCard.tsx` | Card de trilha com thumbnail |
+| `src/components/trails/LessonCard.tsx` | Card de aula individual |
+| `src/components/trails/TrailCarousel.tsx` | Carrossel horizontal |
+| `src/components/trails/VideoPlayerModal.tsx` | Modal com player YouTube |
+| `src/components/trails/TrailDetailSheet.tsx` | Sheet lateral com detalhes |
+| `src/data/mockTrails.ts` | Dados mock das trilhas |
+| `src/index.css` | Estilos Netflix adicionais |
 
-.dock-item:hover {
-  transform: scale(1.25);
-  background: hsl(var(--primary) / 0.15);
-}
+---
 
-/* Itens vizinhos tambem crescem */
-.dock-item:hover + .dock-item,
-.dock-item:has(+ .dock-item:hover) {
-  transform: scale(1.1);
-}
-```
+## Fluxo do Usuario
+
+1. Mentorado acessa `/app/trilhas`
+2. Ve hero com trilha em destaque e botao "Continuar"
+3. Navega pelos carrosseis horizontais
+4. Clica em uma trilha -> abre Sheet com modulos/aulas
+5. Clica em uma aula -> abre Modal com video YouTube
+6. Ao assistir, progresso e atualizado automaticamente
+7. Trilhas concluidas mostram badge de certificado
+
+---
+
+## Integracao com Banco
+
+- Buscar trilhas publicadas via Supabase
+- Salvar progresso do mentorado em `trail_progress`
+- Calcular porcentagem de conclusao por trilha
+- Listar "Continuar Assistindo" baseado no ultimo progresso
 
 ---
 
 ## Resultado Visual Esperado
 
-| Efeito | Descricao |
-|--------|-----------|
-| Vidro fosco | Fundo semi-transparente com blur |
-| Borda brilhante | Gradiente dourado/azul sutil |
-| Reflexo superior | Linha de luz no topo |
-| Glow pulsante | Brilho suave ao redor |
-| Hover magnetico | Itens crescem estilo macOS |
-
----
-
-## Arquivos a Modificar
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/index.css` | Reescrever secao `.floating-dock` com efeitos premium |
+Interface premium estilo streaming com:
+- Fundo escuro com gradientes sutis
+- Cards com efeito hover de elevacao
+- Transicoes suaves entre estados
+- Player de video integrado
+- Progresso visual em cada card
+- Layout totalmente responsivo
