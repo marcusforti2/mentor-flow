@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useDevMode } from '@/hooks/useDevMode';
 import { Loader2 } from 'lucide-react';
 
 type AppRole = 'mentor' | 'mentorado';
@@ -15,8 +16,12 @@ export function ProtectedRoute({
   allowedRoles,
   redirectTo = '/auth'
 }: ProtectedRouteProps) {
-  const { user, role, isLoading } = useAuth();
+  const { user, role: realRole, isLoading } = useAuth();
+  const { overrideRole } = useDevMode();
   const location = useLocation();
+  
+  // Role efetiva: override do DevMode tem prioridade
+  const role = overrideRole || realRole;
 
   if (isLoading) {
     return (
