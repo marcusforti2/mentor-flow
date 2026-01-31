@@ -35,15 +35,21 @@ serve(async (req) => {
   "muda_urgente": ["(comportamentos que precisam mudar IMEDIATAMENTE para não perder vendas)"],
   "errou_feio": ["(erros graves que podem ter custado a venda ou prejudicado a relação)"],
   "pontos_fracos": ["(áreas que precisam desenvolvimento)"],
-  "como_melhorar": ["(sugestões práticas e acionáveis para melhorar)"]
+  "como_melhorar": [
+    {
+      "titulo": "(sugestão curta e direta)",
+      "detalhes": "(explicação detalhada de COMO implementar essa melhoria, passo a passo, com exemplos práticos de frases e abordagens)"
+    }
+  ]
 }
 
 REGRAS:
 - Seja DIRETO e ESPECÍFICO, cite exemplos da conversa
 - Use linguagem informal e impactante
-- Cada item deve ter no máximo 2 frases
+- Cada item deve ter no máximo 2 frases (exceto os detalhes do como_melhorar que podem ser mais extensos)
 - Mínimo 2 itens por categoria, máximo 5
 - A nota deve refletir a qualidade geral da abordagem de vendas
+- No campo "como_melhorar", cada item DEVE ter "titulo" (curto) e "detalhes" (explicação completa com exemplos)
 - RETORNE APENAS O JSON, sem texto adicional`;
 
       if (analysis_type === "transcricao") {

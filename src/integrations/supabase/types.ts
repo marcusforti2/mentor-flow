@@ -1238,6 +1238,59 @@ export type Database = {
           },
         ]
       }
+      training_analyses: {
+        Row: {
+          analysis_type: string
+          como_melhorar: Json | null
+          created_at: string
+          errou_feio: Json | null
+          id: string
+          mentorado_id: string
+          muda_urgente: Json | null
+          nota_geral: number | null
+          ouro_nao_mude: Json | null
+          pontos_fortes: Json | null
+          pontos_fracos: Json | null
+          resumo: string | null
+        }
+        Insert: {
+          analysis_type: string
+          como_melhorar?: Json | null
+          created_at?: string
+          errou_feio?: Json | null
+          id?: string
+          mentorado_id: string
+          muda_urgente?: Json | null
+          nota_geral?: number | null
+          ouro_nao_mude?: Json | null
+          pontos_fortes?: Json | null
+          pontos_fracos?: Json | null
+          resumo?: string | null
+        }
+        Update: {
+          analysis_type?: string
+          como_melhorar?: Json | null
+          created_at?: string
+          errou_feio?: Json | null
+          id?: string
+          mentorado_id?: string
+          muda_urgente?: Json | null
+          nota_geral?: number | null
+          ouro_nao_mude?: Json | null
+          pontos_fortes?: Json | null
+          pontos_fracos?: Json | null
+          resumo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_analyses_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_badges: {
         Row: {
           badge_id: string
