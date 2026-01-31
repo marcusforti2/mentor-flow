@@ -27,6 +27,10 @@ import MemberDashboard from "./pages/member/MemberDashboard";
 import Trilhas from "./pages/member/Trilhas";
 import MeuCRM from "./pages/member/MeuCRM";
 import Treinamento from "./pages/member/Treinamento";
+import CentroSOS from "./pages/member/CentroSOS";
+
+// Admin Pages (additional)
+import AdminCentroSOS from "./pages/admin/CentroSOS";
 
 const queryClient = new QueryClient();
 
@@ -58,7 +62,7 @@ const App = () => (
               <Route path="mentorados" element={<Mentorados />} />
               <Route path="trilhas" element={<AdminTrilhas />} />
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
-              <Route path="sos" element={<PlaceholderPage title="Centro SOS" />} />
+              <Route path="sos" element={<AdminCentroSOS />} />
               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
               <Route path="emails" element={<PlaceholderPage title="Email Marketing" />} />
               <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
@@ -79,7 +83,7 @@ const App = () => (
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
               <Route path="treinamento" element={<Treinamento />} />
               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
-              <Route path="sos" element={<PlaceholderPage title="Centro SOS" />} />
+              <Route path="sos" element={<CentroSOS />} />
               <Route path="perfil" element={<PlaceholderPage title="Meu Perfil" />} />
             </Route>
 

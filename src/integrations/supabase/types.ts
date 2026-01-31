@@ -974,9 +974,13 @@ export type Database = {
       }
       sos_requests: {
         Row: {
+          ai_analysis: Json | null
+          ai_chat_history: Json | null
+          category: string | null
           created_at: string | null
           description: string
           id: string
+          initial_guidance: string | null
           meeting_id: string | null
           mentorado_id: string
           priority: string | null
@@ -986,9 +990,13 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_analysis?: Json | null
+          ai_chat_history?: Json | null
+          category?: string | null
           created_at?: string | null
           description: string
           id?: string
+          initial_guidance?: string | null
           meeting_id?: string | null
           mentorado_id: string
           priority?: string | null
@@ -998,9 +1006,13 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_analysis?: Json | null
+          ai_chat_history?: Json | null
+          category?: string | null
           created_at?: string | null
           description?: string
           id?: string
+          initial_guidance?: string | null
           meeting_id?: string | null
           mentorado_id?: string
           priority?: string | null
