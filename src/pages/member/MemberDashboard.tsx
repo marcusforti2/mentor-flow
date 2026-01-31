@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { 
   BookOpen, 
   Target, 
@@ -9,47 +9,13 @@ import {
   Award,
   ArrowUpRight,
   Play,
+  Zap,
+  Clock,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
-
-const statsCards = [
-  {
-    title: 'Progresso nas Trilhas',
-    value: '67%',
-    description: '4 de 6 trilhas concluídas',
-    icon: BookOpen,
-    color: 'text-green-500',
-  },
-  {
-    title: 'Posição no Ranking',
-    value: '#7',
-    description: '+2 posições esta semana',
-    icon: Trophy,
-    color: 'text-primary',
-  },
-  {
-    title: 'Prospecções do Mês',
-    value: '23',
-    description: '230 pontos acumulados',
-    icon: Target,
-    color: 'text-accent',
-  },
-  {
-    title: 'Próximo Encontro',
-    value: '2 dias',
-    description: 'Quarta, 14h00',
-    icon: Calendar,
-    color: 'text-blue-500',
-  },
-];
-
-const recentBadges = [
-  { name: 'Primeira Prospecção', icon: '🎯' },
-  { name: 'Trilha Completa', icon: '📚' },
-  { name: '10 Prospecções', icon: '🔥' },
-];
 
 export default function MemberDashboard() {
   const { profile } = useAuth();
@@ -57,159 +23,214 @@ export default function MemberDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">
-            Bem-vindo, {profile?.full_name || 'Mentorado'}! 🚀
+          <p className="text-muted-foreground text-lg">Bem-vindo de volta,</p>
+          <h1 className="text-4xl font-display font-bold text-foreground mt-1">
+            {profile?.full_name?.split(' ')[0] || 'Mentorado'} <span className="text-gradient-gold">🚀</span>
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Continue evoluindo! Você está no caminho certo.
-          </p>
         </div>
         <Link to="/app/trilhas">
-          <Button className="bg-gradient-gold text-background hover:opacity-90">
-            <Play className="mr-2 h-4 w-4" />
-            Continuar Trilha
+          <Button className="btn-premium px-6 py-5 text-base">
+            <Play className="mr-2 h-5 w-5" />
+            <span>Continuar Trilha</span>
           </Button>
         </Link>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsCards.map((stat) => (
-          <Card key={stat.title} className="glass-card hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Main Content */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Trail Progress */}
-        <Card className="md:col-span-2 glass-card">
-          <CardHeader>
-            <CardTitle>Sua Jornada</CardTitle>
-            <CardDescription>Progresso nas trilhas de aprendizado</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground font-medium">Prospecção Avançada</span>
-                <span className="text-muted-foreground">85%</span>
-              </div>
-              <Progress value={85} className="h-2" />
+      {/* Bento Grid */}
+      <BentoGrid>
+        {/* Main Progress Card - Wide */}
+        <BentoCard size="xl" glow>
+          <div className="h-full flex flex-col">
+            <div className="flex items-center gap-2 mb-6">
+              <BookOpen className="h-6 w-6 text-primary" />
+              <h2 className="text-xl font-semibold text-foreground">Sua Jornada</h2>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground font-medium">Fechamento de Vendas</span>
-                <span className="text-muted-foreground">60%</span>
-              </div>
-              <Progress value={60} className="h-2" />
+            <div className="flex-1 space-y-5">
+              <TrailProgress name="Prospecção Avançada" progress={85} color="primary" />
+              <TrailProgress name="Fechamento de Vendas" progress={60} color="accent" />
+              <TrailProgress name="Mindset de Alta Performance" progress={40} color="emerald" />
+              <TrailProgress name="Comunicação Persuasiva" progress={20} color="purple" />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground font-medium">Mindset de Alta Performance</span>
-                <span className="text-muted-foreground">40%</span>
-              </div>
-              <Progress value={40} className="h-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground font-medium">Comunicação Persuasiva</span>
-                <span className="text-muted-foreground">20%</span>
-              </div>
-              <Progress value={20} className="h-2" />
-            </div>
-            <Link to="/app/trilhas">
-              <Button variant="outline" className="w-full mt-4">
+            <Link to="/app/trilhas" className="mt-6">
+              <Button variant="outline" className="w-full">
                 Ver Todas as Trilhas
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </BentoCard>
 
-        {/* Badges & Achievements */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-primary" />
-              Conquistas
-            </CardTitle>
-            <CardDescription>Suas medalhas recentes</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentBadges.map((badge) => (
-              <div
-                key={badge.name}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-              >
-                <span className="text-2xl">{badge.icon}</span>
-                <span className="text-sm font-medium text-foreground">{badge.name}</span>
-              </div>
-            ))}
-            <Link to="/app/perfil">
-              <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground">
-                Ver todas as conquistas
+        {/* Stats Cards */}
+        <BentoCard size="sm">
+          <div className="flex flex-col justify-between h-full">
+            <Trophy className="h-8 w-8 text-primary" />
+            <div className="mt-auto">
+              <p className="stat-value text-gradient-gold">#7</p>
+              <p className="stat-label mt-1">Posição no Ranking</p>
+              <span className="text-xs text-emerald-500 font-medium mt-2 inline-block">
+                +2 posições esta semana
+              </span>
+            </div>
+          </div>
+        </BentoCard>
+
+        <BentoCard size="sm">
+          <div className="flex flex-col justify-between h-full">
+            <Target className="h-8 w-8 text-accent" />
+            <div className="mt-auto">
+              <p className="stat-value">23</p>
+              <p className="stat-label mt-1">Prospecções do Mês</p>
+              <span className="text-xs text-muted-foreground mt-2 inline-block">
+                230 pontos acumulados
+              </span>
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Next Meeting */}
+        <BentoCard size="md">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-cyan-500" />
+              <h3 className="font-semibold text-foreground">Próximo Encontro</h3>
+            </div>
+            <div className="flex-1 flex flex-col justify-center items-center text-center p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+              <Clock className="h-10 w-10 text-cyan-500 mb-3" />
+              <p className="text-2xl font-bold text-foreground">Quarta, 14h</p>
+              <p className="text-muted-foreground mt-1">Mentoria em Grupo</p>
+              <Button variant="outline" size="sm" className="mt-4">
+                Confirmar Presença
               </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          </div>
+        </BentoCard>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Link to="/app/meu-crm">
-          <Card className="glass-card hover-scale cursor-pointer group">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="h-12 w-12 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+        {/* Badges */}
+        <BentoCard size="md">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Conquistas</h3>
+              </div>
+              <Link to="/app/perfil" className="text-xs text-primary hover:underline">
+                Ver todas
+              </Link>
+            </div>
+            <div className="flex-1 grid grid-cols-3 gap-3">
+              <BadgeItem emoji="🎯" name="Primeira Prospecção" />
+              <BadgeItem emoji="📚" name="Trilha Completa" />
+              <BadgeItem emoji="🔥" name="10 Prospecções" />
+              <BadgeItem emoji="⭐" name="Top 10" locked />
+              <BadgeItem emoji="🏆" name="Campeão" locked />
+              <BadgeItem emoji="💎" name="Elite" locked />
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Quick Actions - Wide */}
+        <BentoCard size="wide" className="!p-0">
+          <div className="h-full flex">
+            <Link to="/app/meu-crm" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
+              <div className="h-12 w-12 rounded-2xl bg-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Target className="h-6 w-6 text-accent" />
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Registrar Prospecção</h3>
-                <p className="text-sm text-muted-foreground">Ganhe pontos no ranking</p>
+              <h3 className="font-semibold text-foreground text-lg">Registrar Prospecção</h3>
+              <p className="text-muted-foreground text-sm mt-1">Ganhe pontos no ranking</p>
+            </Link>
+            <Link to="/app/treinamento" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors border-r border-border">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <TrendingUp className="h-6 w-6 text-emerald-500" />
               </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/app/treinamento">
-          <Card className="glass-card hover-scale cursor-pointer group">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <TrendingUp className="h-6 w-6 text-green-500" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Analisar Call</h3>
-                <p className="text-sm text-muted-foreground">IA analisa sua performance</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/app/ranking">
-          <Card className="glass-card hover-scale cursor-pointer group">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <h3 className="font-semibold text-foreground text-lg">Analisar Call</h3>
+              <p className="text-muted-foreground text-sm mt-1">IA analisa sua performance</p>
+            </Link>
+            <Link to="/app/ranking" className="flex-1 p-6 group hover:bg-primary/5 transition-colors">
+              <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Trophy className="h-6 w-6 text-primary" />
               </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Ver Ranking</h3>
-                <p className="text-sm text-muted-foreground">Sua posição: #7</p>
+              <h3 className="font-semibold text-foreground text-lg">Ver Ranking</h3>
+              <p className="text-muted-foreground text-sm mt-1">Sua posição: #7</p>
+            </Link>
+          </div>
+        </BentoCard>
+
+        {/* Weekly Performance */}
+        <BentoCard size="sm" glow>
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground text-sm">Performance Semanal</h3>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <p className="stat-value text-gradient-premium">92</p>
+                <p className="text-xs text-muted-foreground mt-1">Score médio nas calls</p>
               </div>
-            </CardContent>
-          </Card>
-        </Link>
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Streak */}
+        <BentoCard size="sm">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-3">
+              <Star className="h-5 w-5 text-amber-500" />
+              <h3 className="font-semibold text-foreground text-sm">Sequência</h3>
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <p className="stat-value text-amber-500">7</p>
+                <p className="text-xs text-muted-foreground mt-1">dias seguidos acessando</p>
+              </div>
+            </div>
+          </div>
+        </BentoCard>
+      </BentoGrid>
+    </div>
+  );
+}
+
+function TrailProgress({ 
+  name, 
+  progress, 
+  color 
+}: { 
+  name: string; 
+  progress: number; 
+  color: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-foreground font-medium">{name}</span>
+        <span className="text-muted-foreground">{progress}%</span>
       </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div 
+          className={`h-full rounded-full bg-gradient-to-r from-${color} to-${color}/60 transition-all duration-500`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function BadgeItem({ emoji, name, locked = false }: { emoji: string; name: string; locked?: boolean }) {
+  return (
+    <div 
+      className={`
+        flex flex-col items-center justify-center p-3 rounded-xl text-center
+        ${locked 
+          ? 'bg-muted/30 opacity-50' 
+          : 'bg-gradient-to-b from-muted/50 to-transparent border border-border'
+        }
+      `}
+    >
+      <span className="text-2xl">{emoji}</span>
+      <span className="text-xs text-muted-foreground mt-1 line-clamp-1">{name}</span>
     </div>
   );
 }
