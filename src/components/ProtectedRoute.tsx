@@ -1,9 +1,20 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useDevMode } from '@/hooks/useDevMode';
 import { Loader2 } from 'lucide-react';
 
 type AppRole = 'mentor' | 'mentorado';
+
+const DEV_MODE_KEY = 'dev_mode_role_override';
+
+// Função helper para ler override do localStorage de forma segura
+function getDevModeOverride(): AppRole | null {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(DEV_MODE_KEY);
+  if (stored === 'mentor' || stored === 'mentorado') {
+    return stored;
+  }
+  return null;
+}
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,10 +28,10 @@ export function ProtectedRoute({
   redirectTo = '/auth'
 }: ProtectedRouteProps) {
   const { user, role: realRole, isLoading } = useAuth();
-  const { overrideRole } = useDevMode();
   const location = useLocation();
   
-  // Role efetiva: override do DevMode tem prioridade
+  // Role efetiva: override do DevMode tem prioridade (lido do localStorage)
+  const overrideRole = getDevModeOverride();
   const role = overrideRole || realRole;
 
   if (isLoading) {
