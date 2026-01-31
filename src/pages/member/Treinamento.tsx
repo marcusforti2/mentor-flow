@@ -23,7 +23,7 @@ import {
   XCircle,
   Lightbulb,
   MessageSquare,
-  Save,
+  Trash2,
   History,
   ChevronDown,
   ChevronRight,
@@ -77,7 +77,7 @@ export default function Treinamento() {
   
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   
@@ -197,6 +197,35 @@ export default function Treinamento() {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Auto-save analysis to database
+  const autoSaveAnalysis = async (result: AnalysisResult, type: string) => {
+    if (!mentoradoId) return;
+    
+    try {
+      const { error } = await supabase.from("training_analyses").insert({
+        mentorado_id: mentoradoId,
+        analysis_type: type,
+        nota_geral: result.nota_geral,
+        resumo: result.resumo,
+        pontos_fortes: result.pontos_fortes as unknown as any,
+        pontos_fracos: result.pontos_fracos as unknown as any,
+        muda_urgente: result.muda_urgente as unknown as any,
+        ouro_nao_mude: result.ouro_nao_mude as unknown as any,
+        errou_feio: result.errou_feio as unknown as any,
+        como_melhorar: result.como_melhorar as unknown as any,
+      });
+
+      if (error) throw error;
+      toast.success("Análise salva automaticamente!");
+      
+      // Reload history
+      await loadHistory();
+    } catch (error) {
+      console.error("Error auto-saving:", error);
+      toast.error("Erro ao salvar análise automaticamente");
+    }
+  };
+
   // Analyze content
   const analyzeContent = async () => {
     if (activeTab === "transcricao" && !transcription && !transcriptionFile) {
@@ -251,12 +280,13 @@ export default function Treinamento() {
       }
 
       const result = response.data?.result;
+      let parsedResult: AnalysisResult | null = null;
+      
       if (typeof result === "string") {
         try {
-          const parsed = JSON.parse(result);
-          setAnalysisResult(parsed);
+          parsedResult = JSON.parse(result);
         } catch {
-          setAnalysisResult({
+          parsedResult = {
             pontos_fortes: [],
             pontos_fracos: [],
             muda_urgente: [],
@@ -265,10 +295,16 @@ export default function Treinamento() {
             como_melhorar: [],
             resumo: result,
             nota_geral: 0,
-          });
+          };
         }
       } else if (result) {
-        setAnalysisResult(result);
+        parsedResult = result;
+      }
+      
+      if (parsedResult) {
+        setAnalysisResult(parsedResult);
+        // Auto-save after successful analysis
+        await autoSaveAnalysis(parsedResult, activeTab);
       }
     } catch (error) {
       console.error("Error analyzing:", error);
@@ -278,38 +314,31 @@ export default function Treinamento() {
     }
   };
 
-  // Save analysis
-  const saveAnalysis = async () => {
-    if (!analysisResult || !mentoradoId) {
-      toast.error("Nenhuma análise para salvar");
-      return;
-    }
-
-    setIsSaving(true);
+  // Delete analysis
+  const deleteAnalysis = async (id: string) => {
+    setIsDeleting(id);
     try {
-      const { error } = await supabase.from("training_analyses").insert({
-        mentorado_id: mentoradoId,
-        analysis_type: activeTab,
-        nota_geral: analysisResult.nota_geral,
-        resumo: analysisResult.resumo,
-        pontos_fortes: analysisResult.pontos_fortes as unknown as any,
-        pontos_fracos: analysisResult.pontos_fracos as unknown as any,
-        muda_urgente: analysisResult.muda_urgente as unknown as any,
-        ouro_nao_mude: analysisResult.ouro_nao_mude as unknown as any,
-        errou_feio: analysisResult.errou_feio as unknown as any,
-        como_melhorar: analysisResult.como_melhorar as unknown as any,
-      });
-
+      const { error } = await supabase
+        .from("training_analyses")
+        .delete()
+        .eq("id", id);
+      
       if (error) throw error;
-      toast.success("Análise salva com sucesso!");
+      
+      toast.success("Análise excluída");
+      
+      // Clear selection if deleted
+      if (selectedAnalysis?.id === id) {
+        setSelectedAnalysis(null);
+      }
       
       // Reload history
       await loadHistory();
     } catch (error) {
-      console.error("Error saving:", error);
-      toast.error("Erro ao salvar análise");
+      console.error("Error deleting:", error);
+      toast.error("Erro ao excluir análise");
     } finally {
-      setIsSaving(false);
+      setIsDeleting(null);
     }
   };
 
@@ -679,30 +708,11 @@ export default function Treinamento() {
                   <Lightbulb className="w-5 h-5 text-primary" />
                   Análise da IA
                 </span>
-                <div className="flex items-center gap-2">
-                  {analysisResult?.nota_geral !== undefined && analysisResult.nota_geral > 0 && (
-                    <span className={`text-2xl font-bold ${getNoteColor(analysisResult.nota_geral)}`}>
-                      {analysisResult.nota_geral}/100
-                    </span>
-                  )}
-                  {analysisResult && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={saveAnalysis}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-1" />
-                          Salvar
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
+                {analysisResult?.nota_geral !== undefined && analysisResult.nota_geral > 0 && (
+                  <span className={`text-2xl font-bold ${getNoteColor(analysisResult.nota_geral)}`}>
+                    {analysisResult.nota_geral}/100
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -775,9 +785,27 @@ export default function Treinamento() {
                               <><MessageSquare className="w-3 h-3 mr-1" /> Prints</>
                             )}
                           </Badge>
-                          <span className={`font-bold ${getNoteColor(analysis.nota_geral)}`}>
-                            {analysis.nota_geral}/100
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold ${getNoteColor(analysis.nota_geral)}`}>
+                              {analysis.nota_geral}/100
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteAnalysis(analysis.id);
+                              }}
+                              disabled={isDeleting === analysis.id}
+                            >
+                              {isDeleting === analysis.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-2">
                           {analysis.resumo || "Sem resumo"}
