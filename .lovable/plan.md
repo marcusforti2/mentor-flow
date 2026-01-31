@@ -1,108 +1,76 @@
 
-# Plano: Corrigir Sincronizacao do Dev Mode Selector
+# Plano: Ajustar Espacamento do Conteudo para Nao Sobrepor a Sidebar
 
 ## Problema Identificado
 
-O sistema tem dois contextos desconectados:
+Nas imagens, o conteudo "Ola, MARCUS" e os cards estao sendo cobertos pela sidebar porque:
 
-1. **DevModeContext** - Gerencia o `overrideRole` no estado React
-2. **AuthContext** - Le o localStorage diretamente (uma vez so, nao reativo)
-
-Quando voce alterna no seletor:
-- O `DevModeContext` atualiza o estado E o localStorage
-- O `AuthContext` continua usando o valor antigo (leu na inicializacao)
-- O `ProtectedRoute` usa o valor desatualizado do `AuthContext`
-- Resultado: navegacao acontece mas a rota bloqueia baseado na role errada
+- **Floating Dock ocupa**: left 24px + padding 16px + item 48px = ~88px
+- **Conteudo tem**: ml-20 = 80px (margem insuficiente)
+- **Resultado**: Sobreposicao de ~8-10px
 
 ---
 
-## Solucao: Unificar os Contextos
+## Solucao
 
-Fazer o `useAuth` consumir o `overrideRole` diretamente do `DevModeContext`, ao inves de ler do localStorage.
+Aumentar a margem esquerda do conteudo principal de `ml-20` (80px) para `ml-28` (112px), garantindo espaco entre o dock e o conteudo.
 
 ---
 
-## Mudancas Necessarias
+## Alteracoes Necessarias
 
-### 1. Remover leitura de localStorage do AuthProvider
+### 1. AdminLayout - Aumentar margem do main
 
-**Arquivo:** `src/hooks/useAuth.tsx`
+**Arquivo:** `src/components/layouts/AdminLayout.tsx`
 
-Remover:
-```typescript
-const DEV_MODE_KEY = 'dev_mode_role_override';
-const overrideRole = typeof window !== 'undefined' 
-  ? localStorage.getItem(DEV_MODE_KEY) as AppRole | null 
-  : null;
+Linha 90 - Alterar:
+```tsx
+<main className="ml-20 pt-20 pr-6 pb-6 min-h-screen">
 ```
 
-### 2. Criar hook combinado useEffectiveAuth
-
-**Arquivo:** `src/hooks/useEffectiveAuth.tsx` (novo)
-
-```typescript
-// Combina useAuth + useDevMode
-// Retorna role efetiva considerando override
-// Usado pelo ProtectedRoute
+Para:
+```tsx
+<main className="ml-28 pt-20 px-6 pb-6 min-h-screen">
 ```
 
-### 3. Atualizar ProtectedRoute
+### 2. MemberLayout - Mesma alteracao
 
-**Arquivo:** `src/components/ProtectedRoute.tsx`
+**Arquivo:** `src/components/layouts/MemberLayout.tsx`
 
-Usar o novo hook `useEffectiveAuth` que considera o override do DevMode.
+Linha 75 - Alterar:
+```tsx
+<main className="ml-20 pt-20 pr-6 pb-6 min-h-screen">
+```
 
-### 4. Reorganizar Providers (se necessario)
-
-O `DevModeProvider` precisa estar **dentro** do `AuthProvider` para que o useAuth tenha acesso ao usuario real primeiro.
-
----
-
-## Fluxo Corrigido
-
-```text
-Usuario clica "Alternar para Mentorado"
-        |
-        v
-DevModeContext atualiza overrideRole (estado React)
-        |
-        v
-useEffectiveAuth retorna nova role
-        |
-        v
-ProtectedRoute re-renderiza com role atualizada
-        |
-        v
-Navigate para /app funciona sem bloqueio
+Para:
+```tsx
+<main className="ml-28 pt-20 px-6 pb-6 min-h-screen">
 ```
 
 ---
 
-## Arquivos a Criar/Modificar
+## Comparacao Visual
 
-| Arquivo | Acao |
-|---------|------|
-| `src/hooks/useEffectiveAuth.tsx` | Criar (hook que combina auth + devmode) |
-| `src/hooks/useAuth.tsx` | Modificar (remover leitura de localStorage) |
-| `src/components/ProtectedRoute.tsx` | Modificar (usar useEffectiveAuth) |
-
----
-
-## Alternativa Mais Simples
-
-Ao inves de criar um novo hook, podemos fazer o ProtectedRoute usar ambos os hooks diretamente:
-
-```typescript
-// ProtectedRoute.tsx
-const { user, role: realRole, isLoading } = useAuth();
-const { overrideRole } = useDevMode();
-const effectiveRole = overrideRole || realRole;
-```
-
-Esta e a opcao mais rapida e menos invasiva.
+| Propriedade | Antes | Depois |
+|-------------|-------|--------|
+| Margem esquerda | ml-20 (80px) | ml-28 (112px) |
+| Espaco livre | ~0px (sobreposto) | ~24px de respiro |
+| Padding horizontal | pr-6 apenas | px-6 (ambos os lados) |
 
 ---
 
-## Resumo
+## Resultado Esperado
 
-A raiz do problema e que os contextos nao estao sincronizados. A solucao mais simples e fazer o `ProtectedRoute` consultar **ambos** os contextos e calcular a role efetiva na hora, garantindo que mudancas no DevMode sejam refletidas imediatamente.
+- Conteudo fica completamente a direita do Floating Dock
+- Espaco de ~24px entre a sidebar e o conteudo
+- Layout equilibrado e sem sobreposicao
+- Aplica para ambos: Admin e Member
+
+---
+
+## Arquivos a Modificar
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/components/layouts/AdminLayout.tsx` | Linha 90: ml-20 -> ml-28, pr-6 -> px-6 |
+| `src/components/layouts/MemberLayout.tsx` | Linha 75: ml-20 -> ml-28, pr-6 -> px-6 |
