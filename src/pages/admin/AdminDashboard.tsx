@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { 
   Users, 
   TrendingUp, 
@@ -9,47 +9,12 @@ import {
   Trophy,
   BookOpen,
   ArrowUpRight,
+  Sparkles,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
-
-const statsCards = [
-  {
-    title: 'Mentorados Ativos',
-    value: '39',
-    change: '+3 este mês',
-    icon: Users,
-    trend: 'up',
-  },
-  {
-    title: 'Taxa de Engajamento',
-    value: '87%',
-    change: '+5% vs. semana passada',
-    icon: TrendingUp,
-    trend: 'up',
-  },
-  {
-    title: 'Próximos Encontros',
-    value: '4',
-    change: 'Esta semana',
-    icon: Calendar,
-    trend: 'neutral',
-  },
-  {
-    title: 'SOS Pendentes',
-    value: '2',
-    change: 'Aguardando resposta',
-    icon: AlertTriangle,
-    trend: 'attention',
-  },
-];
-
-const quickActions = [
-  { label: 'Gerenciar CRM', icon: Target, path: '/admin/crm', color: 'from-primary to-primary/80' },
-  { label: 'Ver Mentorados', icon: Users, path: '/admin/mentorados', color: 'from-accent to-accent/80' },
-  { label: 'Criar Trilha', icon: BookOpen, path: '/admin/trilhas', color: 'from-green-500 to-green-600' },
-  { label: 'Ver Rankings', icon: Trophy, path: '/admin/ranking', color: 'from-amber-500 to-amber-600' },
-];
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
@@ -57,135 +22,275 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-display font-bold text-foreground">
-          Olá, {profile?.full_name || 'Mentor'}! 👋
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Aqui está o resumo da sua mentoria hoje.
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsCards.map((stat) => (
-          <Card key={stat.title} className="glass-card hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon 
-                className={`h-5 w-5 ${
-                  stat.trend === 'up' ? 'text-green-500' : 
-                  stat.trend === 'attention' ? 'text-amber-500' : 
-                  'text-muted-foreground'
-                }`} 
-              />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-              <p className={`text-xs mt-1 ${
-                stat.trend === 'up' ? 'text-green-500' : 
-                stat.trend === 'attention' ? 'text-amber-500' : 
-                'text-muted-foreground'
-              }`}>
-                {stat.change}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground mb-4">Ações Rápidas</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {quickActions.map((action) => (
-            <Link key={action.path} to={action.path}>
-              <Card className="group cursor-pointer hover-scale glass-card overflow-hidden">
-                <CardContent className="p-0">
-                  <div className={`bg-gradient-to-br ${action.color} p-6`}>
-                    <action.icon className="h-8 w-8 text-white mb-3" />
-                    <h3 className="font-semibold text-white flex items-center gap-2">
-                      {action.label}
-                      <ArrowUpRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </h3>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl font-display font-bold text-foreground">
+            Olá, {profile?.full_name?.split(' ')[0] || 'Mentor'}
+          </h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            Aqui está o resumo da sua mentoria hoje.
+          </p>
+        </div>
+        <div className="glass-card px-4 py-2 rounded-full flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-sm text-muted-foreground">Todos os sistemas operacionais</span>
         </div>
       </div>
 
-      {/* Recent Activity & Alerts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle>Atividade Recente</CardTitle>
-            <CardDescription>Últimas ações dos mentorados</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-green-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">João completou a Trilha de Prospecção</p>
-                <p className="text-xs text-muted-foreground">Há 2 horas</p>
-              </div>
+      {/* Bento Grid */}
+      <BentoGrid>
+        {/* Stats Row */}
+        <BentoCard size="sm" glow>
+          <div className="flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <Users className="h-6 w-6 text-primary" />
+              <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                +3 este mês
+              </span>
             </div>
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center">
-                <Target className="h-5 w-5 text-accent" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Maria registrou 5 novas prospecções</p>
-                <p className="text-xs text-muted-foreground">Há 4 horas</p>
-              </div>
+            <div className="mt-4">
+              <p className="stat-value text-gradient-gold">39</p>
+              <p className="stat-label mt-1">Mentorados Ativos</p>
             </div>
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <Trophy className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Pedro subiu para #3 no ranking</p>
-                <p className="text-xs text-muted-foreground">Há 6 horas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </BentoCard>
 
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Alertas
-            </CardTitle>
-            <CardDescription>Mentorados que precisam de atenção</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Carlos não acessa há 7 dias</p>
-                <p className="text-xs text-muted-foreground">Último acesso: 24/01/2026</p>
-              </div>
-              <Button size="sm" variant="outline">
-                Contatar
-              </Button>
+        <BentoCard size="sm">
+          <div className="flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <TrendingUp className="h-6 w-6 text-emerald-500" />
+              <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                +5%
+              </span>
             </div>
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Ana solicitou SOS urgente</p>
-                <p className="text-xs text-muted-foreground">Há 30 minutos</p>
-              </div>
-              <Button size="sm" variant="destructive">
-                Atender
-              </Button>
+            <div className="mt-4">
+              <p className="stat-value">87%</p>
+              <p className="stat-label mt-1">Taxa de Engajamento</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </BentoCard>
+
+        <BentoCard size="sm">
+          <div className="flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <Calendar className="h-6 w-6 text-accent" />
+            </div>
+            <div className="mt-4">
+              <p className="stat-value">4</p>
+              <p className="stat-label mt-1">Encontros Esta Semana</p>
+            </div>
+          </div>
+        </BentoCard>
+
+        <BentoCard size="sm">
+          <div className="flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <AlertTriangle className="h-6 w-6 text-amber-500" />
+              <span className="text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-1 rounded-full">
+                Urgente
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="stat-value text-amber-500">2</p>
+              <p className="stat-label mt-1">SOS Pendentes</p>
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Quick Actions - Wide card */}
+        <BentoCard size="wide" className="!p-0 overflow-hidden">
+          <div className="h-full flex">
+            <Link to="/admin/crm" className="flex-1 p-6 group hover:bg-primary/5 transition-colors border-r border-border">
+              <Target className="h-8 w-8 text-primary mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="font-semibold text-foreground text-lg">Gerenciar CRM</h3>
+              <p className="text-muted-foreground text-sm mt-1">Pipeline e leads</p>
+            </Link>
+            <Link to="/admin/mentorados" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
+              <Users className="h-8 w-8 text-accent mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="font-semibold text-foreground text-lg">Ver Mentorados</h3>
+              <p className="text-muted-foreground text-sm mt-1">Gestão e progresso</p>
+            </Link>
+            <Link to="/admin/trilhas" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors">
+              <BookOpen className="h-8 w-8 text-emerald-500 mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="font-semibold text-foreground text-lg">Criar Trilha</h3>
+              <p className="text-muted-foreground text-sm mt-1">Novos conteúdos</p>
+            </Link>
+          </div>
+        </BentoCard>
+
+        {/* Activity Feed - Tall card */}
+        <BentoCard size="tall">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Atividade Recente</h3>
+            </div>
+            <div className="flex-1 space-y-3 overflow-auto">
+              <ActivityItem
+                icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+                title="João completou Trilha de Prospecção"
+                time="2h atrás"
+                color="emerald"
+              />
+              <ActivityItem
+                icon={<Target className="h-4 w-4 text-accent" />}
+                title="Maria registrou 5 novas prospecções"
+                time="4h atrás"
+                color="accent"
+              />
+              <ActivityItem
+                icon={<Trophy className="h-4 w-4 text-primary" />}
+                title="Pedro subiu para #3 no ranking"
+                time="6h atrás"
+                color="primary"
+              />
+              <ActivityItem
+                icon={<BookOpen className="h-4 w-4 text-purple-500" />}
+                title="Ana iniciou nova trilha"
+                time="8h atrás"
+                color="purple"
+              />
+              <ActivityItem
+                icon={<Calendar className="h-4 w-4 text-cyan-500" />}
+                title="Encontro de grupo confirmado"
+                time="1d atrás"
+                color="cyan"
+              />
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Alerts */}
+        <BentoCard size="lg" glow>
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Alertas & Insights IA</h3>
+            </div>
+            <div className="flex-1 space-y-3">
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Carlos não acessa há 7 dias</p>
+                    <p className="text-sm text-muted-foreground mt-1">Último acesso: 24/01/2026</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="shrink-0">
+                    Contatar
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Ana solicitou SOS urgente</p>
+                    <p className="text-sm text-muted-foreground mt-1">Há 30 minutos</p>
+                  </div>
+                  <Button size="sm" variant="destructive" className="shrink-0">
+                    Atender
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">3 mentorados próximos de concluir trilha</p>
+                    <p className="text-sm text-muted-foreground mt-1">Considere parabenizá-los</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="shrink-0">
+                    Ver
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Ranking Preview */}
+        <BentoCard size="md">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Top Ranking</h3>
+              </div>
+              <Link to="/admin/ranking" className="text-xs text-primary hover:underline flex items-center gap-1">
+                Ver todos <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="flex-1 space-y-3">
+              <RankingItem position={1} name="Maria Silva" points={450} />
+              <RankingItem position={2} name="João Santos" points={380} />
+              <RankingItem position={3} name="Pedro Costa" points={320} />
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Trail Progress */}
+        <BentoCard size="md">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-emerald-500" />
+                <h3 className="font-semibold text-foreground">Progresso Geral</h3>
+              </div>
+            </div>
+            <div className="flex-1 space-y-4">
+              <TrailProgress name="Prospecção Avançada" progress={78} />
+              <TrailProgress name="Fechamento de Vendas" progress={65} />
+              <TrailProgress name="Mindset de Alta Performance" progress={52} />
+            </div>
+          </div>
+        </BentoCard>
+      </BentoGrid>
+    </div>
+  );
+}
+
+function ActivityItem({ 
+  icon, 
+  title, 
+  time, 
+  color 
+}: { 
+  icon: React.ReactNode; 
+  title: string; 
+  time: string; 
+  color: string;
+}) {
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-xl bg-${color}-500/5 border border-${color}-500/10`}>
+      <div className={`h-8 w-8 rounded-lg bg-${color}-500/20 flex items-center justify-center shrink-0`}>
+        {icon}
       </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{title}</p>
+        <p className="text-xs text-muted-foreground">{time}</p>
+      </div>
+    </div>
+  );
+}
+
+function RankingItem({ position, name, points }: { position: number; name: string; points: number }) {
+  const medals = ['🥇', '🥈', '🥉'];
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
+      <span className="text-xl">{medals[position - 1]}</span>
+      <div className="flex-1">
+        <p className="font-medium text-foreground text-sm">{name}</p>
+      </div>
+      <span className="text-sm font-semibold text-primary">{points} pts</span>
+    </div>
+  );
+}
+
+function TrailProgress({ name, progress }: { name: string; progress: number }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-foreground font-medium">{name}</span>
+        <span className="text-muted-foreground">{progress}%</span>
+      </div>
+      <Progress value={progress} className="h-2" />
     </div>
   );
 }
