@@ -87,7 +87,7 @@ export function AdminLayout() {
       </header>
 
       {/* Main content */}
-      <main className="ml-20 pt-20 pr-6 pb-6 min-h-screen">
+      <main className="ml-28 pt-20 px-6 pb-6 min-h-screen">
         <Outlet />
       </main>
 
