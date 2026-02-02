@@ -267,7 +267,7 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
                       )}
                     >
                       {message.role === 'assistant' ? (
-                        <div className="prose prose-base max-w-none dark:prose-invert prose-p:leading-relaxed prose-p:mb-4 prose-li:mb-2 prose-headings:font-display prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-3 prose-ol:my-3 prose-strong:text-primary prose-strong:font-semibold">
+                        <div className="prose prose-base max-w-none prose-invert prose-p:text-foreground prose-p:leading-relaxed prose-p:mb-4 prose-li:text-foreground prose-li:mb-2 prose-headings:text-foreground prose-headings:font-display prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-3 prose-ol:my-3 prose-strong:text-primary prose-strong:font-semibold">
                           <ReactMarkdown>{message.content || '...'}</ReactMarkdown>
                         </div>
                       ) : (
