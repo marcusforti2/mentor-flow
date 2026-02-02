@@ -78,7 +78,7 @@ export default function LojaPremios() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
