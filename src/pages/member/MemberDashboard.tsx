@@ -1,5 +1,8 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useGamification } from '@/hooks/useGamification';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
+import { BadgeCard } from '@/components/gamification/BadgeCard';
+import { StreakCounter } from '@/components/gamification/StreakCounter';
 import { 
   BookOpen, 
   Target, 
@@ -13,6 +16,7 @@ import {
   Clock,
   Star,
   Loader2,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -22,9 +26,15 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
   const { profile, user, isMentor } = useAuth();
+  const { badges, stats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Update streak on mount
+  useEffect(() => {
+    updateStreak();
+  }, [updateStreak]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -187,18 +197,37 @@ export default function MemberDashboard() {
                 <Award className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-foreground">Conquistas</h3>
               </div>
-              <Link to="/app/perfil" className="text-xs text-primary hover:underline">
-                Ver todas
+              <Link to="/app/loja" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <Gift className="h-3 w-3" />
+                {stats?.totalPoints || 0} pts
               </Link>
             </div>
-            <div className="flex-1 grid grid-cols-3 gap-3">
-              <BadgeItem emoji="🎯" name="Primeira Prospecção" />
-              <BadgeItem emoji="📚" name="Trilha Completa" />
-              <BadgeItem emoji="🔥" name="10 Prospecções" />
-              <BadgeItem emoji="⭐" name="Top 10" locked />
-              <BadgeItem emoji="🏆" name="Campeão" locked />
-              <BadgeItem emoji="💎" name="Elite" locked />
+            <div className="flex-1 grid grid-cols-3 gap-2">
+              {isLoadingGamification ? (
+                <div className="col-span-3 flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                badges.slice(0, 6).map((badge) => (
+                  <BadgeCard
+                    key={badge.id}
+                    name={badge.name}
+                    description={badge.description || ""}
+                    iconType={badge.icon_url}
+                    points={badge.points_required || 0}
+                    unlocked={isBadgeUnlocked(badge.id)}
+                    unlockedAt={getBadgeUnlockDate(badge.id)}
+                    size="sm"
+                    showPoints={false}
+                  />
+                ))
+              )}
             </div>
+            <Link to="/app/loja" className="mt-3">
+              <Button variant="outline" size="sm" className="w-full text-xs">
+                Ver Todas as Conquistas
+              </Button>
+            </Link>
           </div>
         </BentoCard>
 
@@ -262,10 +291,10 @@ export default function MemberDashboard() {
               <h3 className="font-semibold text-foreground text-sm">Sequência</h3>
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <p className="stat-value text-amber-500">7</p>
-                <p className="text-xs text-muted-foreground mt-1">dias seguidos acessando</p>
-              </div>
+              <StreakCounter 
+                days={stats?.streakDays || 0} 
+                size="md"
+              />
             </div>
           </div>
         </BentoCard>
@@ -295,23 +324,6 @@ function TrailProgress({
           style={{ width: `${progress}%` }}
         />
       </div>
-    </div>
-  );
-}
-
-function BadgeItem({ emoji, name, locked = false }: { emoji: string; name: string; locked?: boolean }) {
-  return (
-    <div 
-      className={`
-        flex flex-col items-center justify-center p-3 rounded-xl text-center
-        ${locked 
-          ? 'bg-muted/30 opacity-50' 
-          : 'bg-gradient-to-b from-muted/50 to-transparent border border-border'
-        }
-      `}
-    >
-      <span className="text-2xl">{emoji}</span>
-      <span className="text-xs text-muted-foreground mt-1 line-clamp-1">{name}</span>
     </div>
   );
 }
