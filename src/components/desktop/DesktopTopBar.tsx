@@ -45,8 +45,9 @@ export function DesktopTopBar() {
       <div className="relative h-full flex items-center justify-between px-4">
         {/* Left side - Logo/Brand */}
         <div className="flex items-center gap-4">
-          <span className="text-[13px] font-semibold text-white/90">
-            ✨ Flourish
+          <span className="text-[13px] font-semibold">
+            <span className="bg-gradient-to-r from-primary to-[hsl(43_80%_60%)] bg-clip-text text-transparent">LBV</span>
+            <span className="text-white/70 ml-1">TECH</span>
           </span>
         </div>
 
