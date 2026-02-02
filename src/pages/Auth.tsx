@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Mail, User, ArrowLeft, Loader2, KeyRound, ArrowRight } from "lucide-react";
+import { Mail, User, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
+import { LBVLogo } from "@/components/LBVLogo";
 
 const emailSchema = z.string().email("Email inválido");
 
@@ -93,19 +94,27 @@ const Auth = () => {
     }
   };
 
-  const handleVerifyCode = async (e?: React.FormEvent) => {
+  const isSubmittingRef = useRef(false);
+
+  const handleVerifyCode = async (e?: React.FormEvent, codeToVerify?: string) => {
     e?.preventDefault();
     
-    if (code.length !== 6) {
+    const finalCode = codeToVerify || code;
+    
+    if (finalCode.length !== 6) {
       setErrors({ code: "Digite os 6 dígitos do código" });
       return;
     }
+
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     
     setIsLoading(true);
     
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { email, code },
+        body: { email, code: finalCode },
       });
 
       if (error) throw error;
@@ -115,6 +124,7 @@ const Auth = () => {
         // New user needs to provide name
         setStep("name");
         setIsLoading(false);
+        isSubmittingRef.current = false;
         return;
       }
 
@@ -127,7 +137,6 @@ const Auth = () => {
         });
 
         if (verifyError) {
-          console.error("Token verification error:", verifyError);
           throw new Error("Erro ao autenticar. Tente novamente.");
         }
 
@@ -145,6 +154,36 @@ const Auth = () => {
       setErrors({ code: "Código inválido ou expirado" });
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
+    }
+  };
+
+  // Auto-submit when code reaches 6 digits
+  const handleCodeChange = (value: string) => {
+    setCode(value);
+    if (value.length === 6 && !isSubmittingRef.current) {
+      handleVerifyCode(undefined, value);
+    }
+  };
+
+  // Paste from clipboard
+  const handlePasteCode = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      // Extract only digits
+      const digits = text.replace(/\D/g, '').slice(0, 6);
+      if (digits.length > 0) {
+        setCode(digits);
+        if (digits.length === 6) {
+          handleVerifyCode(undefined, digits);
+        }
+      }
+    } catch (err) {
+      toast({
+        title: "Não foi possível colar",
+        description: "Permita o acesso à área de transferência ou digite o código manualmente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -234,11 +273,9 @@ const Auth = () => {
         <Card className="bg-card border-border">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-xl gradient-gold flex items-center justify-center glow-gold">
-                <Sparkles className="w-8 h-8 text-primary-foreground" />
-              </div>
+              <LBVLogo variant="compact" size="lg" />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground">MentorHub Pro</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground">LBV TECH</CardTitle>
             <CardDescription className="text-muted-foreground">
               {step === "email" && "Digite seu email para receber o código de acesso"}
               {step === "code" && "Digite o código enviado para seu email"}
@@ -309,7 +346,7 @@ const Auth = () => {
                     <InputOTP
                       maxLength={6}
                       value={code}
-                      onChange={(value) => setCode(value)}
+                      onChange={handleCodeChange}
                       className="justify-center"
                     >
                       <InputOTPGroup>
@@ -324,6 +361,17 @@ const Auth = () => {
                         <InputOTPSlot index={5} className="bg-secondary border-border w-12 h-14 text-xl" />
                       </InputOTPGroup>
                     </InputOTP>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePasteCode}
+                      className="gap-2"
+                    >
+                      <ClipboardPaste className="w-4 h-4" />
+                      Colar código
+                    </Button>
                   </div>
                   
                   {errors.code && <p className="text-sm text-destructive text-center">{errors.code}</p>}
