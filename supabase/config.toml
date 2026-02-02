@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.ai-tools]
 verify_jwt = false
+
+[functions.send-sos-notification]
+verify_jwt = false
