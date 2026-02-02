@@ -1,253 +1,156 @@
 
-# Plano: CRM Inteligente com Analise de Imagens por IA
+# Desktop iMac para Mentorados
 
-## Visao Geral
+## Visão Geral
 
-Criar um CRM completo para o mentorado que utiliza IA (Gemini com visao) para analisar screenshots de conversas e redes sociais, extraindo automaticamente informacoes do lead e sugerindo o cadastro. A IA usara o contexto do negocio do mentorado para personalizar a analise.
+Transformar a área do mentorado em uma experiência de desktop imersiva estilo macOS, onde o usuário vê uma "mesa" com ícones de aplicativos e pode abrir janelas para cada funcionalidade.
 
----
-
-## Estrutura do Projeto
-
-### 1. Cadastro do Negocio (Contexto para IA)
-
-Nova tabela `mentorado_business_profiles`:
+## Fluxo de Navegação
 
 ```text
-mentorado_business_profiles
-  |-- mentorado_id (FK)
-  |-- business_name (nome do negocio)
-  |-- business_type (mentoria/consultoria/conselho)
-  |-- target_audience (publico alvo)
-  |-- main_offer (oferta principal)
-  |-- price_range (faixa de preco)
-  |-- unique_value_proposition (diferencial)
-  |-- pain_points_solved (dores que resolve)
-  |-- ideal_client_profile (perfil do cliente ideal)
+/app (Desktop)
+  ├── Ícones na Mesa (Desktop Icons Grid)
+  │   ├── Dashboard
+  │   ├── Trilhas
+  │   ├── Meu CRM
+  │   ├── Calendário
+  │   ├── Treinamento
+  │   ├── Ranking
+  │   ├── Centro SOS
+  │   └── Meu Perfil
+  │
+  ├── Dock (barra inferior estilo macOS)
+  │   └── Mesmos apps com acesso rápido
+  │
+  └── Janelas (Windows)
+      └── Cada app abre em uma janela arrastável/redimensionável
 ```
 
-### 2. Tabelas Existentes a Utilizar
+## Componentes a Criar
 
-```text
-crm_prospections (Leads do Mentorado)
-  |-- contact_name, contact_email, contact_phone
-  |-- company, notes, status, points
-  |
-  +-- crm_interactions (Historico)
-        |-- type, description, outcome
-```
+### 1. DesktopWindow (Janela estilo macOS)
+- Barra de título com gradiente sutil
+- 3 botões: fechar (vermelho), minimizar (amarelo), maximizar (verde)
+- Arraste pela barra de título
+- Redimensionamento nas bordas
+- Animação de abertura/fechamento (zoom + fade)
+- Efeito de glassmorphism no conteúdo
 
-### 3. Storage Bucket para Screenshots
+### 2. DesktopIcon (Ícone de aplicativo)
+- Ícone grande com gradiente de fundo
+- Label abaixo do ícone
+- Efeito hover com bounce
+- Duplo clique para abrir
+- Glow no ícone ativo
 
-Bucket `lead-screenshots` para armazenar os prints enviados (ate 10 por analise).
+### 3. Desktop (Mesa principal)
+- Background com wallpaper animado (gradientes atuais)
+- Grid de ícones organizável
+- Hora e data no canto superior direito
+- Avatar do usuário com menu
 
----
-
-## Edge Function: analyze-lead-screenshots
-
-Nova funcao que:
-
-1. Recebe ate 10 imagens (base64 ou URLs)
-2. Busca o perfil do negocio do mentorado
-3. Envia para Gemini com prompt contextualizado
-4. Retorna dados estruturados do lead:
-   - Nome detectado
-   - Telefone/email (se visivel)
-   - Empresa/ocupacao
-   - Interesses identificados
-   - Nivel de interesse (frio/morno/quente)
-   - Objecoes detectadas
-   - Sugestao de abordagem personalizada
-   - Insights para venda
-
-### Prompt da IA
-
-A IA recebera:
-- Contexto do negocio (oferta, publico, diferencial)
-- Screenshots para analise
-- Instrucoes para extrair informacoes de vendas
-
----
-
-## Componentes de UI
-
-### 1. Pagina Principal - MeuCRM.tsx
-
-Layout com:
-- **Header**: Estatisticas rapidas (leads, conversoes, pontos)
-- **Pipeline Kanban**: Colunas por status (Novo, Contato, Proposta, Fechado, Perdido)
-- **Botao FAB**: "Novo Lead com IA"
-- **Filtros**: Por status, data, temperatura
-
-### 2. LeadUploadModal Component
-
-Modal para adicionar lead via IA:
-- Dropzone para ate 10 imagens
-- Preview das imagens selecionadas
-- Botao "Analisar com IA"
-- Loading state durante analise
-- Resultado com dados extraidos editaveis
-- Botao "Salvar Lead"
-
-### 3. LeadCard Component
-
-Card no Kanban com:
-- Nome e avatar (iniciais)
-- Temperatura (badge colorido)
-- Empresa/ocupacao
-- Ultima interacao
-- Menu de acoes (editar, mover, excluir)
-- Indicador de screenshots anexados
-
-### 4. LeadDetailSheet Component
-
-Sheet lateral ao clicar no lead:
-- Todas as informacoes do lead
-- Screenshots originais (galeria)
-- Insights da IA
-- Historico de interacoes
-- Formulario para adicionar interacao
-- Sugestoes de proximos passos
-
-### 5. BusinessProfileForm Component
-
-Formulario no perfil do mentorado para cadastrar o negocio:
-- Campos estruturados sobre a oferta
-- Dicas de preenchimento
-- Indicador de "perfil completo"
-
----
-
-## Fluxo do Usuario
-
-```text
-1. Mentorado acessa /app/meu-crm
-2. Clica em "Novo Lead com IA"
-3. Faz upload de ate 10 screenshots
-4. IA analisa e extrai informacoes
-5. Mentorado revisa e edita dados
-6. Confirma e lead e adicionado ao pipeline
-7. Arrasta entre colunas conforme evolui
-8. Adiciona interacoes e anotacoes
-9. Recebe sugestoes da IA para fechar
-```
-
----
+### 4. DesktopDock (Dock inferior)
+- Dock centralizado na parte inferior
+- Efeito magnético ao passar o mouse (estilo macOS)
+- Indicador de janela aberta (pontinho)
+- Separador entre apps e lixeira/configurações
 
 ## Estrutura de Arquivos
 
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/pages/member/MeuCRM.tsx` | Pagina principal com Kanban |
-| `src/components/crm/LeadUploadModal.tsx` | Modal de upload e analise IA |
-| `src/components/crm/LeadCard.tsx` | Card do lead no Kanban |
-| `src/components/crm/LeadDetailSheet.tsx` | Detalhes do lead |
-| `src/components/crm/KanbanColumn.tsx` | Coluna do pipeline |
-| `src/components/crm/BusinessProfileForm.tsx` | Cadastro do negocio |
-| `supabase/functions/analyze-lead-screenshots/index.ts` | Edge function IA |
-
----
-
-## Detalhes Tecnicos
-
-### Analise de Imagens com Gemini
-
-O Gemini 2.5 Flash suporta analise de imagens. A edge function:
-
-1. Recebe imagens em base64
-2. Monta array de conteudo multimodal
-3. Envia para Lovable AI Gateway
-4. Parseia resposta estruturada via tool calling
-
-### Exemplo de Payload Multimodal
-
-```typescript
-messages: [
-  {
-    role: "user",
-    content: [
-      { type: "text", text: systemPrompt + userPrompt },
-      { type: "image_url", image_url: { url: "data:image/png;base64,..." } },
-      // ... mais imagens
-    ]
-  }
-]
+```text
+src/
+├── components/
+│   └── desktop/
+│       ├── Desktop.tsx           # Container principal
+│       ├── DesktopIcon.tsx       # Ícone de app
+│       ├── DesktopDock.tsx       # Dock inferior
+│       ├── DesktopWindow.tsx     # Janela draggable
+│       ├── DesktopTopBar.tsx     # Barra superior (hora, wifi, bateria)
+│       └── WindowManager.tsx     # Gerenciador de estado das janelas
+│
+├── hooks/
+│   └── useWindowManager.tsx      # Hook para controle de janelas
+│
+├── pages/member/
+│   └── MemberDesktop.tsx         # Nova página principal
 ```
 
-### Extração Estruturada
+## Estados das Janelas
 
-Usar tool calling para garantir formato JSON:
+Cada janela terá estados controlados:
+- `isOpen`: janela está aberta
+- `isMinimized`: janela está no dock
+- `isMaximized`: janela está em tela cheia
+- `position`: coordenadas {x, y}
+- `size`: dimensões {width, height}
+- `zIndex`: ordem de empilhamento
 
-```typescript
-tools: [{
-  type: "function",
-  function: {
-    name: "extract_lead_data",
-    parameters: {
-      type: "object",
-      properties: {
-        name: { type: "string" },
-        phone: { type: "string" },
-        email: { type: "string" },
-        company: { type: "string" },
-        temperature: { enum: ["cold", "warm", "hot"] },
-        insights: { type: "array", items: { type: "string" } },
-        suggested_approach: { type: "string" }
-      }
-    }
-  }
-}]
-```
+## Interações
 
----
+| Ação | Comportamento |
+|------|--------------|
+| Clique simples no ícone | Seleciona o ícone (borda highlight) |
+| Duplo clique no ícone | Abre a janela do app |
+| Clique no Dock | Abre ou traz janela para frente |
+| Arrastar janela | Move pela tela |
+| Botão vermelho | Fecha a janela |
+| Botão amarelo | Minimiza para o dock |
+| Botão verde | Maximiza/restaura |
+| Clique fora | Deseleciona janela |
 
-## Alteracoes no Banco de Dados
+## Animações
 
-### Nova Tabela
+- **Abertura de janela**: Scale de 0.8 para 1 + fade in (200ms)
+- **Fechamento**: Scale para 0.8 + fade out (150ms)
+- **Minimizar**: Encolhe em direção ao dock (300ms ease-out)
+- **Maximizar**: Expande suavemente (200ms)
+- **Ícone hover**: Scale 1.1 + bounce
 
-```sql
-CREATE TABLE mentorado_business_profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  mentorado_id UUID REFERENCES mentorados(id) ON DELETE CASCADE,
-  business_name TEXT,
-  business_type TEXT,
-  target_audience TEXT,
-  main_offer TEXT,
-  price_range TEXT,
-  unique_value_proposition TEXT,
-  pain_points_solved TEXT[],
-  ideal_client_profile TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(mentorado_id)
-);
-```
+## Integração com Conteúdo Existente
 
-### Adicionar coluna na crm_prospections
+As páginas atuais serão renderizadas DENTRO das janelas:
 
-```sql
-ALTER TABLE crm_prospections ADD COLUMN IF NOT EXISTS
-  ai_insights JSONB,
-  temperature TEXT DEFAULT 'cold',
-  screenshot_urls TEXT[];
-```
+| App | Componente Interno |
+|-----|-------------------|
+| Dashboard | `<MemberDashboard />` (atual) |
+| Trilhas | `<Trilhas />` |
+| Meu CRM | `<MeuCRM />` |
+| Treinamento | `<Treinamento />` |
+| Centro SOS | `<CentroSOS />` |
+| Perfil | `<Perfil />` |
 
-### Storage Bucket
+## Detalhes Técnicos
 
-```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('lead-screenshots', 'lead-screenshots', false);
-```
+### Persistência de Estado
+- Posição das janelas salva em localStorage
+- Última configuração de desktop restaurada ao logar
 
----
+### Performance
+- Lazy loading das janelas (só renderiza quando aberta)
+- Virtualização do conteúdo em janelas minimizadas
 
-## Resultado Esperado
+### Responsividade
+- Em mobile: manter layout atual (sem desktop)
+- Em tablet: desktop simplificado (janelas em fullscreen)
+- Em desktop: experiência completa
 
-CRM inteligente com:
-- Upload de screenshots para analise automatica
-- IA que entende WhatsApp, Instagram, LinkedIn, etc
-- Extracao de dados do lead contextualizada ao negocio
-- Pipeline visual estilo Kanban
-- Historico de interacoes
-- Sugestoes personalizadas de abordagem
-- Pontuacao automatica de leads
+### CSS Necessário
+Adicionar ao `index.css`:
+- `.desktop-wallpaper` - fundo animado
+- `.desktop-icon` - estilo do ícone
+- `.desktop-window` - janela glass
+- `.desktop-dock` - dock inferior
+- `.window-titlebar` - barra de título
+- `.window-button` - botões da janela
+
+## Ordem de Implementação
+
+1. Hook `useWindowManager` - gerenciamento de estado
+2. Componente `DesktopWindow` - janela arrastável
+3. Componente `DesktopIcon` - ícones da mesa
+4. Componente `DesktopDock` - dock inferior
+5. Componente `DesktopTopBar` - barra superior
+6. Página `MemberDesktop` - composição final
+7. Atualizar `MemberLayout` para nova estrutura
+8. Estilos CSS para toda a experiência
+9. Transições e animações finais
