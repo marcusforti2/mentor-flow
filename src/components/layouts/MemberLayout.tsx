@@ -1,10 +1,11 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
 import { DevModeSelector } from '@/components/DevModeSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
+import { LBVLogo } from '@/components/LBVLogo';
 import {
   LayoutDashboard,
   BookOpen,
@@ -99,9 +100,15 @@ export function MemberLayout() {
         </header>
       )}
 
-      {/* Top bar with user - only on dashboard */}
+      {/* Top bar with logo and user - only on dashboard */}
       {isDashboard && (
-        <header className="fixed top-0 right-0 z-40 p-4 flex items-center gap-3">
+        <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
+          {/* Logo on the left */}
+          <Link to="/app" className="ml-28">
+            <LBVLogo variant="full" size="sm" />
+          </Link>
+
+          {/* User controls on the right */}
           <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarImage src={profile?.avatar_url || ''} />

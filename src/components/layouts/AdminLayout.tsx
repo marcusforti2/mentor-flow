@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
 import { DevModeSelector } from '@/components/DevModeSelector';
@@ -6,6 +6,7 @@ import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, Settings, ArrowLeft } from 'lucide-react';
+import { LBVLogo } from '@/components/LBVLogo';
 import {
   LayoutDashboard,
   Users,
@@ -98,45 +99,53 @@ export function AdminLayout() {
         </header>
       )}
 
-      {/* Top bar with user - only on dashboard */}
+      {/* Top bar with logo and user - only on dashboard */}
       {isDashboard && (
-        <header className="fixed top-0 right-0 z-40 p-4 flex items-center gap-3">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="glass-card h-10 w-10"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Configurações</TooltipContent>
-          </Tooltip>
+        <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
+          {/* Logo on the left */}
+          <Link to="/admin" className="ml-28">
+            <LBVLogo variant="full" size="sm" />
+          </Link>
 
-          <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={profile?.avatar_url || ''} />
-              <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                {profile?.full_name?.charAt(0) || 'M'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium text-foreground hidden sm:block">
-              {profile?.full_name || 'Mentor'}
-            </span>
+          {/* User controls on the right */}
+          <div className="flex items-center gap-3">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={signOut}
-                  className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
+                  className="glass-card h-10 w-10"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <Settings className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Sair</TooltipContent>
+              <TooltipContent>Configurações</TooltipContent>
             </Tooltip>
+
+            <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || ''} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  {profile?.full_name?.charAt(0) || 'M'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-foreground hidden sm:block">
+                {profile?.full_name || 'Mentor'}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={signOut}
+                    className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sair</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </header>
       )}
