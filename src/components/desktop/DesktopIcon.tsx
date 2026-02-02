@@ -4,29 +4,33 @@ interface DesktopIconProps {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  gradient: string;
   isSelected: boolean;
-  isOpen: boolean;
   onSelect: () => void;
   onDoubleClick: () => void;
+  delay?: number;
 }
 
 export function DesktopIcon({
   id,
   label,
   icon: Icon,
+  gradient,
   isSelected,
-  isOpen,
   onSelect,
   onDoubleClick,
+  delay = 0,
 }: DesktopIconProps) {
   return (
     <div
       className={cn(
-        'desktop-icon flex flex-col items-center gap-2 p-3 rounded-xl',
-        'cursor-pointer select-none transition-all duration-200',
-        'hover:bg-white/5',
-        isSelected && 'bg-white/10 ring-1 ring-primary/50'
+        'group flex flex-col items-center gap-2 p-2 rounded-2xl',
+        'cursor-pointer select-none',
+        'transition-all duration-300 ease-out',
+        'hover:scale-105 active:scale-95',
+        isSelected && 'bg-white/[0.08]'
       )}
+      style={{ animationDelay: `${delay}ms` }}
       onClick={(e) => {
         e.stopPropagation();
         onSelect();
@@ -36,30 +40,44 @@ export function DesktopIcon({
         onDoubleClick();
       }}
     >
-      {/* Icon */}
+      {/* Icon Container */}
       <div
         className={cn(
-          'relative w-16 h-16 rounded-2xl flex items-center justify-center',
-          'bg-gradient-to-br from-muted/80 to-muted/40',
-          'border border-border/50 shadow-lg',
-          'transition-all duration-200 hover:scale-110',
-          isOpen && 'ring-2 ring-primary/50 shadow-primary/20'
+          'relative w-14 h-14 md:w-16 md:h-16 rounded-[16px] md:rounded-[18px]',
+          'flex items-center justify-center overflow-hidden',
+          'transition-all duration-300',
+          'group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-white/10',
+          isSelected && 'ring-2 ring-white/30 ring-offset-2 ring-offset-transparent'
         )}
       >
-        <Icon className="h-8 w-8 text-foreground" />
+        {/* Gradient background */}
+        <div className={cn(
+          'absolute inset-0 bg-gradient-to-br',
+          gradient
+        )} />
         
-        {/* Glow effect when open */}
-        {isOpen && (
-          <div className="absolute inset-0 rounded-2xl bg-primary/10 animate-pulse" />
-        )}
+        {/* Glass shine overlay */}
+        <div className="absolute inset-0">
+          {/* Top highlight */}
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent" />
+          {/* Inner shadow */}
+          <div className="absolute inset-0 rounded-[16px] md:rounded-[18px] shadow-inner shadow-black/20" />
+          {/* Bottom reflection */}
+          <div className="absolute inset-x-2 bottom-1 h-[2px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+        </div>
+        
+        {/* Icon */}
+        <Icon className="relative z-10 h-7 w-7 md:h-8 md:w-8 text-white drop-shadow-lg" />
       </div>
 
       {/* Label */}
       <span
         className={cn(
-          'text-xs font-medium text-foreground text-center max-w-20 truncate',
-          'px-2 py-0.5 rounded',
-          isSelected && 'bg-primary text-primary-foreground'
+          'text-[10px] md:text-[11px] font-medium text-center',
+          'max-w-[72px] truncate px-1.5 py-0.5 rounded',
+          'text-white/80 drop-shadow-lg',
+          'transition-all duration-200',
+          isSelected && 'bg-white/20 text-white'
         )}
       >
         {label}

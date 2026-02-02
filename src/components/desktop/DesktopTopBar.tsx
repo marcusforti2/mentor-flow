@@ -1,94 +1,116 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import {
+import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Settings, Wifi, Battery } from 'lucide-react';
+import { LogOut, Settings, User, Wifi, Battery, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface DesktopTopBarProps {
-  userName: string;
-  avatarUrl?: string;
-  onLogout: () => void;
-}
-
-export function DesktopTopBar({ userName, avatarUrl, onLogout }: DesktopTopBarProps) {
-  const [time, setTime] = useState(new Date());
+export function DesktopTopBar() {
+  const { profile, signOut } = useAuth();
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit'
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR', { 
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+
   return (
-    <div
-      className={cn(
-        'desktop-topbar fixed top-0 left-0 right-0 z-50 h-10',
-        'flex items-center justify-between px-4',
-        'bg-card/70 backdrop-blur-xl border-b border-border/30'
-      )}
-    >
-      {/* Left: Logo/Brand */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-bold text-gradient-gold">MentorHub</span>
-      </div>
-
-      {/* Right: System Tray */}
-      <div className="flex items-center gap-4">
-        {/* Status Icons */}
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Wifi className="h-4 w-4" />
-          <Battery className="h-4 w-4" />
-        </div>
-
-        {/* Date & Time */}
-        <div className="text-sm text-muted-foreground">
-          <span className="font-medium">
-            {format(time, "EEE, d 'de' MMM", { locale: ptBR })}
-          </span>
-          <span className="ml-2 font-mono">
-            {format(time, 'HH:mm')}
+    <div className="fixed top-0 left-0 right-0 z-50 h-7">
+      {/* Frosted glass bar */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-2xl border-b border-white/[0.08]" />
+      
+      <div className="relative h-full flex items-center justify-between px-4">
+        {/* Left side - Logo/Brand */}
+        <div className="flex items-center gap-4">
+          <span className="text-[13px] font-semibold text-white/90">
+            ✨ Flourish
           </span>
         </div>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-2 px-2">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={avatarUrl} />
-                <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                  {userName?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium text-foreground max-w-24 truncate">
-                {userName?.split(' ')[0] || 'Usuário'}
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Meu Perfil
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Preferências
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Right side - Status icons + Time + User */}
+        <div className="flex items-center gap-4">
+          {/* Status icons */}
+          <div className="flex items-center gap-2 text-white/60">
+            <Volume2 className="h-3 w-3" />
+            <Wifi className="h-3 w-3" />
+            <div className="flex items-center gap-0.5">
+              <Battery className="h-3 w-3" />
+              <span className="text-[9px]">100%</span>
+            </div>
+          </div>
+
+          {/* Date and Time */}
+          <div className="flex items-center gap-2 text-[11px] text-white/80">
+            <span>{formatDate(currentTime)}</span>
+            <span className="font-medium">{formatTime(currentTime)}</span>
+          </div>
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 hover:bg-white/10 rounded-md px-1.5 py-0.5 transition-colors">
+                <Avatar className="h-4 w-4">
+                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarFallback className="bg-white/20 text-[8px] text-white">
+                    {profile?.full_name?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-[11px] text-white/80 hidden sm:inline">
+                  {profile?.full_name?.split(' ')[0] || 'Usuário'}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align="end" 
+              className="w-52 bg-gray-900/95 backdrop-blur-2xl border-white/10"
+            >
+              <div className="px-3 py-2">
+                <p className="text-sm font-medium text-white">{profile?.full_name}</p>
+                <p className="text-xs text-white/50">{profile?.email}</p>
+              </div>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem className="text-white/80 focus:bg-white/10 focus:text-white">
+                <User className="mr-2 h-4 w-4" />
+                Meu Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-white/80 focus:bg-white/10 focus:text-white">
+                <Settings className="mr-2 h-4 w-4" />
+                Preferências
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem 
+                onClick={signOut}
+                className="text-red-400 focus:bg-red-500/20 focus:text-red-400"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );
