@@ -1,87 +1,79 @@
 
-# Plano de Rebranding: LBV TECH
+# Configurar Domínio Verificado no Resend
 
 ## Resumo
-Transformar a identidade visual e textual da plataforma de "MentorHub Pro" para **LBV TECH**, criando um logo personalizado com as cores azul escuro, cinza escuro e dourado, e atualizando todos os pontos de contato da marca.
+Configurar o domínio `equipe.aceleracaoforti.online` no Resend para enviar emails de autenticação (OTP) e notificações com seu domínio próprio, dando mais credibilidade e evitando que caiam em spam.
 
 ---
 
-## O Que Será Feito
+## Passo 1: Configurar o Domínio no Resend (Manual)
 
-### 1. Criação do Logo LBV TECH
-- Novo componente `LBVLogo.tsx` com design premium
-- Texto estilizado "LBV" em dourado + "TECH" em azul escuro
-- Ícone geométrico moderno (hexágono ou triângulo com gradiente)
-- Versões: completa (com texto) e compacta (só ícone)
+Você precisa fazer isso no painel do Resend:
 
-### 2. Página de Vendas (Landing Page)
-- Header: Logo LBV TECH no lugar de "MentorHub"
-- Hero: Novo título focado em mentores ("Escale sua mentoria com a LBV TECH")
-- Footer: Copyright e marca atualizados
-- Manter funcionalidades e features atuais
+1. Acesse **https://resend.com/domains**
+2. Clique em **"Add Domain"**
+3. Digite: `equipe.aceleracaoforti.online`
+4. O Resend vai mostrar **registros DNS** que você precisa adicionar
 
-### 3. Dashboards
-- **Admin Layout**: Adicionar logo LBV TECH no header (canto superior esquerdo)
-- **Member Layout**: Logo compacto no header junto ao menu
-- Floating Dock: Pequeno badge "LBV" no topo da dock
+### Registros DNS Típicos do Resend
 
-### 4. Meta Tags e SEO
-- Atualizar `index.html` com título "LBV TECH - Plataforma para Mentores"
-- Meta descriptions otimizadas
-- Open Graph tags atualizados
+Você precisará adicionar no seu provedor de DNS (onde o domínio está hospedado):
+
+| Tipo | Nome/Host | Valor |
+|------|-----------|-------|
+| MX | `send` | `feedback-smtp.us-east-1.amazonses.com` |
+| TXT | `send` | `v=spf1 include:amazonses.com ~all` |
+| CNAME | `resend._domainkey` | (valor fornecido pelo Resend) |
+
+O Resend fornecerá os valores exatos quando você adicionar o domínio.
 
 ---
 
-## Detalhes Técnicos
+## Passo 2: Aguardar Verificação
 
-### Arquivos a Criar
+- Após adicionar os registros DNS, clique em **"Verify"** no Resend
+- A propagação pode levar de **alguns minutos até 48 horas**
+- O status mudará para **"Verified"** quando estiver pronto
+
+---
+
+## Passo 3: Atualizar as Edge Functions (Eu farei isso)
+
+Depois que o domínio estiver verificado, atualizarei os arquivos:
+
+### `send-otp/index.ts`
 ```text
-src/components/LBVLogo.tsx - Componente do logo com variantes
+De: "MentorHub Pro <noreply@resend.dev>"
+Para: "LBV TECH <noreply@equipe.aceleracaoforti.online>"
 ```
 
-### Arquivos a Modificar
+### `send-sos-notification/index.ts`
 ```text
-src/pages/Index.tsx - Landing page com novo branding
-src/components/layouts/AdminLayout.tsx - Logo no painel admin
-src/components/layouts/MemberLayout.tsx - Logo na área de membros
-index.html - Meta tags e título
+De: "SOS Mentoria <sos@equipe.marcusforti.online>"
+Para: "SOS LBV TECH <sos@equipe.aceleracaoforti.online>"
+
+De: "Mentoria High Ticket <contato@equipe.marcusforti.online>"
+Para: "LBV TECH <contato@equipe.aceleracaoforti.online>"
 ```
 
-### Estrutura do Logo (LBVLogo.tsx)
-```tsx
-// Variantes disponíveis:
-<LBVLogo variant="full" />    // Ícone + LBV TECH
-<LBVLogo variant="compact" /> // Apenas ícone
-<LBVLogo variant="text" />    // Apenas texto
-
-// Tamanhos:
-<LBVLogo size="sm" />  // Para headers
-<LBVLogo size="md" />  // Padrão
-<LBVLogo size="lg" />  // Para landing page
-```
-
-### Paleta de Cores (Já Existente)
-- **Dourado**: `hsl(45 100% 51%)` - já definido como `--primary`
-- **Azul Escuro**: `hsl(220 91% 35%)` - novo tom para acentos
-- **Cinza Escuro**: `hsl(240 10% 4%)` - já definido como `--background`
+### Também atualizarei o branding nos templates HTML:
+- Trocar "MentorHub Pro" por "LBV TECH"
+- Manter as cores dourado/azul do novo branding
 
 ---
 
-## Resultado Visual Esperado
+## Emails que Serão Enviados
 
-### Landing Page
-- Logo LBV TECH no canto superior esquerdo com ícone hexagonal dourado
-- Headline: "Escale sua **Mentoria** com **LBV TECH**"
-- Footer: "© 2024 LBV TECH. Todos os direitos reservados."
-
-### Dashboards
-- Header com logo compacto LBV no canto esquerdo
-- Mantém toda a estrutura atual de navegação
-- Badge discreto "Powered by LBV TECH" opcional no footer
+| Tipo | Remetente | Usado Para |
+|------|-----------|------------|
+| `noreply@equipe.aceleracaoforti.online` | Códigos OTP de login |
+| `sos@equipe.aceleracaoforti.online` | Alertas SOS para mentores |
+| `contato@equipe.aceleracaoforti.online` | Confirmações para mentorados |
 
 ---
 
-## Observações
-- O sistema de cores premium (dourado + azul + cinza escuro) já está configurado
-- A estrutura glassmorphism e bento grid será mantida
-- Não há mudanças no banco de dados - apenas visual/frontend
+## Próximos Passos
+
+1. **Você faz**: Adiciona o domínio no Resend e configura os DNS
+2. **Você confirma**: Quando o domínio estiver verificado (status "Verified")
+3. **Eu faço**: Atualizo as edge functions com o novo domínio e branding LBV TECH
