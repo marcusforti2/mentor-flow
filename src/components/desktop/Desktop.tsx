@@ -1,183 +1,115 @@
-import { lazy, Suspense, useMemo } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useWindowManager, AppConfig } from '@/hooks/useWindowManager';
-import { DesktopTopBar } from './DesktopTopBar';
-import { DesktopIcon } from './DesktopIcon';
-import { DesktopDock } from './DesktopDock';
-import { DesktopWindow } from './DesktopWindow';
-import { DevModeSelector } from '@/components/DevModeSelector';
-import { Loader2 } from 'lucide-react';
-import {
-  LayoutDashboard,
-  BookOpen,
-  Target,
-  Calendar,
-  Headphones,
-  Trophy,
-  AlertTriangle,
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { 
+  Route, 
+  Users, 
+  Calendar, 
+  GraduationCap, 
+  Trophy, 
+  LifeBuoy, 
   User,
 } from 'lucide-react';
+import { DesktopIcon } from './DesktopIcon';
+import { DesktopDock } from './DesktopDock';
+import { DesktopTopBar } from './DesktopTopBar';
+import { DevModeSelector } from '@/components/DevModeSelector';
 
-// Lazy load page components
-const MemberDashboard = lazy(() => import('@/pages/member/MemberDashboard'));
-const Trilhas = lazy(() => import('@/pages/member/Trilhas'));
-const MeuCRM = lazy(() => import('@/pages/member/MeuCRM'));
-const Treinamento = lazy(() => import('@/pages/member/Treinamento'));
-const CentroSOS = lazy(() => import('@/pages/member/CentroSOS'));
-const Perfil = lazy(() => import('@/pages/member/Perfil'));
-
-// App configurations
-const apps: AppConfig[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, defaultSize: { width: 1000, height: 700 } },
-  { id: 'trilhas', label: 'Trilhas', icon: BookOpen, defaultSize: { width: 1100, height: 750 } },
-  { id: 'meu-crm', label: 'Meu CRM', icon: Target, defaultSize: { width: 1000, height: 700 } },
-  { id: 'calendario', label: 'Calendário', icon: Calendar, defaultSize: { width: 800, height: 600 } },
-  { id: 'treinamento', label: 'Treinamento', icon: Headphones, defaultSize: { width: 900, height: 650 } },
-  { id: 'ranking', label: 'Ranking', icon: Trophy, defaultSize: { width: 800, height: 600 } },
-  { id: 'sos', label: 'Centro SOS', icon: AlertTriangle, defaultSize: { width: 900, height: 650 } },
-  { id: 'perfil', label: 'Meu Perfil', icon: User, defaultSize: { width: 800, height: 600 } },
+const apps = [
+  { id: 'trilhas', label: 'Trilhas', icon: Route, path: '/app/trilhas', gradient: 'from-purple-500 to-pink-400' },
+  { id: 'crm', label: 'Meu CRM', icon: Users, path: '/app/meu-crm', gradient: 'from-emerald-500 to-teal-400' },
+  { id: 'calendario', label: 'Calendário', icon: Calendar, path: '/app/calendario', gradient: 'from-orange-500 to-amber-400' },
+  { id: 'treinamento', label: 'Treinamento', icon: GraduationCap, path: '/app/treinamento', gradient: 'from-red-500 to-rose-400' },
+  { id: 'ranking', label: 'Ranking', icon: Trophy, path: '/app/ranking', gradient: 'from-yellow-500 to-orange-400' },
+  { id: 'sos', label: 'Centro SOS', icon: LifeBuoy, path: '/app/sos', gradient: 'from-pink-500 to-fuchsia-400' },
+  { id: 'perfil', label: 'Meu Perfil', icon: User, path: '/app/perfil', gradient: 'from-indigo-500 to-violet-400' },
 ];
 
-// Loading fallback
-function WindowLoader() {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-  );
-}
-
-// Content renderer for each app
-function AppContent({ appId }: { appId: string }) {
-  switch (appId) {
-    case 'dashboard':
-      return <MemberDashboard />;
-    case 'trilhas':
-      return <Trilhas />;
-    case 'meu-crm':
-      return <MeuCRM />;
-    case 'treinamento':
-      return <Treinamento />;
-    case 'sos':
-      return <CentroSOS />;
-    case 'perfil':
-      return <Perfil />;
-    case 'calendario':
-      return (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          <div className="text-center">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Calendário em breve...</p>
-          </div>
-        </div>
-      );
-    case 'ranking':
-      return (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          <div className="text-center">
-            <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Ranking em breve...</p>
-          </div>
-        </div>
-      );
-    default:
-      return null;
-  }
-}
+const dockApps = [
+  { id: 'trilhas', label: 'Trilhas', icon: Route, path: '/app/trilhas', gradient: 'from-purple-500 to-pink-400' },
+  { id: 'crm', label: 'Meu CRM', icon: Users, path: '/app/meu-crm', gradient: 'from-emerald-500 to-teal-400' },
+  { id: 'treinamento', label: 'Treinamento', icon: GraduationCap, path: '/app/treinamento', gradient: 'from-red-500 to-rose-400' },
+  { id: 'sos', label: 'Centro SOS', icon: LifeBuoy, path: '/app/sos', gradient: 'from-pink-500 to-fuchsia-400' },
+];
 
 export function Desktop() {
-  const { profile, signOut } = useAuth();
-  const windowManager = useWindowManager(apps);
-  const { 
-    windows, 
-    selectedIcon,
-    openWindow,
-    closeWindow,
-    minimizeWindow,
-    maximizeWindow,
-    focusWindow,
-    updatePosition,
-    updateSize,
-    toggleWindow,
-    selectIcon,
-    getOpenWindows,
-  } = windowManager;
+  const navigate = useNavigate();
+  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
 
-  const openWindowIds = useMemo(() => 
-    getOpenWindows().map(w => w.id), 
-    [getOpenWindows]
-  );
+  const handleIconClick = (id: string) => {
+    setSelectedIcon(id);
+  };
+
+  const handleIconDoubleClick = (path: string) => {
+    navigate(path);
+  };
+
+  const handleDockClick = (path: string) => {
+    navigate(path);
+  };
 
   const handleDesktopClick = () => {
-    selectIcon(null);
+    setSelectedIcon(null);
   };
 
   return (
     <div 
-      className="desktop-container min-h-screen relative overflow-hidden"
+      className="fixed inset-0 overflow-hidden select-none"
       onClick={handleDesktopClick}
     >
-      {/* Animated gradient background */}
-      <div className="animated-gradient-bg" />
+      {/* Premium Animated Background */}
+      <div className="absolute inset-0 bg-[#0a0a0f]">
+        {/* Large gradient orbs */}
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-violet-600/30 to-fuchsia-600/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-br from-cyan-600/25 to-blue-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-gradient-to-br from-emerald-600/20 to-teal-600/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
+        
+        {/* Subtle noise texture */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
+        }} />
+        
+        {/* Grid pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: '80px 80px'
+          }}
+        />
+        
+        {/* Top light beam */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-white/[0.03] to-transparent" />
+      </div>
 
       {/* Top Bar */}
-      <DesktopTopBar
-        userName={profile?.full_name || 'Mentorado'}
-        avatarUrl={profile?.avatar_url || undefined}
-        onLogout={signOut}
-      />
+      <DesktopTopBar />
 
-      {/* Desktop Icons Grid */}
-      <div className="pt-14 pb-24 px-6">
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-w-[400px]">
-          {apps.map((app) => (
+      {/* Desktop Icons Grid - Aligned to left */}
+      <div className="relative z-10 pt-16 pb-32 px-8 md:px-12 h-full overflow-auto">
+        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 gap-4 max-w-[360px] mt-4">
+          {apps.map((app, index) => (
             <DesktopIcon
               key={app.id}
               id={app.id}
               label={app.label}
               icon={app.icon}
+              gradient={app.gradient}
               isSelected={selectedIcon === app.id}
-              isOpen={windows[app.id]?.isOpen || false}
-              onSelect={() => selectIcon(app.id)}
-              onDoubleClick={() => openWindow(app.id)}
+              onSelect={() => handleIconClick(app.id)}
+              onDoubleClick={() => handleIconDoubleClick(app.path)}
+              delay={index * 50}
             />
           ))}
         </div>
       </div>
 
-      {/* Windows */}
-      {apps.map((app) => {
-        const state = windows[app.id];
-        if (!state?.isOpen) return null;
-        
-        return (
-          <DesktopWindow
-            key={app.id}
-            id={app.id}
-            title={app.label}
-            icon={app.icon}
-            state={state}
-            onClose={() => closeWindow(app.id)}
-            onMinimize={() => minimizeWindow(app.id)}
-            onMaximize={() => maximizeWindow(app.id)}
-            onFocus={() => focusWindow(app.id)}
-            onPositionChange={(pos) => updatePosition(app.id, pos)}
-            onSizeChange={(size) => updateSize(app.id, size)}
-          >
-            <div className="p-6 h-full overflow-auto">
-              <Suspense fallback={<WindowLoader />}>
-                <AppContent appId={app.id} />
-              </Suspense>
-            </div>
-          </DesktopWindow>
-        );
-      })}
-
       {/* Dock */}
-      <DesktopDock
-        apps={apps}
-        openWindows={openWindowIds}
-        onAppClick={toggleWindow}
+      <DesktopDock 
+        apps={dockApps}
+        onAppClick={handleDockClick}
       />
 
       {/* Dev Mode Selector */}
