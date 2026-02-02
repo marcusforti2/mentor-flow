@@ -1,32 +1,41 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Mail, Lock, User, ArrowLeft, Loader2 } from "lucide-react";
+import { Sparkles, Mail, User, ArrowLeft, Loader2, KeyRound, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
 
 const emailSchema = z.string().email("Email inválido");
-const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres");
+
+type AuthStep = "email" | "code" | "name";
 
 const Auth = () => {
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get("mode") === "signup" ? "signup" : "login";
-  
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [fullName, setFullName] = useState("");
+  const [step, setStep] = useState<AuthStep>("email");
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; code?: string; fullName?: string }>({});
+  const [countdown, setCountdown] = useState(0);
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, role, isLoading: authLoading, signIn, signUp } = useAuth();
+  const { user, role, isLoading: authLoading } = useAuth();
+
+  // Countdown timer for resend
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
@@ -36,95 +45,173 @@ const Auth = () => {
       } else if (role === 'mentorado') {
         navigate('/app');
       }
-      // If no role yet, stay on auth page - ProtectedRoute will handle it
     }
   }, [user, role, authLoading, navigate]);
 
-  const validateForm = (isSignup: boolean) => {
-    const newErrors: { email?: string; password?: string; fullName?: string } = {};
-    
+  const validateEmail = () => {
     try {
       emailSchema.parse(email);
+      setErrors({});
+      return true;
     } catch (e) {
       if (e instanceof z.ZodError) {
-        newErrors.email = e.errors[0].message;
+        setErrors({ email: e.errors[0].message });
       }
+      return false;
     }
+  };
+
+  const handleSendCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!validateEmail()) return;
+    
+    setIsLoading(true);
     
     try {
-      passwordSchema.parse(password);
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.password = e.errors[0].message;
-      }
-    }
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { email },
+      });
 
-    if (isSignup && !fullName.trim()) {
-      newErrors.fullName = "Nome é obrigatório";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm(false)) return;
-    
-    setIsLoading(true);
-    
-    const { error } = await signIn(email, password);
-
-    setIsLoading(false);
-
-    if (error) {
       toast({
-        title: "Erro ao entrar",
-        description: error.message === "Invalid login credentials" 
-          ? "Email ou senha incorretos" 
-          : error.message,
+        title: "Código enviado!",
+        description: "Verifique seu email e digite o código recebido.",
+      });
+      
+      setStep("code");
+      setCountdown(60);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar código",
+        description: error.message || "Tente novamente",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    toast({
-      title: "Bem-vindo de volta!",
-      description: "Login realizado com sucesso.",
-    });
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm(true)) return;
+  const handleVerifyCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    const fullCode = `LBV-${code}`;
+    
+    if (code.length !== 8) {
+      setErrors({ code: "Digite os 8 números do código" });
+      return;
+    }
     
     setIsLoading(true);
     
-    const { error } = await signUp(email, password, fullName);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { email, code: fullCode },
+      });
 
-    setIsLoading(false);
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-    if (error) {
-      if (error.message.includes("already registered")) {
-        toast({
-          title: "Email já cadastrado",
-          description: "Este email já está em uso. Tente fazer login.",
-          variant: "destructive",
+      if (data.needsName) {
+        // New user needs to provide name
+        setStep("name");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.token) {
+        // Verify the token with Supabase
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: data.token,
+          type: "magiclink",
         });
-      } else {
+
+        if (verifyError) {
+          console.error("Token verification error:", verifyError);
+          throw new Error("Erro ao autenticar. Tente novamente.");
+        }
+
         toast({
-          title: "Erro ao criar conta",
-          description: error.message,
-          variant: "destructive",
+          title: data.isNewUser ? "Conta criada!" : "Bem-vindo de volta!",
+          description: data.isNewUser ? "Sua conta foi criada com sucesso." : "Login realizado com sucesso.",
         });
       }
+    } catch (error: any) {
+      toast({
+        title: "Código inválido",
+        description: error.message || "Verifique o código e tente novamente",
+        variant: "destructive",
+      });
+      setErrors({ code: "Código inválido ou expirado" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateAccount = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    if (!fullName.trim()) {
+      setErrors({ fullName: "Nome é obrigatório" });
       return;
     }
+    
+    setIsLoading(true);
+    
+    try {
+      const fullCode = `LBV-${code}`;
+      
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { email, code: fullCode, fullName },
+      });
 
-    toast({
-      title: "Conta criada!",
-      description: "Verifique seu email para confirmar o cadastro.",
-    });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      if (data.token) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: data.token,
+          type: "magiclink",
+        });
+
+        if (verifyError) {
+          throw new Error("Erro ao autenticar. Tente novamente.");
+        }
+
+        toast({
+          title: "Conta criada!",
+          description: "Bem-vindo ao MentorHub Pro!",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar conta",
+        description: error.message || "Tente novamente",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = () => {
+    if (countdown === 0) {
+      handleSendCode();
+    }
+  };
+
+  const handleBack = () => {
+    if (step === "code") {
+      setStep("email");
+      setCode("");
+      setErrors({});
+    } else if (step === "name") {
+      setStep("code");
+      setErrors({});
+    }
   };
 
   // Show loading while checking auth
@@ -157,139 +244,185 @@ const Auth = () => {
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">MentorHub Pro</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Acesse sua plataforma de mentoria
+              {step === "email" && "Digite seu email para receber o código de acesso"}
+              {step === "code" && "Digite o código enviado para seu email"}
+              {step === "name" && "Complete seu cadastro"}
             </CardDescription>
           </CardHeader>
           
           <CardContent>
-            <Tabs defaultValue={defaultTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary">
-                <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  Entrar
-                </TabsTrigger>
-                <TabsTrigger value="signup" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  Criar Conta
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-foreground">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        className="pl-10 bg-secondary border-border"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+            {/* Step: Email */}
+            {step === "email" && (
+              <form onSubmit={handleSendCode} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-foreground">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      className="pl-10 bg-secondary border-border"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-gold text-primary-foreground hover:opacity-90"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      Enviar código
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
+
+            {/* Step: Code */}
+            {step === "code" && (
+              <form onSubmit={handleVerifyCode} className="space-y-6">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  Voltar
+                </button>
+
+                <div className="space-y-3">
+                  <Label className="text-foreground flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-primary" />
+                    Código de acesso
+                  </Label>
+                  
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="text-lg font-mono text-primary font-semibold">LBV-</div>
+                    <InputOTP
+                      maxLength={8}
+                      value={code}
+                      onChange={(value) => setCode(value)}
+                      className="justify-center"
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} className="bg-secondary border-border" />
+                        <InputOTPSlot index={1} className="bg-secondary border-border" />
+                        <InputOTPSlot index={2} className="bg-secondary border-border" />
+                        <InputOTPSlot index={3} className="bg-secondary border-border" />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={4} className="bg-secondary border-border" />
+                        <InputOTPSlot index={5} className="bg-secondary border-border" />
+                        <InputOTPSlot index={6} className="bg-secondary border-border" />
+                        <InputOTPSlot index={7} className="bg-secondary border-border" />
+                      </InputOTPGroup>
+                    </InputOTP>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-foreground">Senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-password"
-                        type="password"
-                        placeholder="••••••••"
-                        className="pl-10 bg-secondary border-border"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </div>
-                    {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                  </div>
+                  {errors.code && <p className="text-sm text-destructive text-center">{errors.code}</p>}
                   
-                  <Button 
-                    type="submit" 
-                    className="w-full gradient-gold text-primary-foreground hover:opacity-90"
-                    disabled={isLoading}
+                  <p className="text-xs text-muted-foreground text-center">
+                    Enviado para <span className="text-foreground font-medium">{email}</span>
+                  </p>
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-gold text-primary-foreground hover:opacity-90"
+                  disabled={isLoading || code.length !== 8}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    "Verificar código"
+                  )}
+                </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={countdown > 0}
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Entrando...
-                      </>
-                    ) : (
-                      "Entrar"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="text-foreground">Nome Completo</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-name"
-                        type="text"
-                        placeholder="Seu nome"
-                        className="pl-10 bg-secondary border-border"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                      />
-                    </div>
-                    {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+                    {countdown > 0 
+                      ? `Reenviar código em ${countdown}s`
+                      : "Reenviar código"
+                    }
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Step: Name (new user) */}
+            {step === "name" && (
+              <form onSubmit={handleCreateAccount} className="space-y-4">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  Voltar
+                </button>
+
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 text-center mb-4">
+                  <p className="text-sm text-foreground">
+                    🎉 Parece que você é novo por aqui!<br />
+                    Complete seu cadastro abaixo.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-foreground">Nome Completo</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="Seu nome completo"
+                      className="pl-10 bg-secondary border-border"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      autoFocus
+                    />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-foreground">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        className="pl-10 bg-secondary border-border"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </div>
-                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-foreground">Senha</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        placeholder="Mínimo 6 caracteres"
-                        className="pl-10 bg-secondary border-border"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </div>
-                    {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full gradient-gold text-primary-foreground hover:opacity-90"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Criando conta...
-                      </>
-                    ) : (
-                      "Criar Conta"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                  {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-gold text-primary-foreground hover:opacity-90"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando conta...
+                    </>
+                  ) : (
+                    "Criar minha conta"
+                  )}
+                </Button>
+              </form>
+            )}
             
             <p className="text-xs text-center text-muted-foreground mt-6">
               Ao continuar, você concorda com nossos{" "}
