@@ -28,15 +28,18 @@ serve(async (req) => {
     // Check OTP code - normalize by removing spaces and keeping only digits
     const normalizedCode = code.replace(/\D/g, '');
     
+    console.log("Verifying OTP:", { email: email.toLowerCase(), code: normalizedCode });
+    
     const { data: otpData, error: otpError } = await supabase
       .from("otp_codes")
       .select("*")
       .eq("email", email.toLowerCase())
       .eq("code", normalizedCode)
-      // older rows may have used = null; treat as unused
-      .or("used.is.null,used.eq.false")
+      .eq("used", false)
       .gt("expires_at", new Date().toISOString())
       .single();
+    
+    console.log("OTP query result:", { otpData, otpError });
 
     if (otpError || !otpData) {
       console.error("OTP verification failed:", otpError);
