@@ -930,6 +930,33 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          used: boolean | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          used?: boolean | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          used?: boolean | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1533,6 +1560,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      cleanup_expired_otp_codes: { Args: never; Returns: undefined }
       get_pending_users: {
         Args: never
         Returns: {
