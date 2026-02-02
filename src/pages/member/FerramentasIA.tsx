@@ -45,13 +45,13 @@ export default function FerramentasIA() {
 
   useEffect(() => {
     const fetchMentoradoData = async () => {
-      if (!user || isMentor) {
+      if (!user) {
         setIsLoading(false);
         return;
       }
 
       try {
-        // Get mentorado_id
+        // Get mentorado_id - check for any user (mentor can also have mentorado record for testing)
         const { data: mentorado } = await supabase
           .from('mentorados')
           .select('id')
@@ -78,7 +78,7 @@ export default function FerramentasIA() {
     };
 
     fetchMentoradoData();
-  }, [user, isMentor]);
+  }, [user]);
 
   if (isLoading) {
     return (
