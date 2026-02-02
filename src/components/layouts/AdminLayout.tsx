@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FloatingDock } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
 import { DevModeSelector } from '@/components/DevModeSelector';
+import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, Settings, ArrowLeft } from 'lucide-react';
@@ -152,6 +153,9 @@ export function AdminLayout() {
 
       {/* Dev Mode Selector */}
       <DevModeSelector />
+
+      {/* SOS Notification Alert - Realtime */}
+      <SOSNotificationAlert />
     </div>
   );
 }
