@@ -61,19 +61,19 @@ serve(async (req) => {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 16px; overflow: hidden; }
-    .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 30px; text-align: center; }
-    .header h1 { margin: 0; color: white; font-size: 24px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0b; color: #e2e8f0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #1a1a1d; border-radius: 16px; overflow: hidden; border: 1px solid #27272a; }
+    .header { background: linear-gradient(135deg, #d4af37, #f4d03f); padding: 30px; text-align: center; }
+    .header h1 { margin: 0; color: #0a0a0b; font-size: 24px; }
     .content { padding: 30px; }
     .priority-badge { display: inline-block; background: ${priorityColor}; color: white; padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; text-transform: uppercase; }
-    .category-badge { display: inline-block; background: #334155; color: #94a3b8; padding: 6px 16px; border-radius: 20px; font-size: 14px; margin-left: 8px; }
-    .section { margin: 24px 0; padding: 20px; background: #0f172a; border-radius: 12px; }
-    .section-title { font-size: 12px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; letter-spacing: 1px; }
+    .category-badge { display: inline-block; background: #27272a; color: #a1a1aa; padding: 6px 16px; border-radius: 20px; font-size: 14px; margin-left: 8px; }
+    .section { margin: 24px 0; padding: 20px; background: #0a0a0b; border-radius: 12px; border: 1px solid #27272a; }
+    .section-title { font-size: 12px; text-transform: uppercase; color: #71717a; margin-bottom: 8px; letter-spacing: 1px; }
     .section-content { color: #e2e8f0; line-height: 1.6; }
     .mentorado-info { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px; }
-    .footer { padding: 20px 30px; background: #0f172a; text-align: center; color: #64748b; font-size: 12px; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #d4af37, #f4d03f); display: flex; align-items: center; justify-content: center; color: #0a0a0b; font-weight: bold; font-size: 18px; }
+    .footer { padding: 20px 30px; background: #09090b; text-align: center; color: #52525b; font-size: 12px; border-top: 1px solid #27272a; }
   </style>
 </head>
 <body>
@@ -85,8 +85,8 @@ serve(async (req) => {
       <div class="mentorado-info">
         <div class="avatar">${mentoradoName.charAt(0).toUpperCase()}</div>
         <div>
-          <div style="font-weight: 600; font-size: 18px;">${mentoradoName}</div>
-          <div style="color: #94a3b8; font-size: 14px;">${mentoradoEmail}</div>
+          <div style="font-weight: 600; font-size: 18px; color: #fafafa;">${mentoradoName}</div>
+          <div style="color: #a1a1aa; font-size: 14px;">${mentoradoEmail}</div>
         </div>
       </div>
       
@@ -97,7 +97,7 @@ serve(async (req) => {
       
       <div class="section">
         <div class="section-title">Título do Problema</div>
-        <div class="section-content" style="font-size: 18px; font-weight: 600;">${sosTitle}</div>
+        <div class="section-content" style="font-size: 18px; font-weight: 600; color: #d4af37;">${sosTitle}</div>
       </div>
       
       <div class="section">
@@ -107,11 +107,11 @@ serve(async (req) => {
       
       <div class="section">
         <div class="section-title">Direcionamento Inicial (IA)</div>
-        <div class="section-content" style="color: #a5b4fc;">${initialGuidance}</div>
+        <div class="section-content" style="color: #d4af37;">${initialGuidance}</div>
       </div>
     </div>
     <div class="footer">
-      Plataforma de Mentoria High Ticket • Chamado recebido via Centro SOS
+      LBV TECH - Plataforma para Mentores • Chamado recebido via Centro SOS
     </div>
   </div>
 </body>
@@ -125,17 +125,17 @@ serve(async (req) => {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 16px; overflow: hidden; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0b; color: #e2e8f0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #1a1a1d; border-radius: 16px; overflow: hidden; border: 1px solid #27272a; }
     .header { background: linear-gradient(135deg, #22c55e, #10b981); padding: 30px; text-align: center; }
     .header h1 { margin: 0; color: white; font-size: 24px; }
     .content { padding: 30px; }
     .success-icon { font-size: 48px; text-align: center; margin-bottom: 20px; }
     .message { font-size: 16px; line-height: 1.7; color: #e2e8f0; }
-    .guidance-box { margin: 24px 0; padding: 20px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; }
-    .guidance-title { font-size: 14px; font-weight: 600; color: #a5b4fc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .guidance-box { margin: 24px 0; padding: 20px; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(244, 208, 63, 0.1)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; }
+    .guidance-title { font-size: 14px; font-weight: 600; color: #d4af37; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     .guidance-content { color: #e2e8f0; line-height: 1.6; }
-    .footer { padding: 20px 30px; background: #0f172a; text-align: center; color: #64748b; font-size: 12px; }
+    .footer { padding: 20px 30px; background: #09090b; text-align: center; color: #52525b; font-size: 12px; border-top: 1px solid #27272a; }
   </style>
 </head>
 <body>
@@ -158,13 +158,13 @@ serve(async (req) => {
       </div>
       
       <div class="message">
-        <p style="color: #94a3b8; font-size: 14px;">
+        <p style="color: #a1a1aa; font-size: 14px;">
           <strong>Categoria:</strong> ${sosCategory} • <strong>Prioridade:</strong> ${sosPriority}
         </p>
       </div>
     </div>
     <div class="footer">
-      Plataforma de Mentoria High Ticket • Você receberá uma resposta em breve
+      LBV TECH - Plataforma para Mentores • Você receberá uma resposta em breve
     </div>
   </div>
 </body>
@@ -175,7 +175,7 @@ serve(async (req) => {
     for (const mentorEmail of mentorEmails) {
       try {
         await resend.emails.send({
-          from: "SOS Mentoria <sos@equipe.marcusforti.online>",
+          from: "SOS LBV TECH <sos@equipe.aceleracaoforti.online>",
           to: [mentorEmail],
           subject: `🚨 [SOS ${sosPriority.toUpperCase()}] ${mentoradoName}: ${sosTitle}`,
           html: mentorEmailHtml,
@@ -190,7 +190,7 @@ serve(async (req) => {
     if (mentoradoEmail) {
       try {
         await resend.emails.send({
-          from: "Mentoria High Ticket <contato@equipe.marcusforti.online>",
+          from: "LBV TECH <contato@equipe.aceleracaoforti.online>",
           to: [mentoradoEmail],
           subject: "✅ Seu chamado SOS foi enviado com sucesso!",
           html: mentoradoEmailHtml,
