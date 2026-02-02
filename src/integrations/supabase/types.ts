@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_tool_usage: {
+        Row: {
+          created_at: string | null
+          id: string
+          mentorado_id: string
+          tool_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mentorado_id: string
+          tool_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mentorado_id?: string
+          tool_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tool_usage_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badges: {
         Row: {
           created_at: string | null
@@ -972,6 +1001,96 @@ export type Database = {
           },
         ]
       }
+      reward_catalog: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          points_cost: number
+          stock: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          points_cost: number
+          stock?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          points_cost?: number
+          stock?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      reward_redemptions: {
+        Row: {
+          fulfilled_at: string | null
+          id: string
+          mentorado_id: string
+          notes: string | null
+          points_spent: number
+          redeemed_at: string | null
+          reward_id: string
+          shipping_address: string | null
+          status: string | null
+        }
+        Insert: {
+          fulfilled_at?: string | null
+          id?: string
+          mentorado_id: string
+          notes?: string | null
+          points_spent: number
+          redeemed_at?: string | null
+          reward_id: string
+          shipping_address?: string | null
+          status?: string | null
+        }
+        Update: {
+          fulfilled_at?: string | null
+          id?: string
+          mentorado_id?: string
+          notes?: string | null
+          points_spent?: number
+          redeemed_at?: string | null
+          reward_id?: string
+          shipping_address?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemptions_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "reward_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sos_requests: {
         Row: {
           ai_analysis: Json | null
@@ -1359,6 +1478,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          current_streak: number | null
+          id: string
+          last_access_date: string | null
+          longest_streak: number | null
+          mentorado_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          current_streak?: number | null
+          id?: string
+          last_access_date?: string | null
+          longest_streak?: number | null
+          mentorado_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          current_streak?: number | null
+          id?: string
+          last_access_date?: string | null
+          longest_streak?: number | null
+          mentorado_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_streaks_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: true
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

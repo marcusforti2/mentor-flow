@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   User,
   Sparkles,
+  Gift,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -28,6 +29,7 @@ const menuItems = [
   { icon: BookOpen, label: 'Trilhas', path: '/app/trilhas' },
   { icon: Target, label: 'Meu CRM', path: '/app/meu-crm' },
   { icon: Sparkles, label: 'Ferramentas IA', path: '/app/ferramentas' },
+  { icon: Gift, label: 'Loja de Prêmios', path: '/app/loja' },
   { icon: Calendar, label: 'Calendário', path: '/app/calendario' },
   { icon: Headphones, label: 'Treinamento', path: '/app/treinamento' },
   { icon: Trophy, label: 'Ranking', path: '/app/ranking' },
