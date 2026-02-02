@@ -33,7 +33,8 @@ serve(async (req) => {
       .select("*")
       .eq("email", email.toLowerCase())
       .eq("code", normalizedCode)
-      .eq("used", false)
+      // older rows may have used = null; treat as unused
+      .or("used.is.null,used.eq.false")
       .gt("expires_at", new Date().toISOString())
       .single();
 

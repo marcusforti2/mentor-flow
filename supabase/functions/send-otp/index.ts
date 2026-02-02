@@ -43,12 +43,12 @@ serve(async (req) => {
     const code = generateOTPCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Delete any existing unused codes for this email
+    // Delete any existing unused codes for this email (used can be null on older rows)
     await supabase
       .from("otp_codes")
       .delete()
       .eq("email", email.toLowerCase())
-      .eq("used", false);
+      .or("used.is.null,used.eq.false");
 
     // Insert new OTP code
     const { error: insertError } = await supabase
@@ -57,6 +57,7 @@ serve(async (req) => {
         email: email.toLowerCase(),
         code: code,
         expires_at: expiresAt.toISOString(),
+        used: false,
       });
 
     if (insertError) {
