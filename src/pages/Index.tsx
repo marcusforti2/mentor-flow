@@ -8,11 +8,11 @@ import {
   Trophy, 
   MessageSquare,
   ArrowRight,
-  Sparkles,
   Shield,
   Zap
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LBVLogo } from "@/components/LBVLogo";
 
 const Index = () => {
   const features = [
@@ -60,13 +60,9 @@ const Index = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 glass">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-foreground">MentorHub</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">PRO</span>
-          </div>
+          <Link to="/" className="flex items-center">
+            <LBVLogo variant="full" size="md" />
+          </Link>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Planos</a>
@@ -96,18 +92,18 @@ const Index = () => {
         <div className="container mx-auto text-center relative">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8 animate-fade-in">
             <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm text-muted-foreground">Plataforma SaaS Multi-tenant</span>
+            <span className="text-sm text-muted-foreground">Plataforma para Mentores High Ticket</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             Escale sua <span className="text-gradient-gold">Mentoria</span>
             <br />
-            com <span className="text-gradient-premium">Inteligência Artificial</span>
+            com <span className="text-gradient-premium">LBV TECH</span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            Gerencie mais de 200 mentorados com CRM inteligente, gamificação, 
-            análise de calls e automações que transformam seu programa de mentoria.
+            A plataforma completa para mentores que querem gerenciar +200 mentorados 
+            com CRM inteligente, gamificação e IA que transforma resultados.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: "0.3s" }}>
@@ -175,13 +171,13 @@ const Index = () => {
             <CardContent className="p-12 md:p-16 text-center relative">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium mb-6">
                 <Shield className="w-4 h-4" />
-                Multi-Tenant Seguro
+                Tecnologia Premium para Mentores
               </div>
               <h2 className="text-4xl md:text-5xl font-bold mb-6">
                 Pronto para transformar sua <span className="text-gradient-gold">mentoria</span>?
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-                Junte-se a mentores que estão escalando seus programas com tecnologia e IA.
+                Junte-se a mentores que estão escalando seus programas com a LBV TECH.
                 Comece gratuitamente.
               </p>
               <Link to="/auth?mode=signup">
@@ -199,14 +195,9 @@ const Index = () => {
       <footer className="py-12 px-6 border-t border-border">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg gradient-gold flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-foreground">MentorHub Pro</span>
-            </div>
+            <LBVLogo variant="full" size="sm" />
             <p className="text-sm text-muted-foreground">
-              © 2024 MentorHub Pro. Todos os direitos reservados.
+              © 2024 LBV TECH. Todos os direitos reservados.
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termos</a>
