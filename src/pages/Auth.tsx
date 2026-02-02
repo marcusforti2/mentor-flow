@@ -96,10 +96,8 @@ const Auth = () => {
   const handleVerifyCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
     
-    const fullCode = `LBV-${code}`;
-    
-    if (code.length !== 8) {
-      setErrors({ code: "Digite os 8 números do código" });
+    if (code.length !== 6) {
+      setErrors({ code: "Digite os 6 dígitos do código" });
       return;
     }
     
@@ -107,7 +105,7 @@ const Auth = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { email, code: fullCode },
+        body: { email, code },
       });
 
       if (error) throw error;
@@ -161,10 +159,8 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      const fullCode = `LBV-${code}`;
-      
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { email, code: fullCode, fullName },
+        body: { email, code, fullName },
       });
 
       if (error) throw error;
@@ -310,25 +306,22 @@ const Auth = () => {
                   </Label>
                   
                   <div className="flex flex-col items-center gap-4">
-                    <div className="text-lg font-mono text-primary font-semibold">LBV-</div>
                     <InputOTP
-                      maxLength={8}
+                      maxLength={6}
                       value={code}
                       onChange={(value) => setCode(value)}
                       className="justify-center"
                     >
                       <InputOTPGroup>
-                        <InputOTPSlot index={0} className="bg-secondary border-border" />
-                        <InputOTPSlot index={1} className="bg-secondary border-border" />
-                        <InputOTPSlot index={2} className="bg-secondary border-border" />
-                        <InputOTPSlot index={3} className="bg-secondary border-border" />
+                        <InputOTPSlot index={0} className="bg-secondary border-border w-12 h-14 text-xl" />
+                        <InputOTPSlot index={1} className="bg-secondary border-border w-12 h-14 text-xl" />
+                        <InputOTPSlot index={2} className="bg-secondary border-border w-12 h-14 text-xl" />
                       </InputOTPGroup>
                       <InputOTPSeparator />
                       <InputOTPGroup>
-                        <InputOTPSlot index={4} className="bg-secondary border-border" />
-                        <InputOTPSlot index={5} className="bg-secondary border-border" />
-                        <InputOTPSlot index={6} className="bg-secondary border-border" />
-                        <InputOTPSlot index={7} className="bg-secondary border-border" />
+                        <InputOTPSlot index={3} className="bg-secondary border-border w-12 h-14 text-xl" />
+                        <InputOTPSlot index={4} className="bg-secondary border-border w-12 h-14 text-xl" />
+                        <InputOTPSlot index={5} className="bg-secondary border-border w-12 h-14 text-xl" />
                       </InputOTPGroup>
                     </InputOTP>
                   </div>
@@ -343,7 +336,7 @@ const Auth = () => {
                 <Button 
                   type="submit" 
                   className="w-full gradient-gold text-primary-foreground hover:opacity-90"
-                  disabled={isLoading || code.length !== 8}
+                  disabled={isLoading || code.length !== 6}
                 >
                   {isLoading ? (
                     <>

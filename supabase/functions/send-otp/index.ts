@@ -11,9 +11,8 @@ const corsHeaders = {
 };
 
 function generateOTPCode(): string {
-  // Generate 8 random digits
-  const digits = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('');
-  return `LBV-${digits}`;
+  // Generate 6 random digits
+  return Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join('');
 }
 
 serve(async (req) => {
@@ -101,7 +100,7 @@ serve(async (req) => {
                       </p>
                       
                       <div style="background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #c9a227 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
-                        <span style="font-size: 32px; font-weight: 700; letter-spacing: 4px; color: #0a0a0b; font-family: 'Monaco', 'Consolas', monospace;">
+                        <span style="font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #0a0a0b; font-family: 'Monaco', 'Consolas', monospace;">
                           ${code}
                         </span>
                       </div>
