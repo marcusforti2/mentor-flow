@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,25 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Mail, Lock, User, Loader2, Sparkles, Shield } from "lucide-react";
+import { Crown, Mail, User, Loader2, Sparkles, Shield, ArrowLeft, Clipboard } from "lucide-react";
 import { z } from "zod";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { LBVLogo } from "@/components/LBVLogo";
 
 const emailSchema = z.string().email("Email inválido");
-const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres");
+
+type Step = "form" | "otp";
 
 const Setup = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [step, setStep] = useState<Step>("form");
   const [isLoading, setIsLoading] = useState(false);
   const [checkingMentor, setCheckingMentor] = useState(true);
   const [hasMentor, setHasMentor] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string; businessName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; fullName?: string; businessName?: string }>({});
+  const isSubmittingRef = useRef(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, role, signUp, assignRole } = useAuth();
+  const { user, role, assignRole } = useAuth();
 
   // Check if mentor already exists
   useEffect(() => {
@@ -66,7 +71,7 @@ const Setup = () => {
     }
   }, [user, role, navigate]);
 
-  // After signup, assign mentor role
+  // After login, assign mentor role
   useEffect(() => {
     const assignMentorRole = async () => {
       if (user && !role && assignRole) {
@@ -90,6 +95,14 @@ const Setup = () => {
             .update({ business_name: businessName })
             .eq('user_id', user.id);
         }
+
+        // Update profile with full name
+        if (fullName) {
+          await supabase
+            .from('profiles')
+            .update({ full_name: fullName })
+            .eq('user_id', user.id);
+        }
         
         toast({
           title: "Configuração concluída!",
@@ -101,24 +114,16 @@ const Setup = () => {
     };
 
     assignMentorRole();
-  }, [user, role, assignRole, businessName, navigate, toast]);
+  }, [user, role, assignRole, businessName, fullName, navigate, toast]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string; fullName?: string; businessName?: string } = {};
+    const newErrors: { email?: string; fullName?: string; businessName?: string } = {};
     
     try {
       emailSchema.parse(email);
     } catch (e) {
       if (e instanceof z.ZodError) {
         newErrors.email = e.errors[0].message;
-      }
-    }
-    
-    try {
-      passwordSchema.parse(password);
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        newErrors.password = e.errors[0].message;
       }
     }
 
@@ -134,37 +139,108 @@ const Setup = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSetup = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
     setIsLoading(true);
     
-    const { error } = await signUp(email, password, fullName);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-otp", {
+        body: { email: email.toLowerCase() },
+      });
 
-    if (error) {
+      if (error) throw error;
+
+      toast({
+        title: "Código enviado!",
+        description: "Verifique seu email e insira o código de 6 dígitos.",
+      });
+      
+      setStep("otp");
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast({
+        title: "Erro ao enviar código",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-      if (error.message.includes("already registered")) {
-        toast({
-          title: "Email já cadastrado",
-          description: "Este email já está em uso. Tente fazer login.",
-          variant: "destructive",
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otpCode.length !== 6 || isSubmittingRef.current) return;
+    
+    isSubmittingRef.current = true;
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { email: email.toLowerCase(), code: otpCode },
+      });
+
+      if (error) throw error;
+
+      if (data?.access_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
         });
+
+        if (sessionError) throw sessionError;
+
+        toast({
+          title: "Verificado com sucesso!",
+          description: "Configurando sua conta de mentor...",
+        });
+        // Role assignment will happen in useEffect
+      } else {
+        throw new Error("Token não recebido");
+      }
+    } catch (error: any) {
+      console.error("Error verifying OTP:", error);
+      toast({
+        title: "Código inválido",
+        description: "Verifique o código e tente novamente.",
+        variant: "destructive",
+      });
+      setOtpCode("");
+    } finally {
+      setIsLoading(false);
+      isSubmittingRef.current = false;
+    }
+  };
+
+  const handleCodeChange = (value: string) => {
+    setOtpCode(value);
+    if (value.length === 6 && !isSubmittingRef.current) {
+      setTimeout(() => handleVerifyOTP(), 100);
+    }
+  };
+
+  const handlePasteCode = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const digits = text.replace(/\D/g, '').slice(0, 6);
+      if (digits.length === 6) {
+        setOtpCode(digits);
+        setTimeout(() => handleVerifyOTP(), 100);
       } else {
         toast({
-          title: "Erro ao criar conta",
-          description: error.message,
+          title: "Código inválido",
+          description: "Cole um código de 6 dígitos.",
           variant: "destructive",
         });
       }
-      return;
+    } catch (error) {
+      toast({
+        title: "Erro ao colar",
+        description: "Não foi possível acessar a área de transferência.",
+        variant: "destructive",
+      });
     }
-
-    toast({
-      title: "Conta criada!",
-      description: "Verifique seu email para confirmar o cadastro.",
-    });
-    // Role assignment will happen in useEffect when user state updates
   };
 
   // Show loading while checking for existing mentor
@@ -203,106 +279,144 @@ const Setup = () => {
         <Card className="glass-card border-primary/20">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 rounded-2xl gradient-gold flex items-center justify-center glow-gold">
-                <Crown className="w-9 h-9 text-primary-foreground" />
-              </div>
+              <LBVLogo size="lg" />
             </div>
             <CardTitle className="text-3xl font-display font-bold text-foreground">
-              Configuração Inicial
+              {step === "form" ? "Configuração Inicial" : "Verificar Código"}
             </CardTitle>
             <CardDescription className="text-muted-foreground text-base">
-              Configure sua plataforma de mentoria como <span className="text-primary font-semibold">Mentor Principal</span>
+              {step === "form" ? (
+                <>Configure sua plataforma de mentoria como <span className="text-primary font-semibold">Mentor Principal</span></>
+              ) : (
+                <>Insira o código de 6 dígitos enviado para <span className="text-primary font-semibold">{email}</span></>
+              )}
             </CardDescription>
           </CardHeader>
           
           <CardContent className="pt-6">
-            <form onSubmit={handleSetup} className="space-y-5">
-              {/* Business Name */}
-              <div className="space-y-2">
-                <Label htmlFor="business-name" className="text-foreground flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Nome da Mentoria
-                </Label>
-                <Input
-                  id="business-name"
-                  type="text"
-                  placeholder="Ex: Mentoria Elite Vendas"
-                  className="bg-secondary/50 border-border/50 focus:border-primary"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                />
-                {errors.businessName && <p className="text-sm text-destructive">{errors.businessName}</p>}
-              </div>
+            {step === "form" ? (
+              <form onSubmit={handleSendOTP} className="space-y-5">
+                {/* Business Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="business-name" className="text-foreground flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Nome da Mentoria
+                  </Label>
+                  <Input
+                    id="business-name"
+                    type="text"
+                    placeholder="Ex: Mentoria Elite Vendas"
+                    className="bg-secondary/50 border-border/50 focus:border-primary"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                  />
+                  {errors.businessName && <p className="text-sm text-destructive">{errors.businessName}</p>}
+                </div>
 
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="full-name" className="text-foreground flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary" />
-                  Seu Nome Completo
-                </Label>
-                <Input
-                  id="full-name"
-                  type="text"
-                  placeholder="Nome completo"
-                  className="bg-secondary/50 border-border/50 focus:border-primary"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
-                {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
-              </div>
-              
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-primary" />
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  className="bg-secondary/50 border-border/50 focus:border-primary"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-              </div>
-              
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-foreground flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary" />
-                  Senha
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  className="bg-secondary/50 border-border/50 focus:border-primary"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full gradient-gold text-primary-foreground hover:opacity-90 h-12 text-base font-semibold glow-gold"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Configurando...
-                  </>
-                ) : (
-                  <>
-                    <Crown className="mr-2 h-5 w-5" />
-                    Criar Conta de Mentor
-                  </>
+                {/* Full Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="full-name" className="text-foreground flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    Seu Nome Completo
+                  </Label>
+                  <Input
+                    id="full-name"
+                    type="text"
+                    placeholder="Nome completo"
+                    className="bg-secondary/50 border-border/50 focus:border-primary"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                  {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+                </div>
+                
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-foreground flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-primary" />
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    className="bg-secondary/50 border-border/50 focus:border-primary"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-gold text-primary-foreground hover:opacity-90 h-12 text-base font-semibold glow-gold"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Enviando código...
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="mr-2 h-5 w-5" />
+                      Enviar Código de Verificação
+                    </>
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={handleCodeChange}
+                    disabled={isLoading}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} className="w-12 h-14 text-xl" />
+                      <InputOTPSlot index={1} className="w-12 h-14 text-xl" />
+                      <InputOTPSlot index={2} className="w-12 h-14 text-xl" />
+                      <InputOTPSlot index={3} className="w-12 h-14 text-xl" />
+                      <InputOTPSlot index={4} className="w-12 h-14 text-xl" />
+                      <InputOTPSlot index={5} className="w-12 h-14 text-xl" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handlePasteCode}
+                  disabled={isLoading}
+                >
+                  <Clipboard className="mr-2 h-4 w-4" />
+                  Colar código
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setStep("form");
+                    setOtpCode("");
+                  }}
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar e alterar dados
+                </Button>
+
+                {isLoading && (
+                  <div className="flex justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
                 )}
-              </Button>
-            </form>
+              </div>
+            )}
             
             <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/10">
               <p className="text-xs text-center text-muted-foreground">
