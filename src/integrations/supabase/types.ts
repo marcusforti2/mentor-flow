@@ -796,6 +796,7 @@ export type Database = {
           business_name: string | null
           business_type: string | null
           created_at: string | null
+          daily_prospection_goal: number | null
           id: string
           ideal_client_profile: string | null
           main_offer: string | null
@@ -810,6 +811,7 @@ export type Database = {
           business_name?: string | null
           business_type?: string | null
           created_at?: string | null
+          daily_prospection_goal?: number | null
           id?: string
           ideal_client_profile?: string | null
           main_offer?: string | null
@@ -824,6 +826,7 @@ export type Database = {
           business_name?: string | null
           business_type?: string | null
           created_at?: string | null
+          daily_prospection_goal?: number | null
           id?: string
           ideal_client_profile?: string | null
           main_offer?: string | null

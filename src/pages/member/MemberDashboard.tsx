@@ -3,6 +3,7 @@ import { useGamification } from '@/hooks/useGamification';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { BadgeCard } from '@/components/gamification/BadgeCard';
 import { StreakCounter } from '@/components/gamification/StreakCounter';
+import { DailyGoalCounter } from '@/components/gamification/DailyGoalCounter';
 import { 
   BookOpen, 
   Target, 
@@ -26,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
   const { profile, user, isMentor } = useAuth();
-  const { badges, stats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification } = useGamification();
+  const { badges, stats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -103,7 +104,7 @@ export default function MemberDashboard() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -119,6 +120,11 @@ export default function MemberDashboard() {
           </Button>
         </Link>
       </div>
+
+      {/* Daily Goal Counter */}
+      {mentoradoId && (
+        <DailyGoalCounter mentoradoId={mentoradoId} />
+      )}
 
       {/* Bento Grid */}
       <BentoGrid>

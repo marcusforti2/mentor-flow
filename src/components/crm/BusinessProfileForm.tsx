@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Sparkles, X } from "lucide-react";
+import { Loader2, Save, Sparkles, X, Target } from "lucide-react";
 
 interface BusinessProfile {
   id?: string;
@@ -26,6 +26,7 @@ interface BusinessProfile {
   unique_value_proposition: string;
   pain_points_solved: string[];
   ideal_client_profile: string;
+  daily_prospection_goal: number;
 }
 
 interface BusinessProfileFormProps {
@@ -63,6 +64,7 @@ export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
     unique_value_proposition: "",
     pain_points_solved: [],
     ideal_client_profile: "",
+    daily_prospection_goal: 10,
   });
 
   useEffect(() => {
@@ -88,6 +90,7 @@ export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
           unique_value_proposition: data.unique_value_proposition || "",
           pain_points_solved: data.pain_points_solved || [],
           ideal_client_profile: data.ideal_client_profile || "",
+          daily_prospection_goal: data.daily_prospection_goal || 10,
         });
       }
     } catch (error) {
@@ -110,6 +113,7 @@ export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
         unique_value_proposition: profile.unique_value_proposition || null,
         pain_points_solved: profile.pain_points_solved,
         ideal_client_profile: profile.ideal_client_profile || null,
+        daily_prospection_goal: profile.daily_prospection_goal,
       };
 
       if (profile.id) {
@@ -314,6 +318,24 @@ export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
             onChange={(e) => setProfile({ ...profile, ideal_client_profile: e.target.value })}
             placeholder="Descreva seu cliente ideal: cargo, empresa, faturamento, desafios..."
             rows={3}
+          />
+        </div>
+
+        <div className="pt-4 border-t">
+          <Label className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-primary" />
+            Meta Diária de Prospecções
+          </Label>
+          <p className="text-xs text-muted-foreground mb-2">
+            Quantas prospecções você quer fazer por dia?
+          </p>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={profile.daily_prospection_goal}
+            onChange={(e) => setProfile({ ...profile, daily_prospection_goal: parseInt(e.target.value) || 10 })}
+            className="w-32"
           />
         </div>
 
