@@ -120,12 +120,12 @@ const Auth = () => {
         return;
       }
 
-      if (data.token) {
-        // Verify the token with Supabase
+      if (data.tokenHash) {
+        // Verify the token hash with Supabase
         const { error: verifyError } = await supabase.auth.verifyOtp({
-          email,
-          token: data.token,
-          type: "magiclink",
+          email: data.email,
+          token_hash: data.tokenHash,
+          type: "email",
         });
 
         if (verifyError) {
@@ -170,11 +170,11 @@ const Auth = () => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      if (data.token) {
+      if (data.tokenHash) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
-          email,
-          token: data.token,
-          type: "magiclink",
+          email: data.email,
+          token_hash: data.tokenHash,
+          type: "email",
         });
 
         if (verifyError) {
@@ -183,7 +183,7 @@ const Auth = () => {
 
         toast({
           title: "Conta criada!",
-          description: "Bem-vindo ao MentorHub Pro!",
+          description: "Bem-vindo ao LBV TECH!",
         });
       }
     } catch (error: any) {
