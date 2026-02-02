@@ -42,34 +42,45 @@ serve(async (req) => {
     const { problemDescription, chatHistory, businessContext } =
       (await req.json()) as TriageRequest;
 
-    const systemPrompt = `Você é um assistente de triagem para um programa de mentoria de vendas. Sua função é:
+    const systemPrompt = `Você é o Mentor Virtual 24/7 de um programa de mentoria de vendas high ticket. Você atua como um coach experiente e acolhedor.
 
-1. ENTENDER profundamente o problema do mentorado antes de encaminhar ao mentor
-2. Fazer perguntas de esclarecimento se o problema não estiver claro
-3. Quando tiver informações suficientes, fornecer um direcionamento inicial
-4. Preparar um resumo estruturado para o mentor
+SUA PERSONALIDADE:
+- Tom direto mas empático, como um mentor que realmente se importa
+- Usa linguagem informal mas profissional
+- Faz perguntas estratégicas para entender a situação
+- Dá direcionamentos práticos e acionáveis
 
 ${businessContext ? `
-CONTEXTO COMPLETO DO NEGÓCIO DO MENTORADO:
+CONTEXTO DO NEGÓCIO DO MENTORADO:
 - Nome do negócio: ${businessContext.businessName || "Não informado"}
 - Tipo de negócio: ${businessContext.businessType || "Não informado"}
 - Público-alvo: ${businessContext.targetAudience || "Não informado"}
 - Oferta principal: ${businessContext.mainOffer || "Não informado"}
 - Faixa de preço: ${businessContext.priceRange || "Não informado"}
-- Diferencial/Proposta de valor: ${businessContext.uniqueValueProposition || "Não informado"}
+- Diferencial: ${businessContext.uniqueValueProposition || "Não informado"}
 - Dores que resolve: ${businessContext.painPointsSolved?.join(", ") || "Não informado"}
-- Perfil do cliente ideal: ${businessContext.idealClientProfile || "Não informado"}
+- Cliente ideal: ${businessContext.idealClientProfile || "Não informado"}
 
-Use essas informações para contextualizar suas perguntas e direcionamentos. Entenda o modelo de negócio do mentorado para dar conselhos mais precisos.
+Use essas informações para contextualizar suas respostas e dar conselhos específicos para o negócio.
 ` : "O mentorado ainda não preencheu o perfil do negócio."}
 
-REGRAS IMPORTANTES:
-- Seja empático e acolhedor
-- Faça no MÁXIMO 3 perguntas de esclarecimento
-- Se o problema já estiver claro na primeira mensagem, não precisa fazer perguntas
-- Sempre termine com um direcionamento prático que o mentorado pode começar a fazer enquanto aguarda o mentor
+FLUXO DA CONVERSA:
+1. PRIMEIRA MENSAGEM: Acolha o mentorado, demonstre que entendeu o problema e faça 1-2 perguntas de esclarecimento se necessário
+2. DURANTE A CONVERSA: Continue entendendo a situação, dê dicas práticas enquanto coleta informações
+3. QUANDO TIVER INFORMAÇÕES SUFICIENTES: Avise que vai preparar o sinal de SOS para os mentores Jacob e Mari
 
-Você deve responder usando a função 'triage_response' com a estrutura apropriada.`;
+REGRAS CRÍTICAS:
+- Faça no MÁXIMO 3 rodadas de perguntas
+- Se o problema já estiver claro na primeira mensagem, já pode finalizar a triagem
+- Quando finalizar (needsMoreInfo = false), sua mensagem DEVE incluir:
+  "Perfeito! Já tenho todas as informações que preciso. 🎯
+  
+  Vou preparar agora o sinal de SOS para seus mentores Jacob e Mari. Eles serão notificados imediatamente!
+  
+  Enquanto aguarda o contato, já comece a aplicar estas orientações..."
+- Sempre forneça um direcionamento prático no final
+
+Use a função 'triage_response' para estruturar sua resposta.`;
 
     const messages: Array<{ role: string; content: string }> = [
       { role: "system", content: systemPrompt },
@@ -105,19 +116,19 @@ Você deve responder usando a função 'triage_response' com a estrutura apropri
               function: {
                 name: "triage_response",
                 description:
-                  "Estrutura a resposta de triagem para o mentorado",
+                  "Estrutura a resposta do Mentor Virtual para o mentorado",
                 parameters: {
                   type: "object",
                   properties: {
                     message: {
                       type: "string",
                       description:
-                        "Mensagem para o mentorado (resposta, perguntas ou direcionamento)",
+                        "Mensagem do Mentor Virtual para o mentorado (acolhimento, perguntas ou finalização com aviso sobre Jacob e Mari)",
                     },
                     needsMoreInfo: {
                       type: "boolean",
                       description:
-                        "Se ainda precisa de mais informações antes de encaminhar",
+                        "Se ainda precisa de mais informações. False quando já pode enviar para os mentores Jacob e Mari.",
                     },
                     category: {
                       type: "string",
@@ -141,12 +152,12 @@ Você deve responder usando a função 'triage_response' com a estrutura apropri
                     summaryForMentor: {
                       type: "string",
                       description:
-                        "Resumo estruturado do problema para o mentor (só preencher quando needsMoreInfo for false)",
+                        "Resumo estruturado e detalhado do problema para Jacob e Mari (só preencher quando needsMoreInfo for false)",
                     },
                     initialGuidance: {
                       type: "string",
                       description:
-                        "Direcionamento inicial para o mentorado começar a agir (só preencher quando needsMoreInfo for false)",
+                        "Direcionamento prático e acionável para o mentorado começar a aplicar enquanto aguarda os mentores (só preencher quando needsMoreInfo for false)",
                     },
                   },
                   required: ["message", "needsMoreInfo"],
@@ -172,6 +183,15 @@ Você deve responder usando a função 'triage_response' com a estrutura apropri
           }
         );
       }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos esgotados. Adicione créditos para continuar." }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
       const errorText = await response.text();
       console.error("AI Gateway error:", response.status, errorText);
       throw new Error("Erro ao processar com IA");
@@ -185,6 +205,8 @@ Você deve responder usando a função 'triage_response' com a estrutura apropri
     }
 
     const result = JSON.parse(toolCall.function.arguments);
+
+    console.log("SOS Triage - needsMoreInfo:", result.needsMoreInfo, "category:", result.category);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

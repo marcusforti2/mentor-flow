@@ -228,6 +228,13 @@ export default function CentroSOS() {
           ? problemDescription.substring(0, 50) + "..."
           : problemDescription;
 
+      // Get mentorado profile info for email
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", user?.id)
+        .single();
+
       const insertData = {
         mentorado_id: mentoradoId,
         title,
@@ -244,7 +251,27 @@ export default function CentroSOS() {
 
       if (error) throw error;
 
-      toast.success("Chamado enviado! Seu mentor será notificado.");
+      // Send email notifications
+      try {
+        await supabase.functions.invoke("send-sos-notification", {
+          body: {
+            mentoradoId,
+            mentoradoName: profile?.full_name || "Mentorado",
+            mentoradoEmail: profile?.email || "",
+            sosTitle: title,
+            sosDescription: lastTriageResult.summaryForMentor || problemDescription,
+            sosPriority: lastTriageResult.priority || "média",
+            sosCategory: lastTriageResult.category || "outro",
+            initialGuidance: lastTriageResult.initialGuidance || "",
+          },
+        });
+        console.log("Email notifications sent successfully");
+      } catch (emailError) {
+        console.error("Error sending email notifications:", emailError);
+        // Don't fail the whole operation if email fails
+      }
+
+      toast.success("🚨 Chamado SOS enviado! Jacob e Mari foram notificados por email.");
 
       // Reset form
       setProblemDescription("");
@@ -330,7 +357,7 @@ export default function CentroSOS() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
-                  placeholder="Conte o que está acontecendo... Quanto mais detalhes, melhor a IA poderá te ajudar antes de encaminhar ao mentor."
+                  placeholder="Conte o que está acontecendo... O Mentor Virtual vai entender sua situação e preparar o sinal de SOS para Jacob e Mari."
                   value={problemDescription}
                   onChange={(e) => setProblemDescription(e.target.value)}
                   rows={6}
@@ -346,7 +373,7 @@ export default function CentroSOS() {
                     ) : (
                       <>
                         <Bot className="w-4 h-4 mr-2" />
-                        Iniciar Triagem
+                        Falar com Mentor Virtual
                       </>
                     )}
                   </Button>
@@ -357,10 +384,15 @@ export default function CentroSOS() {
             <div className="grid gap-6 lg:grid-cols-3">
               {/* Chat area */}
               <Card className="lg:col-span-2">
-                <CardHeader>
+              <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-primary" />
-                    Triagem Inteligente
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                      <Bot className="w-4 h-4 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <span className="text-lg">Mentor Virtual 24/7</span>
+                      <p className="text-xs text-muted-foreground font-normal">Seu coach de vendas está aqui para ajudar</p>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
