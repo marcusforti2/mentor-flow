@@ -53,26 +53,27 @@ serve(async (req) => {
     );
 
     if (existingUser) {
-      // User exists - generate magic link token for login
-      const { data: signInData, error: signInError } = await supabase.auth.admin.generateLink({
+      // User exists - generate magic link and extract the verification URL
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: "magiclink",
         email: email.toLowerCase(),
       });
 
-      if (signInError) {
-        console.error("Error generating magic link:", signInError);
+      if (linkError) {
+        console.error("Error generating magic link:", linkError);
         throw new Error("Erro ao autenticar");
       }
 
-      // Extract the token from the link
-      const token = signInData.properties?.hashed_token;
+      console.log("Magic link generated for existing user:", email);
 
+      // Return the action link properties for frontend verification
       return new Response(
         JSON.stringify({
           success: true,
           isNewUser: false,
-          token: token,
-          tokenType: "magiclink",
+          actionLink: linkData.properties?.action_link,
+          tokenHash: linkData.properties?.hashed_token,
+          email: email.toLowerCase(),
         }),
         {
           status: 200,
@@ -80,9 +81,8 @@ serve(async (req) => {
         }
       );
     } else {
-      // New user - create account with auto-confirm
+      // New user - need name
       if (!fullName) {
-        // Need name for signup
         return new Response(
           JSON.stringify({
             success: true,
@@ -132,12 +132,15 @@ serve(async (req) => {
         throw new Error("Erro ao autenticar novo usuário");
       }
 
+      console.log("New user created and magic link generated:", email);
+
       return new Response(
         JSON.stringify({
           success: true,
           isNewUser: true,
-          token: linkData.properties?.hashed_token,
-          tokenType: "magiclink",
+          actionLink: linkData.properties?.action_link,
+          tokenHash: linkData.properties?.hashed_token,
+          email: email.toLowerCase(),
         }),
         {
           status: 200,
