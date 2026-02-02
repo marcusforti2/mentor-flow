@@ -21,14 +21,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
-  const { profile, user } = useAuth();
+  const { profile, user, isMentor } = useAuth();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user) return;
+      if (!user || isMentor) return; // Skip for mentors
       
       try {
         // Get mentorado ID (or auto-link if missing)
@@ -84,7 +84,7 @@ export default function MemberDashboard() {
     };
     
     fetchStats();
-  }, [user]);
+  }, [user, isMentor]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
