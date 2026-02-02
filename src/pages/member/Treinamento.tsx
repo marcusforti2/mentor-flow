@@ -63,7 +63,7 @@ interface SavedAnalysis {
 }
 
 export default function Treinamento() {
-  const { user } = useAuth();
+  const { user, isMentor } = useAuth();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"transcricao" | "prints">("transcricao");
   const [viewMode, setViewMode] = useState<"new" | "history">("new");
@@ -88,7 +88,7 @@ export default function Treinamento() {
 
   useEffect(() => {
     const fetchMentoradoId = async () => {
-      if (!user) return;
+      if (!user || isMentor) return; // Skip for mentors
 
       // First try to find the mentorado row
       const { data: mentorado, error: mentoradoError } = await supabase
@@ -122,7 +122,7 @@ export default function Treinamento() {
       }
     };
     fetchMentoradoId();
-  }, [user]);
+  }, [user, isMentor]);
 
   // Load history when switching to history tab
   useEffect(() => {
