@@ -8,11 +8,11 @@ import {
   Trophy, 
   MessageSquare,
   ArrowRight,
+  Sparkles,
   Shield,
   Zap
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import lbvLogo from '@/assets/lbv-tech-logo.png';
 
 const Index = () => {
   const features = [
@@ -60,8 +60,12 @@ const Index = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 glass">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={lbvLogo} alt="LBV TECH" className="h-8 w-auto" />
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-bold text-foreground">MentorHub</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">PRO</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
@@ -195,11 +199,14 @@ const Index = () => {
       <footer className="py-12 px-6 border-t border-border">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <img src={lbvLogo} alt="LBV TECH" className="h-6 w-auto" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg gradient-gold flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-foreground">MentorHub Pro</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2026 LBV TECH. Todos os direitos reservados.
+              © 2024 MentorHub Pro. Todos os direitos reservados.
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termos</a>

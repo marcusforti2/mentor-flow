@@ -21,7 +21,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
-  const { profile, user, role } = useAuth();
+  const { profile, user } = useAuth();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -42,8 +42,7 @@ export default function MemberDashboard() {
 
         if (mentorado?.id) {
           mentoradoId = mentorado.id;
-        } else if (role !== 'mentor') {
-          // Skip auto-link for mentors (they may be testing via DevMode)
+        } else {
           if (mentoradoError) {
             console.warn("Mentorado fetch error:", mentoradoError);
           }
@@ -85,7 +84,7 @@ export default function MemberDashboard() {
     };
     
     fetchStats();
-  }, [user, role]);
+  }, [user]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";

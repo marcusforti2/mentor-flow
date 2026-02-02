@@ -63,7 +63,7 @@ interface SavedAnalysis {
 }
 
 export default function Treinamento() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"transcricao" | "prints">("transcricao");
   const [viewMode, setViewMode] = useState<"new" | "history">("new");
@@ -102,12 +102,6 @@ export default function Treinamento() {
         return;
       }
 
-      // Skip auto-link for mentors (they may be testing via DevMode)
-      if (role === 'mentor') {
-        console.log("Mentor testing via DevMode - skipping ensure-mentorado");
-        return;
-      }
-
       // If not found, try to auto-link (only works when there is exactly 1 mentor)
       if (mentoradoError) {
         console.warn("Mentorado fetch error:", mentoradoError);
@@ -128,7 +122,7 @@ export default function Treinamento() {
       }
     };
     fetchMentoradoId();
-  }, [user, role]);
+  }, [user]);
 
   // Load history when switching to history tab
   useEffect(() => {
