@@ -131,12 +131,12 @@ const Auth = () => {
       if (data.tokenHash) {
         // Verify the token hash with Supabase
         const { error: verifyError } = await supabase.auth.verifyOtp({
-          email: data.email,
           token_hash: data.tokenHash,
-          type: "email",
+          type: "magiclink",
         });
 
         if (verifyError) {
+          console.error("verifyOtp error:", verifyError);
           throw new Error("Erro ao autenticar. Tente novamente.");
         }
 
@@ -207,12 +207,12 @@ const Auth = () => {
 
       if (data.tokenHash) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
-          email: data.email,
           token_hash: data.tokenHash,
-          type: "email",
+          type: "magiclink",
         });
 
         if (verifyError) {
+          console.error("verifyOtp error:", verifyError);
           throw new Error("Erro ao autenticar. Tente novamente.");
         }
 

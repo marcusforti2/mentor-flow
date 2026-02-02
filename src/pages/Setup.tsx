@@ -183,13 +183,17 @@ const Setup = () => {
 
       if (error) throw error;
 
-      if (data?.access_token) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
+      if (data?.tokenHash) {
+        // Verify the token hash with Supabase
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: data.tokenHash,
+          type: "magiclink",
         });
 
-        if (sessionError) throw sessionError;
+        if (verifyError) {
+          console.error("verifyOtp error:", verifyError);
+          throw verifyError;
+        }
 
         toast({
           title: "Verificado com sucesso!",
