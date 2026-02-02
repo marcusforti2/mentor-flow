@@ -25,12 +25,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check OTP code
+    // Check OTP code - normalize by removing spaces and keeping only digits
+    const normalizedCode = code.replace(/\D/g, '');
+    
     const { data: otpData, error: otpError } = await supabase
       .from("otp_codes")
       .select("*")
       .eq("email", email.toLowerCase())
-      .eq("code", code.toUpperCase())
+      .eq("code", normalizedCode)
       .eq("used", false)
       .gt("expires_at", new Date().toISOString())
       .single();
