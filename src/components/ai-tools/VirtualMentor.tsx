@@ -187,50 +187,52 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
   };
 
   return (
-    <Card className="glass-card flex flex-col h-[600px]">
-      <CardHeader className="pb-3">
+    <Card className="glass-card flex flex-col h-[700px] lg:h-[750px]">
+      <CardHeader className="pb-4 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Bot className="h-4 w-4 text-primary-foreground" />
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
+              <Bot className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <CardTitle className="text-lg">Mentor Virtual 24/7</CardTitle>
-              <CardDescription className="text-xs">
+              <CardTitle className="text-xl font-display">Mentor Virtual 24/7</CardTitle>
+              <CardDescription className="text-sm">
                 Seu coach de vendas de alto ticket
               </CardDescription>
             </div>
           </div>
           {messages.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearChat}>
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={clearChat} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
               Limpar
             </Button>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col min-h-0">
+      <CardContent className="flex-1 flex flex-col min-h-0 p-4 lg:p-6">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <Bot className="h-16 w-16 text-primary/50 mb-4" />
-            <h3 className="font-semibold mb-2">Olá! Sou seu Mentor Virtual</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md">
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-6">
+              <Bot className="h-10 w-10 text-primary" />
+            </div>
+            <h3 className="text-xl font-display font-semibold mb-3">Olá! Sou seu Mentor Virtual</h3>
+            <p className="text-base text-muted-foreground mb-8 max-w-lg leading-relaxed">
               Estou aqui para ajudar com estratégias de vendas, scripts, objeções e tudo sobre seu negócio. Pergunte qualquer coisa!
             </p>
 
-            <div className="w-full max-w-md space-y-2">
-              <p className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
-                <Lightbulb className="h-3 w-3" />
+            <div className="w-full max-w-xl space-y-3">
+              <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
+                <Lightbulb className="h-4 w-4 text-warning" />
                 Perguntas rápidas:
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {quickQuestions.map((question, index) => (
                   <Button
                     key={index}
                     variant="outline"
-                    size="sm"
-                    className="text-xs h-auto py-2 px-3 text-left justify-start"
+                    size="lg"
+                    className="text-sm h-auto py-3 px-4 text-left justify-start hover:bg-primary/10 hover:border-primary/50 transition-colors"
                     onClick={() => sendMessage(question)}
                   >
                     {question}
@@ -241,54 +243,54 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollRef}>
+              <div className="space-y-6 pb-4">
                 {messages.map((message, index) => (
                   <div
                     key={index}
                     className={cn(
-                      'flex gap-3',
+                      'flex gap-4',
                       message.role === 'user' ? 'justify-end' : 'justify-start'
                     )}
                   >
                     {message.role === 'assistant' && (
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
-                        <Bot className="h-4 w-4 text-primary-foreground" />
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0 shadow-md">
+                        <Bot className="h-5 w-5 text-primary-foreground" />
                       </div>
                     )}
                     <div
                       className={cn(
-                        'max-w-[80%] rounded-2xl px-4 py-2',
+                        'max-w-[85%] lg:max-w-[75%] rounded-2xl',
                         message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
+                          ? 'bg-primary text-primary-foreground px-5 py-3'
+                          : 'bg-muted/80 px-5 py-4'
                       )}
                     >
                       {message.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="prose prose-base max-w-none dark:prose-invert prose-p:leading-relaxed prose-p:mb-4 prose-li:mb-2 prose-headings:font-display prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-3 prose-ol:my-3 prose-strong:text-primary prose-strong:font-semibold">
                           <ReactMarkdown>{message.content || '...'}</ReactMarkdown>
                         </div>
                       ) : (
-                        <p className="text-sm">{message.content}</p>
+                        <p className="text-base leading-relaxed">{message.content}</p>
                       )}
                     </div>
                     {message.role === 'user' && (
-                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                        <User className="h-4 w-4 text-primary" />
+                      <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                        <User className="h-5 w-5 text-primary" />
                       </div>
                     )}
                   </div>
                 ))}
                 {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                  <div className="flex gap-3">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary-foreground" />
+                  <div className="flex gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
+                      <Bot className="h-5 w-5 text-primary-foreground" />
                     </div>
-                    <div className="bg-muted rounded-2xl px-4 py-2">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce" />
-                        <span className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:100ms]" />
-                        <span className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:200ms]" />
+                    <div className="bg-muted/80 rounded-2xl px-5 py-4">
+                      <div className="flex gap-1.5">
+                        <span className="w-2.5 h-2.5 bg-foreground/50 rounded-full animate-bounce" />
+                        <span className="w-2.5 h-2.5 bg-foreground/50 rounded-full animate-bounce [animation-delay:100ms]" />
+                        <span className="w-2.5 h-2.5 bg-foreground/50 rounded-full animate-bounce [animation-delay:200ms]" />
                       </div>
                     </div>
                   </div>
@@ -296,16 +298,22 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
               </div>
             </ScrollArea>
 
-            <div className="flex gap-2 mt-4 pt-4 border-t">
+            <div className="flex gap-3 mt-4 pt-4 border-t border-border/50">
               <Input
                 placeholder="Digite sua pergunta..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={isLoading}
+                className="text-base h-12"
               />
-              <Button onClick={() => sendMessage()} disabled={isLoading || !input.trim()}>
-                <Send className="h-4 w-4" />
+              <Button 
+                onClick={() => sendMessage()} 
+                disabled={isLoading || !input.trim()}
+                size="lg"
+                className="h-12 px-5"
+              >
+                <Send className="h-5 w-5" />
               </Button>
             </div>
           </>
