@@ -1,292 +1,87 @@
 
+# Plano de Rebranding: LBV TECH
 
-# Plano: 7 Ferramentas de IA para Mentorados
-
-## Visao Geral
-
-Implementar um hub completo de ferramentas de IA para otimizar os resultados dos mentorados, utilizando o contexto do perfil de negocio ja cadastrado. Todas as ferramentas usarao o Lovable AI Gateway (Gemini 3 Flash Preview) e serao acessiveis atraves de uma nova pagina dedicada.
+## Resumo
+Transformar a identidade visual e textual da plataforma de "MentorHub Pro" para **LBV TECH**, criando um logo personalizado com as cores azul escuro, cinza escuro e dourado, e atualizando todos os pontos de contato da marca.
 
 ---
 
-## As 7 Ferramentas
+## O Que Será Feito
 
-| # | Ferramenta | Descricao |
-|---|------------|-----------|
-| 1 | **Gerador de Scripts de Vendas** | Scripts personalizados para DM, ligacao e proposta |
-| 2 | **Simulador de Objecoes (Role-Play)** | IA simula prospect dificil para treino |
-| 3 | **Coach de Follow-up Inteligente** | Sugere mensagens baseadas no CRM |
-| 4 | **Gerador de Conteudo para Autoridade** | Posts, carrosseis e copies |
-| 5 | **Criador de Propostas Comerciais** | Propostas personalizadas |
-| 6 | **Analisador de Padroes de Conversao** | Insights de leads ganhos vs perdidos |
-| 7 | **Mentor Virtual 24/7** | Chatbot de vendas de alto ticket |
+### 1. Criação do Logo LBV TECH
+- Novo componente `LBVLogo.tsx` com design premium
+- Texto estilizado "LBV" em dourado + "TECH" em azul escuro
+- Ícone geométrico moderno (hexágono ou triângulo com gradiente)
+- Versões: completa (com texto) e compacta (só ícone)
+
+### 2. Página de Vendas (Landing Page)
+- Header: Logo LBV TECH no lugar de "MentorHub"
+- Hero: Novo título focado em mentores ("Escale sua mentoria com a LBV TECH")
+- Footer: Copyright e marca atualizados
+- Manter funcionalidades e features atuais
+
+### 3. Dashboards
+- **Admin Layout**: Adicionar logo LBV TECH no header (canto superior esquerdo)
+- **Member Layout**: Logo compacto no header junto ao menu
+- Floating Dock: Pequeno badge "LBV" no topo da dock
+
+### 4. Meta Tags e SEO
+- Atualizar `index.html` com título "LBV TECH - Plataforma para Mentores"
+- Meta descriptions otimizadas
+- Open Graph tags atualizados
 
 ---
 
-## Arquitetura
+## Detalhes Técnicos
 
-### Nova Pagina: Ferramentas IA
-
+### Arquivos a Criar
 ```text
-/app/ferramentas
-  |-- TabNavigation (7 tabs)
-  |-- Cada ferramenta em seu proprio componente
-  |-- Todas usam o contexto do negocio (mentorado_business_profiles)
+src/components/LBVLogo.tsx - Componente do logo com variantes
 ```
 
-### Edge Function Unificada
-
-Expandir `ai-analysis` ou criar nova `ai-tools` para:
-- Receber o tipo da ferramenta
-- Buscar perfil do negocio automaticamente
-- Aplicar prompt especializado
-- Retornar resultado estruturado
-
----
-
-## Estrutura de Arquivos
-
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/pages/member/FerramentasIA.tsx` | Pagina principal com tabs |
-| `src/components/ai-tools/ScriptGenerator.tsx` | Ferramenta 1 - Scripts |
-| `src/components/ai-tools/ObjectionSimulator.tsx` | Ferramenta 2 - Role-play |
-| `src/components/ai-tools/FollowUpCoach.tsx` | Ferramenta 3 - Follow-up |
-| `src/components/ai-tools/ContentGenerator.tsx` | Ferramenta 4 - Conteudo |
-| `src/components/ai-tools/ProposalCreator.tsx` | Ferramenta 5 - Propostas |
-| `src/components/ai-tools/ConversionAnalyzer.tsx` | Ferramenta 6 - Padroes |
-| `src/components/ai-tools/VirtualMentor.tsx` | Ferramenta 7 - Chat |
-| `supabase/functions/ai-tools/index.ts` | Edge function dedicada |
-
----
-
-## Detalhes das Ferramentas
-
-### 1. Gerador de Scripts de Vendas
-
-**Interface:**
-- Select: Tipo (DM inicial, DM follow-up, Ligacao, Proposta)
-- Input: Contexto adicional do lead (opcional)
-- Output: Script formatado com variacoes
-
-**Prompt IA:**
-- Usa perfil do negocio (oferta, publico, diferencial)
-- Gera 3 variacoes de script
-- Inclui gatilhos mentais e CTAs
-
-### 2. Simulador de Objecoes (Role-Play)
-
-**Interface:**
-- Chat interativo estilo conversa
-- IA atua como prospect dificil
-- Botao "Nova Simulacao"
-- Ao final: Feedback detalhado
-
-**Logica:**
-- Sistema de turns (usuario -> IA -> usuario)
-- IA levanta objecoes reais do mercado
-- Analise final com nota e sugestoes
-
-### 3. Coach de Follow-up Inteligente
-
-**Interface:**
-- Select: Escolher lead do CRM
-- Mostra historico de interacoes
-- Botao "Gerar Sugestao"
-- Output: Mensagem pronta + timing ideal
-
-**Integracao:**
-- Busca leads de `crm_prospections`
-- Busca interacoes de `crm_interactions`
-- IA analisa contexto e sugere abordagem
-
-### 4. Gerador de Conteudo para Autoridade
-
-**Interface:**
-- Select: Tipo (Post LinkedIn, Carrossel IG, Story, Copy de anuncio)
-- Input: Tema/assunto
-- Output: Conteudo formatado com dicas de publicacao
-
-**Prompt IA:**
-- Baseado no posicionamento do negocio
-- Inclui hooks, estrutura e CTAs
-- Gera versoes para diferentes plataformas
-
-### 5. Criador de Propostas Comerciais
-
-**Interface:**
-- Form: Nome do cliente, empresa, dor principal
-- Select: Tipo de proposta (completa, resumida)
-- Output: Proposta formatada em Markdown
-- Botao: Copiar / Exportar
-
-**Prompt IA:**
-- Usa oferta principal e diferenciais
-- Estrutura profissional de proposta
-- Inclui investimento e garantias
-
-### 6. Analisador de Padroes de Conversao
-
-**Interface:**
-- Dashboard com insights automaticos
-- Graficos de conversao por status
-- Lista de padroes identificados
-- Botao "Analisar Meu Pipeline"
-
-**Logica:**
-- Analisa todos os leads do mentorado
-- Compara fechados vs perdidos
-- Identifica padroes de sucesso
-
-### 7. Mentor Virtual 24/7
-
-**Interface:**
-- Chat completo com historico
-- Streaming de respostas
-- Sugestoes de perguntas rapidas
-- Contexto do negocio sempre disponivel
-
-**Diferenciais:**
-- Treinado na metodologia de vendas de alto ticket
-- Conhece o negocio do mentorado
-- Respostas praticas e diretas
-
----
-
-## Detalhes Tecnicos
-
-### Edge Function: ai-tools
-
-```typescript
-// Tipos suportados
-type ToolType = 
-  | "script_generator"
-  | "objection_simulator" 
-  | "followup_coach"
-  | "content_generator"
-  | "proposal_creator"
-  | "conversion_analyzer"
-  | "virtual_mentor";
-
-// Payload
-interface AIToolRequest {
-  tool: ToolType;
-  mentorado_id: string;
-  data: {
-    // Especifico de cada ferramenta
-    script_type?: string;
-    lead_id?: string;
-    content_type?: string;
-    message?: string;
-    // ...
-  };
-}
-```
-
-### Busca de Contexto
-
-Todas as ferramentas buscam automaticamente:
-
-```typescript
-const { data: businessProfile } = await supabase
-  .from("mentorado_business_profiles")
-  .select("*")
-  .eq("mentorado_id", mentorado_id)
-  .single();
-
-// Injeta no prompt como contexto
-const context = `
-NEGOCIO: ${businessProfile.business_name}
-OFERTA: ${businessProfile.main_offer}
-PUBLICO: ${businessProfile.target_audience}
-DIFERENCIAL: ${businessProfile.unique_value_proposition}
-DORES: ${businessProfile.pain_points_solved.join(", ")}
-`;
-```
-
-### Streaming (Virtual Mentor)
-
-```typescript
-// Frontend usa SSE para streaming
-const response = await fetch(CHAT_URL, {
-  method: "POST",
-  body: JSON.stringify({ messages }),
-});
-
-const reader = response.body.getReader();
-// Processa chunks em tempo real
-```
-
----
-
-## Navegacao
-
-### Atualizar MemberLayout
-
-Adicionar item no menu:
-
-```typescript
-{ icon: Sparkles, label: 'Ferramentas IA', path: '/app/ferramentas' },
-```
-
-### Atualizar App.tsx
-
-```typescript
-<Route path="ferramentas" element={<FerramentasIA />} />
-```
-
----
-
-## Banco de Dados
-
-### Nova Tabela: ai_tool_history (opcional)
-
-Para salvar historico de uso das ferramentas:
-
-```sql
-CREATE TABLE ai_tool_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  mentorado_id UUID REFERENCES mentorados(id),
-  tool_type TEXT NOT NULL,
-  input_data JSONB,
-  output_data JSONB,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
----
-
-## Fluxo do Usuario
-
+### Arquivos a Modificar
 ```text
-1. Mentorado acessa /app/ferramentas
-2. Ve as 7 ferramentas em tabs/cards
-3. Seleciona uma ferramenta
-4. Preenche inputs necessarios
-5. Clica em "Gerar"
-6. Recebe resultado personalizado ao seu negocio
-7. Pode copiar, editar ou gerar novamente
+src/pages/Index.tsx - Landing page com novo branding
+src/components/layouts/AdminLayout.tsx - Logo no painel admin
+src/components/layouts/MemberLayout.tsx - Logo na área de membros
+index.html - Meta tags e título
 ```
 
+### Estrutura do Logo (LBVLogo.tsx)
+```tsx
+// Variantes disponíveis:
+<LBVLogo variant="full" />    // Ícone + LBV TECH
+<LBVLogo variant="compact" /> // Apenas ícone
+<LBVLogo variant="text" />    // Apenas texto
+
+// Tamanhos:
+<LBVLogo size="sm" />  // Para headers
+<LBVLogo size="md" />  // Padrão
+<LBVLogo size="lg" />  // Para landing page
+```
+
+### Paleta de Cores (Já Existente)
+- **Dourado**: `hsl(45 100% 51%)` - já definido como `--primary`
+- **Azul Escuro**: `hsl(220 91% 35%)` - novo tom para acentos
+- **Cinza Escuro**: `hsl(240 10% 4%)` - já definido como `--background`
+
 ---
 
-## Prioridade de Implementacao
+## Resultado Visual Esperado
 
-1. **Gerador de Scripts** - Uso imediato, alta demanda
-2. **Mentor Virtual** - Engajamento diario
-3. **Simulador de Objecoes** - Treinamento pratico
-4. **Coach de Follow-up** - Integrado ao CRM
-5. **Gerador de Conteudo** - Marketing
-6. **Criador de Propostas** - Fechamento
-7. **Analisador de Padroes** - Insights
+### Landing Page
+- Logo LBV TECH no canto superior esquerdo com ícone hexagonal dourado
+- Headline: "Escale sua **Mentoria** com **LBV TECH**"
+- Footer: "© 2024 LBV TECH. Todos os direitos reservados."
+
+### Dashboards
+- Header com logo compacto LBV no canto esquerdo
+- Mantém toda a estrutura atual de navegação
+- Badge discreto "Powered by LBV TECH" opcional no footer
 
 ---
 
-## Resultado Esperado
-
-- Pagina `/app/ferramentas` com 7 ferramentas de IA
-- Todas personalizadas ao negocio do mentorado
-- Interface moderna com tabs ou grid de cards
-- Edge function unificada para todas as ferramentas
-- Streaming no chat do Mentor Virtual
-- Integracao com CRM para follow-up e analise
-
+## Observações
+- O sistema de cores premium (dourado + azul + cinza escuro) já está configurado
+- A estrutura glassmorphism e bento grid será mantida
+- Não há mudanças no banco de dados - apenas visual/frontend
