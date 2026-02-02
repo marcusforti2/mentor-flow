@@ -41,8 +41,8 @@ serve(async (req) => {
 
     // Mentors' emails (Jacob and Mari)
     const mentorEmails = [
-      "jacob@mentoria.com", // Substitua pelos emails reais
-      "mari@mentoria.com",  // Substitua pelos emails reais
+      "jacob@marcusforti.online", // Email do Jacob
+      "mari@marcusforti.online",  // Email da Mari
     ];
 
     const priorityColors: Record<string, string> = {
@@ -175,7 +175,7 @@ serve(async (req) => {
     for (const mentorEmail of mentorEmails) {
       try {
         await resend.emails.send({
-          from: "SOS Mentoria <noreply@resend.dev>", // Use seu domínio verificado
+          from: "SOS Mentoria <sos@equipe.marcusforti.online>",
           to: [mentorEmail],
           subject: `🚨 [SOS ${sosPriority.toUpperCase()}] ${mentoradoName}: ${sosTitle}`,
           html: mentorEmailHtml,
@@ -190,7 +190,7 @@ serve(async (req) => {
     if (mentoradoEmail) {
       try {
         await resend.emails.send({
-          from: "Mentoria <noreply@resend.dev>", // Use seu domínio verificado
+          from: "Mentoria High Ticket <contato@equipe.marcusforti.online>",
           to: [mentoradoEmail],
           subject: "✅ Seu chamado SOS foi enviado com sucesso!",
           html: mentoradoEmailHtml,
