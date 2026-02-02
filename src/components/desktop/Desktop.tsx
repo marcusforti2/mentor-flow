@@ -8,32 +8,39 @@ import {
   Trophy, 
   LifeBuoy, 
   User,
+  Search,
+  LayoutDashboard,
 } from 'lucide-react';
 import { DesktopIcon } from './DesktopIcon';
 import { DesktopDock } from './DesktopDock';
-import { DesktopTopBar } from './DesktopTopBar';
 import { DevModeSelector } from '@/components/DevModeSelector';
+import { cn } from '@/lib/utils';
 
 const apps = [
-  { id: 'trilhas', label: 'Trilhas', icon: Route, path: '/app/trilhas', gradient: 'from-purple-500 to-pink-400' },
-  { id: 'crm', label: 'Meu CRM', icon: Users, path: '/app/meu-crm', gradient: 'from-emerald-500 to-teal-400' },
-  { id: 'calendario', label: 'Calendário', icon: Calendar, path: '/app/calendario', gradient: 'from-orange-500 to-amber-400' },
-  { id: 'treinamento', label: 'Treinamento', icon: GraduationCap, path: '/app/treinamento', gradient: 'from-red-500 to-rose-400' },
-  { id: 'ranking', label: 'Ranking', icon: Trophy, path: '/app/ranking', gradient: 'from-yellow-500 to-orange-400' },
-  { id: 'sos', label: 'Centro SOS', icon: LifeBuoy, path: '/app/sos', gradient: 'from-pink-500 to-fuchsia-400' },
-  { id: 'perfil', label: 'Meu Perfil', icon: User, path: '/app/perfil', gradient: 'from-indigo-500 to-violet-400' },
+  { id: 'trilhas', label: 'Trilhas', icon: Route, path: '/app/trilhas', gradient: 'from-purple-500 to-pink-500' },
+  { id: 'crm', label: 'Meu CRM', icon: Users, path: '/app/meu-crm', gradient: 'from-emerald-400 to-cyan-500' },
+  { id: 'calendario', label: 'Calendário', icon: Calendar, path: '/app/calendario', gradient: 'from-red-500 to-orange-500' },
+  { id: 'treinamento', label: 'Treinamento', icon: GraduationCap, path: '/app/treinamento', gradient: 'from-blue-500 to-indigo-500' },
+  { id: 'ranking', label: 'Ranking', icon: Trophy, path: '/app/ranking', gradient: 'from-yellow-400 to-orange-500' },
+  { id: 'sos', label: 'Centro SOS', icon: LifeBuoy, path: '/app/sos', gradient: 'from-pink-500 to-rose-500' },
+  { id: 'perfil', label: 'Meu Perfil', icon: User, path: '/app/perfil', gradient: 'from-sky-400 to-blue-500' },
 ];
 
 const dockApps = [
-  { id: 'trilhas', label: 'Trilhas', icon: Route, path: '/app/trilhas', gradient: 'from-purple-500 to-pink-400' },
-  { id: 'crm', label: 'Meu CRM', icon: Users, path: '/app/meu-crm', gradient: 'from-emerald-500 to-teal-400' },
-  { id: 'treinamento', label: 'Treinamento', icon: GraduationCap, path: '/app/treinamento', gradient: 'from-red-500 to-rose-400' },
-  { id: 'sos', label: 'Centro SOS', icon: LifeBuoy, path: '/app/sos', gradient: 'from-pink-500 to-fuchsia-400' },
+  { id: 'trilhas', label: 'Trilhas', icon: Route, path: '/app/trilhas', gradient: 'from-purple-500 to-pink-500' },
+  { id: 'crm', label: 'Meu CRM', icon: Users, path: '/app/meu-crm', gradient: 'from-emerald-400 to-cyan-500' },
+  { id: 'treinamento', label: 'Treinamento', icon: GraduationCap, path: '/app/treinamento', gradient: 'from-blue-500 to-indigo-500' },
+  { id: 'sos', label: 'Centro SOS', icon: LifeBuoy, path: '/app/sos', gradient: 'from-pink-500 to-rose-500' },
 ];
 
 export function Desktop() {
   const navigate = useNavigate();
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredApps = apps.filter(app => 
+    app.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleIconClick = (id: string) => {
     setSelectedIcon(id);
@@ -56,41 +63,57 @@ export function Desktop() {
       className="fixed inset-0 overflow-hidden select-none"
       onClick={handleDesktopClick}
     >
-      {/* Premium Animated Background */}
-      <div className="absolute inset-0 bg-[#0a0a0f]">
-        {/* Large gradient orbs */}
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-violet-600/30 to-fuchsia-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-br from-cyan-600/25 to-blue-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-gradient-to-br from-emerald-600/20 to-teal-600/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
+      {/* Beautiful gradient background like macOS */}
+      <div className="absolute inset-0">
+        {/* Base gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-500 to-fuchsia-500" />
         
-        {/* Subtle noise texture */}
-        <div className="absolute inset-0 opacity-[0.015]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
-        }} />
+        {/* Secondary gradients for depth */}
+        <div className="absolute inset-0 bg-gradient-to-tl from-sky-400/40 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/30 via-transparent to-cyan-400/20" />
         
-        {/* Grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '80px 80px'
-          }}
-        />
+        {/* Light orbs */}
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-white/10 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-pink-300/20 rounded-full blur-[120px]" />
         
-        {/* Top light beam */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-white/[0.03] to-transparent" />
+        {/* Subtle overlay for depth */}
+        <div className="absolute inset-0 bg-black/10" />
       </div>
 
-      {/* Top Bar */}
-      <DesktopTopBar />
+      {/* Blur overlay for Launchpad effect */}
+      <div className="absolute inset-0 backdrop-blur-xl bg-black/20" />
 
-      {/* Desktop Icons Grid - Aligned to left */}
-      <div className="relative z-10 pt-16 pb-32 px-8 md:px-12 h-full overflow-auto">
-        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-4 gap-4 max-w-[360px] mt-4">
-          {apps.map((app, index) => (
+      {/* Search Bar */}
+      <div className="relative z-20 flex justify-center pt-12 pb-8">
+        <div 
+          className={cn(
+            'relative flex items-center gap-2 px-4 py-2.5',
+            'w-[280px] rounded-lg',
+            'bg-white/20 backdrop-blur-md',
+            'border border-white/30',
+            'shadow-lg shadow-black/10'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Search className="h-4 w-4 text-white/70" />
+          <input
+            type="text"
+            placeholder="Buscar"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn(
+              'flex-1 bg-transparent outline-none',
+              'text-sm text-white placeholder:text-white/60',
+              'font-medium'
+            )}
+          />
+        </div>
+      </div>
+
+      {/* App Grid - Centered like Launchpad */}
+      <div className="relative z-10 flex-1 flex items-start justify-center px-8 pb-32 overflow-auto">
+        <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-8 md:gap-10 lg:gap-12 max-w-[1200px]">
+          {filteredApps.map((app, index) => (
             <DesktopIcon
               key={app.id}
               id={app.id}
@@ -100,10 +123,16 @@ export function Desktop() {
               isSelected={selectedIcon === app.id}
               onSelect={() => handleIconClick(app.id)}
               onDoubleClick={() => handleIconDoubleClick(app.path)}
-              delay={index * 50}
+              delay={index * 30}
             />
           ))}
         </div>
+      </div>
+
+      {/* Page Indicators */}
+      <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex gap-2">
+        <div className="w-2 h-2 rounded-full bg-white/80" />
+        <div className="w-2 h-2 rounded-full bg-white/30" />
       </div>
 
       {/* Dock */}
