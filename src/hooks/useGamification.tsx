@@ -59,7 +59,7 @@ export function useGamification() {
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Get mentorado ID
+  // Get mentorado ID (with user.id fallback)
   useEffect(() => {
     const getMentoradoId = async () => {
       if (!user) return;
@@ -70,18 +70,36 @@ export function useGamification() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (data?.id) {
-        setMentoradoId(data.id);
-      }
+      // Use mentorado_id if exists, otherwise use user.id as fallback
+      setMentoradoId(data?.id || user.id);
     };
 
     getMentoradoId();
   }, [user]);
 
-  // Fetch all data when mentoradoId is available
+  // Fetch all data - works for any authenticated user
   useEffect(() => {
     const fetchData = async () => {
-      if (!mentoradoId) {
+      if (!mentoradoId || !user) {
+        // Still load badges and rewards catalog for display
+        if (user) {
+          try {
+            const { data: allBadges } = await supabase
+              .from("badges")
+              .select("*")
+              .order("points_required", { ascending: true });
+            if (allBadges) setBadges(allBadges);
+
+            const { data: rewardsData } = await supabase
+              .from("reward_catalog")
+              .select("*")
+              .eq("is_active", true)
+              .order("points_cost", { ascending: true });
+            if (rewardsData) setRewards(rewardsData);
+          } catch (error) {
+            console.error("Error fetching catalog data:", error);
+          }
+        }
         setIsLoading(false);
         return;
       }
