@@ -121,9 +121,9 @@ export default function MemberDashboard() {
         </Link>
       </div>
 
-      {/* Daily Goal Counter */}
-      {mentoradoId && (
-        <DailyGoalCounter mentoradoId={mentoradoId} />
+      {/* Daily Goal Counter - works with mentoradoId or user.id fallback */}
+      {(mentoradoId || user?.id) && (
+        <DailyGoalCounter mentoradoId={mentoradoId || user?.id || ""} />
       )}
 
       {/* Bento Grid */}
