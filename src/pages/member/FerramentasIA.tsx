@@ -69,9 +69,14 @@ export default function FerramentasIA() {
             .single();
 
           setHasBusinessProfile(!!(profile?.business_name || profile?.main_offer));
+        } else {
+          // Use user.id as fallback for users without mentorado record
+          setMentoradoId(user.id);
         }
       } catch (error) {
         console.error('Error fetching mentorado data:', error);
+        // Use user.id as fallback on error
+        if (user) setMentoradoId(user.id);
       } finally {
         setIsLoading(false);
       }
@@ -87,21 +92,6 @@ export default function FerramentasIA() {
           <Sparkles className="h-12 w-12 text-primary animate-pulse" />
           <p className="text-muted-foreground">Carregando ferramentas...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!mentoradoId) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Acesso Restrito</CardTitle>
-            <CardDescription>
-              As ferramentas de IA estão disponíveis apenas para mentorados.
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
     );
   }
