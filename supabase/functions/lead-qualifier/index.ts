@@ -214,77 +214,181 @@ ${skillsText}
 `.trim();
 }
 
-// ============= AI Analysis =============
+// ============= AI Analysis - Super Complete with GPT 5.2 =============
 
 async function analyzeWithAI(profileData: string, businessProfile: any): Promise<any> {
   if (!LOVABLE_API_KEY) {
     throw new Error('LOVABLE_API_KEY não configurada');
   }
 
-  const systemPrompt = `Você é um especialista em análise de leads, psicologia de vendas e comportamento humano.
-Sua tarefa é analisar profundamente um perfil de lead e gerar um relatório completo e acionável.
+  const systemPrompt = `Você é um SUPER ESPECIALISTA em análise de leads, psicologia de vendas, comportamento humano e estratégias de negociação.
 
-IMPORTANTE:
-- Seja EXTREMAMENTE específico e use informações reais do perfil
-- NÃO mencione teorias como DISC ou Eneagrama pelo nome - apenas aplique os conceitos
-- Foque em insights PRÁTICOS e ACIONÁVEIS
-- O relatório deve ser em português brasileiro
-- Retorne APENAS o JSON válido, sem markdown ou texto adicional`;
+Sua missão é criar a ANÁLISE MAIS COMPLETA E PROFUNDA possível de um lead, fornecendo:
+- Análise comportamental detalhada
+- TODAS as objeções possíveis com respostas prontas
+- Estratégias de negociação específicas
+- Scripts de fechamento personalizados
+- Técnicas de ancoragem de valor
+- Gatilhos mentais específicos para este perfil
 
-  const userPrompt = `## CONTEXTO DO NEGÓCIO:
+REGRAS CRÍTICAS:
+1. Seja EXTREMAMENTE específico - use dados REAIS do perfil
+2. NÃO mencione teorias pelo nome (DISC, Eneagrama) - aplique conceitos silenciosamente
+3. Forneça exemplos de scripts PRONTOS PARA USAR
+4. Liste TODAS as objeções possíveis (mínimo 8)
+5. O relatório deve ser em português brasileiro
+6. Retorne APENAS JSON válido`;
+
+  const userPrompt = `## CONTEXTO DO NEGÓCIO DO VENDEDOR:
 ${businessProfile ? `
-- Nome: ${businessProfile.business_name || 'Não informado'}
-- Tipo: ${businessProfile.business_type || 'Não informado'}
-- Oferta: ${businessProfile.main_offer || 'Não informado'}
-- Público: ${businessProfile.target_audience || 'Não informado'}
-- Proposta: ${businessProfile.unique_value_proposition || 'Não informado'}
-- Dores: ${businessProfile.pain_points_solved?.join(', ') || 'Não informado'}
-- Preço: ${businessProfile.price_range || 'Não informado'}
-` : 'Não configurado'}
+- Nome da Empresa: ${businessProfile.business_name || 'Não informado'}
+- Tipo de Negócio: ${businessProfile.business_type || 'Não informado'}
+- Oferta Principal: ${businessProfile.main_offer || 'Não informado'}
+- Público-Alvo: ${businessProfile.target_audience || 'Não informado'}
+- Proposta de Valor: ${businessProfile.unique_value_proposition || 'Não informado'}
+- Dores que Resolve: ${businessProfile.pain_points_solved?.join(', ') || 'Não informado'}
+- Faixa de Preço: ${businessProfile.price_range || 'Não informado'}
+- Ticket Médio: ${businessProfile.average_ticket || 'Não informado'}
+- Canais de Venda: ${businessProfile.current_sales_channels?.join(', ') || 'Não informado'}
+` : 'Não configurado - fazer análise genérica'}
 
-## DADOS DO LEAD:
+## DADOS DO LEAD A SER ANALISADO:
 ${profileData}
 
-## TAREFA:
-Analise e retorne JSON:
+## TAREFA - GERAR SUPER ANÁLISE COMPLETA:
+Retorne um JSON com TODAS as seguintes seções preenchidas de forma MUITO DETALHADA:
+
 {
-  "score": <0-100>,
-  "score_breakdown": { "fit_with_offer": <0-25>, "buying_signals": <0-25>, "engagement_level": <0-25>, "financial_capacity": <0-25> },
-  "summary": "<resumo 2-3 frases>",
+  "score": <0-100 precisão alta>,
+  "score_breakdown": {
+    "fit_with_offer": <0-25>,
+    "buying_signals": <0-25>,
+    "engagement_level": <0-25>,
+    "financial_capacity": <0-25>
+  },
+  "summary": "<resumo executivo 3-4 frases sobre o lead>",
   "recommendation": "<pursue_hot|nurture|low_priority|not_fit>",
+  "recommendation_reasoning": "<explicação detalhada de 2-3 frases do porquê dessa recomendação>",
+  
+  "extracted_data": {
+    "name": "<nome completo>",
+    "headline": "<headline/bio>",
+    "company": "<empresa atual>",
+    "industry": "<setor/nicho>",
+    "location": "<localização>",
+    "followers": <número ou null>,
+    "platform": "<instagram|linkedin>",
+    "content_topics": ["<tópicos que posta>"],
+    "recent_posts_summary": "<resumo do tipo de conteúdo>"
+  },
+  
   "behavioral_profile": {
     "primary_style": "<dominante|influente|estavel|analitico>",
-    "secondary_style": "<string>",
-    "communication_preference": "<como prefere comunicar>",
-    "decision_making_style": "<como decide>",
-    "what_motivates": ["<motivadores>"],
-    "what_frustrates": ["<frustrações>"],
-    "how_to_build_rapport": "<como criar conexão>"
+    "secondary_style": "<string ou null>",
+    "personality_summary": "<descrição da personalidade em 3-4 frases>",
+    "communication_preference": "<como prefere se comunicar - detalhado>",
+    "decision_making_style": "<como toma decisões - detalhado>",
+    "what_motivates": ["<lista de 5-7 motivadores principais>"],
+    "what_frustrates": ["<lista de 5-7 frustrações/irritadores>"],
+    "how_to_build_rapport": "<estratégia detalhada para criar conexão>",
+    "buying_triggers": ["<gatilhos que fazem comprar>"],
+    "red_flags_for_them": ["<sinais que fazem desistir>"]
   },
+  
   "lead_perspective": {
-    "likely_goals": ["<objetivos>"],
-    "current_challenges": ["<desafios>"],
-    "fears_and_concerns": ["<medos>"],
-    "desires_and_aspirations": ["<desejos>"]
+    "likely_goals": ["<lista de 5-7 objetivos prováveis>"],
+    "current_challenges": ["<lista de 5-7 desafios atuais>"],
+    "fears_and_concerns": ["<lista de 5-7 medos e preocupações>"],
+    "desires_and_aspirations": ["<lista de 5-7 desejos profundos>"],
+    "hidden_pains": ["<dores ocultas que nem sabe que tem>"],
+    "status_symbols": ["<o que representa status para esse perfil>"]
   },
+  
   "approach_strategy": {
-    "opening_hook": "<frase abertura>",
-    "key_points_to_touch": ["<pontos>"],
-    "topics_to_avoid": ["<evitar>"],
+    "opening_hook": "<frase de abertura personalizada e impactante>",
+    "second_message": "<o que mandar se responder>",
+    "follow_up_if_silent": "<mensagem de follow up se não responder>",
+    "key_points_to_touch": ["<pontos importantes para tocar na conversa>"],
+    "topics_to_avoid": ["<assuntos para evitar>"],
     "best_channel": "<dm_instagram|linkedin|whatsapp|email>",
-    "best_time_to_contact": "<momento>"
+    "best_time_to_contact": "<melhor horário/dia>",
+    "conversation_flow": ["<passo 1>", "<passo 2>", "<passo 3>", "<passo 4>"]
   },
+  
   "value_anchoring": {
-    "pain_to_highlight": "<dor>",
-    "result_to_promise": "<resultado>",
-    "social_proof_angle": "<prova social>",
-    "price_justification": "<justificar preço>",
-    "roi_argument": "<ROI>"
+    "pain_to_highlight": "<principal dor para explorar>",
+    "result_to_promise": "<resultado tangível para prometer>",
+    "social_proof_angle": "<como usar prova social>",
+    "price_justification": "<como justificar o preço>",
+    "roi_argument": "<argumento de ROI específico>",
+    "urgency_angle": "<como criar urgência sem ser forçado>",
+    "scarcity_angle": "<como usar escassez de forma autêntica>",
+    "authority_angle": "<como demonstrar autoridade>"
   },
-  "expected_objections": [{ "objection": "<objeção>", "likelihood": "<alta|media|baixa>", "response_strategy": "<estratégia>", "script_example": "<script>" }],
-  "what_pushes_away": { "behaviors_to_avoid": ["<evitar>"], "words_to_avoid": ["<palavras>"], "approaches_that_fail": ["<abordagens>"] },
-  "extracted_data": { "name": "<nome>", "headline": "<headline>", "company": "<empresa>", "industry": "<setor>", "location": "<local>", "followers": <número|null>, "content_topics": ["<tópicos>"], "recent_posts_summary": "<resumo posts>" }
-}`;
+  
+  "expected_objections": [
+    {
+      "objection": "<objeção específica>",
+      "objection_type": "<preço|tempo|confianca|necessidade|autoridade|urgencia>",
+      "likelihood": "<alta|media|baixa>",
+      "real_meaning": "<o que realmente significa essa objeção>",
+      "response_strategy": "<estratégia para contornar>",
+      "script_example": "<script pronto para usar>",
+      "follow_up_question": "<pergunta para fazer depois>"
+    }
+  ],
+  
+  "negotiation_tactics": {
+    "recommended_approach": "<negociação suave|assertiva|consultiva>",
+    "price_presentation": "<como apresentar o preço>",
+    "discount_strategy": "<quando e como oferecer desconto>",
+    "payment_flexibility": "<como usar parcelamento>",
+    "bonus_to_offer": "<bônus que funcionaria bem>",
+    "deadline_creation": "<como criar prazo sem pressão>",
+    "competitor_comparison": "<como lidar se mencionar concorrente>"
+  },
+  
+  "closing_scripts": {
+    "soft_close": "<script de fechamento suave>",
+    "assumptive_close": "<script de fechamento assumido>",
+    "alternative_close": "<script de fechamento alternativo>",
+    "urgency_close": "<script de fechamento com urgência>",
+    "summary_close": "<script de resumo antes de fechar>"
+  },
+  
+  "mental_triggers": {
+    "primary_triggers": ["<3 gatilhos mais eficazes para esse perfil>"],
+    "how_to_apply_each": {
+      "<trigger1>": "<como aplicar>",
+      "<trigger2>": "<como aplicar>",
+      "<trigger3>": "<como aplicar>"
+    }
+  },
+  
+  "what_pushes_away": {
+    "behaviors_to_avoid": ["<lista de comportamentos a evitar>"],
+    "words_to_avoid": ["<palavras/frases a evitar>"],
+    "approaches_that_fail": ["<abordagens que não funcionam>"],
+    "tone_to_avoid": "<tom de voz a evitar>"
+  },
+  
+  "personalized_scripts": {
+    "dm_opener": "<mensagem de abertura para DM>",
+    "linkedin_connection": "<mensagem para conexão LinkedIn>",
+    "whatsapp_intro": "<mensagem inicial WhatsApp>",
+    "email_subject": "<assunto de email>",
+    "email_body": "<corpo do email resumido>"
+  },
+  
+  "risk_assessment": {
+    "deal_probability": "<0-100% chance de fechar>",
+    "main_risk": "<principal risco dessa negociação>",
+    "mitigation_strategy": "<como mitigar o risco>",
+    "timeline_estimate": "<tempo estimado até decisão>"
+  }
+}
+
+IMPORTANTE: Forneça pelo menos 8 objeções diferentes e completas. Seja MUITO detalhado em cada seção.`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -293,21 +397,22 @@ Analise e retorne JSON:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-3-flash-preview',
+      model: 'openai/gpt-5.2',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7,
+      max_tokens: 8000,
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
     console.error('AI error:', response.status, errorText);
-    if (response.status === 429) throw new Error('Limite de requisições excedido');
-    if (response.status === 402) throw new Error('Créditos de IA insuficientes');
-    throw new Error(`Erro IA: ${response.status}`);
+    if (response.status === 429) throw new Error('Limite de requisições excedido. Aguarde um momento.');
+    if (response.status === 402) throw new Error('Créditos de IA insuficientes. Verifique seu plano.');
+    throw new Error(`Erro na análise IA: ${response.status}`);
   }
 
   const aiResponse = await response.json();
