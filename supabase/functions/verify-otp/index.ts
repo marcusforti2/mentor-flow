@@ -25,65 +25,47 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check OTP code - normalize by removing spaces and keeping only digits
+    // Normalize code - remove spaces and keep only digits
     const normalizedCode = code.replace(/\D/g, '');
+    const normalizedEmail = email.toLowerCase().trim();
     
-    console.log("Verifying OTP:", { email: email.toLowerCase(), code: normalizedCode });
+    console.log("Verifying OTP:", { email: normalizedEmail, code: normalizedCode });
     
-    // First try to find unused OTP
-    let { data: otpData, error: otpError } = await supabase
+    // Find any valid OTP for this email/code combination that hasn't expired
+    // We don't care if it's used or not - as long as it hasn't expired, allow it
+    const { data: otpData, error: otpError } = await supabase
       .from("otp_codes")
       .select("*")
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .eq("code", normalizedCode)
-      .eq("used", false)
       .gt("expires_at", new Date().toISOString())
-      .single();
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     
-    // If not found, check for recently used OTP (allow reuse while not expired)
-    if (otpError || !otpData) {
-      const { data: recentOtp } = await supabase
-        .from("otp_codes")
-        .select("*")
-        .eq("email", email.toLowerCase())
-        .eq("code", normalizedCode)
-        .eq("used", true)
-        .gt("expires_at", new Date().toISOString())
-        .single();
-      
-      if (recentOtp) {
-        otpData = recentOtp;
-        otpError = null;
-        console.log("OTP reused (still valid, not expired)");
-      }
-    }
-    
-    console.log("OTP query result:", { otpData, otpError });
+    console.log("OTP query result:", { found: !!otpData, error: otpError?.message });
 
-    if (otpError || !otpData) {
-      console.error("OTP verification failed:", otpError);
+    if (otpError) {
+      console.error("OTP query error:", otpError);
+      throw new Error("Erro ao verificar código");
+    }
+
+    if (!otpData) {
+      console.log("No valid OTP found for:", { email: normalizedEmail, code: normalizedCode });
       throw new Error("Código inválido ou expirado");
-    }
-
-    // Mark code as used (if not already)
-    if (!otpData.used) {
-      await supabase
-        .from("otp_codes")
-        .update({ used: true })
-        .eq("id", otpData.id);
     }
 
     // Check if user exists
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
+      (u) => u.email?.toLowerCase() === normalizedEmail
     );
 
     if (existingUser) {
-      // User exists - generate magic link and extract the verification URL
+      // User exists - generate magic link
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: "magiclink",
-        email: email.toLowerCase(),
+        email: normalizedEmail,
       });
 
       if (linkError) {
@@ -91,16 +73,21 @@ serve(async (req) => {
         throw new Error("Erro ao autenticar");
       }
 
-      console.log("Magic link generated for existing user:", email);
+      // Mark code as used ONLY after successful link generation
+      await supabase
+        .from("otp_codes")
+        .update({ used: true })
+        .eq("id", otpData.id);
 
-      // Return the action link properties for frontend verification
+      console.log("Magic link generated for existing user:", normalizedEmail);
+
       return new Response(
         JSON.stringify({
           success: true,
           isNewUser: false,
           actionLink: linkData.properties?.action_link,
           tokenHash: linkData.properties?.hashed_token,
-          email: email.toLowerCase(),
+          email: normalizedEmail,
         }),
         {
           status: 200,
@@ -127,7 +114,7 @@ serve(async (req) => {
       const randomPassword = crypto.randomUUID();
       
       const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password: randomPassword,
         email_confirm: true,
         user_metadata: {
@@ -151,7 +138,7 @@ serve(async (req) => {
       // Generate magic link for the new user
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: "magiclink",
-        email: email.toLowerCase(),
+        email: normalizedEmail,
       });
 
       if (linkError) {
@@ -159,7 +146,13 @@ serve(async (req) => {
         throw new Error("Erro ao autenticar novo usuário");
       }
 
-      console.log("New user created and magic link generated:", email);
+      // Mark code as used ONLY after everything succeeded
+      await supabase
+        .from("otp_codes")
+        .update({ used: true })
+        .eq("id", otpData.id);
+
+      console.log("New user created and magic link generated:", normalizedEmail);
 
       return new Response(
         JSON.stringify({
@@ -167,7 +160,7 @@ serve(async (req) => {
           isNewUser: true,
           actionLink: linkData.properties?.action_link,
           tokenHash: linkData.properties?.hashed_token,
-          email: email.toLowerCase(),
+          email: normalizedEmail,
         }),
         {
           status: 200,
