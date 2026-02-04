@@ -364,7 +364,7 @@ function MentoradoCard({ mentorado }: { mentorado: Mentorado }) {
   const days = getDaysInJourney(mentorado.joined_at);
 
   return (
-    <div className="p-4 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-primary/30 transition-all cursor-pointer">
+    <div className="p-4 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-primary/30 transition-all cursor-pointer shadow-sm">
       <div className="flex items-center gap-4">
         <Avatar className="h-12 w-12 border-2 border-primary/20">
           <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
