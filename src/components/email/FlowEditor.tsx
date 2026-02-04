@@ -196,15 +196,23 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-muted/30"
+          className="flow-editor-canvas"
+          defaultEdgeOptions={{
+            style: { stroke: 'hsl(240 5% 60%)', strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: 'hsl(240 5% 60%)' },
+          }}
         >
-          <Background />
-          <Controls />
-          <MiniMap />
+          <Background color="hsl(240 5% 25%)" gap={20} size={1} />
+          <Controls className="flow-controls" />
+          <MiniMap 
+            className="flow-minimap"
+            nodeColor="hsl(45 100% 51%)"
+            maskColor="hsl(240 10% 4% / 0.8)"
+          />
           
           {/* Add Node Panel */}
-          <Panel position="top-left" className="bg-background border rounded-lg p-3 shadow-lg">
-            <p className="text-sm font-medium mb-2">Adicionar Etapa</p>
+          <Panel position="top-left" className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl">
+            <p className="text-sm font-semibold text-foreground mb-3">Adicionar Etapa</p>
             <div className="flex gap-2">
               {NODE_TEMPLATES.map(template => (
                 <Button
@@ -212,10 +220,10 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
                   variant="outline"
                   size="sm"
                   onClick={() => addNode(template.type)}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-2 bg-secondary/50 hover:bg-secondary border-border text-foreground"
                 >
                   <template.icon className="h-4 w-4" style={{ color: template.color }} />
-                  {template.label}
+                  <span>{template.label}</span>
                 </Button>
               ))}
             </div>
