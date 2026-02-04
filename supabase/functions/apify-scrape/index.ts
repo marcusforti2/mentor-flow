@@ -8,7 +8,7 @@ const corsHeaders = {
 // Apify Actor IDs for different platforms
 const APIFY_ACTORS = {
   instagram: 'apify/instagram-profile-scraper',
-  linkedin: 'bebity/linkedin-profile-scraper',
+  linkedin: 'bebity/linkedin-premium-actor',
   twitter: 'apify/twitter-scraper',
   tiktok: 'clockworks/tiktok-scraper',
 };
@@ -48,19 +48,19 @@ function extractUsername(url: string, platform: string): string | null {
 }
 
 async function runApifyActor(actorId: string, input: Record<string, unknown>, apiKey: string): Promise<any> {
-  // URL-encode the actor ID (replace / with ~)
-  const encodedActorId = actorId.replace('/', '~');
+  // URL-encode the entire actor ID for the API call
+  const encodedActorId = encodeURIComponent(actorId);
   console.log(`Running Apify actor: ${actorId} (encoded: ${encodedActorId})`);
   
+  const apiUrl = `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${apiKey}`;
+  console.log(`API URL: ${apiUrl}`);
+  
   // Start the actor run
-  const runResponse = await fetch(
-    `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    }
-  );
+  const runResponse = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
 
   if (!runResponse.ok) {
     const error = await runResponse.text();
@@ -236,8 +236,13 @@ serve(async (req) => {
         addParentData: false,
       };
     } else if (platform === 'linkedin') {
+      // bebity/linkedin-premium-actor format
       input = {
-        urls: [url.startsWith('http') ? url : `https://${url}`],
+        action: 'get-profiles',
+        keywords: [url.startsWith('http') ? url : `https://${url}`],
+        isUrl: true,
+        isName: false,
+        limit: 1
       };
     } else if (platform === 'twitter') {
       input = {
