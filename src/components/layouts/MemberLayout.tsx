@@ -29,7 +29,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/app' },
   { icon: BookOpen, label: 'Trilhas', path: '/app/trilhas' },
   { icon: Target, label: 'Meu CRM', path: '/app/meu-crm' },
-  { icon: Sparkles, label: 'Ferramentas IA', path: '/app/ferramentas' },
+  { icon: Sparkles, label: 'Arsenal de Vendas', path: '/app/ferramentas' },
   { icon: Gift, label: 'Loja de Prêmios', path: '/app/loja' },
   { icon: Calendar, label: 'Calendário', path: '/app/calendario' },
   { icon: Headphones, label: 'Treinamento', path: '/app/treinamento' },
