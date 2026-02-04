@@ -123,6 +123,29 @@ serve(async (req) => {
       // Validate userType
       const validUserType = userType === 'mentor' ? 'mentor' : 'mentorado';
 
+      // PREVENT creating user if trying to register as mentor but mentor already exists
+      if (validUserType === 'mentor') {
+        const { data: existingMentor } = await supabase
+          .from("user_roles")
+          .select("id")
+          .eq("role", "mentor")
+          .limit(1)
+          .maybeSingle();
+        
+        if (existingMentor) {
+          console.log("Mentor registration blocked - mentor already exists");
+          return new Response(
+            JSON.stringify({ 
+              error: "Já existe um mentor cadastrado no sistema. Por favor, selecione 'Mentorado' para criar sua conta." 
+            }),
+            {
+              status: 400,
+              headers: { "Content-Type": "application/json", ...corsHeaders },
+            }
+          );
+        }
+      }
+
       // Create new user with random password (they'll use OTP)
       const randomPassword = crypto.randomUUID();
       
