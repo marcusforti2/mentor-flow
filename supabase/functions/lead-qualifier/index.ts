@@ -397,13 +397,13 @@ IMPORTANTE: Forneça pelo menos 8 objeções diferentes e completas. Seja MUITO 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-5.2',
+      model: 'google/gemini-3-flash-preview',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7,
-      max_completion_tokens: 8000,
+      max_tokens: 6000,
     }),
   });
 
