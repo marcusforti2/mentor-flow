@@ -38,6 +38,7 @@ import Perfil from "./pages/member/Perfil";
 import LojaPremios from "./pages/member/LojaPremios";
 import FerramentasIA from "./pages/member/FerramentasIA";
 import CalendarioMembro from "./pages/member/Calendario";
+import Comunidade from "./pages/member/Comunidade";
 
 // Admin Pages (additional)
 import AdminCentroSOS from "./pages/admin/CentroSOS";
@@ -95,6 +96,7 @@ const App = () => (
               <Route index element={<MemberDashboard />} />
               <Route path="trilhas" element={<Trilhas />} />
               <Route path="meu-crm" element={<MeuCRM />} />
+              <Route path="comunidade" element={<Comunidade />} />
               <Route path="calendario" element={<CalendarioMembro />} />
               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
               <Route path="sos" element={<CentroSOS />} />
