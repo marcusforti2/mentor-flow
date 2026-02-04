@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
-type AppRole = 'mentor' | 'mentorado';
+type AppRole = 'mentor' | 'mentorado' | 'admin_master';
 
 const DEV_MODE_KEY = 'dev_mode_role_override';
 
@@ -61,6 +61,11 @@ export function ProtectedRoute({
         </div>
       </div>
     );
+  }
+
+  // Admin master has full access to everything
+  if (role === 'admin_master') {
+    return <>{children}</>;
   }
 
   // Check if user has required role

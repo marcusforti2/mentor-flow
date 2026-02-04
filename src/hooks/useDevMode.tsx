@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type AppRole = 'mentor' | 'mentorado';
+type AppRole = 'mentor' | 'mentorado' | 'admin_master';
 
 interface DevModeContextType {
   isDevModeActive: boolean;

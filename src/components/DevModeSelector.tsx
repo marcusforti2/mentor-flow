@@ -10,7 +10,12 @@ import { cn } from '@/lib/utils';
 export function DevModeSelector() {
   const [isExpanded, setIsExpanded] = useState(false);
   const { isDevModeActive, overrideRole, setOverrideRole, clearOverride } = useDevMode();
-  const { role: realRole } = useAuth();
+  const { role: realRole, isAdminMaster } = useAuth();
+
+  // Only show DevModeSelector for admin_master users
+  if (!isAdminMaster) {
+    return null;
+  }
 
   const currentViewRole = overrideRole || realRole;
   const isMentorView = currentViewRole === 'mentor';
