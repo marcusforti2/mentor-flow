@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Target, 
   User, 
@@ -35,7 +36,8 @@ import {
   MessageCircle,
   Lightbulb,
   ChevronRight,
-  BarChart3
+  BarChart3,
+  Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,6 +59,16 @@ interface QualificationHistory {
   updated_at: string;
 }
 
+interface ExistingLead {
+  id: string;
+  contact_name: string;
+  company: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  notes: string | null;
+  screenshot_urls: string[] | null;
+}
+
 export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const [profileUrl, setProfileUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +78,9 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const [qualificationHistory, setQualificationHistory] = useState<QualificationHistory[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [existingLeads, setExistingLeads] = useState<ExistingLead[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('');
+  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,6 +99,46 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     };
     fetchData();
   }, [mentoradoId]);
+
+  const fetchExistingLeads = async () => {
+    if (!mentoradoId) return;
+    setIsLoadingLeads(true);
+    try {
+      const { data, error } = await supabase
+        .from('crm_prospections')
+        .select('id, contact_name, company, contact_email, contact_phone, notes, screenshot_urls')
+        .eq('mentorado_id', mentoradoId)
+        .order('updated_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setExistingLeads(data || []);
+    } catch (error) {
+      console.error('Error fetching existing leads:', error);
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExistingLeads();
+  }, [mentoradoId]);
+
+  const handleSelectLead = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    const lead = existingLeads.find(l => l.id === leadId);
+    if (lead) {
+      // Build context info for the lead
+      const contextParts: string[] = [];
+      if (lead.contact_name) contextParts.push(`Nome: ${lead.contact_name}`);
+      if (lead.company) contextParts.push(`Empresa: ${lead.company}`);
+      if (lead.contact_email) contextParts.push(`Email: ${lead.contact_email}`);
+      if (lead.contact_phone) contextParts.push(`Telefone: ${lead.contact_phone}`);
+      if (lead.notes) contextParts.push(`Notas: ${lead.notes}`);
+      
+      setProfileUrl(contextParts.join(' | '));
+      toast.success(`Lead "${lead.contact_name}" selecionado`);
+    }
+  };
 
   const fetchQualificationHistory = async () => {
     if (!mentoradoId) return;
@@ -146,7 +201,6 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     if (!mentoradoId) return;
     try {
       const extractedData = reportData.extracted_data;
-      const leadName = extractedData?.name || 'Lead Qualificado';
       const temperatureMap: Record<string, string> = {
         'pursue_hot': 'hot',
         'nurture': 'warm',
@@ -154,38 +208,60 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
         'not_fit': 'cold'
       };
       const temperature = temperatureMap[reportData.recommendation] || 'warm';
-      const { data: existingLead } = await supabase
-        .from('crm_prospections')
-        .select('id')
-        .eq('mentorado_id', mentoradoId)
-        .eq('contact_name', leadName)
-        .maybeSingle();
-      if (existingLead) {
+      
+      // If a lead was selected, update that specific lead
+      if (selectedLeadId) {
+        const selectedLead = existingLeads.find(l => l.id === selectedLeadId);
         await supabase
           .from('crm_prospections')
           .update({
             ai_insights: JSON.parse(JSON.stringify(reportData)),
             temperature,
-            company: extractedData?.company || null,
+            company: extractedData?.company || selectedLead?.company || null,
             notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
             updated_at: new Date().toISOString()
           })
-          .eq('id', existingLead.id);
+          .eq('id', selectedLeadId);
+        toast.success(`Qualificação salva no lead "${selectedLead?.contact_name}"`);
       } else {
-        await supabase
+        // Otherwise, try to find by name or create new
+        const leadName = extractedData?.name || 'Lead Qualificado';
+        const { data: existingLead } = await supabase
           .from('crm_prospections')
-          .insert([{
-            mentorado_id: mentoradoId,
-            contact_name: leadName,
-            company: extractedData?.company || null,
-            temperature,
-            status: 'contacted',
-            ai_insights: JSON.parse(JSON.stringify(reportData)),
-            notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
-            points: reportData.score >= 75 ? 3 : reportData.score >= 50 ? 2 : 1
-          }]);
+          .select('id')
+          .eq('mentorado_id', mentoradoId)
+          .eq('contact_name', leadName)
+          .maybeSingle();
+        
+        if (existingLead) {
+          await supabase
+            .from('crm_prospections')
+            .update({
+              ai_insights: JSON.parse(JSON.stringify(reportData)),
+              temperature,
+              company: extractedData?.company || null,
+              notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingLead.id);
+        } else {
+          await supabase
+            .from('crm_prospections')
+            .insert([{
+              mentorado_id: mentoradoId,
+              contact_name: leadName,
+              company: extractedData?.company || null,
+              temperature,
+              status: 'contacted',
+              ai_insights: JSON.parse(JSON.stringify(reportData)),
+              notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
+              points: reportData.score >= 75 ? 3 : reportData.score >= 50 ? 2 : 1
+            }]);
+        }
       }
+      
       await fetchQualificationHistory();
+      await fetchExistingLeads();
     } catch (error) {
       console.error('Error saving lead to CRM:', error);
     }
@@ -497,11 +573,59 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Lead Selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              Selecionar Lead Existente
+            </label>
+            <Select value={selectedLeadId} onValueChange={handleSelectLead}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Escolha um lead do CRM para qualificar..." />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingLeads ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span className="text-sm text-muted-foreground">Carregando leads...</span>
+                  </div>
+                ) : existingLeads.length === 0 ? (
+                  <div className="py-4 text-center text-sm text-muted-foreground">
+                    Nenhum lead cadastrado
+                  </div>
+                ) : (
+                  existingLeads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{lead.contact_name}</span>
+                        {lead.company && (
+                          <span className="text-muted-foreground">• {lead.company}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">ou insira URL/dados manualmente</span>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Input
-              placeholder="https://instagram.com/username ou https://linkedin.com/in/username"
+              placeholder="URL do perfil ou informações do lead (nome, empresa, etc.)"
               value={profileUrl}
-              onChange={(e) => setProfileUrl(e.target.value)}
+              onChange={(e) => {
+                setProfileUrl(e.target.value);
+                setSelectedLeadId(''); // Clear selection when typing manually
+              }}
               className="flex-1"
             />
             <Button onClick={handleAnalyze} disabled={isLoading} className="min-w-[140px]">
