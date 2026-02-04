@@ -7,14 +7,207 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
+const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY');
 
-async function scrapeProfile(url: string): Promise<{ success: boolean; data?: any; error?: string }> {
+// Apify Actor IDs for different platforms
+const APIFY_ACTORS: Record<string, string> = {
+  instagram: 'apify/instagram-profile-scraper',
+  linkedin: 'curious_coder/linkedin-profile-scraper',
+  twitter: 'apify/twitter-scraper',
+  tiktok: 'clockworks/tiktok-scraper',
+};
+
+function detectPlatform(url: string): string | null {
+  const urlLower = url.toLowerCase();
+  if (urlLower.includes('instagram.com') || urlLower.includes('instagr.am')) return 'instagram';
+  if (urlLower.includes('linkedin.com')) return 'linkedin';
+  if (urlLower.includes('twitter.com') || urlLower.includes('x.com')) return 'twitter';
+  if (urlLower.includes('tiktok.com')) return 'tiktok';
+  return null;
+}
+
+function extractUsername(url: string, platform: string): string | null {
+  try {
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+    const pathParts = urlObj.pathname.split('/').filter(p => p && p !== 'in');
+    
+    if (platform === 'instagram') return pathParts[0]?.replace('@', '') || null;
+    if (platform === 'linkedin') return pathParts.find(p => p !== 'in') || null;
+    if (platform === 'twitter') return pathParts[0]?.replace('@', '') || null;
+    if (platform === 'tiktok') return pathParts[0]?.replace('@', '') || null;
+    return pathParts[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function runApifyActor(actorId: string, input: Record<string, unknown>, apiKey: string): Promise<any> {
+  console.log(`Running Apify actor: ${actorId}`);
+  
+  const runResponse = await fetch(
+    `https://api.apify.com/v2/acts/${actorId}/runs?token=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }
+  );
+
+  if (!runResponse.ok) {
+    const error = await runResponse.text();
+    console.error('Apify run failed:', error);
+    throw new Error(`Apify error: ${error}`);
+  }
+
+  const runData = await runResponse.json();
+  const runId = runData.data?.id;
+  
+  if (!runId) throw new Error('No run ID from Apify');
+
+  console.log(`Actor run started: ${runId}`);
+
+  // Poll for completion (max 60 seconds)
+  let attempts = 0;
+  while (attempts < 30) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const statusResponse = await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}?token=${apiKey}`
+    );
+    
+    if (!statusResponse.ok) throw new Error('Failed to check status');
+    
+    const statusData = await statusResponse.json();
+    const status = statusData.data?.status;
+    
+    console.log(`Run status: ${status}`);
+    
+    if (status === 'SUCCEEDED') {
+      const datasetId = statusData.data?.defaultDatasetId;
+      const datasetResponse = await fetch(
+        `https://api.apify.com/v2/datasets/${datasetId}/items?token=${apiKey}`
+      );
+      if (!datasetResponse.ok) throw new Error('Failed to fetch dataset');
+      return await datasetResponse.json();
+    }
+    
+    if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+      throw new Error(`Actor ${status}`);
+    }
+    
+    attempts++;
+  }
+  
+  throw new Error('Actor timed out');
+}
+
+function formatInstagramProfile(data: any[]): string {
+  if (!data?.length) return '';
+  const p = data[0];
+  return `
+# Perfil Instagram: @${p.username || 'N/A'}
+**Nome:** ${p.fullName || p.full_name || 'N/A'}
+**Bio:** ${p.biography || p.bio || 'N/A'}
+**Seguidores:** ${p.followersCount || p.followers || 'N/A'}
+**Seguindo:** ${p.followingCount || p.following || 'N/A'}
+**Posts:** ${p.postsCount || p.posts || 'N/A'}
+**Website:** ${p.externalUrl || p.website || 'N/A'}
+**Verificado:** ${p.verified ? 'Sim' : 'Não'}
+**Business:** ${p.isBusinessAccount ? 'Sim' : 'Não'}
+**Categoria:** ${p.businessCategoryName || p.category || 'N/A'}
+
+## Posts Recentes
+${(p.latestPosts || p.posts || []).slice(0, 5).map((post: any, i: number) => `
+### Post ${i + 1}
+- Likes: ${post.likesCount || post.likes || 'N/A'}
+- Comentários: ${post.commentsCount || post.comments || 'N/A'}
+- Legenda: ${(post.caption || post.text || '').substring(0, 200)}...
+`).join('\n')}`.trim();
+}
+
+function formatLinkedInProfile(data: any[]): string {
+  if (!data?.length) return '';
+  const p = data[0];
+  return `
+# Perfil LinkedIn: ${p.firstName || ''} ${p.lastName || ''}
+**Nome:** ${p.fullName || `${p.firstName || ''} ${p.lastName || ''}`}
+**Headline:** ${p.headline || p.title || 'N/A'}
+**Localização:** ${p.location || p.geoLocationName || 'N/A'}
+**Conexões:** ${p.connectionsCount || p.connections || 'N/A'}
+**Empresa:** ${p.currentCompany || p.company || 'N/A'}
+**Cargo:** ${p.currentPosition || p.position || 'N/A'}
+**Setor:** ${p.industry || 'N/A'}
+
+## Sobre
+${p.summary || p.about || 'N/A'}
+
+## Experiência
+${(p.experience || p.positions || []).slice(0, 3).map((e: any) => `
+- ${e.title || e.position || 'Cargo'} @ ${e.companyName || e.company || 'Empresa'}: ${(e.description || '').substring(0, 100)}...
+`).join('\n')}
+
+## Habilidades
+${(p.skills || []).slice(0, 10).map((s: any) => typeof s === 'string' ? s : s.name).join(', ') || 'N/A'}`.trim();
+}
+
+async function scrapeWithApify(url: string, platform: string): Promise<{ success: boolean; data?: string; error?: string }> {
+  if (!APIFY_API_KEY) {
+    return { success: false, error: 'Apify API key não configurada' };
+  }
+
+  const username = extractUsername(url, platform);
+  if (!username) {
+    return { success: false, error: 'Não foi possível extrair username da URL' };
+  }
+
+  console.log(`Apify scraping ${platform}: ${username}`);
+
+  const actorId = APIFY_ACTORS[platform];
+  if (!actorId) {
+    return { success: false, error: `Plataforma ${platform} não suportada pelo Apify` };
+  }
+
+  let input: Record<string, unknown>;
+  if (platform === 'instagram') {
+    input = { usernames: [username], resultsLimit: 1 };
+  } else if (platform === 'linkedin') {
+    input = { profileUrls: [url.startsWith('http') ? url : `https://${url}`], proxy: { useApifyProxy: true } };
+  } else if (platform === 'twitter') {
+    input = { handles: [username], tweetsDesired: 10, proxyConfig: { useApifyProxy: true } };
+  } else {
+    input = { profiles: [username], resultsPerPage: 1 };
+  }
+
+  try {
+    const data = await runApifyActor(actorId, input, APIFY_API_KEY);
+    
+    let markdown = '';
+    if (platform === 'instagram') {
+      markdown = formatInstagramProfile(data);
+    } else if (platform === 'linkedin') {
+      markdown = formatLinkedInProfile(data);
+    } else {
+      markdown = JSON.stringify(data, null, 2);
+    }
+
+    if (!markdown || markdown.length < 50) {
+      return { success: false, error: 'Dados insuficientes retornados pelo Apify' };
+    }
+
+    return { success: true, data: markdown };
+  } catch (error) {
+    console.error('Apify error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Erro no Apify' };
+  }
+}
+
+async function scrapeWithFirecrawl(url: string): Promise<{ success: boolean; data?: string; error?: string }> {
   if (!FIRECRAWL_API_KEY) {
     return { success: false, error: 'Firecrawl API key não configurada' };
   }
 
   try {
-    console.log('Scraping profile:', url);
+    console.log('Firecrawl scraping:', url);
     
     const response = await fetch('https://api.firecrawl.dev/v2/scrape', {
       method: 'POST',
@@ -34,12 +227,13 @@ async function scrapeProfile(url: string): Promise<{ success: boolean; data?: an
 
     if (!response.ok) {
       console.error('Firecrawl error:', data);
-      return { success: false, error: data.error || 'Erro ao fazer scraping do perfil' };
+      return { success: false, error: data.error || 'Erro no Firecrawl' };
     }
 
-    return { success: true, data };
+    const markdown = data?.data?.markdown || data?.markdown || '';
+    return { success: true, data: markdown };
   } catch (error) {
-    console.error('Scraping error:', error);
+    console.error('Firecrawl error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
   }
 }
@@ -50,7 +244,7 @@ async function analyzeWithAI(profileData: string, businessProfile: any): Promise
   }
 
   const systemPrompt = `Você é um especialista em análise de leads, psicologia de vendas e comportamento humano.
-Sua tarefa é analisar profundamente um perfil de lead e gerar um relatório completo e acionável para ajudar o vendedor a fechar a venda.
+Sua tarefa é analisar profundamente um perfil de lead e gerar um relatório completo e acionável.
 
 IMPORTANTE:
 - Seja EXTREMAMENTE específico e use informações reais do perfil
@@ -59,85 +253,59 @@ IMPORTANTE:
 - O relatório deve ser em português brasileiro
 - Retorne APENAS o JSON válido, sem markdown ou texto adicional`;
 
-  const userPrompt = `## CONTEXTO DO NEGÓCIO DO VENDEDOR:
+  const userPrompt = `## CONTEXTO DO NEGÓCIO:
 ${businessProfile ? `
-- Nome do Negócio: ${businessProfile.business_name || 'Não informado'}
+- Nome: ${businessProfile.business_name || 'Não informado'}
 - Tipo: ${businessProfile.business_type || 'Não informado'}
-- Oferta Principal: ${businessProfile.main_offer || 'Não informado'}
-- Público-Alvo: ${businessProfile.target_audience || 'Não informado'}
-- Proposta de Valor: ${businessProfile.unique_value_proposition || 'Não informado'}
-- Dores que Resolve: ${businessProfile.pain_points_solved?.join(', ') || 'Não informado'}
-- Faixa de Preço: ${businessProfile.price_range || 'Não informado'}
-` : 'Perfil de negócio não configurado'}
+- Oferta: ${businessProfile.main_offer || 'Não informado'}
+- Público: ${businessProfile.target_audience || 'Não informado'}
+- Proposta: ${businessProfile.unique_value_proposition || 'Não informado'}
+- Dores: ${businessProfile.pain_points_solved?.join(', ') || 'Não informado'}
+- Preço: ${businessProfile.price_range || 'Não informado'}
+` : 'Não configurado'}
 
-## DADOS DO PERFIL DO LEAD (scraped):
+## DADOS DO LEAD:
 ${profileData}
 
 ## TAREFA:
-Analise PROFUNDAMENTE este lead e retorne um JSON com a seguinte estrutura EXATA:
-
+Analise e retorne JSON:
 {
-  "score": <número de 0-100>,
-  "score_breakdown": {
-    "fit_with_offer": <0-25>,
-    "buying_signals": <0-25>,
-    "engagement_level": <0-25>,
-    "financial_capacity": <0-25>
-  },
-  "summary": "<resumo executivo de 2-3 frases>",
+  "score": <0-100>,
+  "score_breakdown": { "fit_with_offer": <0-25>, "buying_signals": <0-25>, "engagement_level": <0-25>, "financial_capacity": <0-25> },
+  "summary": "<resumo 2-3 frases>",
   "recommendation": "<pursue_hot|nurture|low_priority|not_fit>",
   "behavioral_profile": {
     "primary_style": "<dominante|influente|estavel|analitico>",
     "secondary_style": "<string>",
-    "communication_preference": "<como essa pessoa prefere se comunicar>",
-    "decision_making_style": "<como essa pessoa toma decisões>",
-    "what_motivates": ["<lista de motivadores>"],
-    "what_frustrates": ["<lista de frustrações>"],
-    "how_to_build_rapport": "<como criar conexão com essa pessoa>"
+    "communication_preference": "<como prefere comunicar>",
+    "decision_making_style": "<como decide>",
+    "what_motivates": ["<motivadores>"],
+    "what_frustrates": ["<frustrações>"],
+    "how_to_build_rapport": "<como criar conexão>"
   },
   "lead_perspective": {
-    "likely_goals": ["<objetivos prováveis>"],
-    "current_challenges": ["<desafios atuais>"],
-    "fears_and_concerns": ["<medos e preocupações>"],
-    "desires_and_aspirations": ["<desejos e aspirações>"]
+    "likely_goals": ["<objetivos>"],
+    "current_challenges": ["<desafios>"],
+    "fears_and_concerns": ["<medos>"],
+    "desires_and_aspirations": ["<desejos>"]
   },
   "approach_strategy": {
-    "opening_hook": "<frase de abertura personalizada>",
-    "key_points_to_touch": ["<pontos importantes para mencionar>"],
-    "topics_to_avoid": ["<assuntos para evitar>"],
+    "opening_hook": "<frase abertura>",
+    "key_points_to_touch": ["<pontos>"],
+    "topics_to_avoid": ["<evitar>"],
     "best_channel": "<dm_instagram|linkedin|whatsapp|email>",
-    "best_time_to_contact": "<melhor momento para contato>"
+    "best_time_to_contact": "<momento>"
   },
   "value_anchoring": {
-    "pain_to_highlight": "<principal dor para destacar>",
-    "result_to_promise": "<resultado específico para prometer>",
-    "social_proof_angle": "<ângulo de prova social>",
-    "price_justification": "<como justificar o preço>",
-    "roi_argument": "<argumento de ROI>"
+    "pain_to_highlight": "<dor>",
+    "result_to_promise": "<resultado>",
+    "social_proof_angle": "<prova social>",
+    "price_justification": "<justificar preço>",
+    "roi_argument": "<ROI>"
   },
-  "expected_objections": [
-    {
-      "objection": "<objeção esperada>",
-      "likelihood": "<alta|media|baixa>",
-      "response_strategy": "<estratégia de resposta>",
-      "script_example": "<exemplo de script para responder>"
-    }
-  ],
-  "what_pushes_away": {
-    "behaviors_to_avoid": ["<comportamentos a evitar>"],
-    "words_to_avoid": ["<palavras/frases a evitar>"],
-    "approaches_that_fail": ["<abordagens que não funcionam>"]
-  },
-  "extracted_data": {
-    "name": "<nome extraído>",
-    "headline": "<headline/bio>",
-    "company": "<empresa se identificada>",
-    "industry": "<nicho/indústria>",
-    "location": "<localização se disponível>",
-    "followers": <número ou null>,
-    "content_topics": ["<tópicos do conteúdo>"],
-    "recent_posts_summary": "<resumo dos posts recentes>"
-  }
+  "expected_objections": [{ "objection": "<objeção>", "likelihood": "<alta|media|baixa>", "response_strategy": "<estratégia>", "script_example": "<script>" }],
+  "what_pushes_away": { "behaviors_to_avoid": ["<evitar>"], "words_to_avoid": ["<palavras>"], "approaches_that_fail": ["<abordagens>"] },
+  "extracted_data": { "name": "<nome>", "headline": "<headline>", "company": "<empresa>", "industry": "<setor>", "location": "<local>", "followers": <número|null>, "content_topics": ["<tópicos>"], "recent_posts_summary": "<resumo posts>" }
 }`;
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -147,7 +315,7 @@ Analise PROFUNDAMENTE este lead e retorne um JSON com a seguinte estrutura EXATA
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-5.2',
+      model: 'google/gemini-3-flash-preview',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -158,63 +326,23 @@ Analise PROFUNDAMENTE este lead e retorne um JSON com a seguinte estrutura EXATA
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('AI API error:', response.status, errorText);
-    
-    if (response.status === 429) {
-      throw new Error('Limite de requisições excedido. Tente novamente em alguns minutos.');
-    }
-    if (response.status === 402) {
-      throw new Error('Créditos de IA insuficientes. Adicione créditos no workspace.');
-    }
-    throw new Error(`Erro na API de IA: ${response.status}`);
+    console.error('AI error:', response.status, errorText);
+    if (response.status === 429) throw new Error('Limite de requisições excedido');
+    if (response.status === 402) throw new Error('Créditos de IA insuficientes');
+    throw new Error(`Erro IA: ${response.status}`);
   }
 
   const aiResponse = await response.json();
   const content = aiResponse.choices?.[0]?.message?.content;
 
-  if (!content) {
-    throw new Error('Resposta vazia da IA');
-  }
+  if (!content) throw new Error('Resposta vazia da IA');
 
-  // Parse JSON response
-  try {
-    // Remove potential markdown code blocks
-    let jsonString = content.trim();
-    if (jsonString.startsWith('```json')) {
-      jsonString = jsonString.slice(7);
-    }
-    if (jsonString.startsWith('```')) {
-      jsonString = jsonString.slice(3);
-    }
-    if (jsonString.endsWith('```')) {
-      jsonString = jsonString.slice(0, -3);
-    }
-    
-    return JSON.parse(jsonString.trim());
-  } catch (parseError) {
-    console.error('JSON parse error:', parseError, 'Content:', content);
-    throw new Error('Erro ao processar resposta da IA');
-  }
-}
-
-// Check if URL is from a blocklisted platform
-function isBlocklistedPlatform(url: string): { blocked: boolean; platform?: string } {
-  const lowercaseUrl = url.toLowerCase();
-  const blockedPlatforms = [
-    { pattern: 'instagram.com', name: 'Instagram' },
-    { pattern: 'linkedin.com', name: 'LinkedIn' },
-    { pattern: 'facebook.com', name: 'Facebook' },
-    { pattern: 'twitter.com', name: 'Twitter/X' },
-    { pattern: 'x.com', name: 'Twitter/X' },
-    { pattern: 'tiktok.com', name: 'TikTok' },
-  ];
-
-  for (const platform of blockedPlatforms) {
-    if (lowercaseUrl.includes(platform.pattern)) {
-      return { blocked: true, platform: platform.name };
-    }
-  }
-  return { blocked: false };
+  let jsonString = content.trim();
+  if (jsonString.startsWith('```json')) jsonString = jsonString.slice(7);
+  if (jsonString.startsWith('```')) jsonString = jsonString.slice(3);
+  if (jsonString.endsWith('```')) jsonString = jsonString.slice(0, -3);
+  
+  return JSON.parse(jsonString.trim());
 }
 
 serve(async (req) => {
@@ -225,13 +353,10 @@ serve(async (req) => {
   try {
     const { profileUrl, businessProfile, manualProfileData } = await req.json();
 
-    // Mode 1: Manual profile data (when scraping is not possible)
+    // Mode 1: Manual data
     if (manualProfileData && manualProfileData.trim().length > 50) {
-      console.log('Processing manual profile data, length:', manualProfileData.length);
-      
+      console.log('Processing manual data, length:', manualProfileData.length);
       const report = await analyzeWithAI(manualProfileData, businessProfile);
-      console.log('Analysis complete, score:', report.score);
-
       return new Response(
         JSON.stringify({ success: true, report }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -241,79 +366,86 @@ serve(async (req) => {
     // Mode 2: URL scraping
     if (!profileUrl) {
       return new Response(
-        JSON.stringify({ success: false, error: 'URL do perfil ou dados manuais são obrigatórios' }),
+        JSON.stringify({ success: false, error: 'URL ou dados manuais são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Processing lead qualification for:', profileUrl);
+    console.log('Processing:', profileUrl);
 
-    // Check if platform is blocklisted
-    const blockCheck = isBlocklistedPlatform(profileUrl);
-    if (blockCheck.blocked) {
+    // Check platform - use Apify for social networks
+    const platform = detectPlatform(profileUrl);
+    let profileData = '';
+    let scrapeMethod = '';
+
+    if (platform) {
+      // Try Apify first for social networks
+      console.log(`Social platform detected: ${platform}, trying Apify...`);
+      const apifyResult = await scrapeWithApify(profileUrl, platform);
+      
+      if (apifyResult.success && apifyResult.data) {
+        profileData = apifyResult.data;
+        scrapeMethod = 'apify';
+        console.log('Apify success, data length:', profileData.length);
+      } else {
+        console.log('Apify failed:', apifyResult.error);
+        
+        // Return error suggesting manual input for social networks
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Não foi possível extrair dados do ${platform}: ${apifyResult.error}. Use a opção "Colar Perfil Manualmente".`,
+            requiresManualInput: true,
+            blockedPlatform: platform
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Try Firecrawl for other websites
+      console.log('Non-social website, trying Firecrawl...');
+      const firecrawlResult = await scrapeWithFirecrawl(profileUrl);
+      
+      if (firecrawlResult.success && firecrawlResult.data) {
+        profileData = firecrawlResult.data;
+        scrapeMethod = 'firecrawl';
+        console.log('Firecrawl success, data length:', profileData.length);
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: firecrawlResult.error || 'Erro ao extrair dados do site',
+            requiresManualInput: true
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    if (!profileData || profileData.length < 50) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `O ${blockCheck.platform} não permite scraping automático por restrições de termos de uso. Use a opção "Colar Perfil Manualmente" para analisar este lead.`,
-          blockedPlatform: blockCheck.platform,
+          error: 'Dados insuficientes extraídos. Verifique a URL ou use entrada manual.',
           requiresManualInput: true
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 1: Scrape the profile
-    const scrapeResult = await scrapeProfile(profileUrl);
-    
-    if (!scrapeResult.success) {
-      // Check if error is about blocklisting
-      const errorMsg = scrapeResult.error || '';
-      if (errorMsg.includes('blocklisted') || errorMsg.includes('blocked')) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Este site não permite scraping automático. Use a opção "Colar Perfil Manualmente" para analisar este lead.',
-            requiresManualInput: true
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ success: false, error: scrapeResult.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const profileData = scrapeResult.data?.data?.markdown || scrapeResult.data?.markdown || '';
-    
-    if (!profileData || profileData.length < 50) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Não foi possível extrair dados suficientes do perfil. Verifique se a URL está correta e o perfil é público.' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Profile scraped, data length:', profileData.length);
-
-    // Step 2: Analyze with AI
+    // Analyze with AI
     const report = await analyzeWithAI(profileData, businessProfile);
-
-    console.log('Analysis complete, score:', report.score);
+    console.log(`Analysis complete via ${scrapeMethod}, score:`, report.score);
 
     return new Response(
-      JSON.stringify({ success: true, report }),
+      JSON.stringify({ success: true, report, scrapeMethod }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Lead qualifier error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
