@@ -403,7 +403,7 @@ IMPORTANTE: Forneça pelo menos 8 objeções diferentes e completas. Seja MUITO 
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.7,
-      max_tokens: 8000,
+      max_completion_tokens: 8000,
     }),
   });
 
