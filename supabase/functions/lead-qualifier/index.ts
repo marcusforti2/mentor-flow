@@ -12,7 +12,7 @@ const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY');
 // Apify Actor IDs for different platforms
 const APIFY_ACTORS: Record<string, string> = {
   instagram: 'apify/instagram-profile-scraper',
-  linkedin: 'bebity/linkedin-profile-scraper',
+  linkedin: 'bebity/linkedin-premium-actor',
   twitter: 'apify/twitter-scraper',
   tiktok: 'clockworks/tiktok-scraper',
 };
@@ -42,18 +42,18 @@ function extractUsername(url: string, platform: string): string | null {
 }
 
 async function runApifyActor(actorId: string, input: Record<string, unknown>, apiKey: string): Promise<any> {
-  // URL-encode the actor ID (replace / with ~)
-  const encodedActorId = actorId.replace('/', '~');
+  // URL-encode the entire actor ID for the API call
+  const encodedActorId = encodeURIComponent(actorId);
   console.log(`Running Apify actor: ${actorId} (encoded: ${encodedActorId})`);
   
-  const runResponse = await fetch(
-    `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    }
-  );
+  const apiUrl = `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${apiKey}`;
+  console.log(`API URL: ${apiUrl}`);
+  
+  const runResponse = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
 
   if (!runResponse.ok) {
     const error = await runResponse.text();
@@ -173,7 +173,14 @@ async function scrapeWithApify(url: string, platform: string): Promise<{ success
   if (platform === 'instagram') {
     input = { usernames: [username], resultsLimit: 1 };
   } else if (platform === 'linkedin') {
-    input = { urls: [url.startsWith('http') ? url : `https://${url}`] };
+    // bebity/linkedin-premium-actor format
+    input = { 
+      action: 'get-profiles',
+      keywords: [url.startsWith('http') ? url : `https://${url}`],
+      isUrl: true,
+      isName: false,
+      limit: 1
+    };
   } else if (platform === 'twitter') {
     input = { handles: [username], tweetsDesired: 10, proxyConfig: { useApifyProxy: true } };
   } else {
