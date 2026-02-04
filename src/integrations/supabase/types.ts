@@ -454,6 +454,7 @@ export type Database = {
           mentorado_id: string
           notes: string | null
           points: number | null
+          profile_url: string | null
           screenshot_urls: string[] | null
           status: string | null
           temperature: string | null
@@ -470,6 +471,7 @@ export type Database = {
           mentorado_id: string
           notes?: string | null
           points?: number | null
+          profile_url?: string | null
           screenshot_urls?: string[] | null
           status?: string | null
           temperature?: string | null
@@ -486,6 +488,7 @@ export type Database = {
           mentorado_id?: string
           notes?: string | null
           points?: number | null
+          profile_url?: string | null
           screenshot_urls?: string[] | null
           status?: string | null
           temperature?: string | null
