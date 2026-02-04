@@ -61,14 +61,18 @@ export function AdminLayout() {
       {/* Back Header - visible on sub-pages */}
       {!isDashboard && (
         <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <Link to="/admin">
+              <LBVLogo variant="full" size="sm" />
+            </Link>
+            <div className="h-6 w-px bg-border/50" />
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/admin')}
-              className="h-10 w-10 rounded-full hover:bg-primary/10"
+              className="h-9 w-9 rounded-full hover:bg-primary/10"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="font-display font-semibold text-lg text-foreground">
               {pageTitle}
