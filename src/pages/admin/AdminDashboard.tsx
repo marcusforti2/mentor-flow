@@ -16,9 +16,47 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { AIToolsAnalyticsCard } from '@/components/admin/AIToolsAnalyticsCard';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AdminDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const [mentoradosCount, setMentoradosCount] = useState(0);
+  const [sosCount, setSosCount] = useState(0);
+  
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user) return;
+      
+      // Get mentor id
+      const { data: mentorData } = await supabase
+        .from('mentors')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (!mentorData) return;
+      
+      // Count mentorados
+      const { count: mentoradosTotal } = await supabase
+        .from('mentorados')
+        .select('*', { count: 'exact', head: true })
+        .eq('mentor_id', mentorData.id)
+        .eq('status', 'active');
+      
+      setMentoradosCount(mentoradosTotal || 0);
+      
+      // Count pending SOS
+      const { count: sosTotal } = await supabase
+        .from('sos_requests')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['pending', 'in_progress']);
+      
+      setSosCount(sosTotal || 0);
+    };
+    
+    fetchStats();
+  }, [user]);
 
   return (
     <div className="space-y-8">
@@ -50,7 +88,7 @@ export default function AdminDashboard() {
               </span>
             </div>
             <div className="mt-4">
-              <p className="stat-value text-gradient-gold">39</p>
+              <p className="stat-value text-gradient-gold">{mentoradosCount}</p>
               <p className="stat-label mt-1">Mentorados Ativos</p>
             </div>
           </div>
@@ -87,12 +125,14 @@ export default function AdminDashboard() {
           <div className="flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
               <AlertTriangle className="h-6 w-6 text-amber-500" />
-              <span className="text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-1 rounded-full">
-                Urgente
-              </span>
+              {sosCount > 0 && (
+                <span className="text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-1 rounded-full">
+                  Urgente
+                </span>
+              )}
             </div>
             <div className="mt-4">
-              <p className="stat-value text-amber-500">2</p>
+              <p className="stat-value text-amber-500">{sosCount}</p>
               <p className="stat-label mt-1">SOS Pendentes</p>
             </div>
           </div>
