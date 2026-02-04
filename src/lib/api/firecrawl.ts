@@ -38,55 +38,117 @@ export interface LeadQualificationReport {
   };
   summary: string;
   recommendation: 'pursue_hot' | 'nurture' | 'low_priority' | 'not_fit';
+  recommendation_reasoning?: string;
+  
+  extracted_data: {
+    name: string;
+    headline?: string;
+    company?: string;
+    industry?: string;
+    location?: string;
+    followers?: number | null;
+    platform?: string;
+    content_topics?: string[];
+    recent_posts_summary?: string;
+  };
+  
   behavioral_profile: {
     primary_style: 'dominante' | 'influente' | 'estavel' | 'analitico';
-    secondary_style: string;
+    secondary_style?: string | null;
+    personality_summary?: string;
     communication_preference: string;
     decision_making_style: string;
     what_motivates: string[];
     what_frustrates: string[];
     how_to_build_rapport: string;
+    buying_triggers?: string[];
+    red_flags_for_them?: string[];
   };
+  
   lead_perspective: {
     likely_goals: string[];
     current_challenges: string[];
     fears_and_concerns: string[];
     desires_and_aspirations: string[];
+    hidden_pains?: string[];
+    status_symbols?: string[];
   };
+  
   approach_strategy: {
     opening_hook: string;
+    second_message?: string;
+    follow_up_if_silent?: string;
     key_points_to_touch: string[];
     topics_to_avoid: string[];
     best_channel: 'dm_instagram' | 'linkedin' | 'whatsapp' | 'email';
     best_time_to_contact: string;
+    conversation_flow?: string[];
   };
+  
   value_anchoring: {
     pain_to_highlight: string;
     result_to_promise: string;
     social_proof_angle: string;
     price_justification: string;
     roi_argument: string;
+    urgency_angle?: string;
+    scarcity_angle?: string;
+    authority_angle?: string;
   };
+  
   expected_objections: Array<{
     objection: string;
+    objection_type?: string;
     likelihood: 'alta' | 'media' | 'baixa';
+    real_meaning?: string;
     response_strategy: string;
     script_example: string;
+    follow_up_question?: string;
   }>;
+  
+  negotiation_tactics?: {
+    recommended_approach?: string;
+    price_presentation?: string;
+    discount_strategy?: string;
+    payment_flexibility?: string;
+    bonus_to_offer?: string;
+    deadline_creation?: string;
+    competitor_comparison?: string;
+  };
+  
+  closing_scripts?: {
+    soft_close?: string;
+    assumptive_close?: string;
+    alternative_close?: string;
+    urgency_close?: string;
+    summary_close?: string;
+  };
+  
+  mental_triggers?: {
+    primary_triggers?: string[];
+    how_to_apply_each?: Record<string, string>;
+  };
+  
   what_pushes_away: {
     behaviors_to_avoid: string[];
     words_to_avoid: string[];
     approaches_that_fail: string[];
+    tone_to_avoid?: string;
   };
-  extracted_data: {
-    name: string;
-    headline: string;
-    company: string;
-    industry: string;
-    location: string;
-    followers: number | null;
-    content_topics: string[];
-    recent_posts_summary: string;
+  
+  personalized_scripts?: {
+    dm_opener?: string;
+    linkedin_connection?: string;
+    whatsapp_intro?: string;
+    email_subject?: string;
+    email_body?: string;
+  };
+  
+  risk_assessment?: {
+    deal_probability?: string;
+    main_risk?: string;
+    mitigation_strategy?: string;
+    timeline_estimate?: string;
   };
 }
 
