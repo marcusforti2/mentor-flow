@@ -10,17 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2, 
-  ChevronLeft, ChevronRight, Users, Bell, Repeat, Edit2
+  ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List
 } from "lucide-react";
 import { 
-  format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, 
+  format, startOfMonth, endOfMonth, eachDayOfInterval, 
   isSameDay, addMonths, subMonths, isToday, parseISO, startOfWeek, 
-  endOfWeek, addWeeks, subWeeks, addHours, setHours, setMinutes
+  endOfWeek, addWeeks, subWeeks, setHours, setMinutes
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -39,23 +39,23 @@ interface CalendarEvent {
 
 type ViewMode = "month" | "week";
 
-const eventTypeColors: Record<string, string> = {
-  geral: "bg-blue-500",
-  mentoria: "bg-purple-500",
-  live: "bg-red-500",
-  prazo: "bg-yellow-500",
-  reuniao: "bg-green-500",
+const eventTypes = [
+  { value: "geral", label: "Geral", color: "bg-blue-500", emoji: "📌" },
+  { value: "mentoria", label: "Mentoria", color: "bg-purple-500", emoji: "🎯" },
+  { value: "live", label: "Live", color: "bg-red-500", emoji: "🔴" },
+  { value: "prazo", label: "Prazo", color: "bg-amber-500", emoji: "⏰" },
+  { value: "reuniao", label: "Reunião", color: "bg-emerald-500", emoji: "👥" },
+];
+
+const getEventColor = (type: string) => {
+  return eventTypes.find(t => t.value === type)?.color || "bg-blue-500";
 };
 
-const eventTypeLabels: Record<string, string> = {
-  geral: "Geral",
-  mentoria: "Mentoria",
-  live: "Live",
-  prazo: "Prazo",
-  reuniao: "Reunião",
+const getEventLabel = (type: string) => {
+  return eventTypes.find(t => t.value === type)?.label || "Geral";
 };
 
-const hoursOfDay = Array.from({ length: 24 }, (_, i) => i);
+const workingHours = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:00
 
 export default function Calendario() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -68,7 +68,6 @@ export default function Calendario() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   
-  // Form state
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -149,7 +148,6 @@ export default function Calendario() {
     setIsSubmitting(true);
     try {
       if (editingEvent) {
-        // Update existing event
         const { error } = await supabase
           .from('calendar_events')
           .update({
@@ -170,11 +168,9 @@ export default function Calendario() {
           description: "Evento atualizado com sucesso.",
         });
       } else {
-        // Create new event(s)
         const eventsToCreate = [];
         
         if (newEvent.is_recurring) {
-          // Create recurring events for the next 12 weeks/months
           const iterations = newEvent.recurrence_type === "weekly" ? 12 : 6;
           for (let i = 0; i < iterations; i++) {
             const eventDate = newEvent.recurrence_type === "weekly"
@@ -260,7 +256,7 @@ export default function Calendario() {
     }
   };
 
-  const openEventDialog = (event?: CalendarEvent, date?: Date) => {
+  const openEventDialog = (event?: CalendarEvent, date?: Date, time?: string) => {
     if (event) {
       setEditingEvent(event);
       setNewEvent({
@@ -276,7 +272,11 @@ export default function Calendario() {
     } else {
       resetForm();
       if (date) {
-        setNewEvent(prev => ({ ...prev, event_date: date }));
+        setNewEvent(prev => ({ 
+          ...prev, 
+          event_date: date,
+          event_time: time || "09:00"
+        }));
       }
     }
     setIsDialogOpen(true);
@@ -301,7 +301,7 @@ export default function Calendario() {
   const getEventsForHour = (date: Date, hour: number) => {
     return events.filter(event => {
       if (!isSameDay(parseISO(event.event_date), date)) return false;
-      if (!event.event_time) return hour === 9; // Default to 9am if no time
+      if (!event.event_time) return hour === 9;
       const eventHour = parseInt(event.event_time.split(':')[0], 10);
       return eventHour === hour;
     });
@@ -317,7 +317,14 @@ export default function Calendario() {
 
   const upcomingEvents = events
     .filter(e => parseISO(e.event_date) >= new Date())
-    .slice(0, 8);
+    .slice(0, 5);
+
+  const totalEvents = events.length;
+  const thisMonthEvents = events.filter(e => {
+    const eventDate = parseISO(e.event_date);
+    return eventDate.getMonth() === currentDate.getMonth() && 
+           eventDate.getFullYear() === currentDate.getFullYear();
+  }).length;
 
   if (isLoading) {
     return (
@@ -328,122 +335,132 @@ export default function Calendario() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">Calendário</h1>
-          <p className="text-muted-foreground">Gerencie eventos e datas importantes</p>
+    <div className="h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4">
+      {/* Compact Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 bg-secondary/30 rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate('prev')}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-semibold px-2 min-w-[140px] text-center">
+              {viewMode === "week" 
+                ? `${format(weekStart, "dd", { locale: ptBR })} - ${format(weekEnd, "dd MMM", { locale: ptBR })}`
+                : format(currentDate, "MMMM yyyy", { locale: ptBR })
+              }
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate('next')}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setCurrentDate(new Date())}
+            className="text-xs h-8"
+          >
+            Hoje
+          </Button>
         </div>
         
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center rounded-lg bg-secondary/50 p-1">
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center rounded-lg bg-secondary/30 p-0.5">
             <Button
-              variant={viewMode === "week" ? "default" : "ghost"}
+              variant={viewMode === "week" ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setViewMode("week")}
-              className="h-8"
+              className="h-7 px-3 text-xs gap-1.5"
             >
+              <List className="w-3.5 h-3.5" />
               Semana
             </Button>
             <Button
-              variant={viewMode === "month" ? "default" : "ghost"}
+              variant={viewMode === "month" ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setViewMode("month")}
-              className="h-8"
+              className="h-7 px-3 text-xs gap-1.5"
             >
+              <LayoutGrid className="w-3.5 h-3.5" />
               Mês
             </Button>
           </div>
 
-          <Button onClick={() => openEventDialog()} className="gap-2">
+          <Button onClick={() => openEventDialog()} size="sm" className="h-8 gap-1.5">
             <Plus className="w-4 h-4" />
-            Novo Evento
+            <span className="hidden sm:inline">Novo Evento</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Calendar View */}
-        <Card className="xl:col-span-3 glass-card overflow-hidden">
-          {/* Calendar Header */}
-          <CardHeader className="flex-row items-center justify-between pb-4 border-b border-border/50">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('prev')}>
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <CardTitle className="text-xl font-display">
-                {viewMode === "week" 
-                  ? `${format(weekStart, "dd MMM", { locale: ptBR })} - ${format(weekEnd, "dd MMM yyyy", { locale: ptBR })}`
-                  : format(currentDate, "MMMM yyyy", { locale: ptBR })
-                }
-              </CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => navigate('next')}>
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
-              Hoje
-            </Button>
-          </CardHeader>
-
-          <CardContent className="p-0">
-            {viewMode === "week" ? (
-              /* Week View */
-              <div className="flex flex-col">
-                {/* Days header */}
-                <div className="grid grid-cols-8 border-b border-border/50">
-                  <div className="p-3 text-center text-sm text-muted-foreground border-r border-border/30">
-                    Hora
-                  </div>
-                  {daysInWeek.map((day) => (
-                    <div 
-                      key={day.toISOString()} 
-                      className={cn(
-                        "p-3 text-center border-r border-border/30 last:border-r-0",
-                        isToday(day) && "bg-primary/10"
-                      )}
-                    >
-                      <div className="text-xs text-muted-foreground uppercase">
-                        {format(day, "EEE", { locale: ptBR })}
-                      </div>
-                      <div className={cn(
-                        "text-lg font-semibold mt-1",
-                        isToday(day) && "text-primary"
-                      )}>
-                        {format(day, "d")}
-                      </div>
+      {/* Main Content */}
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4 min-h-0">
+        {/* Calendar Grid */}
+        <Card className="glass-card overflow-hidden flex flex-col">
+          {viewMode === "week" ? (
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* Week Header */}
+              <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border/30 bg-secondary/20">
+                <div className="p-2" />
+                {daysInWeek.map((day) => (
+                  <div 
+                    key={day.toISOString()} 
+                    className={cn(
+                      "p-2 text-center border-l border-border/20",
+                      isToday(day) && "bg-primary/10"
+                    )}
+                  >
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      {format(day, "EEE", { locale: ptBR })}
                     </div>
-                  ))}
-                </div>
+                    <div className={cn(
+                      "text-base font-semibold",
+                      isToday(day) ? "text-primary" : "text-foreground"
+                    )}>
+                      {format(day, "d")}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                {/* Hours grid */}
-                <div className="max-h-[500px] overflow-y-auto">
-                  {hoursOfDay.filter(h => h >= 7 && h <= 22).map((hour) => (
-                    <div key={hour} className="grid grid-cols-8 border-b border-border/30 min-h-[60px]">
-                      <div className="p-2 text-xs text-muted-foreground text-right pr-3 border-r border-border/30">
+              {/* Hours Grid */}
+              <ScrollArea className="flex-1">
+                <div className="min-h-[600px]">
+                  {workingHours.map((hour) => (
+                    <div 
+                      key={hour} 
+                      className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border/20 min-h-[48px]"
+                    >
+                      <div className="text-[10px] text-muted-foreground text-right pr-2 pt-1 font-medium">
                         {hour.toString().padStart(2, '0')}:00
                       </div>
                       {daysInWeek.map((day) => {
                         const hourEvents = getEventsForHour(day, hour);
+                        const timeStr = `${hour.toString().padStart(2, '0')}:00`;
                         return (
                           <div 
                             key={`${day.toISOString()}-${hour}`}
-                            onClick={() => {
-                              const selectedDateTime = setMinutes(setHours(day, hour), 0);
-                              setNewEvent(prev => ({ 
-                                ...prev, 
-                                event_date: selectedDateTime,
-                                event_time: `${hour.toString().padStart(2, '0')}:00`
-                              }));
-                              openEventDialog(undefined, day);
-                            }}
+                            onClick={() => openEventDialog(undefined, day, timeStr)}
                             className={cn(
-                              "p-1 border-r border-border/30 last:border-r-0 cursor-pointer hover:bg-white/5 transition-colors relative",
-                              isToday(day) && "bg-primary/5"
+                              "border-l border-border/20 p-0.5 cursor-pointer transition-colors group relative",
+                              "hover:bg-primary/5",
+                              isToday(day) && "bg-primary/[0.02]"
                             )}
                           >
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                              <Plus className="w-3 h-3 text-muted-foreground/50" />
+                            </div>
                             {hourEvents.map((event) => (
                               <div
                                 key={event.id}
@@ -452,15 +469,15 @@ export default function Calendario() {
                                   openEventDialog(event);
                                 }}
                                 className={cn(
-                                  "text-xs p-1.5 rounded mb-1 cursor-pointer truncate",
-                                  "hover:ring-2 hover:ring-primary/50 transition-all",
-                                  eventTypeColors[event.event_type],
+                                  "text-[11px] p-1.5 rounded cursor-pointer truncate",
+                                  "hover:ring-1 hover:ring-white/30 transition-all shadow-sm",
+                                  getEventColor(event.event_type),
                                   "text-white"
                                 )}
                               >
-                                <div className="font-medium truncate">{event.title}</div>
+                                <div className="font-medium truncate leading-tight">{event.title}</div>
                                 {event.event_time && (
-                                  <div className="opacity-80">{event.event_time.slice(0, 5)}</div>
+                                  <div className="text-[9px] opacity-75 mt-0.5">{event.event_time.slice(0, 5)}</div>
                                 )}
                               </div>
                             ))}
@@ -470,130 +487,160 @@ export default function Calendario() {
                     </div>
                   ))}
                 </div>
+              </ScrollArea>
+            </div>
+          ) : (
+            /* Month View */
+            <div className="flex-1 p-3 flex flex-col">
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+                  <div key={day} className="text-center text-[10px] font-medium text-muted-foreground py-1 uppercase tracking-wider">
+                    {day}
+                  </div>
+                ))}
               </div>
-            ) : (
-              /* Month View */
-              <div className="p-4">
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
-                    <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-                      {day}
-                    </div>
-                  ))}
-                </div>
+              
+              <div className="grid grid-cols-7 gap-1 flex-1">
+                {Array.from({ length: monthStart.getDay() }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
                 
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: monthStart.getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="aspect-square" />
-                  ))}
+                {daysInMonth.map((day) => {
+                  const dayEvents = getEventsForDate(day);
+                  const isSelected = selectedDate && isSameDay(day, selectedDate);
                   
-                  {daysInMonth.map((day) => {
-                    const dayEvents = getEventsForDate(day);
-                    const isSelected = selectedDate && isSameDay(day, selectedDate);
-                    
-                    return (
-                      <div
-                        key={day.toISOString()}
-                        onClick={() => {
-                          setSelectedDate(day);
-                          if (dayEvents.length === 0) {
-                            openEventDialog(undefined, day);
-                          }
-                        }}
-                        className={cn(
-                          "aspect-square p-2 rounded-xl cursor-pointer transition-all border-2 border-transparent",
-                          "hover:border-primary/50 hover:bg-white/5",
-                          isToday(day) && "bg-primary/10 border-primary/30",
-                          isSelected && "border-primary bg-primary/20",
-                          dayEvents.length > 0 && "ring-2 ring-primary/30"
+                  return (
+                    <div
+                      key={day.toISOString()}
+                      onClick={() => {
+                        setSelectedDate(day);
+                        if (dayEvents.length === 0) {
+                          openEventDialog(undefined, day);
+                        }
+                      }}
+                      className={cn(
+                        "min-h-[70px] p-1.5 rounded-lg cursor-pointer transition-all border border-transparent",
+                        "hover:border-primary/40 hover:bg-white/5",
+                        isToday(day) && "bg-primary/10 border-primary/20",
+                        isSelected && "border-primary bg-primary/15"
+                      )}
+                    >
+                      <div className={cn(
+                        "text-xs font-medium",
+                        isToday(day) ? "text-primary" : "text-foreground"
+                      )}>
+                        {format(day, 'd')}
+                      </div>
+                      <div className="mt-0.5 space-y-0.5">
+                        {dayEvents.slice(0, 2).map((event) => (
+                          <div
+                            key={event.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEventDialog(event);
+                            }}
+                            className={cn(
+                              "text-[9px] px-1 py-0.5 rounded truncate text-white leading-tight",
+                              getEventColor(event.event_type)
+                            )}
+                          >
+                            {event.title}
+                          </div>
+                        ))}
+                        {dayEvents.length > 2 && (
+                          <div className="text-[9px] text-muted-foreground pl-1">
+                            +{dayEvents.length - 2} mais
+                          </div>
                         )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Sidebar */}
+        <div className="flex flex-col gap-3">
+          {/* Mini Stats */}
+          <Card className="glass-card p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{totalEvents}</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-foreground">{thisMonthEvents}</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Este mês</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Event Type Legend */}
+          <Card className="glass-card p-3">
+            <div className="text-xs font-medium text-muted-foreground mb-2">Tipos de Evento</div>
+            <div className="flex flex-wrap gap-1.5">
+              {eventTypes.map(type => (
+                <div key={type.value} className="flex items-center gap-1.5">
+                  <div className={cn("w-2.5 h-2.5 rounded-full", type.color)} />
+                  <span className="text-[10px] text-foreground">{type.label}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Upcoming Events */}
+          <Card className="glass-card flex-1 min-h-0 flex flex-col">
+            <CardHeader className="pb-2 pt-3 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-primary" />
+                Próximos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 flex-1 min-h-0">
+              <ScrollArea className="h-full max-h-[250px]">
+                {upcomingEvents.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-xs">Nenhum evento agendado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {upcomingEvents.map((event) => (
+                      <div 
+                        key={event.id}
+                        onClick={() => openEventDialog(event)}
+                        className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/30 transition-all cursor-pointer"
                       >
-                        <div className={cn(
-                          "text-sm font-medium text-center",
-                          isToday(day) && "text-primary"
-                        )}>
-                          {format(day, 'd')}
-                        </div>
-                        <div className="mt-1 space-y-0.5">
-                          {dayEvents.slice(0, 2).map((event) => (
-                            <div
-                              key={event.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEventDialog(event);
-                              }}
-                              className={cn(
-                                "text-[10px] px-1 py-0.5 rounded truncate text-white",
-                                eventTypeColors[event.event_type]
-                              )}
-                            >
-                              {event.title}
-                            </div>
-                          ))}
-                          {dayEvents.length > 2 && (
-                            <div className="text-[10px] text-muted-foreground text-center">
-                              +{dayEvents.length - 2}
-                            </div>
+                        <div className="flex items-start gap-2">
+                          <div className={cn(
+                            "w-8 h-8 rounded flex flex-col items-center justify-center text-white text-[10px] font-bold shrink-0",
+                            getEventColor(event.event_type)
+                          )}>
+                            <span className="leading-none">{format(parseISO(event.event_date), "dd")}</span>
+                            <span className="text-[8px] uppercase opacity-75">
+                              {format(parseISO(event.event_date), "MMM", { locale: ptBR })}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-xs truncate">{event.title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {event.event_time?.slice(0, 5) || "Dia todo"} • {getEventLabel(event.event_type)}
+                            </p>
+                          </div>
+                          {event.is_recurring && (
+                            <Repeat className="w-3 h-3 text-muted-foreground shrink-0" />
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming Events Sidebar */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Bell className="w-5 h-5 text-primary" />
-              Próximos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
-            {upcomingEvents.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CalendarIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhum evento</p>
-              </div>
-            ) : (
-              upcomingEvents.map((event) => (
-                <div 
-                  key={event.id}
-                  onClick={() => openEventDialog(event)}
-                  className="p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-primary/30 transition-all cursor-pointer"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-lg flex flex-col items-center justify-center text-white text-xs font-bold flex-shrink-0",
-                      eventTypeColors[event.event_type]
-                    )}>
-                      <span className="text-sm leading-none">{format(parseISO(event.event_date), "dd")}</span>
-                      <span className="text-[9px] uppercase opacity-80">
-                        {format(parseISO(event.event_date), "MMM", { locale: ptBR })}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{event.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {event.event_time?.slice(0, 5) || "Dia todo"}
-                      </p>
-                      {event.is_recurring && (
-                        <Badge variant="outline" className="text-[10px] mt-1 gap-1">
-                          <Repeat className="w-2.5 h-2.5" />
-                          Recorrente
-                        </Badge>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Event Dialog */}
@@ -601,17 +648,17 @@ export default function Calendario() {
         setIsDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
               {editingEvent ? (
                 <>
-                  <Edit2 className="w-5 h-5" />
+                  <Edit2 className="w-4 h-4" />
                   Editar Evento
                 </>
               ) : (
                 <>
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4" />
                   Novo Evento
                 </>
               )}
@@ -619,32 +666,34 @@ export default function Calendario() {
           </DialogHeader>
           
           <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>Título *</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Título *</Label>
               <Input
                 placeholder="Ex: Live de Vendas"
                 value={newEvent.title}
                 onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                className="h-9"
               />
             </div>
             
-            <div className="space-y-2">
-              <Label>Descrição</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Descrição</Label>
               <Textarea
                 placeholder="Detalhes do evento..."
                 value={newEvent.description}
                 onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                 rows={2}
+                className="text-sm"
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                    <Button variant="outline" className="w-full justify-start text-left font-normal h-9 text-sm">
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                       {format(newEvent.event_date, "dd/MM/yy", { locale: ptBR })}
                     </Button>
                   </PopoverTrigger>
@@ -660,43 +709,43 @@ export default function Calendario() {
                 </Popover>
               </div>
               
-              <div className="space-y-2">
-                <Label>Horário</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Horário</Label>
                 <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     type="time"
                     value={newEvent.event_time}
                     onChange={(e) => setNewEvent({ ...newEvent, event_time: e.target.value })}
-                    className="pl-10"
+                    className="pl-8 h-9 text-sm"
                   />
                 </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo</Label>
                 <Select 
                   value={newEvent.event_type} 
                   onValueChange={(value) => setNewEvent({ ...newEvent, event_type: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="geral">📌 Geral</SelectItem>
-                    <SelectItem value="mentoria">🎯 Mentoria</SelectItem>
-                    <SelectItem value="live">🔴 Live</SelectItem>
-                    <SelectItem value="prazo">⏰ Prazo</SelectItem>
-                    <SelectItem value="reuniao">👥 Reunião</SelectItem>
+                    {eventTypes.map(type => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.emoji} {type.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               
               {!editingEvent && (
-                <div className="space-y-2">
-                  <Label>Repetir</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Repetir</Label>
                   <Select 
                     value={newEvent.is_recurring ? newEvent.recurrence_type : "none"} 
                     onValueChange={(value) => {
@@ -707,7 +756,7 @@ export default function Calendario() {
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -720,55 +769,58 @@ export default function Calendario() {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label>Link da Reunião (opcional)</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Link da Reunião (opcional)</Label>
               <div className="relative">
-                <Video className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Video className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="https://meet.google.com/..."
                   value={newEvent.meeting_url}
                   onChange={(e) => setNewEvent({ ...newEvent, meeting_url: e.target.value })}
-                  className="pl-10"
+                  className="pl-8 h-9 text-sm"
                 />
               </div>
             </div>
 
             {newEvent.is_recurring && !editingEvent && (
-              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2 text-sm">
-                  <Repeat className="w-4 h-4 text-primary" />
+              <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 text-xs">
+                  <Repeat className="w-3.5 h-3.5 text-primary" />
                   <span className="text-foreground">
-                    Serão criados {newEvent.recurrence_type === "weekly" ? "12 eventos (próximas 12 semanas)" : "6 eventos (próximos 6 meses)"}
+                    {newEvent.recurrence_type === "weekly" ? "12 eventos (12 semanas)" : "6 eventos (6 meses)"}
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
             {editingEvent && (
               <Button
                 variant="destructive"
+                size="sm"
                 onClick={() => handleDeleteEvent(editingEvent.id)}
-                className="mr-auto"
+                className="mr-auto h-8"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                 Excluir
               </Button>
             )}
             <Button 
               onClick={handleCreateEvent} 
               disabled={isSubmitting}
+              size="sm"
+              className="h-8"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                   Salvando...
                 </>
               ) : editingEvent ? (
-                "Salvar Alterações"
+                "Salvar"
               ) : (
-                "Criar Evento"
+                "Criar"
               )}
             </Button>
           </DialogFooter>
