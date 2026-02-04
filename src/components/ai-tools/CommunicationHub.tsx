@@ -516,8 +516,8 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
                           <Badge variant="secondary">{scriptInfo?.label || type}</Badge>
                           <CopyButton text={content} id={`script-${type}`} />
                         </div>
-                        <ScrollArea className="h-[300px] border rounded-lg p-4">
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ScrollArea className="h-[300px] border rounded-lg p-4 bg-card">
+                          <div className="prose-ai-content">
                             <ReactMarkdown>{content}</ReactMarkdown>
                           </div>
                         </ScrollArea>
@@ -534,8 +534,8 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
                     <Badge variant="secondary">Estratégia de Follow-up</Badge>
                     <CopyButton text={generatedContent.followup} id="followup" />
                   </div>
-                  <ScrollArea className="h-[400px] border rounded-lg p-4">
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ScrollArea className="h-[400px] border rounded-lg p-4 bg-card">
+                    <div className="prose-ai-content">
                       <ReactMarkdown>{generatedContent.followup}</ReactMarkdown>
                     </div>
                   </ScrollArea>
