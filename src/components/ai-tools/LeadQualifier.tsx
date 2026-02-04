@@ -37,7 +37,8 @@ import {
   Lightbulb,
   ChevronRight,
   BarChart3,
-  Users
+  Users,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,6 +58,7 @@ interface QualificationHistory {
   temperature: string | null;
   ai_insights: any;
   updated_at: string;
+  profile_url: string | null;
 }
 
 interface ExistingLead {
@@ -146,7 +148,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     try {
       const { data, error } = await supabase
         .from('crm_prospections')
-        .select('id, contact_name, company, temperature, ai_insights, updated_at')
+        .select('id, contact_name, company, temperature, ai_insights, updated_at, profile_url')
         .eq('mentorado_id', mentoradoId)
         .not('ai_insights', 'is', null)
         .order('updated_at', { ascending: false })
@@ -171,6 +173,40 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const loadHistoryReport = (historyItem: QualificationHistory) => {
     setReport(historyItem.ai_insights);
     toast.success(`Carregada qualificação de ${historyItem.contact_name}`);
+  };
+
+  const requalifyLead = async (historyItem: QualificationHistory) => {
+    if (!historyItem.profile_url) {
+      toast.error('Este lead não tem URL de perfil salva para requalificar');
+      return;
+    }
+    
+    // Delete the old lead
+    try {
+      await supabase
+        .from('crm_prospections')
+        .delete()
+        .eq('id', historyItem.id);
+      
+      toast.info(`Lead antigo "${historyItem.contact_name}" removido. Iniciando nova qualificação...`);
+      
+      // Set the URL and trigger analysis
+      setProfileUrl(historyItem.profile_url);
+      setReport(null);
+      setSelectedLeadId('');
+      
+      // Refresh lists
+      await fetchQualificationHistory();
+      await fetchExistingLeads();
+      
+      // Auto-start analysis after a brief delay
+      setTimeout(() => {
+        document.getElementById('analyze-btn')?.click();
+      }, 500);
+    } catch (error) {
+      console.error('Error deleting old lead:', error);
+      toast.error('Erro ao remover lead antigo');
+    }
   };
 
   const handleAnalyze = async () => {
@@ -209,6 +245,10 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       };
       const temperature = temperatureMap[reportData.recommendation] || 'warm';
       
+      // Check if URL is a valid profile URL to save
+      const isValidProfileUrl = profileUrl.startsWith('http') && 
+        (profileUrl.includes('instagram.com') || profileUrl.includes('linkedin.com'));
+      
       // If a lead was selected, update that specific lead
       if (selectedLeadId) {
         const selectedLead = existingLeads.find(l => l.id === selectedLeadId);
@@ -219,45 +259,48 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
             temperature,
             company: extractedData?.company || selectedLead?.company || null,
             notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
+            profile_url: isValidProfileUrl ? profileUrl : null,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedLeadId);
         toast.success(`Qualificação salva no lead "${selectedLead?.contact_name}"`);
       } else {
-        // Otherwise, try to find by name or create new
-        const leadName = extractedData?.name || 'Lead Qualificado';
-        const { data: existingLead } = await supabase
-          .from('crm_prospections')
-          .select('id')
-          .eq('mentorado_id', mentoradoId)
-          .eq('contact_name', leadName)
-          .maybeSingle();
-        
-        if (existingLead) {
-          await supabase
+        // Check if lead already exists by profile_url (for requalification deduplication)
+        if (isValidProfileUrl) {
+          const { data: existingByUrl } = await supabase
             .from('crm_prospections')
-            .update({
-              ai_insights: JSON.parse(JSON.stringify(reportData)),
-              temperature,
-              company: extractedData?.company || null,
-              notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingLead.id);
-        } else {
-          await supabase
-            .from('crm_prospections')
-            .insert([{
-              mentorado_id: mentoradoId,
-              contact_name: leadName,
-              company: extractedData?.company || null,
-              temperature,
-              status: 'contacted',
-              ai_insights: JSON.parse(JSON.stringify(reportData)),
-              notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
-              points: reportData.score >= 75 ? 3 : reportData.score >= 50 ? 2 : 1
-            }]);
+            .select('id, contact_name')
+            .eq('mentorado_id', mentoradoId)
+            .eq('profile_url', profileUrl)
+            .maybeSingle();
+          
+          if (existingByUrl) {
+            // Delete the old one and create fresh
+            await supabase
+              .from('crm_prospections')
+              .delete()
+              .eq('id', existingByUrl.id);
+            toast.info(`Lead anterior "${existingByUrl.contact_name}" substituído`);
+          }
         }
+        
+        // Create new lead
+        const leadName = extractedData?.name || 'Lead Qualificado';
+        await supabase
+          .from('crm_prospections')
+          .insert([{
+            mentorado_id: mentoradoId,
+            contact_name: leadName,
+            company: extractedData?.company || null,
+            temperature,
+            status: 'contacted',
+            ai_insights: JSON.parse(JSON.stringify(reportData)),
+            notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
+            points: reportData.score >= 75 ? 3 : reportData.score >= 50 ? 2 : 1,
+            profile_url: isValidProfileUrl ? profileUrl : null
+          }]);
+        
+        toast.success(`Lead "${leadName}" criado no CRM`);
       }
       
       await fetchQualificationHistory();
@@ -628,7 +671,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
               }}
               className="flex-1"
             />
-            <Button onClick={handleAnalyze} disabled={isLoading} className="min-w-[140px]">
+            <Button id="analyze-btn" onClick={handleAnalyze} disabled={isLoading} className="min-w-[140px]">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1442,13 +1485,16 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
                 {qualificationHistory.map((item) => {
                   const insights = item.ai_insights as LeadQualificationReport;
                   const score = insights?.score || 0;
+                  const hasUrl = !!item.profile_url;
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => loadHistoryReport(item)}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
+                      <div 
+                        className="flex items-center gap-3 flex-1 cursor-pointer"
+                        onClick={() => loadHistoryReport(item)}
+                      >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${getScoreBg(score)} ${getScoreColor(score)}`}>
                           {score}
                         </div>
@@ -1457,12 +1503,35 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
                           <p className="text-xs text-foreground/60">
                             {item.company && `${item.company} • `}
                             {formatDistanceToNow(new Date(item.updated_at), { addSuffix: true, locale: ptBR })}
+                            {hasUrl && <span className="text-primary ml-1">• Link salvo</span>}
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => loadHistoryReport(item)}
+                          title="Ver relatório"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {hasUrl && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              requalifyLead(item);
+                            }}
+                            title="Requalificar lead"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
