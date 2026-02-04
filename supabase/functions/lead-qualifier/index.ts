@@ -55,18 +55,18 @@ async function scrapeInstagramWithPiloterr(username: string): Promise<{ success:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Piloterr HTTP error:', response.status, errorText);
+      console.error('Piloterr Instagram HTTP error:', response.status, errorText);
       return { success: false, error: `Piloterr error: ${response.status}` };
     }
 
     const data = await response.json();
-    console.log('Piloterr response keys:', Object.keys(data || {}));
+    console.log('Piloterr Instagram response keys:', Object.keys(data || {}));
 
     if (!data || data.error) {
       return { success: false, error: data?.error || 'Dados não encontrados no Piloterr' };
     }
 
-    const markdown = formatPiloterrProfile(data);
+    const markdown = formatInstagramProfile(data);
     
     if (!markdown || markdown.length < 50) {
       return { success: false, error: 'Dados insuficientes do Piloterr' };
@@ -74,12 +74,12 @@ async function scrapeInstagramWithPiloterr(username: string): Promise<{ success:
 
     return { success: true, data: markdown };
   } catch (error) {
-    console.error('Piloterr error:', error);
+    console.error('Piloterr Instagram error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr' };
   }
 }
 
-function formatPiloterrProfile(data: any): string {
+function formatInstagramProfile(data: any): string {
   const p = data.data || data;
   
   const username = p.username || p.pk || 'N/A';
@@ -109,6 +109,108 @@ function formatPiloterrProfile(data: any): string {
 **Categoria:** ${category}
 **Email Comercial:** ${email}
 **Telefone Comercial:** ${phone}
+`.trim();
+}
+
+// ============= PILOTERR - LinkedIn Scraping =============
+
+async function scrapeLinkedInWithPiloterr(profileUrl: string): Promise<{ success: boolean; data?: string; error?: string }> {
+  if (!PILOTERR_API_KEY) {
+    return { success: false, error: 'Piloterr API key não configurada' };
+  }
+
+  console.log(`Piloterr scraping LinkedIn: ${profileUrl}`);
+
+  try {
+    const apiUrl = `https://piloterr.com/api/v2/linkedin/profile/info?query=${encodeURIComponent(profileUrl)}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: { 
+        'x-api-key': PILOTERR_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Piloterr LinkedIn HTTP error:', response.status, errorText);
+      return { success: false, error: `Piloterr LinkedIn error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    console.log('Piloterr LinkedIn response keys:', Object.keys(data || {}));
+
+    if (!data || data.error) {
+      return { success: false, error: data?.error || 'Dados não encontrados no LinkedIn' };
+    }
+
+    const markdown = formatLinkedInProfile(data);
+    
+    if (!markdown || markdown.length < 50) {
+      return { success: false, error: 'Dados insuficientes do LinkedIn' };
+    }
+
+    return { success: true, data: markdown };
+  } catch (error) {
+    console.error('Piloterr LinkedIn error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr LinkedIn' };
+  }
+}
+
+function formatLinkedInProfile(data: any): string {
+  const p = data.data || data;
+  
+  const fullName = p.full_name || p.fullName || p.name || 'N/A';
+  const headline = p.headline || p.title || 'N/A';
+  const summary = p.summary || p.about || p.description || 'N/A';
+  const location = p.location || p.geo_location_name || 'N/A';
+  const connections = p.connections_count || p.follower_count || 'N/A';
+  const company = p.company || p.current_company?.name || p.experiences?.[0]?.company || 'N/A';
+  const position = p.position || p.current_company?.title || p.experiences?.[0]?.title || 'N/A';
+  const industry = p.industry || p.industry_name || 'N/A';
+  const profileUrl = p.profile_url || p.linkedin_url || p.public_identifier || 'N/A';
+  const website = p.website || p.websites?.[0] || 'N/A';
+  
+  // Experience
+  const experiences = p.experiences || p.experience || [];
+  const experienceText = experiences.slice(0, 3).map((exp: any) => 
+    `- ${exp.title || exp.position} na ${exp.company || exp.company_name} (${exp.duration || exp.date_range || 'N/A'})`
+  ).join('\n') || 'N/A';
+  
+  // Education
+  const education = p.education || [];
+  const educationText = education.slice(0, 2).map((edu: any) => 
+    `- ${edu.school || edu.school_name}: ${edu.degree || edu.field_of_study || 'N/A'}`
+  ).join('\n') || 'N/A';
+  
+  // Skills
+  const skills = p.skills || [];
+  const skillsText = skills.slice(0, 10).join(', ') || 'N/A';
+
+  return `
+# Perfil LinkedIn: ${fullName}
+
+**Headline:** ${headline}
+**Localização:** ${location}
+**Conexões:** ${connections}
+**Empresa Atual:** ${company}
+**Cargo Atual:** ${position}
+**Indústria:** ${industry}
+**Website:** ${website}
+**Perfil:** ${profileUrl}
+
+## Sobre
+${summary}
+
+## Experiência Recente
+${experienceText}
+
+## Educação
+${educationText}
+
+## Habilidades
+${skillsText}
 `.trim();
 }
 
@@ -260,10 +362,10 @@ serve(async (req) => {
       
       if (piloterrResult.success && piloterrResult.data) {
         profileData = piloterrResult.data;
-        scrapeMethod = 'piloterr';
-        console.log('Piloterr success, data length:', profileData.length);
+        scrapeMethod = 'piloterr-instagram';
+        console.log('Piloterr Instagram success, data length:', profileData.length);
       } else {
-        console.log('Piloterr failed:', piloterrResult.error);
+        console.log('Piloterr Instagram failed:', piloterrResult.error);
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -272,11 +374,31 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    } else if (platform === 'linkedin') {
+      // Use Piloterr for LinkedIn
+      console.log('LinkedIn detected, using Piloterr...');
+
+      const piloterrResult = await scrapeLinkedInWithPiloterr(profileUrl);
+      
+      if (piloterrResult.success && piloterrResult.data) {
+        profileData = piloterrResult.data;
+        scrapeMethod = 'piloterr-linkedin';
+        console.log('Piloterr LinkedIn success, data length:', profileData.length);
+      } else {
+        console.log('Piloterr LinkedIn failed:', piloterrResult.error);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Não foi possível extrair dados do LinkedIn: ${piloterrResult.error}`
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     } else {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Apenas perfis do Instagram são suportados. Use uma URL como: https://instagram.com/username'
+          error: 'Apenas perfis do Instagram e LinkedIn são suportados. Use URLs como: https://instagram.com/username ou https://linkedin.com/in/username'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
