@@ -30,7 +30,12 @@ serve(async (req) => {
     
     console.log("Verifying OTP:", { email: email.toLowerCase(), code: normalizedCode });
     
-    const { data: otpData, error: otpError } = await supabase
+    // Allow OTP reuse within 60 seconds grace period (for frontend retry scenarios)
+    const gracePeriodSeconds = 60;
+    const graceTime = new Date(Date.now() - gracePeriodSeconds * 1000).toISOString();
+    
+    // First try to find unused OTP
+    let { data: otpData, error: otpError } = await supabase
       .from("otp_codes")
       .select("*")
       .eq("email", email.toLowerCase())
@@ -39,6 +44,25 @@ serve(async (req) => {
       .gt("expires_at", new Date().toISOString())
       .single();
     
+    // If not found, check for recently used OTP (grace period for retries)
+    if (otpError || !otpData) {
+      const { data: recentOtp } = await supabase
+        .from("otp_codes")
+        .select("*")
+        .eq("email", email.toLowerCase())
+        .eq("code", normalizedCode)
+        .eq("used", true)
+        .gt("expires_at", new Date().toISOString())
+        .gt("created_at", graceTime)
+        .single();
+      
+      if (recentOtp) {
+        otpData = recentOtp;
+        otpError = null;
+        console.log("OTP reused within grace period");
+      }
+    }
+    
     console.log("OTP query result:", { otpData, otpError });
 
     if (otpError || !otpData) {
@@ -46,11 +70,13 @@ serve(async (req) => {
       throw new Error("Código inválido ou expirado");
     }
 
-    // Mark code as used
-    await supabase
-      .from("otp_codes")
-      .update({ used: true })
-      .eq("id", otpData.id);
+    // Mark code as used (if not already)
+    if (!otpData.used) {
+      await supabase
+        .from("otp_codes")
+        .update({ used: true })
+        .eq("id", otpData.id);
+    }
 
     // Check if user exists
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
