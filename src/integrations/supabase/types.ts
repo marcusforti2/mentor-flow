@@ -1627,7 +1627,7 @@ export type Database = {
       is_first_mentor: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "mentor" | "mentorado"
+      app_role: "mentor" | "mentorado" | "admin_master"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1755,7 +1755,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["mentor", "mentorado"],
+      app_role: ["mentor", "mentorado", "admin_master"],
     },
   },
 } as const

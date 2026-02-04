@@ -51,11 +51,11 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/setup" element={<Setup />} />
             
-            {/* Admin Routes (Mentor) */}
+            {/* Admin Routes (Mentor + Admin Master) */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={['mentor']}>
+                <ProtectedRoute allowedRoles={['mentor', 'admin_master']}>
                   <AdminLayout />
                 </ProtectedRoute>
               }
@@ -71,11 +71,11 @@ const App = () => (
               <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
             </Route>
 
-            {/* Member Routes (Mentorado) */}
+            {/* Member Routes (Mentorado + Admin Master) */}
             <Route
               path="/app"
               element={
-                <ProtectedRoute allowedRoles={['mentorado']}>
+                <ProtectedRoute allowedRoles={['mentorado', 'admin_master']}>
                   <MemberLayout />
                 </ProtectedRoute>
               }
