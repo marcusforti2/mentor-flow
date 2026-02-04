@@ -23,3 +23,15 @@ verify_jwt = false
 
 [functions.verify-otp]
 verify_jwt = false
+
+[functions.check-badges]
+verify_jwt = false
+
+[functions.firecrawl-scrape]
+verify_jwt = false
+
+[functions.lead-qualifier]
+verify_jwt = false
+
+[functions.cold-messages]
+verify_jwt = false
