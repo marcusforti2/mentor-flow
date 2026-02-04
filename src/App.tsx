@@ -27,7 +27,6 @@ import DevTools from "./pages/admin/DevTools";
 import MemberDashboard from "./pages/member/MemberDashboard";
 import Trilhas from "./pages/member/Trilhas";
 import MeuCRM from "./pages/member/MeuCRM";
-import Treinamento from "./pages/member/Treinamento";
 import CentroSOS from "./pages/member/CentroSOS";
 import Perfil from "./pages/member/Perfil";
 import LojaPremios from "./pages/member/LojaPremios";
@@ -86,7 +85,6 @@ const App = () => (
               <Route path="trilhas" element={<Trilhas />} />
               <Route path="meu-crm" element={<MeuCRM />} />
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
-              <Route path="treinamento" element={<Treinamento />} />
               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
               <Route path="sos" element={<CentroSOS />} />
               <Route path="perfil" element={<Perfil />} />
