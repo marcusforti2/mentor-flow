@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
   GitBranch,
   Zap,
   CheckCircle2,
+  History,
 } from "lucide-react";
 
 interface EmailNode {
@@ -62,6 +63,8 @@ const UNIT_LABELS: Record<string, string> = {
   weeks: 'semana(s)',
 };
 
+const STORAGE_KEY = 'lbv_test_emails';
+
 export default function FlowTestModal({ 
   open, 
   onOpenChange, 
@@ -70,10 +73,33 @@ export default function FlowTestModal({
   templates 
 }: FlowTestModalProps) {
   const [testEmails, setTestEmails] = useState<string[]>([]);
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [selectedPreviewIndex, setSelectedPreviewIndex] = useState(0);
   const { toast } = useToast();
+
+  // Load saved emails from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setSavedEmails(parsed);
+      } catch (e) {
+        console.error('Error parsing saved emails:', e);
+      }
+    }
+  }, []);
+
+  // Save emails to localStorage whenever testEmails changes
+  useEffect(() => {
+    if (testEmails.length > 0) {
+      const uniqueEmails = [...new Set([...savedEmails, ...testEmails])];
+      setSavedEmails(uniqueEmails);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(uniqueEmails));
+    }
+  }, [testEmails]);
 
   // Get email nodes from the flow
   const emailNodes = nodes.filter(n => n.type === 'email');
@@ -96,23 +122,30 @@ export default function FlowTestModal({
   const currentPreviewEmail = emailNodes[selectedPreviewIndex];
   const previewContent = currentPreviewEmail ? getEmailContent(currentPreviewEmail) : null;
 
-  const addEmail = () => {
-    if (!newEmail.trim()) return;
+  const addEmail = (email?: string) => {
+    const emailToAdd = email || newEmail.trim();
+    if (!emailToAdd) return;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
+    if (!emailRegex.test(emailToAdd)) {
       toast({ title: "Email inválido", variant: "destructive" });
       return;
     }
-    if (testEmails.includes(newEmail)) {
+    if (testEmails.includes(emailToAdd)) {
       toast({ title: "Email já adicionado", variant: "destructive" });
       return;
     }
-    setTestEmails([...testEmails, newEmail]);
-    setNewEmail('');
+    setTestEmails([...testEmails, emailToAdd]);
+    if (!email) setNewEmail('');
   };
 
   const removeEmail = (email: string) => {
     setTestEmails(testEmails.filter(e => e !== email));
+  };
+
+  const removeSavedEmail = (email: string) => {
+    const updated = savedEmails.filter(e => e !== email);
+    setSavedEmails(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
   const handleSendTest = async () => {
@@ -342,10 +375,41 @@ export default function FlowTestModal({
                   onKeyDown={(e) => e.key === 'Enter' && addEmail()}
                   className="flex-1"
                 />
-                <Button onClick={addEmail} size="icon" variant="outline">
+                <Button onClick={() => addEmail()} size="icon" variant="outline">
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
+
+              {/* Saved Emails - Quick Select */}
+              {savedEmails.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <History className="h-3 w-3 text-muted-foreground" />
+                    <Label className="text-xs text-muted-foreground">Emails salvos:</Label>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {savedEmails.filter(e => !testEmails.includes(e)).map((email) => (
+                      <Badge
+                        key={email}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs group"
+                        onClick={() => addEmail(email)}
+                      >
+                        <span className="truncate max-w-[120px]">{email}</span>
+                        <button
+                          className="ml-1 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeSavedEmail(email);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Email List */}
               <ScrollArea className="h-[100px]">
