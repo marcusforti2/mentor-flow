@@ -14,12 +14,15 @@ import {
   Sparkles,
   AlertCircle,
   Target,
-  User
+  User,
+  BarChart3,
+  Mic
 } from 'lucide-react';
 import { ObjectionSimulator } from '@/components/ai-tools/ObjectionSimulator';
 import { ContentGenerator } from '@/components/ai-tools/ContentGenerator';
 import { ProposalCreator } from '@/components/ai-tools/ProposalCreator';
 import { ConversionAnalyzer } from '@/components/ai-tools/ConversionAnalyzer';
+import { TrainingAnalyzer } from '@/components/ai-tools/TrainingAnalyzer';
 import { VirtualMentor } from '@/components/ai-tools/VirtualMentor';
 import { LeadQualifier } from '@/components/ai-tools/LeadQualifier';
 import { BioGenerator } from '@/components/ai-tools/BioGenerator';
@@ -33,7 +36,7 @@ const tools = [
   { id: 'communication', label: 'Comunicação', icon: MessageSquare, description: 'Scripts, Follow-up e Cold Messages' },
   { id: 'roleplay', label: 'Role-Play', icon: FileText, description: 'Simulador de Objeções' },
   { id: 'proposal', label: 'Propostas', icon: FileSignature, description: 'Criador de Propostas' },
-  { id: 'analytics', label: 'Análise', icon: TrendingUp, description: 'Analisador de Conversão' },
+  { id: 'analytics', label: 'Análise', icon: TrendingUp, description: 'Análise de Conversão e Calls' },
   { id: 'bio', label: 'Bio', icon: User, description: 'Gerador de Bio Otimizada' },
   { id: 'content', label: 'Conteúdo', icon: Pen, description: 'Gerador de Conteúdo' },
   { id: 'mentor', label: 'Mentor', icon: Bot, description: 'Mentor Virtual 24/7' },
@@ -160,7 +163,24 @@ export default function FerramentasIA() {
           </TabsContent>
 
           <TabsContent value="analytics">
-            <ConversionAnalyzer mentoradoId={mentoradoId} />
+            <Tabs defaultValue="training" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-4">
+                <TabsTrigger value="training" className="flex items-center gap-2">
+                  <Mic className="h-4 w-4" />
+                  Calls & Conversas
+                </TabsTrigger>
+                <TabsTrigger value="conversion" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Pipeline
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="training">
+                <TrainingAnalyzer mentoradoId={mentoradoId} />
+              </TabsContent>
+              <TabsContent value="conversion">
+                <ConversionAnalyzer mentoradoId={mentoradoId} />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="bio">
