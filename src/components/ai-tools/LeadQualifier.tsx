@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -21,7 +22,9 @@ import {
   Brain,
   Crosshair,
   Ban,
-  Zap
+  Zap,
+  FileText,
+  Link2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,10 +36,13 @@ interface LeadQualifierProps {
 
 export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const [profileUrl, setProfileUrl] = useState('');
+  const [manualProfileData, setManualProfileData] = useState('');
+  const [inputMode, setInputMode] = useState<'url' | 'manual'>('url');
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState<LeadQualificationReport | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [blockedPlatformError, setBlockedPlatformError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBusinessProfile = async () => {
@@ -61,22 +67,39 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   }, [mentoradoId]);
 
   const handleAnalyze = async () => {
-    if (!profileUrl.trim()) {
+    if (inputMode === 'url' && !profileUrl.trim()) {
       toast.error('Cole a URL do perfil do lead');
+      return;
+    }
+    
+    if (inputMode === 'manual' && (!manualProfileData.trim() || manualProfileData.trim().length < 50)) {
+      toast.error('Cole os dados do perfil (mínimo 50 caracteres)');
       return;
     }
 
     setIsLoading(true);
     setReport(null);
+    setBlockedPlatformError(null);
 
     try {
-      const result = await leadQualifierApi.analyze(profileUrl, businessProfile || undefined);
+      const result = await leadQualifierApi.analyze(
+        inputMode === 'url' ? profileUrl : undefined, 
+        businessProfile || undefined,
+        inputMode === 'manual' ? manualProfileData : undefined
+      );
 
       if (result.success && result.report) {
         setReport(result.report);
         toast.success('Análise concluída!');
       } else {
-        toast.error(result.error || 'Erro ao analisar perfil');
+        // Check if it's a blocked platform error
+        if (result.requiresManualInput) {
+          setBlockedPlatformError(result.error || 'Plataforma bloqueada');
+          setInputMode('manual');
+          toast.error('Plataforma não permite scraping. Use o modo manual.');
+        } else {
+          toast.error(result.error || 'Erro ao analisar perfil');
+        }
       }
     } catch (error) {
       console.error('Analysis error:', error);
@@ -129,31 +152,101 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
             Qualificador de Leads
           </CardTitle>
           <CardDescription>
-            Cole a URL do perfil do LinkedIn ou Instagram para uma análise completa
+            Analise perfis de leads com IA para estratégias personalizadas de abordagem
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Input Mode Selector */}
           <div className="flex gap-2">
-            <Input
-              placeholder="https://linkedin.com/in/... ou https://instagram.com/..."
-              value={profileUrl}
-              onChange={(e) => setProfileUrl(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={handleAnalyze} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analisando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Analisar
-                </>
-              )}
+            <Button 
+              variant={inputMode === 'url' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setInputMode('url')}
+            >
+              <Link2 className="h-4 w-4 mr-2" />
+              URL do Perfil
+            </Button>
+            <Button 
+              variant={inputMode === 'manual' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setInputMode('manual')}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Colar Manualmente
             </Button>
           </div>
+
+          {blockedPlatformError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {blockedPlatformError}
+                <br />
+                <span className="text-xs mt-1 block">
+                  Copie o conteúdo do perfil (bio, posts, informações) e cole abaixo.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {inputMode === 'url' ? (
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://linkedin.com/in/... ou site pessoal/empresa"
+                value={profileUrl}
+                onChange={(e) => setProfileUrl(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={handleAnalyze} disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analisando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Analisar
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Cole aqui as informações do perfil do lead:
+                
+• Bio/Descrição do perfil
+• Posts recentes (últimos 3-5)
+• Informações profissionais
+• Interesses e conteúdos que compartilha
+• Qualquer informação relevante
+
+Quanto mais detalhes, melhor a análise!"
+                value={manualProfileData}
+                onChange={(e) => setManualProfileData(e.target.value)}
+                className="min-h-[200px]"
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">
+                  {manualProfileData.length} caracteres (mínimo 50)
+                </span>
+                <Button onClick={handleAnalyze} disabled={isLoading || manualProfileData.length < 50}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analisando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Analisar Perfil
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {!businessProfile && (
             <Alert>

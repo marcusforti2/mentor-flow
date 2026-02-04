@@ -102,11 +102,18 @@ export interface BusinessProfile {
 
 export const leadQualifierApi = {
   async analyze(
-    profileUrl: string, 
-    businessProfile?: BusinessProfile
-  ): Promise<{ success: boolean; report?: LeadQualificationReport; error?: string }> {
+    profileUrl?: string, 
+    businessProfile?: BusinessProfile,
+    manualProfileData?: string
+  ): Promise<{ 
+    success: boolean; 
+    report?: LeadQualificationReport; 
+    error?: string;
+    requiresManualInput?: boolean;
+    blockedPlatform?: string;
+  }> {
     const { data, error } = await supabase.functions.invoke('lead-qualifier', {
-      body: { profileUrl, businessProfile },
+      body: { profileUrl, businessProfile, manualProfileData },
     });
 
     if (error) {

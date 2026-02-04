@@ -197,27 +197,88 @@ Analise PROFUNDAMENTE este lead e retorne um JSON com a seguinte estrutura EXATA
   }
 }
 
+// Check if URL is from a blocklisted platform
+function isBlocklistedPlatform(url: string): { blocked: boolean; platform?: string } {
+  const lowercaseUrl = url.toLowerCase();
+  const blockedPlatforms = [
+    { pattern: 'instagram.com', name: 'Instagram' },
+    { pattern: 'linkedin.com', name: 'LinkedIn' },
+    { pattern: 'facebook.com', name: 'Facebook' },
+    { pattern: 'twitter.com', name: 'Twitter/X' },
+    { pattern: 'x.com', name: 'Twitter/X' },
+    { pattern: 'tiktok.com', name: 'TikTok' },
+  ];
+
+  for (const platform of blockedPlatforms) {
+    if (lowercaseUrl.includes(platform.pattern)) {
+      return { blocked: true, platform: platform.name };
+    }
+  }
+  return { blocked: false };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { profileUrl, businessProfile } = await req.json();
+    const { profileUrl, businessProfile, manualProfileData } = await req.json();
 
+    // Mode 1: Manual profile data (when scraping is not possible)
+    if (manualProfileData && manualProfileData.trim().length > 50) {
+      console.log('Processing manual profile data, length:', manualProfileData.length);
+      
+      const report = await analyzeWithAI(manualProfileData, businessProfile);
+      console.log('Analysis complete, score:', report.score);
+
+      return new Response(
+        JSON.stringify({ success: true, report }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Mode 2: URL scraping
     if (!profileUrl) {
       return new Response(
-        JSON.stringify({ success: false, error: 'URL do perfil é obrigatória' }),
+        JSON.stringify({ success: false, error: 'URL do perfil ou dados manuais são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log('Processing lead qualification for:', profileUrl);
 
+    // Check if platform is blocklisted
+    const blockCheck = isBlocklistedPlatform(profileUrl);
+    if (blockCheck.blocked) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `O ${blockCheck.platform} não permite scraping automático por restrições de termos de uso. Use a opção "Colar Perfil Manualmente" para analisar este lead.`,
+          blockedPlatform: blockCheck.platform,
+          requiresManualInput: true
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Step 1: Scrape the profile
     const scrapeResult = await scrapeProfile(profileUrl);
     
     if (!scrapeResult.success) {
+      // Check if error is about blocklisting
+      const errorMsg = scrapeResult.error || '';
+      if (errorMsg.includes('blocklisted') || errorMsg.includes('blocked')) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Este site não permite scraping automático. Use a opção "Colar Perfil Manualmente" para analisar este lead.',
+            requiresManualInput: true
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ success: false, error: scrapeResult.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
