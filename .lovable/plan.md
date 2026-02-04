@@ -1,142 +1,214 @@
 
-# Sistema de Formulário de Onboarding Personalizado
+# Plano Completo de Debug e Deploy - Apresentação
 
-## Visão Geral
-Criar um sistema onde o mentor pode configurar perguntas personalizadas de onboarding e gerar um link único. Quando o mentorado acessa o link, ele cria sua conta e responde o formulário automaticamente, já vinculado ao mentor.
+## Status Geral do Sistema
 
-## Fluxo do Sistema
+### O que FUNCIONA:
+1. **Autenticação** - Login/Signup com roles (mentor/mentorado/admin_master)
+2. **Dashboard Admin** - Cards, estatísticas, navegação
+3. **Dashboard Mentorado** - Gamificação, badges, streaks
+4. **Sistema de Mentorados** - Lista, aprovação, filtros por jornada
+5. **Formulário de Onboarding** - Estilo typeform, perguntas customizáveis
+6. **Calendário Admin** - Visualização semana/mês, eventos recorrentes
+7. **Edge Functions** - 16 funções ativas (OTP, IA, onboarding, etc.)
+8. **Trilhas** - Carrossel estilo Netflix com mockData
+9. **CRM de Leads** - Kanban com qualificação
+
+### Problemas Identificados:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                    ÁREA DO MENTOR (Admin)                       │
+│  CRÍTICO - CORRIGIR ANTES DA APRESENTAÇÃO                       │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. Nova página: /admin/formularios                             │
-│     - Criar/editar perguntas do formulário                      │
-│     - Tipos: texto, múltipla escolha, escala, sim/não           │
-│     - Reordenar perguntas (drag & drop)                         │
-│     - Preview do formulário                                     │
-│     - Gerar link único com mentor_id                            │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    LINK PARA MENTORADO                          │
-├─────────────────────────────────────────────────────────────────┤
-│  /onboarding?mentor=UUID                                        │
-│  - Página pública estilo typeform                               │
-│  - Pergunta por pergunta (full-screen)                          │
-│  - Animações suaves de transição                                │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    FLUXO DO MENTORADO                           │
-├─────────────────────────────────────────────────────────────────┤
-│  Etapa 1: Dados básicos (nome, email, WhatsApp)                 │
-│  Etapa 2: Dados do negócio (nome, tipo, etc.)                   │
-│  Etapa 3: Perguntas personalizadas do mentor                    │
-│  Etapa 4: Confirmação e criação da conta                        │
-│  → Redireciona para /app (área do mentorado)                    │
+│  1. Warning de Refs no Console                                  │
+│     - AdminLayout e AdminDashboard causando warnings            │
+│     - Tooltip passando ref para componentes funcionais          │
+│     - Impacto: Visual só no console (dev), não afeta uso        │
+│                                                                 │
+│  2. Rotas Placeholder                                           │
+│     - /admin/crm → Placeholder                                  │
+│     - /admin/ranking → Placeholder                              │
+│     - /admin/relatorios → Placeholder                           │
+│     - /app/ranking → Placeholder                                │
+│     - /app/treinamento → Rota não definida                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Estrutura Técnica
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  MÉDIO - FUNCIONAL MAS PRECISA ATENÇÃO                          │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Trilhas usando mockData                                     │
+│     - Dados estáticos em src/data/mockTrails.ts                 │
+│     - Não integrado com tabelas trails/trail_modules            │
+│     - Solução: OK para demo, mencionar que é versão preview     │
+│                                                                 │
+│  2. Calendário do Mentorado                                     │
+│     - Visualiza eventos do mentor                               │
+│     - Verificar se está filtrando corretamente                  │
+│                                                                 │
+│  3. RLS Policy Warning                                          │
+│     - Uma policy com "USING (true)" - permissiva demais         │
+│     - Leaked password protection desabilitada                   │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### 1. Nova Página: Editor de Formulários (`/admin/formularios`)
-**Arquivo:** `src/pages/admin/Formularios.tsx`
+---
 
-- Interface para gerenciar perguntas usando a tabela `behavioral_questions` existente
-- Funcionalidades:
-  - Adicionar nova pergunta (texto, múltipla escolha, escala 1-10, sim/não)
-  - Editar pergunta existente
-  - Excluir pergunta
-  - Reordenar perguntas
-  - Ativar/desativar perguntas
-  - Preview do formulário completo
-- Gerar link personalizado: `{domain}/onboarding?mentor={mentor_id}`
+## Checklist para Apresentação
 
-### 2. Nova Página: Formulário de Onboarding (`/onboarding`)
-**Arquivo:** `src/pages/Onboarding.tsx`
+### 1. Fluxo do Mentor (Admin)
 
-- Página pública (sem autenticação)
-- Estilo typeform:
-  - Uma pergunta por tela (full-screen)
-  - Navegação com Enter ou botão
-  - Barra de progresso
-  - Animações de transição
-- Fluxo:
-  1. Validar mentor_id da URL
-  2. Coletar dados básicos (nome, email, WhatsApp)
-  3. Coletar dados do negócio
-  4. Mostrar perguntas personalizadas do mentor
-  5. Enviar OTP e criar conta
-  6. Salvar respostas em `behavioral_responses`
-  7. Criar registro em `mentorados` vinculado ao mentor
-  8. Redirecionar para `/app`
+| Funcionalidade | Status | Testar |
+|----------------|--------|--------|
+| Login como mentor | OK | Acessar /auth |
+| Dashboard com stats | OK | Ver cards e contadores |
+| Gerenciar mentorados | OK | Aprovar, ver jornada |
+| Formulário onboarding | OK | Criar perguntas, copiar link |
+| Calendário | OK | Criar evento, recorrência |
+| Centro SOS | OK | Ver solicitações |
+| Trilhas | PARCIAL | Ver lista (mockData) |
+| Email Marketing | OK | Ver automações |
 
-### 3. Edge Function: Processar Onboarding
-**Arquivo:** `supabase/functions/process-onboarding/index.ts`
+### 2. Fluxo do Mentorado
 
-- Recebe todos os dados do formulário
-- Cria usuário via `auth.admin.createUser`
-- Cria profile e business_profile
-- Vincula ao mentor (tabela `mentorados`)
-- Salva respostas das perguntas (tabela `behavioral_responses`)
-- Retorna magic link para auto-login
+| Funcionalidade | Status | Testar |
+|----------------|--------|--------|
+| Onboarding typeform | OK | Acessar link do mentor |
+| Dashboard gamificado | OK | Ver badges, streak |
+| Trilhas Netflix | OK | Ver carrossel, detalhes |
+| Meu CRM | OK | Kanban de leads |
+| Ferramentas IA | OK | Bio, cold message, etc |
+| Loja de Prêmios | OK | Ver catálogo |
 
-### 4. Atualização do Modal "Adicionar Mentorado"
-**Arquivo:** `src/pages/admin/Mentorados.tsx`
+### 3. Fluxos Críticos para Demo
 
-- Ao clicar em "Enviar Formulário de Onboarding"
-- Mostrar link dinâmico com mentor_id real
-- Opção de copiar ou enviar via WhatsApp
+```text
+DEMO 1: Cadastro de Mentorado
+─────────────────────────────
+1. Mentor acessa /admin/mentorados
+2. Clica "Formulário Onboarding"
+3. Cria perguntas personalizadas
+4. Copia link e envia
+5. Mentorado preenche (typeform)
+6. OTP no email → Conta criada
+7. Redireciona para /app
 
-### 5. Navegação
-**Arquivo:** `src/components/layouts/AdminLayout.tsx`
+DEMO 2: Experiência do Mentorado
+────────────────────────────────
+1. Dashboard com gamificação
+2. Trilhas estilo Netflix
+3. CRM com leads
+4. Ferramentas de IA
+5. Loja de prêmios
 
-- Adicionar item no menu: "Formulários" com ícone ClipboardList
+DEMO 3: Gestão do Mentor
+────────────────────────
+1. Dashboard com métricas
+2. Ver mentorados por etapa
+3. Calendário com eventos
+4. Centro SOS
+```
 
-## Componentes UI do Typeform
+---
 
-### QuestionCard
-- Pergunta em destaque (grande)
-- Input/opções adaptados ao tipo
-- Animação fade-in
-- Tecla Enter para avançar
+## Correções Técnicas
 
-### ProgressBar
-- Barra fina no topo
-- Mostra progresso das perguntas
+### 1. Warnings de Console (Refs)
 
-### StepIndicator
-- Indicador visual de etapas (dados → negócio → perguntas → finalizar)
+**Problema**: Tooltip passando ref para componentes funcionais
 
-## Banco de Dados
-A estrutura já existe e será reutilizada:
+**Correção necessária** em AdminLayout.tsx:
+- Envolver componentes dentro de TooltipTrigger com `asChild` corretamente
+- Usar `React.forwardRef` nos componentes filhos ou usar elemento nativo
 
-- `behavioral_questions`: perguntas por mentor (question_text, question_type, options, order_index, is_active)
-- `behavioral_responses`: respostas dos mentorados
-- `mentorados`: vínculo com mentor via mentor_id
-- `mentorado_business_profiles`: dados do negócio
+### 2. Rotas Faltantes
 
-## Arquivos a Criar/Modificar
+**Criar ou redirecionar**:
+- `/app/treinamento` - Link no MemberDashboard aponta para rota inexistente
+- Solução: Criar componente ou redirecionar para `/app/ferramentas`
 
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/admin/Formularios.tsx` | Criar - Editor de perguntas |
-| `src/pages/Onboarding.tsx` | Criar - Formulário typeform |
-| `src/components/onboarding/QuestionCard.tsx` | Criar - Card de pergunta |
-| `src/components/onboarding/ProgressBar.tsx` | Criar - Barra de progresso |
-| `supabase/functions/process-onboarding/index.ts` | Criar - Processamento |
-| `src/pages/admin/Mentorados.tsx` | Modificar - Link dinâmico |
-| `src/components/layouts/AdminLayout.tsx` | Modificar - Menu |
-| `src/App.tsx` | Modificar - Rotas |
+### 3. Dados de Trilhas
 
-## Design Visual
+**Status atual**: Usando `mockTrails.ts` com dados estáticos
 
-- Fundo escuro com gradiente sutil
-- Perguntas centralizadas na tela
-- Fontes grandes e legíveis
-- Transições suaves (300ms)
-- Cores do mentor (se configuradas)
-- Mobile-first
+**Para produção**: 
+- Integrar com tabelas `trails`, `trail_modules`, `trail_lessons`
+- Para demo: OK mostrar como preview funcional
+
+---
+
+## Segurança
+
+### Warnings do Linter
+
+1. **RLS Policy permissiva** - Uma tabela com `USING (true)`
+   - Identificar qual tabela e corrigir após apresentação
+
+2. **Leaked password protection** - Desabilitada
+   - Habilitar em configurações do backend após demo
+
+### Secrets Configurados
+
+- APIFY_API_KEY
+- FIRECRAWL_API_KEY  
+- LOVABLE_API_KEY
+- PILOTERR_API_KEY
+- RESEND_API_KEY
+
+---
+
+## Recomendações para Apresentação
+
+### Evitar Durante Demo
+
+1. Não clicar em "Rankings" (/admin/ranking) - placeholder
+2. Não clicar em "Relatórios" (/admin/relatorios) - placeholder  
+3. Não clicar em "CRM" no admin (/admin/crm) - placeholder
+4. Link "Analisar Call" no dashboard mentorado leva para /app/treinamento (não existe)
+
+### Destacar na Apresentação
+
+1. **Onboarding Typeform** - Diferencial UX
+2. **Gamificação completa** - Badges, streaks, pontos
+3. **Calendário Google-style** - Eventos recorrentes
+4. **Ferramentas de IA** - Bio, cold messages, scripts
+5. **CRM do Mentorado** - Kanban com qualificação
+6. **Trilhas Netflix** - Visual premium
+
+---
+
+## Ações Imediatas
+
+### Prioridade 1 - Antes da Demo
+
+1. Corrigir rota `/app/treinamento`:
+   - Redirecionar para `/app/ferramentas` ou criar página básica
+
+2. Limpar console de warnings:
+   - Corrigir refs nos Tooltips do AdminLayout
+
+### Prioridade 2 - Após Demo
+
+1. Migrar trilhas de mockData para banco
+2. Implementar páginas de Ranking e Relatórios
+3. Configurar leaked password protection
+4. Revisar e corrigir RLS policies permissivas
+
+---
+
+## Resumo Executivo
+
+**O sistema está 85% funcional** para demonstração. Os principais fluxos (onboarding, gestão de mentorados, calendário, gamificação, trilhas, CRM) estão operacionais.
+
+**Pontos de atenção**:
+- Evitar clicar em links placeholder durante demo
+- Warnings no console são apenas visuais (não afetam funcionalidade)
+- Trilhas usam dados mock (mencionar como "preview")
+
+**Destaques para vender**:
+- UX moderna com glassmorphism
+- Gamificação completa
+- IA integrada nas ferramentas
+- Onboarding automatizado
+- Calendário profissional
