@@ -25,6 +25,7 @@ import JornadaCS from "./pages/admin/JornadaCS";
 import AdminTrilhas from "./pages/admin/Trilhas";
 import DevTools from "./pages/admin/DevTools";
 import EmailMarketing from "./pages/admin/EmailMarketing";
+import Calendario from "./pages/admin/Calendario";
 // Formularios is now embedded within Mentorados page
 
 // Member Pages
@@ -35,6 +36,7 @@ import CentroSOS from "./pages/member/CentroSOS";
 import Perfil from "./pages/member/Perfil";
 import LojaPremios from "./pages/member/LojaPremios";
 import FerramentasIA from "./pages/member/FerramentasIA";
+import CalendarioMembro from "./pages/member/Calendario";
 
 // Admin Pages (additional)
 import AdminCentroSOS from "./pages/admin/CentroSOS";
@@ -71,7 +73,7 @@ const App = () => (
               <Route path="mentorados" element={<Mentorados />} />
               <Route path="trilhas" element={<AdminTrilhas />} />
               {/* Formularios is now embedded within Mentorados page */}
-              <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
+              <Route path="calendario" element={<Calendario />} />
               <Route path="sos" element={<AdminCentroSOS />} />
               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
               <Route path="emails" element={<EmailMarketing />} />
@@ -91,7 +93,7 @@ const App = () => (
               <Route index element={<MemberDashboard />} />
               <Route path="trilhas" element={<Trilhas />} />
               <Route path="meu-crm" element={<MeuCRM />} />
-              <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
+              <Route path="calendario" element={<CalendarioMembro />} />
               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
               <Route path="sos" element={<CentroSOS />} />
               <Route path="perfil" element={<Perfil />} />
