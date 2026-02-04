@@ -33,6 +33,35 @@ interface SavedLead {
   notes: string | null;
 }
 
+type NegotiationPhase = 'cold_response' | 'post_proposal' | 'checks' | 'closing';
+
+const negotiationPhases: { id: NegotiationPhase; label: string; description: string; emoji: string }[] = [
+  { 
+    id: 'cold_response', 
+    label: 'Prospecção Fria', 
+    description: 'Lead respondeu minha abordagem inicial',
+    emoji: '❄️'
+  },
+  { 
+    id: 'post_proposal', 
+    label: 'Pós-Proposta', 
+    description: 'Já apresentei a proposta, vai vir com objeções',
+    emoji: '📋'
+  },
+  { 
+    id: 'checks', 
+    label: 'Checagens', 
+    description: 'Entendimento, comprometimento e ancoragem',
+    emoji: '✅'
+  },
+  { 
+    id: 'closing', 
+    label: 'Fechamento', 
+    description: 'Negociação final, últimas objeções',
+    emoji: '🤝'
+  },
+];
+
 export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -46,6 +75,9 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [selectedLead, setSelectedLead] = useState<SavedLead | null>(null);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  
+  // Negotiation phase
+  const [selectedPhase, setSelectedPhase] = useState<NegotiationPhase>('cold_response');
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -94,9 +126,26 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
   };
 
   const buildLeadContext = (): string => {
-    if (!selectedLead) return '';
-    
     const parts: string[] = [];
+    
+    // Add negotiation phase context
+    const phaseInfo = negotiationPhases.find(p => p.id === selectedPhase);
+    if (phaseInfo) {
+      const phaseDescriptions: Record<NegotiationPhase, string> = {
+        cold_response: 'O lead acabou de responder uma prospecção fria. Ele ainda está cético e pode ter objeções básicas como "não tenho interesse", "não conheço você", "manda mais informações".',
+        post_proposal: 'A proposta já foi apresentada. O lead conhece o valor e preço. Agora virão objeções de preço, timing, comparação com concorrentes, precisa pensar, precisa consultar sócio/esposa.',
+        checks: 'Estamos na fase de checagens: entendimento (ele realmente compreendeu a proposta?), comprometimento (está disposto a resolver o problema?), ancoragem (o valor faz sentido pra ele?). Teste se ele está pronto para fechar.',
+        closing: 'Fase final de fechamento. Objeções de última hora, pedidos de desconto, inseguranças finais. Momento de usar técnicas de fechamento e urgência.'
+      };
+      parts.push(`FASE DA NEGOCIAÇÃO: ${phaseInfo.label}`);
+      parts.push(`Contexto da fase: ${phaseDescriptions[selectedPhase]}`);
+    }
+    
+    if (!selectedLead) {
+      parts.push('Lead: Prospect genérico baseado no nicho high-ticket de mentorias');
+      return parts.join('\n');
+    }
+    
     parts.push(`Nome do lead: ${selectedLead.contact_name}`);
     if (selectedLead.company) parts.push(`Empresa: ${selectedLead.company}`);
     
@@ -294,43 +343,72 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
 
         <CardContent className="flex-1 flex flex-col min-h-0">
           {/* Lead Selector - always visible at top */}
-          <div className="space-y-2 mb-4">
-            <Label className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-primary" />
-              Selecione um lead para simular
-            </Label>
-            <Select value={selectedLeadId} onValueChange={handleLeadSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder={isLoadingLeads ? "Carregando..." : "Escolha um lead do CRM"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="random">🎲 Prospect genérico (aleatório)</SelectItem>
-                {leads.map((lead) => (
-                  <SelectItem key={lead.id} value={lead.id}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{lead.contact_name}</span>
-                      {lead.company && <span className="text-muted-foreground">• {lead.company}</span>}
-                      {lead.temperature && (
-                        <Badge variant="outline" className="text-xs">
-                          {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
-                        </Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-3 mb-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-primary" />
+                1. Selecione um lead
+              </Label>
+              <Select value={selectedLeadId} onValueChange={handleLeadSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingLeads ? "Carregando..." : "Escolha um lead do CRM"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="random">🎲 Prospect genérico (aleatório)</SelectItem>
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{lead.contact_name}</span>
+                        {lead.company && <span className="text-muted-foreground">• {lead.company}</span>}
+                        {lead.temperature && (
+                          <Badge variant="outline" className="text-xs">
+                            {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
-            {selectedLead && (
+            {/* Phase Selector */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                2. Fase da negociação
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                {negotiationPhases.map((phase) => (
+                  <button
+                    key={phase.id}
+                    onClick={() => setSelectedPhase(phase.id)}
+                    className={cn(
+                      "p-2 rounded-lg border text-left transition-all text-xs",
+                      selectedPhase === phase.id 
+                        ? "border-primary bg-primary/10" 
+                        : "border-border hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>{phase.emoji}</span>
+                      <span className="font-medium">{phase.label}</span>
+                    </div>
+                    <p className="text-muted-foreground text-[10px] mt-0.5 line-clamp-1">{phase.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Selected Info Preview */}
+            {(selectedLead || selectedLeadId === 'random') && (
               <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-xs">
-                <p className="font-medium text-foreground">Simulando: {selectedLead.contact_name}</p>
-                {selectedLead.temperature && (
-                  <p className="text-muted-foreground">
-                    {selectedLead.temperature === 'hot' ? 'Lead quente - mais receptivo' : 
-                     selectedLead.temperature === 'warm' ? 'Lead morno - tem interesse mas com dúvidas' : 
-                     'Lead frio - muitas objeções esperadas'}
-                  </p>
-                )}
+                <p className="font-medium text-foreground">
+                  {selectedLead ? `Simulando: ${selectedLead.contact_name}` : 'Prospect genérico'}
+                </p>
+                <p className="text-muted-foreground">
+                  Fase: {negotiationPhases.find(p => p.id === selectedPhase)?.label}
+                </p>
               </div>
             )}
           </div>
