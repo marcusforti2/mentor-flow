@@ -10,13 +10,13 @@ import { LBVLogo } from '@/components/LBVLogo';
 import {
   LayoutDashboard,
   Users,
-  Target,
   BookOpen,
   Calendar,
   AlertTriangle,
   Trophy,
   Mail,
   BarChart3,
+  Compass,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -25,11 +25,8 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-import { Compass } from 'lucide-react';
-
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
-  { icon: Target, label: 'CRM', path: '/admin/crm' },
   { icon: Compass, label: 'Jornada CS', path: '/admin/jornada-cs' },
   { icon: Users, label: 'Mentorados', path: '/admin/mentorados' },
   { icon: BookOpen, label: 'Trilhas', path: '/admin/trilhas' },
