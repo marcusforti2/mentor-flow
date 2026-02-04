@@ -29,13 +29,13 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 const tools = [
-  { id: 'qualifier', label: 'Qualificador', icon: Target, description: 'Qualificador de Leads com IA' },
+  { id: 'qualifier', label: 'Qualificação', icon: Target, description: 'Qualificador de Leads com IA' },
   { id: 'communication', label: 'Comunicação', icon: MessageSquare, description: 'Scripts, Follow-up e Cold Messages' },
-  { id: 'bio', label: 'Bio', icon: User, description: 'Gerador de Bio Otimizada' },
   { id: 'roleplay', label: 'Role-Play', icon: FileText, description: 'Simulador de Objeções' },
-  { id: 'content', label: 'Conteúdo', icon: Pen, description: 'Gerador de Conteúdo' },
   { id: 'proposal', label: 'Propostas', icon: FileSignature, description: 'Criador de Propostas' },
   { id: 'analytics', label: 'Análise', icon: TrendingUp, description: 'Analisador de Conversão' },
+  { id: 'bio', label: 'Bio', icon: User, description: 'Gerador de Bio Otimizada' },
+  { id: 'content', label: 'Conteúdo', icon: Pen, description: 'Gerador de Conteúdo' },
   { id: 'mentor', label: 'Mentor', icon: Bot, description: 'Mentor Virtual 24/7' },
 ];
 
@@ -151,16 +151,8 @@ export default function FerramentasIA() {
             <CommunicationHub mentoradoId={mentoradoId} />
           </TabsContent>
 
-          <TabsContent value="bio">
-            <BioGenerator mentoradoId={mentoradoId} />
-          </TabsContent>
-
           <TabsContent value="roleplay">
             <ObjectionSimulator mentoradoId={mentoradoId} />
-          </TabsContent>
-
-          <TabsContent value="content">
-            <ContentGenerator mentoradoId={mentoradoId} />
           </TabsContent>
 
           <TabsContent value="proposal">
@@ -169,6 +161,14 @@ export default function FerramentasIA() {
 
           <TabsContent value="analytics">
             <ConversionAnalyzer mentoradoId={mentoradoId} />
+          </TabsContent>
+
+          <TabsContent value="bio">
+            <BioGenerator mentoradoId={mentoradoId} />
+          </TabsContent>
+
+          <TabsContent value="content">
+            <ContentGenerator mentoradoId={mentoradoId} />
           </TabsContent>
 
           <TabsContent value="mentor">
