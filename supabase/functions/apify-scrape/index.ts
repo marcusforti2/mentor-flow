@@ -8,7 +8,7 @@ const corsHeaders = {
 // Apify Actor IDs for different platforms
 const APIFY_ACTORS = {
   instagram: 'apify/instagram-profile-scraper',
-  linkedin: 'curious_coder/linkedin-profile-scraper',
+  linkedin: 'bebity/linkedin-profile-scraper',
   twitter: 'apify/twitter-scraper',
   tiktok: 'clockworks/tiktok-scraper',
 };
@@ -235,8 +235,7 @@ serve(async (req) => {
       };
     } else if (platform === 'linkedin') {
       input = {
-        profileUrls: [url.startsWith('http') ? url : `https://${url}`],
-        proxy: { useApifyProxy: true },
+        urls: [url.startsWith('http') ? url : `https://${url}`],
       };
     } else if (platform === 'twitter') {
       input = {
