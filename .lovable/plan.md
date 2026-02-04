@@ -1,311 +1,269 @@
 
-# Plano: Proteção de Propriedade Intelectual - LBV TECH
+# Plano: Comunidade - Bate-papo Estilo Rede Social
 
-## Parte 1: Documento para Ata Notarial
+## Visão Geral
 
-### Documento Conceitual Completo
+Criar uma área de **Comunidade** no portal do mentorado onde os mentorados do mesmo mentor possam interagir entre si, trocar experiências e criar networking - tudo dentro da plataforma.
 
----
+## Funcionalidades Propostas
 
-## LBV TECH - SISTEMA OPERACIONAL DE GOVERNO PARA MENTORIAS HIGH TICKET
+### 1. Feed de Publicações (Estilo LinkedIn/Instagram)
+- Posts com texto + imagens opcionais
+- Curtidas e comentários
+- Exibição do autor com foto e nome
+- Ordenação por mais recentes ou mais engajados
+- Tags/categorias opcionais (ex: #vendas, #dicas, #vitoria)
 
-**Data de Concepção:** Fevereiro 2025
-**Autor/Idealizador:** Marcus Forti
-**Nome do Sistema:** LBV TECH
+### 2. Chat em Tempo Real
+- Canal geral da comunidade (todos os mentorados)
+- Mensagens instantâneas com atualização em tempo real
+- Indicador de quem está online
+- Histórico de mensagens persistente
 
----
+### 3. Integração com Gamificação
+- Ganhar pontos ao publicar conteúdo
+- Ganhar pontos ao receber curtidas
+- Badge especial para membros mais ativos
 
-### 1. VISÃO GERAL E PROPÓSITO
+## Arquitetura de Dados
 
-Plataforma SaaS multi-tenant projetada para escalabilidade superior a 200 mentorados, focada no nicho de educação High Ticket (mentorias e consultorias) para profissionais de saúde (médicos, dentistas, advogados), com tickets de alto valor (R$ 50.000 a R$ 120.000).
-
-O sistema opera como um "Sistema Operacional de Governo" para mentorias, adotando estética sóbria de "Sala de Guerra" com foco em previsibilidade de vendas, clareza de gargalos e tomada de decisão empresarial.
-
----
-
-### 2. ARQUITETURA DE PORTAIS
-
-**Portal do Mentor (/admin)**
-- Painel administrativo completo para gestão de mentorados
-- Dashboard com métricas de desempenho e KPIs
-- Gestão de trilhas de conhecimento
-- Centro de controle de solicitações SOS
-- Calendário de eventos e reuniões
-- Sistema de email marketing com automações
-
-**Portal do Mentorado (/app)**
-- Área de membros gamificada
-- CRM pessoal de prospecção
-- Arsenal de ferramentas de IA para vendas
-- Sistema de trilhas estilo Netflix
-- Loja de prêmios com sistema de pontos
-- Centro SOS para suporte emergencial
-
-**Sistema de Roles**
-- `admin_master`: Acesso total + toggle entre portais
-- `mentor`: Acesso ao painel administrativo
-- `mentorado`: Acesso à área de membros
-
----
-
-### 3. MÓDULOS PROPRIETÁRIOS
-
-#### 3.1 Onboarding Automatizado (Estilo Typeform)
-Sistema de cadastro automatizado onde:
-- Mentor cria formulário personalizado com perguntas comportamentais
-- Link único para cada mentor
-- Fluxo visual com transições suaves
-- Verificação por OTP (código via email)
-- Criação automática de conta e perfil de negócio
-- Extração de dados para perfilagem comportamental
-
-#### 3.2 Arsenal de Vendas (Hub de IA)
-8 ferramentas de inteligência artificial integradas:
-
-1. **Qualificador de Leads** - Análise via scraping de Instagram/LinkedIn usando Piloterr API, com geração de perfil DISC, temperatura de lead e estratégias de abordagem personalizadas
-
-2. **Hub de Comunicação** - Gerador de scripts, cold messages multi-canal (WhatsApp, Instagram, LinkedIn, Email), follow-up inteligente
-
-3. **Simulador de Objeções** - Role-play interativo com IA simulando cliente baseado no perfil DISC do lead
-
-4. **Criador de Propostas** - Geração de propostas comerciais com ancoragem de valor personalizada
-
-5. **Análise de Conversão** - Dashboard de métricas do pipeline com insights de IA
-
-6. **Analisador de Calls** - Transcrição e análise de ligações de vendas com scoring
-
-7. **Gerador de Bio** - Criação de biografia otimizada para redes sociais
-
-8. **Mentor Virtual 24/7** - Chatbot com contexto do negócio para coaching contínuo
-
-#### 3.3 Sistema de Gamificação
-- Badges desbloqueáveis por conquistas
-- Streak de dias consecutivos de uso
-- Sistema de pontos por ações
-- Ranking competitivo entre mentorados
-- Loja de prêmios para resgate com pontos
-
-#### 3.4 CRM Individual do Mentorado
-- Pipeline Kanban visual
-- Qualificação automática de leads via IA
-- Histórico de interações
-- Screenshots de perfis sociais
-- Sincronização com qualificador de leads
-
-#### 3.5 Centro SOS
-- Sistema de suporte emergencial
-- Triagem automática por IA (categorização e prioridade)
-- Chat com orientação inicial automatizada
-- Agendamento de reunião com mentor se necessário
-- Histórico de atendimentos
-
-#### 3.6 Sistema de Trilhas (Netflix-style)
-- Carrossel horizontal de trilhas
-- Módulos com aulas em vídeo
-- Progresso individual por mentorado
-- Certificados de conclusão
-
-#### 3.7 Calendário Integrado
-- Visualização semanal e mensal
-- Eventos recorrentes
-- Links de reunião (Zoom/Google Meet)
-- Visualização compartilhada mentor/mentorado
-
-#### 3.8 Email Marketing
-- Templates customizáveis
-- Automações baseadas em gatilhos
-- Fluxos visuais com condições
-- Logs de envio/abertura/clique
-
----
-
-### 4. ESTRUTURA DE DADOS (34 TABELAS)
-
-**Tabelas Principais:**
-- `profiles` - Dados de usuário
-- `user_roles` - Controle de permissões
-- `mentors` - Configurações do mentor
-- `mentorados` - Dados dos mentorados
-- `mentorado_business_profiles` - Perfil estratégico do negócio
-
-**Gamificação:**
-- `badges` - Conquistas definidas pelo mentor
-- `mentorado_badges` - Badges conquistados
-- `mentorado_streaks` - Sequências de uso
-- `mentorado_points` - Saldo de pontos
-- `ranking_entries` - Posições no ranking
-
-**CRM & Prospecção:**
-- `crm_prospections` - Leads do mentorado
-- `crm_interactions` - Histórico de contatos
-- `crm_leads` - Leads do mentor (opcional)
-
-**IA & Análises:**
-- `ai_tool_usage` - Log de uso das ferramentas
-- `behavioral_questions` - Perguntas de onboarding
-- `behavioral_responses` - Respostas coletadas
-- `behavioral_reports` - Relatórios DISC gerados
-- `call_transcripts` - Transcrições de calls
-- `call_analyses` - Análises de performance
-
-**Trilhas & Conteúdo:**
-- `trails` - Trilhas de conhecimento
-- `trail_modules` - Módulos das trilhas
-- `trail_lessons` - Aulas individuais
-- `trail_progress` - Progresso do mentorado
-- `certificates` - Certificados emitidos
-
-**Comunicação:**
-- `email_templates` - Templates de email
-- `email_automations` - Regras de automação
-- `email_flows` - Fluxos visuais
-- `email_logs` - Registros de envio
-- `sos_requests` - Solicitações de suporte
-- `sos_responses` - Respostas do mentor
-
-**Calendário & Reuniões:**
-- `calendar_events` - Eventos agendados
-- `meetings` - Reuniões formais
-- `meeting_attendees` - Participantes
-- `meeting_recordings` - Gravações
-
-**Recompensas:**
-- `reward_catalog` - Catálogo de prêmios
-- `reward_redemptions` - Resgates realizados
-
----
-
-### 5. INTEGRAÇÕES TECNOLÓGICAS
-
-**Backend:**
-- Lovable Cloud (Supabase) para banco de dados PostgreSQL
-- 16 Edge Functions serverless para lógica de negócio
-- Row Level Security (RLS) para isolamento de dados
-
-**APIs Externas:**
-- Piloterr API - Scraping de perfis sociais (Instagram/LinkedIn)
-- Resend API - Envio de emails transacionais
-- Lovable AI Gateway - Processamento de IA (Gemini 2.5)
-- Apify API - Web scraping avançado
-- Firecrawl API - Extração de dados web
-
-**Frontend:**
-- React 18 + TypeScript
-- Tailwind CSS + Glassmorphism
-- Radix UI para componentes
-- React Flow para fluxos visuais
-- Recharts para gráficos
-
----
-
-### 6. DIFERENCIAIS INOVADORES
-
-1. **Contexto Enriquecido de IA** - Todas as ferramentas de IA compartilham contexto do lead (DISC, dores, temperatura) permitindo personalização profunda
-
-2. **Scraping Automatizado** - Qualificação de leads via URL do perfil social, sem entrada manual de dados
-
-3. **Gamificação Integrada** - Sistema completo de engajamento com badges, streaks, pontos e recompensas
-
-4. **Onboarding Passwordless** - Cadastro via OTP eliminando fricção de criação de senha
-
-5. **Multi-tenant Isolado** - Cada mentor tem ambiente completamente separado
-
-6. **Role Play Contextualizado** - Simulações de objeções baseadas no perfil comportamental real do lead
-
----
-
-## Parte 2: Mecanismo Técnico de Prova
-
-### Edge Function: `system-fingerprint`
-
-Criar uma função backend oculta que:
-
-1. **Gera hash SHA-256** do código-fonte + conceito
-2. **Registra timestamp** com data/hora exatas
-3. **Armazena no banco** de forma imutável
-4. **Retorna prova verificável** com metadados
-
-### Implementação
+### Novas Tabelas
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│  EDGE FUNCTION: system-fingerprint                              │
+│  community_posts (Feed de Publicações)                          │
+├─────────────────────────────────────────────────────────────────┤
+│  id              UUID PRIMARY KEY                               │
+│  mentorado_id    UUID → mentorados                              │
+│  mentor_id       UUID → mentors (para isolamento multi-tenant)  │
+│  content         TEXT (conteúdo do post)                        │
+│  image_url       TEXT (imagem opcional)                         │
+│  tags            TEXT[] (array de tags)                         │
+│  likes_count     INT DEFAULT 0                                  │
+│  comments_count  INT DEFAULT 0                                  │
+│  created_at      TIMESTAMPTZ                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  community_likes (Curtidas)                                     │
+├─────────────────────────────────────────────────────────────────┤
+│  id              UUID PRIMARY KEY                               │
+│  post_id         UUID → community_posts                         │
+│  mentorado_id    UUID → mentorados                              │
+│  created_at      TIMESTAMPTZ                                    │
+│  UNIQUE(post_id, mentorado_id)                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  community_comments (Comentários)                               │
+├─────────────────────────────────────────────────────────────────┤
+│  id              UUID PRIMARY KEY                               │
+│  post_id         UUID → community_posts                         │
+│  mentorado_id    UUID → mentorados                              │
+│  content         TEXT                                           │
+│  created_at      TIMESTAMPTZ                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  community_messages (Chat em Tempo Real)                        │
+├─────────────────────────────────────────────────────────────────┤
+│  id              UUID PRIMARY KEY                               │
+│  mentor_id       UUID → mentors (canal do mentor)               │
+│  mentorado_id    UUID → mentorados (autor)                      │
+│  content         TEXT                                           │
+│  created_at      TIMESTAMPTZ                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Políticas RLS (Row Level Security)
+
+- Mentorados só veem posts/mensagens do **mesmo mentor**
+- Cada mentorado pode criar/editar/deletar **seus próprios** posts
+- Curtidas e comentários permitidos para qualquer post do grupo
+- Mentor pode ver tudo e moderar se necessário
+
+## Interface Visual
+
+### Página `/app/comunidade`
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  [← Voltar]              Comunidade                    [Avatar] │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  INPUT:                                                         │
-│  - Documento conceitual completo (texto)                        │
-│  - Lista de arquivos do sistema                                 │
-│  - Versão atual                                                 │
+│  ┌─────────────┐ ┌─────────────┐                               │
+│  │ 📰 Feed     │ │ 💬 Chat     │   (Tabs de navegação)         │
+│  └─────────────┘ └─────────────┘                               │
 │                                                                 │
-│  PROCESSO:                                                      │
-│  1. Concatena todos os inputs                                   │
-│  2. Gera hash SHA-256                                           │
-│  3. Captura timestamp ISO 8601                                  │
-│  4. Salva em tabela `system_fingerprints`                       │
+│  ┌─────────────────────────────────────────────────────────────┐
+│  │ [Avatar] Criar nova publicação...              [📷] [Postar]│
+│  └─────────────────────────────────────────────────────────────┘
 │                                                                 │
-│  OUTPUT:                                                        │
-│  {                                                              │
-│    "fingerprint_id": "uuid",                                    │
-│    "sha256_hash": "a1b2c3d4...",                               │
-│    "created_at": "2025-02-04T12:34:56.789Z",                   │
-│    "version": "1.0.0",                                          │
-│    "author": "Marcus Forti",                                    │
-│    "system_name": "LBV TECH"                                    │
-│  }                                                              │
+│  ┌─────────────────────────────────────────────────────────────┐
+│  │ [Avatar] João Silva                        há 2 horas       │
+│  │                                                              │
+│  │ Fechei minha primeira venda de R$50k hoje! 🎉               │
+│  │ A técnica de ancoragem que o mentor passou funcionou        │
+│  │ perfeitamente...                                            │
+│  │                                                              │
+│  │ ❤️ 12    💬 3                               #vitoria #venda │
+│  └─────────────────────────────────────────────────────────────┘
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐
+│  │ [Avatar] Maria Santos                      há 5 horas       │
+│  │                                                              │
+│  │ Alguém tem dicas para lidar com objeção de preço?           │
+│  │ Estou travando nessa etapa...                               │
+│  │                                                              │
+│  │ ❤️ 5     💬 8                                    #dicas     │
+│  └─────────────────────────────────────────────────────────────┘
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Tabela de Registro
+### Aba de Chat
 
-```sql
-CREATE TABLE system_fingerprints (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sha256_hash TEXT NOT NULL,
-  content_summary TEXT,
-  version TEXT,
-  author TEXT,
-  system_name TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  metadata JSONB
-);
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  💬 Chat da Comunidade                    🟢 12 online         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [Avatar] João: Bom dia galera!                    09:15       │
+│                                                                 │
+│  [Avatar] Maria: Oi João! Tudo bem?                09:16       │
+│                                                                 │
+│  [Avatar] Pedro: Alguém vai na call de hoje?       09:20       │
+│                                                                 │
+│           [Você] Vou sim! Até mais tarde           09:22       │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  [Digite sua mensagem...]                          [Enviar →]  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Como Usar na Ata Notarial
+## Componentes a Criar
 
-1. Executar a função para gerar o fingerprint
-2. Incluir na ata:
-   - Hash SHA-256 gerado
-   - Timestamp exato
-   - Documento conceitual completo
-   - Screenshot do registro no banco
+### Frontend (`src/`)
+1. `pages/member/Comunidade.tsx` - Página principal
+2. `components/community/PostCard.tsx` - Card de publicação
+3. `components/community/PostComposer.tsx` - Criar novo post
+4. `components/community/CommentSection.tsx` - Seção de comentários
+5. `components/community/ChatPanel.tsx` - Chat em tempo real
+6. `components/community/OnlineIndicator.tsx` - Quem está online
 
-3. Qualquer alteração futura no conceito gerará hash diferente, provando que o original é anterior
+### Hooks
+- `hooks/useCommunityPosts.tsx` - CRUD de posts
+- `hooks/useCommunityChat.tsx` - Chat com Realtime
+
+## Tecnologias Utilizadas
+
+- **Supabase Realtime** - Atualizações instantâneas no chat
+- **Supabase Storage** - Upload de imagens nos posts
+- **Presence API** - Indicador de usuários online
+- **React Query** - Cache e sincronização de dados
+
+## Sequência de Implementação
+
+1. **Fase 1 - Banco de Dados**
+   - Criar as 4 tabelas
+   - Configurar RLS policies
+   - Habilitar Realtime na tabela de mensagens
+
+2. **Fase 2 - Feed de Posts**
+   - Página principal com listagem
+   - Criar nova publicação
+   - Sistema de curtidas
+   - Comentários
+
+3. **Fase 3 - Chat em Tempo Real**
+   - Canal de mensagens
+   - Conexão com Supabase Realtime
+   - Indicador de online (Presence)
+
+4. **Fase 4 - Gamificação**
+   - Pontos por publicação
+   - Pontos por curtidas recebidas
+   - Badge de membro ativo
+
+5. **Fase 5 - Polimento**
+   - Upload de imagens
+   - Notificações
+   - Moderação pelo mentor
+
+## Integração com Menu
+
+Adicionar no `MemberLayout.tsx`:
+```
+{ icon: Users, label: 'Comunidade', path: '/app/comunidade' }
+```
 
 ---
 
-## Próximos Passos
+## Detalhes Técnicos
 
-1. **Aprovar documento conceitual** - Revisar e ajustar qualquer detalhe antes da ata
+### Estrutura SQL Completa
 
-2. **Criar tabela + edge function** - Implementar o mecanismo de fingerprint
+```sql
+-- Posts da comunidade
+CREATE TABLE community_posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mentorado_id UUID NOT NULL REFERENCES mentorados(id) ON DELETE CASCADE,
+  mentor_id UUID NOT NULL REFERENCES mentors(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  image_url TEXT,
+  tags TEXT[] DEFAULT '{}',
+  likes_count INT DEFAULT 0,
+  comments_count INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-3. **Gerar primeira prova** - Executar a função e registrar o hash
+-- Curtidas
+CREATE TABLE community_likes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  mentorado_id UUID NOT NULL REFERENCES mentorados(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(post_id, mentorado_id)
+);
 
-4. **Levar para cartório** - Documento + hash + prints para ata notarial
+-- Comentários
+CREATE TABLE community_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  mentorado_id UUID NOT NULL REFERENCES mentorados(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
----
+-- Mensagens de chat
+CREATE TABLE community_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mentor_id UUID NOT NULL REFERENCES mentors(id) ON DELETE CASCADE,
+  mentorado_id UUID NOT NULL REFERENCES mentorados(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-## Resumo para Advogado
+-- Habilitar realtime para chat
+ALTER PUBLICATION supabase_realtime ADD TABLE community_messages;
 
-O sistema implementa:
-- Plataforma SaaS completa para gestão de mentorias
-- 8 ferramentas de IA proprietárias
-- Sistema de gamificação original
-- Onboarding automatizado inovador
-- CRM integrado com qualificação por IA
-- 34 tabelas de banco de dados estruturadas
-- 16 funções serverless de backend
-- Integrações com 5 APIs externas
+-- RLS Policies
+ALTER TABLE community_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE community_likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE community_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE community_messages ENABLE ROW LEVEL SECURITY;
+```
 
-A prova técnica será um hash SHA-256 do conceito + código, registrado com timestamp no próprio sistema, criando evidência criptográfica de anterioridade.
+### Estimativa de Esforço
+
+| Fase | Descrição | Complexidade |
+|------|-----------|--------------|
+| 1 | Banco de Dados | Baixa |
+| 2 | Feed de Posts | Média |
+| 3 | Chat Realtime | Alta |
+| 4 | Gamificação | Baixa |
+| 5 | Polimento | Média |
+
+**Total estimado:** Implementação em 2-3 etapas de desenvolvimento.
+
