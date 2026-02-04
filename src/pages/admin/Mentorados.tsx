@@ -52,7 +52,11 @@ import {
   Phone,
   Building2,
   Target,
-  ChevronRight
+  ChevronRight,
+  MessageCircle,
+  Video,
+  History,
+  ExternalLink
 } from "lucide-react";
 
 interface PendingUser {
@@ -992,11 +996,85 @@ const Mentorados = () => {
                   </div>
                 )}
                 
-                {/* Actions */}
-                <div className="flex gap-2 pt-4">
-                  <Button variant="outline" className="flex-1">
+                {/* Quick Actions */}
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <h4 className="font-semibold text-sm text-foreground">Ações Rápidas</h4>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* WhatsApp */}
+                    <Button 
+                      variant="outline" 
+                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-green-500/10 hover:border-green-500/30"
+                      onClick={() => {
+                        const phone = selectedMentorado.profile?.phone?.replace(/\D/g, '');
+                        if (phone) {
+                          window.open(`https://wa.me/55${phone}`, '_blank');
+                        } else {
+                          toast({
+                            title: "Telefone não cadastrado",
+                            description: "Este mentorado não possui telefone cadastrado.",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      <MessageCircle className="h-5 w-5 text-green-500" />
+                      <span className="text-xs">WhatsApp</span>
+                    </Button>
+                    
+                    {/* Email */}
+                    <Button 
+                      variant="outline" 
+                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-blue-500/10 hover:border-blue-500/30"
+                      onClick={() => {
+                        const email = selectedMentorado.profile?.email;
+                        if (email) {
+                          window.open(`mailto:${email}`, '_blank');
+                        }
+                      }}
+                    >
+                      <Mail className="h-5 w-5 text-blue-500" />
+                      <span className="text-xs">Email</span>
+                    </Button>
+                    
+                    {/* Schedule Meeting */}
+                    <Button 
+                      variant="outline" 
+                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-purple-500/10 hover:border-purple-500/30"
+                      onClick={() => {
+                        toast({
+                          title: "Agendar Reunião",
+                          description: "Funcionalidade em desenvolvimento. Em breve você poderá agendar reuniões diretamente.",
+                        });
+                        // TODO: Open calendar/meeting modal
+                      }}
+                    >
+                      <Video className="h-5 w-5 text-purple-500" />
+                      <span className="text-xs">Agendar</span>
+                    </Button>
+                    
+                    {/* Interaction History */}
+                    <Button 
+                      variant="outline" 
+                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-amber-500/10 hover:border-amber-500/30"
+                      onClick={() => {
+                        toast({
+                          title: "Histórico",
+                          description: "Funcionalidade em desenvolvimento. Em breve você verá todo o histórico de interações.",
+                        });
+                        // TODO: Open history modal
+                      }}
+                    >
+                      <History className="h-5 w-5 text-amber-500" />
+                      <span className="text-xs">Histórico</span>
+                    </Button>
+                  </div>
+                  
+                  {/* Full Profile Button */}
+                  <Button variant="outline" className="w-full mt-2">
                     <Eye className="h-4 w-4 mr-2" />
                     Ver Perfil Completo
+                    <ExternalLink className="h-3 w-3 ml-auto" />
                   </Button>
                 </div>
               </div>
