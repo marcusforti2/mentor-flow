@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Target, 
   User, 
@@ -22,14 +23,28 @@ import {
   Crosshair,
   Ban,
   Zap,
-  UserPlus
+  UserPlus,
+  History,
+  Eye,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { leadQualifierApi, LeadQualificationReport, BusinessProfile } from '@/lib/api/firecrawl';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface LeadQualifierProps {
   mentoradoId: string | null;
+}
+
+interface QualificationHistory {
+  id: string;
+  contact_name: string;
+  company: string | null;
+  temperature: string | null;
+  ai_insights: any;
+  updated_at: string;
 }
 
 export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
@@ -38,28 +53,71 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const [report, setReport] = useState<LeadQualificationReport | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [qualificationHistory, setQualificationHistory] = useState<QualificationHistory[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Fetch business profile and qualification history
   useEffect(() => {
-    const fetchBusinessProfile = async () => {
+    const fetchData = async () => {
       if (!mentoradoId) return;
 
       try {
-        const { data } = await supabase
+        // Fetch business profile
+        const { data: profileData } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
           .eq('mentorado_id', mentoradoId)
           .single();
 
-        if (data) {
-          setBusinessProfile(data);
+        if (profileData) {
+          setBusinessProfile(profileData);
         }
       } catch (error) {
         console.error('Error fetching business profile:', error);
       }
     };
 
-    fetchBusinessProfile();
+    fetchData();
   }, [mentoradoId]);
+
+  // Fetch qualification history
+  const fetchQualificationHistory = async () => {
+    if (!mentoradoId) return;
+
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('crm_prospections')
+        .select('id, contact_name, company, temperature, ai_insights, updated_at')
+        .eq('mentorado_id', mentoradoId)
+        .not('ai_insights', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      // Filter only those with valid ai_insights containing score
+      const validHistory = (data || []).filter(item => {
+        const insights = item.ai_insights;
+        return insights && typeof insights === 'object' && 'score' in insights;
+      }) as QualificationHistory[];
+
+      setQualificationHistory(validHistory);
+    } catch (error) {
+      console.error('Error fetching qualification history:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQualificationHistory();
+  }, [mentoradoId]);
+
+  const loadHistoryReport = (historyItem: QualificationHistory) => {
+    setReport(historyItem.ai_insights);
+    toast.success(`Carregada qualificação de ${historyItem.contact_name}`);
+  };
 
   const handleAnalyze = async () => {
     if (!profileUrl.trim()) {
@@ -157,6 +215,9 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           console.log('Lead saved to CRM:', newLead?.id);
         }
       }
+      
+      // Refresh history after saving
+      await fetchQualificationHistory();
     } catch (error) {
       console.error('Error saving lead to CRM:', error);
     }
@@ -675,6 +736,93 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Qualification History */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <History className="h-5 w-5 text-primary" />
+            Histórico de Qualificações
+          </CardTitle>
+          <CardDescription>
+            Últimas análises realizadas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : qualificationHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Target className="h-10 w-10 mx-auto mb-3 opacity-50" />
+              <p>Nenhuma qualificação realizada ainda.</p>
+              <p className="text-sm mt-1">Analise um perfil para começar.</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-3">
+                {qualificationHistory.map((item) => {
+                  const insights = item.ai_insights as LeadQualificationReport;
+                  const score = insights?.score || 0;
+                  const recommendation = insights?.recommendation || 'unknown';
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => loadHistoryReport(item)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                          score >= 75 ? 'bg-green-500/20 text-green-600' :
+                          score >= 50 ? 'bg-yellow-500/20 text-yellow-600' :
+                          score >= 25 ? 'bg-orange-500/20 text-orange-600' :
+                          'bg-red-500/20 text-red-600'
+                        }`}>
+                          {score}
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.contact_name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {item.company && (
+                              <span>{item.company}</span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(item.updated_at), { addSuffix: true, locale: ptBR })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={
+                            recommendation === 'pursue_hot' ? 'default' :
+                            recommendation === 'nurture' ? 'secondary' :
+                            recommendation === 'not_fit' ? 'destructive' :
+                            'outline'
+                          }
+                          className="text-xs"
+                        >
+                          {recommendation === 'pursue_hot' ? '🔥 Quente' :
+                           recommendation === 'nurture' ? '🌱 Nutrir' :
+                           recommendation === 'low_priority' ? '⏳ Baixa' :
+                           recommendation === 'not_fit' ? '❌ Não fit' :
+                           recommendation}
+                        </Badge>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
