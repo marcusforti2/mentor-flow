@@ -30,10 +30,6 @@ serve(async (req) => {
     
     console.log("Verifying OTP:", { email: email.toLowerCase(), code: normalizedCode });
     
-    // Allow OTP reuse within 60 seconds grace period (for frontend retry scenarios)
-    const gracePeriodSeconds = 60;
-    const graceTime = new Date(Date.now() - gracePeriodSeconds * 1000).toISOString();
-    
     // First try to find unused OTP
     let { data: otpData, error: otpError } = await supabase
       .from("otp_codes")
@@ -44,7 +40,7 @@ serve(async (req) => {
       .gt("expires_at", new Date().toISOString())
       .single();
     
-    // If not found, check for recently used OTP (grace period for retries)
+    // If not found, check for recently used OTP (allow reuse while not expired)
     if (otpError || !otpData) {
       const { data: recentOtp } = await supabase
         .from("otp_codes")
@@ -53,13 +49,12 @@ serve(async (req) => {
         .eq("code", normalizedCode)
         .eq("used", true)
         .gt("expires_at", new Date().toISOString())
-        .gt("created_at", graceTime)
         .single();
       
       if (recentOtp) {
         otpData = recentOtp;
         otpError = null;
-        console.log("OTP reused within grace period");
+        console.log("OTP reused (still valid, not expired)");
       }
     }
     
