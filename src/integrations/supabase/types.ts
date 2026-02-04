@@ -555,6 +555,130 @@ export type Database = {
           },
         ]
       }
+      email_flow_executions: {
+        Row: {
+          completed_at: string | null
+          current_node_id: string | null
+          error_message: string | null
+          flow_id: string
+          id: string
+          mentorado_id: string
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          current_node_id?: string | null
+          error_message?: string | null
+          flow_id: string
+          id?: string
+          mentorado_id: string
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          current_node_id?: string | null
+          error_message?: string | null
+          flow_id?: string
+          id?: string
+          mentorado_id?: string
+          started_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_flow_executions_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "email_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_flow_executions_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_flow_triggers: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          flow_id: string
+          id: string
+          trigger_type: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          flow_id: string
+          id?: string
+          trigger_type: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          flow_id?: string
+          id?: string
+          trigger_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_flow_triggers_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "email_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_flows: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          edges: Json | null
+          id: string
+          is_active: boolean | null
+          mentor_id: string
+          name: string
+          nodes: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          edges?: Json | null
+          id?: string
+          is_active?: boolean | null
+          mentor_id: string
+          name: string
+          nodes?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          edges?: Json | null
+          id?: string
+          is_active?: boolean | null
+          mentor_id?: string
+          name?: string
+          nodes?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_flows_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           automation_id: string | null
