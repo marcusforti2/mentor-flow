@@ -153,17 +153,56 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
       parts.push('Lead: Prospect genérico high-ticket');
       return parts.join('\n');
     }
+    
     parts.push(`Nome: ${selectedLead.contact_name}`);
     if (selectedLead.company) parts.push(`Empresa: ${selectedLead.company}`);
     if (selectedLead.temperature) {
-      const tempMap: Record<string, string> = { hot: 'Quente', warm: 'Morno', cold: 'Frio' };
+      const tempMap: Record<string, string> = { hot: 'Quente 🔥', warm: 'Morno ☀️', cold: 'Frio ❄️' };
       parts.push(`Temperatura: ${tempMap[selectedLead.temperature] || selectedLead.temperature}`);
     }
-    if (selectedLead.ai_insights) {
-      const insights = selectedLead.ai_insights;
+    
+    // Se tem dados de qualificação completos, usar eles
+    const insights = selectedLead.ai_insights as any;
+    if (insights?.behavioral_profile) {
+      // Perfil comportamental
+      const behavior = insights.behavioral_profile;
+      parts.push(`\n--- PERFIL COMPORTAMENTAL ---`);
+      parts.push(`Estilo DISC: ${behavior.primary_style?.toUpperCase() || 'N/A'}`);
+      if (behavior.communication_preference) parts.push(`Comunicação: ${behavior.communication_preference}`);
+      if (behavior.decision_making_style) parts.push(`Decisão: ${behavior.decision_making_style}`);
+      if (behavior.what_motivates?.length) parts.push(`Motivadores: ${behavior.what_motivates.slice(0,2).join(', ')}`);
+      if (behavior.what_frustrates?.length) parts.push(`Frustrações: ${behavior.what_frustrates.slice(0,2).join(', ')}`);
+      
+      // Perspectiva do lead
+      const perspective = insights.lead_perspective;
+      if (perspective) {
+        parts.push(`\n--- PERSPECTIVA ---`);
+        if (perspective.current_challenges?.length) parts.push(`Desafios: ${perspective.current_challenges.slice(0,2).join(', ')}`);
+        if (perspective.fears_and_concerns?.length) parts.push(`Medos: ${perspective.fears_and_concerns.slice(0,2).join(', ')}`);
+      }
+      
+      // Objeções esperadas
+      if (insights.expected_objections?.length) {
+        parts.push(`\n--- OBJEÇÕES ESPERADAS ---`);
+        insights.expected_objections.slice(0,3).forEach((obj: any) => {
+          parts.push(`• ${obj.objection} (${obj.likelihood})`);
+        });
+      }
+      
+      // O que afasta
+      if (insights.what_pushes_away) {
+        const pushes = insights.what_pushes_away;
+        if (pushes.behaviors_to_avoid?.length) {
+          parts.push(`\nEVITAR: ${pushes.behaviors_to_avoid.slice(0,2).join(', ')}`);
+        }
+      }
+    } else if (insights) {
+      // Dados básicos de ai_insights
+      if (insights.summary) parts.push(`Resumo: ${insights.summary}`);
       if (insights.pain_points?.length) parts.push(`Dores: ${insights.pain_points.slice(0,2).join(', ')}`);
       if (insights.objections?.length) parts.push(`Objeções: ${insights.objections.slice(0,2).join(', ')}`);
     }
+    
     return parts.join('\n');
   };
 
@@ -401,14 +440,18 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="random">🎲 Genérico</SelectItem>
-                        {leads.map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id}>
-                            <span className="flex items-center gap-1">
-                              {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
-                              {lead.contact_name}
-                            </span>
-                          </SelectItem>
-                        ))}
+                        {leads.map((lead) => {
+                          const hasQualification = !!(lead.ai_insights as any)?.behavioral_profile;
+                          return (
+                            <SelectItem key={lead.id} value={lead.id}>
+                              <span className="flex items-center gap-1">
+                                {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
+                                {lead.contact_name}
+                                {hasQualification && <span className="text-primary text-[10px]">✓IA</span>}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

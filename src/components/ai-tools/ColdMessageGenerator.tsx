@@ -130,43 +130,60 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
     // Build context from saved data
     const contextParts: string[] = [];
     
-    if (lead.company) {
-      contextParts.push(`Empresa: ${lead.company}`);
-    }
+    if (lead.company) contextParts.push(`Empresa: ${lead.company}`);
     
     if (lead.temperature) {
-      const tempLabels: Record<string, string> = {
-        hot: 'Lead quente',
-        warm: 'Lead morno',
-        cold: 'Lead frio'
-      };
+      const tempLabels: Record<string, string> = { hot: 'Lead quente 🔥', warm: 'Lead morno ☀️', cold: 'Lead frio ❄️' };
       contextParts.push(tempLabels[lead.temperature] || lead.temperature);
     }
     
-    // Extract AI insights if available
-    if (lead.ai_insights) {
-      const insights = lead.ai_insights;
+    const insights = lead.ai_insights as any;
+    if (insights?.behavioral_profile) {
+      // Lead passou pela qualificação completa
+      if (insights.score) contextParts.push(`Score: ${insights.score}/100`);
+      if (insights.summary) contextParts.push(`Resumo: ${insights.summary}`);
       
-      if (insights.profileSummary) {
-        contextParts.push(`Perfil: ${insights.profileSummary}`);
+      // Perfil comportamental
+      const behavior = insights.behavioral_profile;
+      contextParts.push(`\n--- PERFIL COMPORTAMENTAL ---`);
+      contextParts.push(`Estilo DISC: ${behavior.primary_style?.toUpperCase() || 'N/A'}`);
+      if (behavior.communication_preference) contextParts.push(`Comunicação: ${behavior.communication_preference}`);
+      if (behavior.what_motivates?.length) contextParts.push(`Motivadores: ${behavior.what_motivates.slice(0,2).join(', ')}`);
+      if (behavior.buying_triggers?.length) contextParts.push(`Gatilhos: ${behavior.buying_triggers.slice(0,2).join(', ')}`);
+      
+      // Perspectiva
+      if (insights.lead_perspective) {
+        const perspective = insights.lead_perspective;
+        if (perspective.likely_goals?.length) contextParts.push(`Objetivos: ${perspective.likely_goals.slice(0,2).join(', ')}`);
+        if (perspective.current_challenges?.length) contextParts.push(`Desafios: ${perspective.current_challenges.slice(0,2).join(', ')}`);
       }
       
-      if (insights.painPoints && Array.isArray(insights.painPoints)) {
-        contextParts.push(`Dores: ${insights.painPoints.slice(0, 3).join(', ')}`);
+      // Estratégia de abordagem
+      if (insights.approach_strategy) {
+        const approach = insights.approach_strategy;
+        contextParts.push(`\n--- ESTRATÉGIA ---`);
+        if (approach.opening_hook) contextParts.push(`Gancho sugerido: ${approach.opening_hook}`);
+        if (approach.key_points_to_touch?.length) contextParts.push(`Pontos chave: ${approach.key_points_to_touch.slice(0,3).join(', ')}`);
+        if (approach.topics_to_avoid?.length) contextParts.push(`Evitar: ${approach.topics_to_avoid.slice(0,2).join(', ')}`);
       }
       
-      if (insights.opportunityScore) {
-        contextParts.push(`Score de oportunidade: ${insights.opportunityScore}/10`);
+      // Ancoragem de valor
+      if (insights.value_anchoring) {
+        const value = insights.value_anchoring;
+        if (value.pain_to_highlight) contextParts.push(`Dor a destacar: ${value.pain_to_highlight}`);
+        if (value.result_to_promise) contextParts.push(`Resultado a prometer: ${value.result_to_promise}`);
       }
       
-      if (insights.suggestedApproach) {
-        contextParts.push(`Abordagem sugerida: ${insights.suggestedApproach}`);
-      }
+      toast.success(`Lead com qualificação completa carregado!`);
+    } else if (insights) {
+      // Dados básicos
+      if (insights.profileSummary) contextParts.push(`Perfil: ${insights.profileSummary}`);
+      if (insights.painPoints && Array.isArray(insights.painPoints)) contextParts.push(`Dores: ${insights.painPoints.slice(0, 3).join(', ')}`);
+      if (insights.opportunityScore) contextParts.push(`Score: ${insights.opportunityScore}/10`);
+      if (insights.suggestedApproach) contextParts.push(`Abordagem: ${insights.suggestedApproach}`);
     }
     
-    if (lead.notes) {
-      contextParts.push(`Notas: ${lead.notes}`);
-    }
+    if (lead.notes) contextParts.push(`Notas: ${lead.notes}`);
     
     setLeadContext(contextParts.join('\n'));
   };
@@ -277,25 +294,33 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
                     <span>Digitar manualmente</span>
                   </div>
                 </SelectItem>
-                {savedLeads.map((lead) => (
-                  <SelectItem key={lead.id} value={lead.id}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{lead.contact_name}</span>
-                      {lead.company && (
-                        <span className="text-muted-foreground text-xs">• {lead.company}</span>
-                      )}
-                      {lead.temperature && (
-                        <Badge variant="outline" className={`text-xs ml-1 ${
-                          lead.temperature === 'hot' ? 'border-destructive/50 text-destructive' :
-                          lead.temperature === 'warm' ? 'border-warning/50 text-warning' :
-                          'border-muted-foreground/50'
-                        }`}>
-                          {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
-                        </Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
+                {savedLeads.map((lead) => {
+                  const hasQualification = !!(lead.ai_insights as any)?.behavioral_profile;
+                  return (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{lead.contact_name}</span>
+                        {lead.company && (
+                          <span className="text-muted-foreground text-xs">• {lead.company}</span>
+                        )}
+                        {lead.temperature && (
+                          <Badge variant="outline" className={`text-xs ml-1 ${
+                            lead.temperature === 'hot' ? 'border-destructive/50 text-destructive' :
+                            lead.temperature === 'warm' ? 'border-warning/50 text-warning' :
+                            'border-muted-foreground/50'
+                          }`}>
+                            {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
+                          </Badge>
+                        )}
+                        {hasQualification && (
+                          <Badge variant="secondary" className="text-xs bg-primary/20 text-primary ml-1">
+                            ✓ IA
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             {savedLeads.length === 0 && !isLoadingLeads && (

@@ -149,12 +149,51 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
     if (lead.contact_phone) contextParts.push(`Telefone: ${lead.contact_phone}`);
     
     if (lead.temperature) {
-      const tempLabels: Record<string, string> = { hot: 'Lead quente', warm: 'Lead morno', cold: 'Lead frio' };
+      const tempLabels: Record<string, string> = { hot: 'Lead quente 🔥', warm: 'Lead morno ☀️', cold: 'Lead frio ❄️' };
       contextParts.push(tempLabels[lead.temperature] || lead.temperature);
     }
     
-    if (lead.ai_insights) {
-      const insights = lead.ai_insights;
+    const insights = lead.ai_insights as any;
+    if (insights?.behavioral_profile) {
+      // Lead passou pela qualificação completa
+      if (insights.score) contextParts.push(`Score: ${insights.score}/100`);
+      if (insights.summary) contextParts.push(`Resumo: ${insights.summary}`);
+      
+      // Perfil comportamental
+      const behavior = insights.behavioral_profile;
+      contextParts.push(`\n--- PERFIL COMPORTAMENTAL ---`);
+      contextParts.push(`Estilo DISC: ${behavior.primary_style?.toUpperCase() || 'N/A'}`);
+      if (behavior.communication_preference) contextParts.push(`Como se comunica: ${behavior.communication_preference}`);
+      if (behavior.what_motivates?.length) contextParts.push(`Motivadores: ${behavior.what_motivates.slice(0,3).join(', ')}`);
+      if (behavior.buying_triggers?.length) contextParts.push(`Gatilhos de compra: ${behavior.buying_triggers.slice(0,3).join(', ')}`);
+      
+      // Perspectiva
+      const perspective = insights.lead_perspective;
+      if (perspective) {
+        contextParts.push(`\n--- PERSPECTIVA DO LEAD ---`);
+        if (perspective.likely_goals?.length) contextParts.push(`Objetivos: ${perspective.likely_goals.slice(0,2).join(', ')}`);
+        if (perspective.current_challenges?.length) contextParts.push(`Desafios: ${perspective.current_challenges.slice(0,2).join(', ')}`);
+        if (perspective.fears_and_concerns?.length) contextParts.push(`Medos: ${perspective.fears_and_concerns.slice(0,2).join(', ')}`);
+      }
+      
+      // Estratégia de abordagem
+      const approach = insights.approach_strategy;
+      if (approach) {
+        contextParts.push(`\n--- ESTRATÉGIA ---`);
+        if (approach.opening_hook) contextParts.push(`Gancho: ${approach.opening_hook}`);
+        if (approach.key_points_to_touch?.length) contextParts.push(`Pontos chave: ${approach.key_points_to_touch.slice(0,3).join(', ')}`);
+        if (approach.topics_to_avoid?.length) contextParts.push(`Evitar: ${approach.topics_to_avoid.slice(0,2).join(', ')}`);
+      }
+      
+      // Ancoragem de valor
+      const value = insights.value_anchoring;
+      if (value) {
+        contextParts.push(`\n--- ANCORAGEM ---`);
+        if (value.pain_to_highlight) contextParts.push(`Dor a destacar: ${value.pain_to_highlight}`);
+        if (value.result_to_promise) contextParts.push(`Resultado: ${value.result_to_promise}`);
+      }
+    } else if (insights) {
+      // Dados básicos
       if (insights.summary) contextParts.push(`Resumo IA: ${insights.summary}`);
       if (insights.pain_points?.length) contextParts.push(`Dores: ${insights.pain_points.slice(0, 3).join(', ')}`);
       if (insights.opportunities?.length) contextParts.push(`Oportunidades: ${insights.opportunities.slice(0, 3).join(', ')}`);
@@ -163,7 +202,9 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
     if (lead.notes) contextParts.push(`Notas: ${lead.notes}`);
     
     setLeadContext(contextParts.join('\n'));
-    toast.success(`Lead "${lead.contact_name}" selecionado`);
+    
+    const hasQualification = !!(insights?.behavioral_profile);
+    toast.success(`Lead "${lead.contact_name}" selecionado${hasQualification ? ' (com qualificação completa)' : ''}`);
   };
 
   const toggleScript = (scriptId: string) => {
@@ -296,7 +337,7 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Lead Selector */}
+           {/* Lead Selector */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2 text-base font-medium">
               <Users className="h-4 w-4 text-primary" />
@@ -308,25 +349,40 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="manual">✏️ Digitar manualmente</SelectItem>
-                {leads.map((lead) => (
-                  <SelectItem key={lead.id} value={lead.id}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{lead.contact_name}</span>
-                      {lead.company && <span className="text-muted-foreground">• {lead.company}</span>}
-                      {lead.temperature && (
-                        <Badge variant="outline" className="text-xs">
-                          {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
-                        </Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
+                {leads.map((lead) => {
+                  const hasQualification = !!(lead.ai_insights as any)?.behavioral_profile;
+                  return (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{lead.contact_name}</span>
+                        {lead.company && <span className="text-muted-foreground">• {lead.company}</span>}
+                        {lead.temperature && (
+                          <Badge variant="outline" className="text-xs">
+                            {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
+                          </Badge>
+                        )}
+                        {hasQualification && (
+                          <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                            ✓ IA
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             
             {selectedLead && (
               <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                <div className="font-medium text-foreground">{selectedLead.contact_name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{selectedLead.contact_name}</span>
+                  {!!(selectedLead.ai_insights as any)?.behavioral_profile && (
+                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                      Com Qualificação
+                    </Badge>
+                  )}
+                </div>
                 {selectedLead.company && <div className="text-muted-foreground">{selectedLead.company}</div>}
               </div>
             )}
