@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.cold-messages]
 verify_jwt = false
+
+[functions.generate-bio]
+verify_jwt = false

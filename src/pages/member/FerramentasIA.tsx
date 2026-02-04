@@ -15,7 +15,8 @@ import {
   Sparkles,
   AlertCircle,
   Target,
-  Send
+  Send,
+  User
 } from 'lucide-react';
 import { ScriptGenerator } from '@/components/ai-tools/ScriptGenerator';
 import { ObjectionSimulator } from '@/components/ai-tools/ObjectionSimulator';
@@ -26,6 +27,7 @@ import { ConversionAnalyzer } from '@/components/ai-tools/ConversionAnalyzer';
 import { VirtualMentor } from '@/components/ai-tools/VirtualMentor';
 import { LeadQualifier } from '@/components/ai-tools/LeadQualifier';
 import { ColdMessageGenerator } from '@/components/ai-tools/ColdMessageGenerator';
+import { BioGenerator } from '@/components/ai-tools/BioGenerator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +35,7 @@ import { useNavigate } from 'react-router-dom';
 const tools = [
   { id: 'qualifier', label: 'Qualificador', icon: Target, description: 'Qualificador de Leads com IA' },
   { id: 'coldmsg', label: 'Cold Msg', icon: Send, description: 'Gerador de Cold Messages' },
+  { id: 'bio', label: 'Bio', icon: User, description: 'Gerador de Bio Otimizada' },
   { id: 'scripts', label: 'Scripts', icon: FileText, description: 'Gerador de Scripts de Vendas' },
   { id: 'roleplay', label: 'Role-Play', icon: MessageSquare, description: 'Simulador de Objeções' },
   { id: 'followup', label: 'Follow-up', icon: UserCheck, description: 'Coach de Follow-up' },
@@ -156,6 +159,10 @@ export default function FerramentasIA() {
 
           <TabsContent value="coldmsg">
             <ColdMessageGenerator mentoradoId={mentoradoId} />
+          </TabsContent>
+
+          <TabsContent value="bio">
+            <BioGenerator mentoradoId={mentoradoId} />
           </TabsContent>
 
           <TabsContent value="scripts">
