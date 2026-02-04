@@ -19,6 +19,7 @@ interface Lead {
   company: string | null;
   status: string | null;
   temperature: string | null;
+  ai_insights: any;
 }
 
 export function FollowUpCoach({ mentoradoId }: FollowUpCoachProps) {
@@ -33,7 +34,7 @@ export function FollowUpCoach({ mentoradoId }: FollowUpCoachProps) {
       try {
         const { data, error } = await supabase
           .from('crm_prospections')
-          .select('id, contact_name, company, status, temperature')
+          .select('id, contact_name, company, status, temperature, ai_insights')
           .eq('mentorado_id', mentoradoId)
           .not('status', 'eq', 'fechado')
           .not('status', 'eq', 'perdido')
@@ -94,6 +95,7 @@ export function FollowUpCoach({ mentoradoId }: FollowUpCoachProps) {
   };
 
   const selectedLead = leads.find((l) => l.id === selectedLeadId);
+  const hasQualification = !!(selectedLead?.ai_insights?.behavioral_profile);
 
   const getTemperatureColor = (temp: string | null) => {
     switch (temp) {
@@ -153,6 +155,11 @@ export function FollowUpCoach({ mentoradoId }: FollowUpCoachProps) {
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{selectedLead.contact_name}</span>
+                {hasQualification && (
+                  <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                    ✓ Qualificado
+                  </Badge>
+                )}
               </div>
               {selectedLead.company && (
                 <div className="flex items-center gap-2">
@@ -168,6 +175,20 @@ export function FollowUpCoach({ mentoradoId }: FollowUpCoachProps) {
                   </Badge>
                 )}
               </div>
+              {hasQualification && selectedLead.ai_insights && (
+                <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5 text-xs">
+                  <p className="text-muted-foreground font-medium">Dados da qualificação:</p>
+                  {selectedLead.ai_insights.behavioral_profile?.primary_style && (
+                    <p><span className="text-muted-foreground">DISC:</span> {selectedLead.ai_insights.behavioral_profile.primary_style.toUpperCase()}</p>
+                  )}
+                  {selectedLead.ai_insights.score && (
+                    <p><span className="text-muted-foreground">Score:</span> {selectedLead.ai_insights.score}/100</p>
+                  )}
+                  {selectedLead.ai_insights.approach_strategy?.best_channel && (
+                    <p><span className="text-muted-foreground">Melhor canal:</span> {selectedLead.ai_insights.approach_strategy.best_channel}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
