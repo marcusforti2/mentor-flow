@@ -868,3 +868,40 @@
     display: none !important;
   }
 }
+
+/* Email Preview in Test Modal - Simulates real email client (white bg) */
+.email-preview-content {
+  color: #1f2937 !important;
+  line-height: 1.6;
+}
+
+.email-preview-content h1,
+.email-preview-content h2,
+.email-preview-content h3,
+.email-preview-content h4 {
+  color: #111827 !important;
+  margin-bottom: 0.75rem;
+}
+
+.email-preview-content p {
+  color: #374151 !important;
+  margin-bottom: 0.5rem;
+}
+
+.email-preview-content strong {
+  color: #111827 !important;
+}
+
+.email-preview-content a {
+  color: #2563eb !important;
+}
+
+.email-preview-content ul,
+.email-preview-content ol {
+  color: #374151 !important;
+  padding-left: 1.25rem;
+}
+
+.email-preview-content li {
+  margin-bottom: 0.25rem;
+}
