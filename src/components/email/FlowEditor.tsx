@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   ReactFlow,
   Background,
@@ -18,6 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -25,6 +30,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -41,10 +51,12 @@ import {
   GitBranch,
   Zap,
   Users,
-  Calendar,
+  Calendar as CalendarIcon,
   AlertTriangle,
   Trophy,
   PlayCircle,
+  Route,
+  CalendarDays,
 } from "lucide-react";
 import FlowTestModal from './FlowTestModal';
 
@@ -75,9 +87,10 @@ interface FlowEditorProps {
 
 const TRIGGER_TYPES = [
   { value: 'onboarding', label: 'Entrada no Programa', icon: Users, description: 'Quando mentorado é cadastrado' },
+  { value: 'jornada', label: 'Jornada do Cliente', icon: Route, description: 'Baseado no dia/semana da jornada' },
   { value: 'inactivity', label: 'Inatividade', icon: AlertTriangle, description: 'X dias sem acessar' },
   { value: 'trail_completion', label: 'Conclusão de Trilha', icon: Trophy, description: 'Quando finaliza uma trilha' },
-  { value: 'date', label: 'Data Específica', icon: Calendar, description: 'Aniversário, renovação, etc' },
+  { value: 'date', label: 'Data Específica', icon: CalendarDays, description: 'Data fixa no calendário' },
   { value: 'manual', label: 'Disparo Manual', icon: Zap, description: 'Você inicia manualmente' },
 ];
 
@@ -281,6 +294,7 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
                     </Select>
                   </div>
                   
+                  {/* Inactivity Config */}
                   {selectedNode.data.triggerType === 'inactivity' && (
                     <div className="space-y-2">
                       <Label>Dias de Inatividade</Label>
@@ -291,6 +305,149 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
                           config: { ...(selectedNode.data.config as any || {}), days: parseInt(e.target.value) }
                         })}
                       />
+                    </div>
+                  )}
+
+                  {/* Specific Date Config */}
+                  {selectedNode.data.triggerType === 'date' && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Selecione a Data</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !(selectedNode.data.config as any)?.specificDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {(selectedNode.data.config as any)?.specificDate ? (
+                                format(new Date((selectedNode.data.config as any).specificDate), "PPP", { locale: ptBR })
+                              ) : (
+                                <span>Escolha uma data</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={(selectedNode.data.config as any)?.specificDate ? new Date((selectedNode.data.config as any).specificDate) : undefined}
+                              onSelect={(date) => updateNodeData(selectedNode.id, { 
+                                config: { ...(selectedNode.data.config as any || {}), specificDate: date?.toISOString() }
+                              })}
+                              initialFocus
+                              className={cn("p-3 pointer-events-auto")}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        O fluxo será disparado para todos os mentorados na data selecionada.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Customer Journey Config */}
+                  {selectedNode.data.triggerType === 'jornada' && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Período</Label>
+                        <Select
+                          value={(selectedNode.data.config as any)?.periodType || 'day'}
+                          onValueChange={(value) => updateNodeData(selectedNode.id, { 
+                            config: { ...(selectedNode.data.config as any || {}), periodType: value }
+                          })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="day">Dia específico</SelectItem>
+                            <SelectItem value="week">Semana específica</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>
+                          {(selectedNode.data.config as any)?.periodType === 'week' 
+                            ? 'Semana da Jornada' 
+                            : 'Dia da Jornada'}
+                        </Label>
+                        <Select
+                          value={String((selectedNode.data.config as any)?.periodValue || 1)}
+                          onValueChange={(value) => updateNodeData(selectedNode.id, { 
+                            config: { ...(selectedNode.data.config as any || {}), periodValue: parseInt(value) }
+                          })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {(selectedNode.data.config as any)?.periodType === 'week' ? (
+                              // Weeks 1-12
+                              Array.from({ length: 12 }, (_, i) => i + 1).map(week => (
+                                <SelectItem key={week} value={String(week)}>
+                                  Semana {week}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              // Days 1-90
+                              Array.from({ length: 90 }, (_, i) => i + 1).map(day => (
+                                <SelectItem key={day} value={String(day)}>
+                                  Dia {day}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <p className="text-sm text-foreground">
+                          <strong>Exemplo:</strong>{' '}
+                          {(selectedNode.data.config as any)?.periodType === 'week' 
+                            ? `Todos os mentorados que estão na semana ${(selectedNode.data.config as any)?.periodValue || 1} da jornada receberão este fluxo.`
+                            : `Todos os mentorados que estão no dia ${(selectedNode.data.config as any)?.periodValue || 1} da jornada receberão este fluxo.`
+                          }
+                        </p>
+                      </div>
+
+                      {/* Quick select badges */}
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Seleção rápida:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedNode.data.config as any)?.periodType === 'week' ? (
+                            [1, 2, 4, 8, 12].map(week => (
+                              <Badge 
+                                key={week}
+                                variant={(selectedNode.data.config as any)?.periodValue === week ? "default" : "outline"}
+                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                onClick={() => updateNodeData(selectedNode.id, { 
+                                  config: { ...(selectedNode.data.config as any || {}), periodValue: week }
+                                })}
+                              >
+                                Semana {week}
+                              </Badge>
+                            ))
+                          ) : (
+                            [1, 3, 7, 14, 30, 60, 90].map(day => (
+                              <Badge 
+                                key={day}
+                                variant={(selectedNode.data.config as any)?.periodValue === day ? "default" : "outline"}
+                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                onClick={() => updateNodeData(selectedNode.id, { 
+                                  config: { ...(selectedNode.data.config as any || {}), periodValue: day }
+                                })}
+                              >
+                                Dia {day}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
