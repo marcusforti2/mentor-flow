@@ -1163,6 +1163,60 @@ export type Database = {
           },
         ]
       }
+      roleplay_simulations: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          lead_id: string | null
+          lead_name: string | null
+          mentorado_id: string
+          messages: Json
+          negotiation_phase: string
+          score: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          mentorado_id: string
+          messages?: Json
+          negotiation_phase?: string
+          score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          mentorado_id?: string
+          messages?: Json
+          negotiation_phase?: string
+          score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roleplay_simulations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_prospections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roleplay_simulations_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sos_requests: {
         Row: {
           ai_analysis: Json | null
