@@ -50,13 +50,27 @@ interface SavedSimulation {
   created_at: string;
 }
 
-type NegotiationPhase = 'cold_response' | 'post_proposal' | 'checks' | 'closing';
+type NegotiationPhase = 
+  | 'cold_response' 
+  | 'qualification' 
+  | 'diagnostic' 
+  | 'value_anchoring'
+  | 'post_proposal' 
+  | 'checks' 
+  | 'objection_handling'
+  | 'closing'
+  | 'rescue';
 
 const negotiationPhases: { id: NegotiationPhase; label: string; description: string; emoji: string }[] = [
-  { id: 'cold_response', label: 'Prospecção Fria', description: 'Lead respondeu minha abordagem inicial', emoji: '❄️' },
-  { id: 'post_proposal', label: 'Pós-Proposta', description: 'Já apresentei a proposta, vai vir com objeções', emoji: '📋' },
-  { id: 'checks', label: 'Checagens', description: 'Entendimento, comprometimento e ancoragem', emoji: '✅' },
-  { id: 'closing', label: 'Fechamento', description: 'Negociação final, últimas objeções', emoji: '🤝' },
+  { id: 'cold_response', label: 'Prospecção Fria', description: 'Lead respondeu minha abordagem inicial com ceticismo', emoji: '❄️' },
+  { id: 'qualification', label: 'Qualificação', description: 'Descobrir se o lead tem perfil, dor e capacidade de investir', emoji: '🔍' },
+  { id: 'diagnostic', label: 'Diagnóstico', description: 'Aprofundar nas dores e mostrar consequências de não agir', emoji: '🩺' },
+  { id: 'value_anchoring', label: 'Ancoragem de Valor', description: 'Antes do preço: construir percepção de valor e ROI', emoji: '💎' },
+  { id: 'post_proposal', label: 'Pós-Proposta', description: 'Proposta apresentada, objeções de preço e timing virão', emoji: '📋' },
+  { id: 'checks', label: 'Checagens', description: 'Testar entendimento, comprometimento e prontidão', emoji: '✅' },
+  { id: 'objection_handling', label: 'Quebra de Objeções', description: 'Lead apresentou objeção específica, preciso contornar', emoji: '🛡️' },
+  { id: 'closing', label: 'Fechamento', description: 'Última milha: conduzir para a decisão final', emoji: '🤝' },
+  { id: 'rescue', label: 'Resgate', description: 'Lead esfriou ou sumiu, tentar reativar a conversa', emoji: '🔄' },
 ];
 
 export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
@@ -142,10 +156,15 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
     const phaseInfo = negotiationPhases.find(p => p.id === selectedPhase);
     if (phaseInfo) {
       const phaseDescriptions: Record<NegotiationPhase, string> = {
-        cold_response: 'O lead acabou de responder uma prospecção fria. Ele ainda está cético.',
-        post_proposal: 'A proposta já foi apresentada. Virão objeções de preço, timing, comparação.',
-        checks: 'Fase de checagens: entendimento, comprometimento e ancoragem.',
-        closing: 'Fase final de fechamento. Objeções de última hora, pedidos de desconto.'
+        cold_response: 'O lead acabou de responder uma prospecção fria. Ele ainda está cético e desconfiado. Quer entender quem você é antes de qualquer coisa.',
+        qualification: 'Fase de qualificação. O lead quer saber se você entende o contexto dele. Precisa demonstrar autoridade e fazer perguntas estratégicas.',
+        diagnostic: 'Diagnóstico profundo. O lead está aberto mas precisa sentir a DOR. Você deve aprofundar nos problemas e consequências de não agir.',
+        value_anchoring: 'Ancoragem de valor ANTES do preço. O lead precisa perceber ROI e transformação. Construa o valor antes de falar número.',
+        post_proposal: 'A proposta já foi apresentada. Virão objeções de preço, timing, comparação com concorrentes. O lead está calculando.',
+        checks: 'Fase de checagens: testando entendimento, comprometimento e prontidão para decidir. Perguntas de temperatura.',
+        objection_handling: 'O lead apresentou uma objeção específica. Você precisa entender a objeção real por trás e contornar com elegância.',
+        closing: 'Última milha. O lead está quase lá mas precisa de um empurrão final. Urgência, escassez e confirmação.',
+        rescue: 'Lead esfriou ou sumiu. Você precisa reativar sem parecer desesperado. Abordagem indireta com valor.'
       };
       parts.push(`FASE: ${phaseInfo.label} - ${phaseDescriptions[selectedPhase]}`);
     }
