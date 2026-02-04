@@ -1,12 +1,13 @@
-import { useState, useContext } from 'react';
+import { useState } from 'react';
 import { useDevMode } from '@/hooks/useDevMode';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Wrench, X, Eye } from 'lucide-react';
+import { Wrench, X, Eye, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 // Busca a role diretamente do banco para evitar dependência circular
 function useAdminMasterCheck() {
@@ -151,6 +152,15 @@ export function DevModeSelector() {
             )}
           </div>
         )}
+
+        {/* DevTools Link */}
+        <Link 
+          to="/admin/devtools" 
+          className="flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/30 hover:from-primary/30 hover:to-accent/30 transition-all"
+        >
+          <Zap className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">Abrir DevTools</span>
+        </Link>
       </div>
     </div>
   );
