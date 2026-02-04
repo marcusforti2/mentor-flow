@@ -5,6 +5,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -115,8 +126,6 @@ export function LeadDetailSheet({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Tem certeza que deseja excluir este lead?")) return;
-
     setIsDeleting(true);
     try {
       const { error } = await supabase
@@ -475,16 +484,34 @@ export function LeadDetailSheet({
             <Separator />
 
             {/* Delete */}
-            <Button
-              variant="destructive"
-              size="sm"
-              className="w-full"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              <Trash2 className="w-3 h-3 mr-1" />
-              Excluir Lead
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Excluir Lead
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir <strong>{lead.contact_name}</strong>? 
+                    Esta ação não pode ser desfeita e todos os dados serão perdidos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+                    {isDeleting ? "Excluindo..." : "Excluir"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </SheetContent>
       </Sheet>
