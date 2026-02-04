@@ -56,9 +56,17 @@ const handler = async (req: Request): Promise<Response> => {
     const results = [];
     const errors = [];
 
+    // Helper function to add delay between requests (Resend rate limit: 2 req/sec)
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     // Send each email in the flow to all test recipients
     for (let i = 0; i < emailContents.length; i++) {
       const content = emailContents[i];
+      
+      // Add delay between emails to respect rate limit (600ms = safely under 2/sec)
+      if (i > 0) {
+        await delay(600);
+      }
       
       try {
         // Create HTML wrapper for better email rendering
