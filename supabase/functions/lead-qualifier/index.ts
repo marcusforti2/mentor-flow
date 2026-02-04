@@ -12,7 +12,7 @@ const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY');
 // Apify Actor IDs for different platforms
 const APIFY_ACTORS: Record<string, string> = {
   instagram: 'apify/instagram-profile-scraper',
-  linkedin: 'curious_coder/linkedin-profile-scraper',
+  linkedin: 'bebity/linkedin-profile-scraper',
   twitter: 'apify/twitter-scraper',
   tiktok: 'clockworks/tiktok-scraper',
 };
@@ -171,7 +171,7 @@ async function scrapeWithApify(url: string, platform: string): Promise<{ success
   if (platform === 'instagram') {
     input = { usernames: [username], resultsLimit: 1 };
   } else if (platform === 'linkedin') {
-    input = { profileUrls: [url.startsWith('http') ? url : `https://${url}`], proxy: { useApifyProxy: true } };
+    input = { urls: [url.startsWith('http') ? url : `https://${url}`] };
   } else if (platform === 'twitter') {
     input = { handles: [username], tweetsDesired: 10, proxyConfig: { useApifyProxy: true } };
   } else {
