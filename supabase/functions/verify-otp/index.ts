@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, code, fullName } = await req.json();
+    const { email, code, fullName, phone, userType } = await req.json();
 
     if (!email || !code) {
       throw new Error("Email e código são obrigatórios");
@@ -32,7 +32,6 @@ serve(async (req) => {
     console.log("Verifying OTP:", { email: normalizedEmail, code: normalizedCode });
     
     // Find any valid OTP for this email/code combination that hasn't expired
-    // We don't care if it's used or not - as long as it hasn't expired, allow it
     const { data: otpData, error: otpError } = await supabase
       .from("otp_codes")
       .select("*")
@@ -95,7 +94,7 @@ serve(async (req) => {
         }
       );
     } else {
-      // New user - need name
+      // New user - need registration data
       if (!fullName) {
         return new Response(
           JSON.stringify({
@@ -110,6 +109,9 @@ serve(async (req) => {
         );
       }
 
+      // Validate userType
+      const validUserType = userType === 'mentor' ? 'mentor' : 'mentorado';
+
       // Create new user with random password (they'll use OTP)
       const randomPassword = crypto.randomUUID();
       
@@ -119,6 +121,7 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           full_name: fullName,
+          phone: phone || null,
         },
       });
 
@@ -127,12 +130,30 @@ serve(async (req) => {
         throw new Error("Erro ao criar conta");
       }
 
-      // Update profile with full name
-      if (signUpData.user) {
+      const userId = signUpData.user?.id;
+      
+      if (userId) {
+        // Update profile with full name and phone
         await supabase
           .from("profiles")
-          .update({ full_name: fullName })
-          .eq("user_id", signUpData.user.id);
+          .update({ 
+            full_name: fullName,
+            phone: phone || null,
+          })
+          .eq("user_id", userId);
+
+        // Assign role based on userType
+        const { error: roleError } = await supabase.rpc('assign_role', {
+          _user_id: userId,
+          _role: validUserType
+        });
+
+        if (roleError) {
+          console.error("Error assigning role:", roleError);
+          // Don't throw - user was created, just log the error
+        }
+
+        console.log(`Role '${validUserType}' assigned to user:`, userId);
       }
 
       // Generate magic link for the new user
@@ -158,6 +179,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           isNewUser: true,
+          userType: validUserType,
           actionLink: linkData.properties?.action_link,
           tokenHash: linkData.properties?.hashed_token,
           email: normalizedEmail,

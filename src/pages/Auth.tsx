@@ -6,24 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, User, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste } from "lucide-react";
+import { Mail, User, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Phone, Users, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
 import { LBVLogo } from "@/components/LBVLogo";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const emailSchema = z.string().email("Email inválido");
+const phoneSchema = z.string().min(10, "Telefone inválido").max(15, "Telefone inválido");
 
-type AuthStep = "email" | "code" | "name";
+type AuthStep = "email" | "code" | "register";
+type UserType = "mentor" | "mentorado";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [userType, setUserType] = useState<UserType>("mentorado");
   const [step, setStep] = useState<AuthStep>("email");
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; code?: string; fullName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; code?: string; fullName?: string; phone?: string }>({});
   const [countdown, setCountdown] = useState(0);
   
   const navigate = useNavigate();
@@ -121,8 +126,8 @@ const Auth = () => {
       if (data.error) throw new Error(data.error);
 
       if (data.needsName) {
-        // New user needs to provide name
-        setStep("name");
+        // New user needs to complete registration
+        setStep("register");
         setIsLoading(false);
         isSubmittingRef.current = false;
         return;
@@ -190,8 +195,20 @@ const Auth = () => {
   const handleCreateAccount = async (e?: React.FormEvent) => {
     e?.preventDefault();
     
+    const newErrors: typeof errors = {};
+    
     if (!fullName.trim()) {
-      setErrors({ fullName: "Nome é obrigatório" });
+      newErrors.fullName = "Nome é obrigatório";
+    }
+    
+    // Validate phone (remove non-digits for validation)
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      newErrors.phone = "Telefone inválido (mínimo 10 dígitos)";
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
     
@@ -199,7 +216,13 @@ const Auth = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { email, code, fullName },
+        body: { 
+          email, 
+          code, 
+          fullName: fullName.trim(),
+          phone: cleanPhone,
+          userType 
+        },
       });
 
       if (error) throw error;
@@ -218,7 +241,7 @@ const Auth = () => {
 
         toast({
           title: "Conta criada!",
-          description: "Bem-vindo ao LBV TECH!",
+          description: `Bem-vindo ao LBV TECH como ${userType === 'mentor' ? 'Mentor' : 'Mentorado'}!`,
         });
       }
     } catch (error: any) {
@@ -243,7 +266,7 @@ const Auth = () => {
       setStep("email");
       setCode("");
       setErrors({});
-    } else if (step === "name") {
+    } else if (step === "register") {
       setStep("code");
       setErrors({});
     }
@@ -279,7 +302,7 @@ const Auth = () => {
             <CardDescription className="text-muted-foreground">
               {step === "email" && "Digite seu email para receber o código de acesso"}
               {step === "code" && "Digite o código enviado para seu email"}
-              {step === "name" && "Complete seu cadastro"}
+              {step === "register" && "Complete seu cadastro"}
             </CardDescription>
           </CardHeader>
           
@@ -412,8 +435,8 @@ const Auth = () => {
               </form>
             )}
 
-            {/* Step: Name (new user) */}
-            {step === "name" && (
+            {/* Step: Register (new user) */}
+            {step === "register" && (
               <form onSubmit={handleCreateAccount} className="space-y-4">
                 <button
                   type="button"
@@ -431,6 +454,7 @@ const Auth = () => {
                   </p>
                 </div>
 
+                {/* Nome */}
                 <div className="space-y-2">
                   <Label htmlFor="fullName" className="text-foreground">Nome Completo</Label>
                   <div className="relative">
@@ -446,6 +470,64 @@ const Auth = () => {
                     />
                   </div>
                   {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
+                </div>
+
+                {/* Telefone */}
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-foreground">Telefone (WhatsApp)</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      className="pl-10 bg-secondary border-border"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                  {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+                </div>
+
+                {/* Tipo de usuário */}
+                <div className="space-y-3">
+                  <Label className="text-foreground">Você é:</Label>
+                  <RadioGroup
+                    value={userType}
+                    onValueChange={(value) => setUserType(value as UserType)}
+                    className="grid grid-cols-2 gap-3"
+                  >
+                    <div>
+                      <RadioGroupItem
+                        value="mentor"
+                        id="mentor"
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor="mentor"
+                        className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-secondary p-4 hover:bg-secondary/80 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
+                      >
+                        <Users className="h-6 w-6 mb-2 text-primary" />
+                        <span className="font-medium">Mentor</span>
+                        <span className="text-xs text-muted-foreground">Gerencio mentorados</span>
+                      </Label>
+                    </div>
+                    <div>
+                      <RadioGroupItem
+                        value="mentorado"
+                        id="mentorado"
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor="mentorado"
+                        className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-secondary p-4 hover:bg-secondary/80 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
+                      >
+                        <GraduationCap className="h-6 w-6 mb-2 text-primary" />
+                        <span className="font-medium">Mentorado</span>
+                        <span className="text-xs text-muted-foreground">Sou aluno de mentor</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
                 
                 <Button 
