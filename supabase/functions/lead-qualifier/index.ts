@@ -8,10 +8,10 @@ const corsHeaders = {
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
 const APIFY_API_KEY = Deno.env.get('APIFY_API_KEY');
+const PILOTERR_API_KEY = Deno.env.get('PILOTERR_API_KEY');
 
-// Apify Actor IDs for different platforms
+// Apify Actor IDs for non-Instagram platforms
 const APIFY_ACTORS: Record<string, string> = {
-  instagram: 'apify/instagram-profile-scraper',
   linkedin: 'bebity/linkedin-premium-actor',
   twitter: 'apify/twitter-scraper',
   tiktok: 'clockworks/tiktok-scraper',
@@ -152,6 +152,89 @@ ${(p.experience || p.positions || []).slice(0, 3).map((e: any) => `
 ${(p.skills || []).slice(0, 10).map((s: any) => typeof s === 'string' ? s : s.name).join(', ') || 'N/A'}`.trim();
 }
 
+// ============= PILOTERR - Instagram Scraping =============
+
+async function scrapeInstagramWithPiloterr(username: string): Promise<{ success: boolean; data?: string; error?: string }> {
+  if (!PILOTERR_API_KEY) {
+    return { success: false, error: 'Piloterr API key não configurada' };
+  }
+
+  const cleanUsername = username.replace('@', '').trim();
+  console.log(`Piloterr scraping Instagram: ${cleanUsername}`);
+
+  try {
+    const apiUrl = `https://piloterr.com/api/v2/instagram/user/info?query=${encodeURIComponent(cleanUsername)}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: { 
+        'x-api-key': PILOTERR_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Piloterr HTTP error:', response.status, errorText);
+      return { success: false, error: `Piloterr error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    console.log('Piloterr response keys:', Object.keys(data || {}));
+
+    if (!data || data.error) {
+      return { success: false, error: data?.error || 'Dados não encontrados no Piloterr' };
+    }
+
+    const markdown = formatPiloterrProfile(data);
+    
+    if (!markdown || markdown.length < 50) {
+      return { success: false, error: 'Dados insuficientes do Piloterr' };
+    }
+
+    return { success: true, data: markdown };
+  } catch (error) {
+    console.error('Piloterr error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr' };
+  }
+}
+
+function formatPiloterrProfile(data: any): string {
+  // Piloterr returns data in different structures, handle both
+  const p = data.data || data;
+  
+  const username = p.username || p.pk || 'N/A';
+  const fullName = p.full_name || p.fullName || 'N/A';
+  const bio = p.biography || p.bio || 'N/A';
+  const followers = p.follower_count || p.followers_count || p.edge_followed_by?.count || 'N/A';
+  const following = p.following_count || p.followings_count || p.edge_follow?.count || 'N/A';
+  const posts = p.media_count || p.posts_count || p.edge_owner_to_timeline_media?.count || 'N/A';
+  const website = p.external_url || p.bio_link?.url || 'N/A';
+  const isVerified = p.is_verified ?? false;
+  const isBusiness = p.is_business_account ?? p.is_business ?? false;
+  const category = p.business_category_name || p.category_name || p.category || 'N/A';
+  const email = p.business_email || p.public_email || 'N/A';
+  const phone = p.business_phone_number || p.contact_phone_number || 'N/A';
+
+  return `
+# Perfil Instagram: @${username}
+
+**Nome:** ${fullName}
+**Bio:** ${bio}
+**Seguidores:** ${followers}
+**Seguindo:** ${following}
+**Posts:** ${posts}
+**Website:** ${website}
+**Verificado:** ${isVerified ? 'Sim' : 'Não'}
+**Business:** ${isBusiness ? 'Sim' : 'Não'}
+**Categoria:** ${category}
+**Email Comercial:** ${email}
+**Telefone Comercial:** ${phone}
+`.trim();
+}
+
+// ============= APIFY - Other Platforms =============
+
 async function scrapeWithApify(url: string, platform: string): Promise<{ success: boolean; data?: string; error?: string }> {
   if (!APIFY_API_KEY) {
     return { success: false, error: 'Apify API key não configurada' };
@@ -170,10 +253,7 @@ async function scrapeWithApify(url: string, platform: string): Promise<{ success
   }
 
   let input: Record<string, unknown>;
-  if (platform === 'instagram') {
-    input = { usernames: [username], resultsLimit: 1 };
-  } else if (platform === 'linkedin') {
-    // bebity/linkedin-premium-actor format
+  if (platform === 'linkedin') {
     input = { 
       action: 'get-profiles',
       keywords: [url.startsWith('http') ? url : `https://${url}`],
@@ -191,9 +271,7 @@ async function scrapeWithApify(url: string, platform: string): Promise<{ success
     const data = await runApifyActor(actorId, input, APIFY_API_KEY);
     
     let markdown = '';
-    if (platform === 'instagram') {
-      markdown = formatInstagramProfile(data);
-    } else if (platform === 'linkedin') {
+    if (platform === 'linkedin') {
       markdown = formatLinkedInProfile(data);
     } else {
       markdown = JSON.stringify(data, null, 2);
@@ -382,13 +460,54 @@ serve(async (req) => {
 
     console.log('Processing:', profileUrl);
 
-    // Check platform - use Apify for social networks
+    // Check platform - route appropriately
     const platform = detectPlatform(profileUrl);
     let profileData = '';
     let scrapeMethod = '';
 
-    if (platform) {
-      // Try Apify first for social networks
+    if (platform === 'instagram') {
+      // Use Piloterr for Instagram (primary method)
+      console.log('Instagram detected, trying Piloterr...');
+      const username = extractUsername(profileUrl, 'instagram');
+      
+      if (!username) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Não foi possível extrair username do Instagram' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const piloterrResult = await scrapeInstagramWithPiloterr(username);
+      
+      if (piloterrResult.success && piloterrResult.data) {
+        profileData = piloterrResult.data;
+        scrapeMethod = 'piloterr';
+        console.log('Piloterr success, data length:', profileData.length);
+      } else {
+        console.log('Piloterr failed:', piloterrResult.error);
+        
+        // Fallback to Apify for Instagram if Piloterr fails
+        console.log('Trying Apify fallback for Instagram...');
+        const apifyResult = await scrapeWithApify(profileUrl, 'instagram');
+        
+        if (apifyResult.success && apifyResult.data) {
+          profileData = apifyResult.data;
+          scrapeMethod = 'apify';
+          console.log('Apify fallback success');
+        } else {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: `Não foi possível extrair dados do Instagram: ${piloterrResult.error}. Use a opção "Colar Perfil Manualmente".`,
+              requiresManualInput: true,
+              blockedPlatform: 'instagram'
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    } else if (platform) {
+      // Use Apify for other social platforms (LinkedIn, Twitter, TikTok)
       console.log(`Social platform detected: ${platform}, trying Apify...`);
       const apifyResult = await scrapeWithApify(profileUrl, platform);
       
@@ -398,8 +517,6 @@ serve(async (req) => {
         console.log('Apify success, data length:', profileData.length);
       } else {
         console.log('Apify failed:', apifyResult.error);
-        
-        // Return error suggesting manual input for social networks
         return new Response(
           JSON.stringify({ 
             success: false, 
