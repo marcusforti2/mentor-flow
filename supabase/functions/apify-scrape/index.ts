@@ -48,11 +48,13 @@ function extractUsername(url: string, platform: string): string | null {
 }
 
 async function runApifyActor(actorId: string, input: Record<string, unknown>, apiKey: string): Promise<any> {
-  console.log(`Running Apify actor: ${actorId}`);
+  // URL-encode the actor ID (replace / with ~)
+  const encodedActorId = actorId.replace('/', '~');
+  console.log(`Running Apify actor: ${actorId} (encoded: ${encodedActorId})`);
   
   // Start the actor run
   const runResponse = await fetch(
-    `https://api.apify.com/v2/acts/${actorId}/runs?token=${apiKey}`,
+    `https://api.apify.com/v2/acts/${encodedActorId}/runs?token=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
