@@ -8,18 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Loader2, 
-  Search, 
-  Users,
-  Calendar,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Loader2, Search, Users, Calendar, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { differenceInDays, differenceInWeeks, differenceInMonths, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface Mentorado {
@@ -326,39 +317,34 @@ export default function JornadaCS() {
       )}
 
       {/* Kanban Board */}
-      <ScrollArea className="w-full">
-        <div className="flex gap-4 pb-4 min-w-max">
-          {columns.map((column: any) => (
-            <div
-              key={column.id}
-              className="flex flex-col min-w-[280px] max-w-[320px] bg-muted/30 rounded-xl"
-            >
-              {/* Column Header */}
-              <div className="flex items-center gap-2 p-3 border-b border-border/50">
-                <div className={cn("w-3 h-3 rounded-full", column.color)} />
-                <span className="font-medium text-sm">{column.title}</span>
-                <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {column.mentorados.length}
-                </span>
-              </div>
-
-              {/* Cards */}
-              <div className="flex flex-col gap-2 p-2 overflow-y-auto max-h-[calc(100vh-400px)]">
-                {column.mentorados.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    Nenhum mentorado
-                  </div>
-                ) : (
-                  column.mentorados.map((mentorado: Mentorado) => (
-                    <MentoradoCard key={mentorado.id} mentorado={mentorado} />
-                  ))
-                )}
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {columns.map((column: any) => (
+          <Card key={column.id} className="glass-card">
+            {/* Column Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-border/50">
+              <div className={cn("w-3 h-3 rounded-full", column.color)} />
+              <h3 className="font-semibold">{column.title}</h3>
+              <Badge variant="secondary" className="ml-auto">
+                {column.mentorados.length}
+              </Badge>
             </div>
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+
+            {/* Cards */}
+            <CardContent className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
+              {column.mentorados.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum mentorado</p>
+                </div>
+              ) : (
+                column.mentorados.map((mentorado: Mentorado) => (
+                  <MentoradoCard key={mentorado.id} mentorado={mentorado} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -378,38 +364,36 @@ function MentoradoCard({ mentorado }: { mentorado: Mentorado }) {
   const days = getDaysInJourney(mentorado.joined_at);
 
   return (
-    <Card className="glass-card hover:border-primary/30 transition-colors cursor-pointer">
-      <CardContent className="p-3">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border-2 border-primary/20">
-            <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-              {getInitials(mentorado.profile?.full_name || null)}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">
-              {mentorado.profile?.full_name || "Sem nome"}
-            </h4>
-            <p className="text-xs text-muted-foreground truncate">
-              {mentorado.profile?.email}
-            </p>
-          </div>
-        </div>
+    <div className="p-4 rounded-lg border border-border/50 bg-card/50 hover:bg-card hover:border-primary/30 transition-all cursor-pointer">
+      <div className="flex items-center gap-4">
+        <Avatar className="h-12 w-12 border-2 border-primary/20">
+          <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+            {getInitials(mentorado.profile?.full_name || null)}
+          </AvatarFallback>
+        </Avatar>
         
-        <div className="mt-2 flex items-center justify-between text-xs">
-          <Badge variant="outline" className="text-xs">
-            Dia {days}
-          </Badge>
-          {mentorado.joined_at && (
-            <span className="text-muted-foreground">
-              {format(new Date(mentorado.joined_at), "dd/MM/yy", { locale: ptBR })}
-            </span>
-          )}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-foreground truncate">
+            {mentorado.profile?.full_name || "Sem nome"}
+          </h4>
+          <p className="text-sm text-muted-foreground truncate">
+            {mentorado.profile?.email}
+          </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      
+      <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-between">
+        <Badge variant="outline" className="font-medium">
+          Dia {days}
+        </Badge>
+        {mentorado.joined_at && (
+          <span className="text-sm text-muted-foreground">
+            {format(new Date(mentorado.joined_at), "dd/MM/yy", { locale: ptBR })}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
