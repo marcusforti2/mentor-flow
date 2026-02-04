@@ -81,29 +81,45 @@ Formato de resposta:
 [Orientações sobre quando usar cada variação]`;
 }
 
-function getObjectionSimulatorPrompt(messages: Array<{role: string; content: string}>, businessContext: string, action: string): string {
+function getObjectionSimulatorPrompt(
+  messages: Array<{role: string; content: string}>, 
+  businessContext: string, 
+  action: string,
+  leadContext?: string,
+  leadName?: string,
+  withCorrection?: boolean
+): string {
+  const leadInfo = leadContext 
+    ? `\n\nCONTEXTO DO LEAD QUE VOCÊ ESTÁ SIMULANDO:\n${leadContext}`
+    : "";
+  
+  const leadNameDisplay = leadName || "o prospect";
+
   if (action === "start") {
-    return `Você é um prospect DIFÍCIL interessado em serviços de alto ticket. Você está em uma simulação de treinamento de vendas.
+    return `Você é ${leadName || "um prospect DIFÍCIL"} interessado em serviços de alto ticket. Você está em uma simulação de treinamento de vendas.
 
 ${businessContext}
+${leadInfo}
 
-TAREFA: Atue como um prospect difícil que:
-- Tem interesse real no serviço
-- Levanta objeções comuns (preço, tempo, confiança, comparação com concorrentes)
+TAREFA: Atue como ${leadNameDisplay} que:
+- Tem interesse real no serviço, mas com ressalvas
+- Levanta objeções baseadas no contexto (${leadContext ? "use as dores e objeções do perfil" : "preço, tempo, confiança, comparação com concorrentes"})
 - É cético mas pode ser convencido com bons argumentos
-- Faz perguntas difíceis
+- Faz perguntas difíceis baseadas na sua "realidade"
+${leadContext ? "- Mantenha a personalidade e temperatura definida no contexto" : ""}
 
 Inicie a conversa como se estivesse respondendo a uma abordagem inicial do vendedor. Seja curto e direto, como um prospect real faria no WhatsApp.
 
-IMPORTANTE: Não quebre o personagem. Aja como um prospect REAL, não como uma IA.`;
+IMPORTANTE: Não quebre o personagem. Aja como ${leadNameDisplay} REAL, não como uma IA. ${leadName ? `Seu nome é ${leadName}.` : ""}`;
   }
 
   if (action === "feedback") {
-    const conversation = messages.map(m => `${m.role === "user" ? "VENDEDOR" : "PROSPECT"}: ${m.content}`).join("\n");
+    const conversation = messages.map(m => `${m.role === "user" ? "VENDEDOR" : leadNameDisplay.toUpperCase()}: ${m.content}`).join("\n");
     
     return `Você é um coach de vendas de alto ticket analisando uma simulação de vendas.
 
 ${businessContext}
+${leadInfo}
 
 CONVERSA SIMULADA:
 ${conversation}
@@ -124,6 +140,7 @@ Formato:
 
 ## ❌ Oportunidades Perdidas
 - [O que poderia ter sido explorado]
+${leadContext ? "\n## 🎭 Aderência ao Perfil do Lead\n- [Como o vendedor se adaptou ao perfil específico]" : ""}
 
 ## 📝 Script Ideal
 [Como deveria ter sido a resposta em um momento crítico]
@@ -132,17 +149,48 @@ Formato:
 [Recomendações de estudo e prática]`;
   }
 
-  // Continue conversation
-  return `Você é um prospect DIFÍCIL em uma simulação de vendas. Continue a conversa mantendo o personagem.
+  // Continue conversation with optional real-time correction
+  if (withCorrection) {
+    return `Você é ${leadNameDisplay} em uma simulação de vendas. Você vai responder em DOIS formatos separados:
 
 ${businessContext}
+${leadInfo}
+
+FORMATO DE RESPOSTA (JSON):
+{
+  "response": "[Sua resposta como o prospect - curta e realista como no WhatsApp]",
+  "correction": "[Se a última mensagem do vendedor teve algum erro ou poderia ser melhor, dê uma dica de 1-2 frases. Se foi boa, deixe null]"
+}
+
+EXEMPLOS DE CORREÇÕES:
+- "Você pulou direto para o preço sem entender a dor. Pergunte primeiro sobre os desafios."
+- "Boa resposta! Mas poderia ter usado prova social aqui."
+- "Evite dar desconto logo de cara. Ancore o valor primeiro."
+- null (se a resposta foi adequada)
+
+REGRAS PARA O PROSPECT:
+- Levante objeções realistas baseadas no perfil
+- Seja desafiador mas justo
+- Reaja naturalmente às respostas do vendedor
+- Mantenha respostas curtas e realistas
+${leadContext ? "- Use as dores, objeções e personalidade do contexto" : ""}
+
+IMPORTANTE: Responda APENAS com o JSON, sem markdown ou texto adicional.`;
+  }
+
+  // Continue without correction (legacy)
+  return `Você é ${leadNameDisplay} em uma simulação de vendas. Continue a conversa mantendo o personagem.
+
+${businessContext}
+${leadInfo}
 
 REGRAS:
-- Levante objeções realistas
+- Levante objeções realistas ${leadContext ? "baseadas no perfil do lead" : ""}
 - Seja desafiador mas justo
 - Reaja naturalmente às respostas do vendedor
 - Se o vendedor fizer uma boa argumentação, demonstre interesse gradual
 - Mantenha respostas curtas e realistas (como no WhatsApp)
+${leadContext ? "- Mantenha a personalidade definida no contexto" : ""}
 
 IMPORTANTE: Não quebre o personagem. Não dê dicas ou feedback durante a conversa.`;
 }
@@ -398,14 +446,35 @@ serve(async (req) => {
 
       case "objection_simulator":
         if (data.action === "feedback") {
-          systemPrompt = getObjectionSimulatorPrompt(data.messages || [], businessContext, "feedback");
+          systemPrompt = getObjectionSimulatorPrompt(
+            data.messages || [], 
+            businessContext, 
+            "feedback",
+            data.lead_context,
+            data.lead_name
+          );
           userMessage = "Analise a conversa e forneça feedback detalhado.";
         } else if (data.action === "start") {
-          systemPrompt = getObjectionSimulatorPrompt([], businessContext, "start");
-          userMessage = "Inicie a simulação como um prospect difícil.";
+          systemPrompt = getObjectionSimulatorPrompt(
+            [], 
+            businessContext, 
+            "start",
+            data.lead_context,
+            data.lead_name
+          );
+          userMessage = data.lead_name 
+            ? `Inicie a simulação como ${data.lead_name}.`
+            : "Inicie a simulação como um prospect difícil.";
         } else {
-          // Continue conversation
-          systemPrompt = getObjectionSimulatorPrompt([], businessContext, "continue");
+          // Continue conversation with optional real-time correction
+          systemPrompt = getObjectionSimulatorPrompt(
+            [], 
+            businessContext, 
+            "continue",
+            data.lead_context,
+            data.lead_name,
+            data.with_correction
+          );
           messages = data.messages || [];
         }
         break;
@@ -544,11 +613,27 @@ serve(async (req) => {
     }
 
     const aiResponse = await response.json();
-    const result = aiResponse.choices?.[0]?.message?.content || "";
+    let result = aiResponse.choices?.[0]?.message?.content || "";
+    let correction = null;
+
+    // Parse JSON response for objection simulator with corrections
+    if (tool === "objection_simulator" && data.with_correction && data.action === "continue") {
+      try {
+        // Try to extract JSON from the response
+        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          result = parsed.response || result;
+          correction = parsed.correction || null;
+        }
+      } catch (e) {
+        console.log("Could not parse correction JSON, using raw response");
+      }
+    }
 
     console.log(`AI Tools - Success for tool: ${tool}`);
 
-    return new Response(JSON.stringify({ success: true, result }), {
+    return new Response(JSON.stringify({ success: true, result, correction }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
