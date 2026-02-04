@@ -1,22 +1,42 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useDevMode } from '@/hooks/useDevMode';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Wrench, X, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+
+// Busca a role diretamente do banco para evitar dependência circular
+function useAdminMasterCheck() {
+  return useQuery({
+    queryKey: ['admin-master-check'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { isAdminMaster: false, role: null };
+      
+      const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: user.id });
+      return { 
+        isAdminMaster: roleData === 'admin_master', 
+        role: roleData as 'mentor' | 'mentorado' | 'admin_master' | null 
+      };
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
 
 export function DevModeSelector() {
   const [isExpanded, setIsExpanded] = useState(false);
   const { isDevModeActive, overrideRole, setOverrideRole, clearOverride } = useDevMode();
-  const { role: realRole, isAdminMaster } = useAuth();
+  const { data, isLoading } = useAdminMasterCheck();
 
-  // Only show DevModeSelector for admin_master users
-  if (!isAdminMaster) {
+  // Don't render while loading or if not admin_master
+  if (isLoading || !data?.isAdminMaster) {
     return null;
   }
 
+  const realRole = data.role;
   const currentViewRole = overrideRole || realRole;
   const isMentorView = currentViewRole === 'mentor';
 
