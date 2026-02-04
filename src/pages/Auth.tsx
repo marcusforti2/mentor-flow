@@ -40,8 +40,8 @@ const Auth = () => {
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
-    if (!authLoading && user) {
-      if (role === 'mentor') {
+    if (!authLoading && user && role) {
+      if (role === 'mentor' || role === 'admin_master') {
         navigate('/admin');
       } else if (role === 'mentorado') {
         navigate('/app');
