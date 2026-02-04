@@ -20,6 +20,7 @@ import { MemberLayout } from "@/components/layouts/MemberLayout";
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Mentorados from "./pages/admin/Mentorados";
+import JornadaCS from "./pages/admin/JornadaCS";
 import AdminTrilhas from "./pages/admin/Trilhas";
 import DevTools from "./pages/admin/DevTools";
 
@@ -60,8 +61,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route index element={<AdminDashboard />} />
+            <Route index element={<AdminDashboard />} />
               <Route path="crm" element={<PlaceholderPage title="CRM" />} />
+              <Route path="jornada-cs" element={<JornadaCS />} />
               <Route path="mentorados" element={<Mentorados />} />
               <Route path="trilhas" element={<AdminTrilhas />} />
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
