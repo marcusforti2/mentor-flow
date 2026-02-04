@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.generate-bio]
 verify_jwt = false
+
+[functions.apify-scrape]
+verify_jwt = false
