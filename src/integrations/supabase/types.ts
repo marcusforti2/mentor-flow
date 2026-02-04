@@ -793,47 +793,89 @@ export type Database = {
       }
       mentorado_business_profiles: {
         Row: {
+          average_ticket: string | null
           business_name: string | null
           business_type: string | null
+          conversion_rate: string | null
           created_at: string | null
+          current_sales_channels: string[] | null
           daily_prospection_goal: number | null
+          has_commercial_process: boolean | null
           id: string
           ideal_client_profile: string | null
+          main_bottleneck: string | null
+          main_chaos_points: string[] | null
           main_offer: string | null
+          maturity_level: string | null
           mentorado_id: string
+          monthly_leads_volume: string | null
+          monthly_revenue: string | null
+          owner_dependency_level: string | null
           pain_points_solved: string[] | null
           price_range: string | null
+          sales_cycle_days: number | null
+          sales_predictability: string | null
           target_audience: string | null
+          team_size: string | null
+          time_in_market: string | null
           unique_value_proposition: string | null
           updated_at: string | null
         }
         Insert: {
+          average_ticket?: string | null
           business_name?: string | null
           business_type?: string | null
+          conversion_rate?: string | null
           created_at?: string | null
+          current_sales_channels?: string[] | null
           daily_prospection_goal?: number | null
+          has_commercial_process?: boolean | null
           id?: string
           ideal_client_profile?: string | null
+          main_bottleneck?: string | null
+          main_chaos_points?: string[] | null
           main_offer?: string | null
+          maturity_level?: string | null
           mentorado_id: string
+          monthly_leads_volume?: string | null
+          monthly_revenue?: string | null
+          owner_dependency_level?: string | null
           pain_points_solved?: string[] | null
           price_range?: string | null
+          sales_cycle_days?: number | null
+          sales_predictability?: string | null
           target_audience?: string | null
+          team_size?: string | null
+          time_in_market?: string | null
           unique_value_proposition?: string | null
           updated_at?: string | null
         }
         Update: {
+          average_ticket?: string | null
           business_name?: string | null
           business_type?: string | null
+          conversion_rate?: string | null
           created_at?: string | null
+          current_sales_channels?: string[] | null
           daily_prospection_goal?: number | null
+          has_commercial_process?: boolean | null
           id?: string
           ideal_client_profile?: string | null
+          main_bottleneck?: string | null
+          main_chaos_points?: string[] | null
           main_offer?: string | null
+          maturity_level?: string | null
           mentorado_id?: string
+          monthly_leads_volume?: string | null
+          monthly_revenue?: string | null
+          owner_dependency_level?: string | null
           pain_points_solved?: string[] | null
           price_range?: string | null
+          sales_cycle_days?: number | null
+          sales_predictability?: string | null
           target_audience?: string | null
+          team_size?: string | null
+          time_in_market?: string | null
           unique_value_proposition?: string | null
           updated_at?: string | null
         }
