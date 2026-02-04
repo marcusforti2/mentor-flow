@@ -140,18 +140,20 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
     setIsNodeSheetOpen(true);
   }, []);
 
-  const addNode = (type: string) => {
+  const addNode = (type: string, initialData?: Record<string, any>) => {
     const newNode: Node = {
       id: `${type}-${Date.now()}`,
       type,
       position: { x: 250, y: nodes.length * 150 + 100 },
-      data: getDefaultNodeData(type),
+      data: { ...getDefaultNodeData(type), ...initialData },
     };
     setNodes((nds) => [...nds, newNode]);
   };
 
   const getDefaultNodeData = (type: string) => {
     switch (type) {
+      case 'trigger':
+        return { label: 'Gatilho', triggerType: 'onboarding', config: {} };
       case 'email':
         return { label: 'Enviar Email', subject: '', templateId: '', body: '' };
       case 'wait':
@@ -244,22 +246,55 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
             maskColor="hsl(240 10% 4% / 0.8)"
           />
           
-          {/* Add Node Panel */}
-          <Panel position="top-left" className="bg-card/95 backdrop-blur-sm border border-border rounded-xl p-4 shadow-xl">
-            <p className="text-sm font-semibold text-foreground mb-3">Adicionar Etapa</p>
-            <div className="flex gap-2">
-              {NODE_TEMPLATES.map(template => (
-                <Button
-                  key={template.type}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addNode(template.type)}
-                  className="flex items-center gap-2 bg-secondary/50 hover:bg-secondary border-border text-foreground"
-                >
-                  <template.icon className="h-4 w-4" style={{ color: template.color }} />
-                  <span>{template.label}</span>
-                </Button>
-              ))}
+          {/* Add Node Panel - Compact with Rounded Icons */}
+          <Panel position="top-left" className="bg-card/95 backdrop-blur-sm border border-border rounded-2xl p-3 shadow-xl">
+            {/* Trigger Types */}
+            <div className="mb-3">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Gatilhos</p>
+              <div className="flex gap-1.5 flex-wrap max-w-[280px]">
+                {TRIGGER_TYPES.map(trigger => (
+                  <button
+                    key={trigger.value}
+                    onClick={() => addNode('trigger', { triggerType: trigger.value })}
+                    className="group flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-emerald-500/20 transition-all duration-200"
+                    title={trigger.description}
+                  >
+                    <div className="h-9 w-9 rounded-full bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 group-hover:scale-110 transition-all">
+                      <trigger.icon className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground max-w-[50px] text-center leading-tight">
+                      {trigger.label.split(' ')[0]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Separator */}
+            <div className="h-px bg-border mb-3" />
+            
+            {/* Action Nodes */}
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Ações</p>
+              <div className="flex gap-1.5">
+                {NODE_TEMPLATES.map(template => (
+                  <button
+                    key={template.type}
+                    onClick={() => addNode(template.type)}
+                    className="group flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-secondary transition-all duration-200"
+                  >
+                    <div 
+                      className="h-9 w-9 rounded-full flex items-center justify-center group-hover:scale-110 transition-all"
+                      style={{ backgroundColor: `${template.color}20` }}
+                    >
+                      <template.icon className="h-4 w-4" style={{ color: template.color }} />
+                    </div>
+                    <span className="text-[9px] font-medium text-muted-foreground group-hover:text-foreground">
+                      {template.label.split(' ')[0]}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </Panel>
         </ReactFlow>
