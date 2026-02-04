@@ -1,0 +1,815 @@
+import { useState, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
+import {
+  Upload,
+  X,
+  Loader2,
+  Sparkles,
+  FileText,
+  Image as ImageIcon,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Trophy,
+  XCircle,
+  Lightbulb,
+  MessageSquare,
+  Trash2,
+  History,
+  ChevronDown,
+  ChevronRight,
+  Calendar,
+} from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface ComoMelhorarItem {
+  titulo: string;
+  detalhes: string;
+}
+
+interface AnalysisResult {
+  pontos_fortes: string[];
+  pontos_fracos: string[];
+  muda_urgente: string[];
+  ouro_nao_mude: string[];
+  errou_feio: string[];
+  como_melhorar: (string | ComoMelhorarItem)[];
+  resumo: string;
+  nota_geral: number;
+}
+
+interface SavedAnalysis {
+  id: string;
+  analysis_type: string;
+  nota_geral: number;
+  resumo: string;
+  pontos_fortes: string[];
+  pontos_fracos: string[];
+  muda_urgente: string[];
+  ouro_nao_mude: string[];
+  errou_feio: string[];
+  como_melhorar: (string | ComoMelhorarItem)[];
+  created_at: string;
+}
+
+interface TrainingAnalyzerProps {
+  mentoradoId: string;
+}
+
+export function TrainingAnalyzer({ mentoradoId }: TrainingAnalyzerProps) {
+  const [activeTab, setActiveTab] = useState<"transcricao" | "prints">("transcricao");
+  const [viewMode, setViewMode] = useState<"new" | "history">("new");
+  
+  // Transcription state
+  const [transcription, setTranscription] = useState("");
+  const [transcriptionFile, setTranscriptionFile] = useState<File | null>(null);
+  
+  // Prints state
+  const [images, setImages] = useState<string[]>([]);
+  
+  // Analysis state
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  
+  // History state
+  const [savedAnalyses, setSavedAnalyses] = useState<SavedAnalysis[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SavedAnalysis | null>(null);
+
+  useEffect(() => {
+    if (viewMode === "history" && mentoradoId) {
+      loadHistory();
+    }
+  }, [viewMode, mentoradoId]);
+
+  const loadHistory = async () => {
+    if (!mentoradoId) return;
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from("training_analyses")
+        .select("*")
+        .eq("mentorado_id", mentoradoId)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      
+      const transformedData = (data || []).map(item => ({
+        ...item,
+        pontos_fortes: item.pontos_fortes as string[] || [],
+        pontos_fracos: item.pontos_fracos as string[] || [],
+        muda_urgente: item.muda_urgente as string[] || [],
+        ouro_nao_mude: item.ouro_nao_mude as string[] || [],
+        errou_feio: item.errou_feio as string[] || [],
+        como_melhorar: item.como_melhorar as (string | ComoMelhorarItem)[] || [],
+      }));
+      
+      setSavedAnalyses(transformedData);
+    } catch (error) {
+      console.error("Error loading history:", error);
+      toast.error("Erro ao carregar histórico");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setTranscriptionFile(file);
+      toast.info("PDF carregado! A IA irá extrair o texto.");
+    } else if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setTranscription(text);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const remainingSlots = 10 - images.length;
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setImages((prev) => [...prev, result]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = "";
+  }, [images.length]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    const remainingSlots = 10 - images.length;
+    const filesToProcess = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, remainingSlots);
+
+    filesToProcess.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setImages((prev) => [...prev, result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [images.length]);
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const autoSaveAnalysis = async (result: AnalysisResult, type: string) => {
+    if (!mentoradoId) {
+      toast.error("ID não encontrado. Não foi possível salvar.");
+      return;
+    }
+    
+    try {
+      const { error } = await supabase.from("training_analyses").insert({
+        mentorado_id: mentoradoId,
+        analysis_type: type,
+        nota_geral: result.nota_geral,
+        resumo: result.resumo,
+        pontos_fortes: result.pontos_fortes as unknown as any,
+        pontos_fracos: result.pontos_fracos as unknown as any,
+        muda_urgente: result.muda_urgente as unknown as any,
+        ouro_nao_mude: result.ouro_nao_mude as unknown as any,
+        errou_feio: result.errou_feio as unknown as any,
+        como_melhorar: result.como_melhorar as unknown as any,
+      });
+
+      if (error) throw error;
+      toast.success("Análise salva automaticamente!");
+      await loadHistory();
+    } catch (error) {
+      console.error("Error auto-saving:", error);
+      toast.error("Erro ao salvar análise");
+    }
+  };
+
+  const analyzeContent = async () => {
+    if (activeTab === "transcricao" && !transcription && !transcriptionFile) {
+      toast.error("Adicione uma transcrição ou arquivo para analisar.");
+      return;
+    }
+    if (activeTab === "prints" && images.length === 0) {
+      toast.error("Adicione pelo menos uma imagem para analisar.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    setExpandedItems(new Set());
+
+    try {
+      let payload: any = {
+        type: "training_analysis",
+        analysis_type: activeTab,
+      };
+
+      if (activeTab === "transcricao") {
+        if (transcriptionFile && transcriptionFile.type === "application/pdf") {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(transcriptionFile);
+          });
+          payload.pdf_base64 = base64;
+        } else {
+          payload.transcription = transcription;
+        }
+      } else {
+        payload.images = images;
+      }
+
+      const response = await supabase.functions.invoke("ai-analysis", {
+        body: payload,
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      const result = response.data?.result;
+      let parsedResult: AnalysisResult | null = null;
+      
+      if (typeof result === "string") {
+        try {
+          parsedResult = JSON.parse(result);
+        } catch {
+          parsedResult = {
+            pontos_fortes: [],
+            pontos_fracos: [],
+            muda_urgente: [],
+            ouro_nao_mude: [],
+            errou_feio: [],
+            como_melhorar: [],
+            resumo: result,
+            nota_geral: 0,
+          };
+        }
+      } else if (result) {
+        parsedResult = result;
+      }
+      
+      if (parsedResult) {
+        setAnalysisResult(parsedResult);
+        await autoSaveAnalysis(parsedResult, activeTab);
+      }
+    } catch (error) {
+      console.error("Error analyzing:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao analisar conteúdo");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const deleteAnalysis = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      const { error } = await supabase
+        .from("training_analyses")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
+      
+      toast.success("Análise excluída");
+      
+      if (selectedAnalysis?.id === id) {
+        setSelectedAnalysis(null);
+      }
+      
+      await loadHistory();
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast.error("Erro ao excluir análise");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const clearAnalysis = () => {
+    setAnalysisResult(null);
+    setTranscription("");
+    setTranscriptionFile(null);
+    setImages([]);
+    setExpandedItems(new Set());
+  };
+
+  const toggleExpand = (index: number) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const getNoteColor = (nota: number) => {
+    if (nota >= 80) return "text-green-500";
+    if (nota >= 60) return "text-amber-500";
+    return "text-red-500";
+  };
+
+  const renderComoMelhorarItem = (item: string | ComoMelhorarItem, idx: number) => {
+    const isExpanded = expandedItems.has(idx);
+    
+    if (typeof item === "object" && item.titulo && item.detalhes) {
+      return (
+        <Collapsible key={idx} open={isExpanded} onOpenChange={() => toggleExpand(idx)}>
+          <CollapsibleTrigger asChild>
+            <div className="text-sm flex items-start gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20 cursor-pointer hover:bg-primary/15 transition-colors">
+              <Lightbulb className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{item.titulo}</span>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-primary" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-primary" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-2 ml-6 p-3 bg-muted/50 rounded-lg border text-sm text-muted-foreground whitespace-pre-wrap">
+              {item.detalhes}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+    
+    return (
+      <li key={idx} className="text-sm flex items-start gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
+        <Lightbulb className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        {String(item)}
+      </li>
+    );
+  };
+
+  const renderAnalysisContent = (result: AnalysisResult | SavedAnalysis) => (
+    <div className="space-y-6">
+      {result.resumo && (
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm">{result.resumo}</p>
+        </div>
+      )}
+
+      {result.ouro_nao_mude?.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-amber-500">
+            <Trophy className="w-5 h-5" />
+            <h3 className="font-semibold">🏆 Seu Ouro - Não Mude!</h3>
+          </div>
+          <ul className="space-y-1.5">
+            {result.ouro_nao_mude.map((item, idx) => (
+              <li key={idx} className="text-sm flex items-start gap-2 p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <Trophy className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.pontos_fortes?.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-green-500">
+            <TrendingUp className="w-5 h-5" />
+            <h3 className="font-semibold">Pontos Fortes</h3>
+          </div>
+          <ul className="space-y-1.5">
+            {result.pontos_fortes.map((item, idx) => (
+              <li key={idx} className="text-sm flex items-start gap-2 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                <TrendingUp className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.muda_urgente?.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-orange-500">
+            <AlertTriangle className="w-5 h-5" />
+            <h3 className="font-semibold">⚡ Muda Urgente AGORA!</h3>
+          </div>
+          <ul className="space-y-1.5">
+            {result.muda_urgente.map((item, idx) => (
+              <li key={idx} className="text-sm flex items-start gap-2 p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.errou_feio?.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-red-500">
+            <XCircle className="w-5 h-5" />
+            <h3 className="font-semibold">❌ Aqui Você Errou Feio</h3>
+          </div>
+          <ul className="space-y-1.5">
+            {result.errou_feio.map((item, idx) => (
+              <li key={idx} className="text-sm flex items-start gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.pontos_fracos?.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <TrendingDown className="w-5 h-5" />
+            <h3 className="font-semibold">Pontos Fracos</h3>
+          </div>
+          <ul className="space-y-1.5">
+            {result.pontos_fracos.map((item, idx) => (
+              <li key={idx} className="text-sm flex items-start gap-2 p-2 bg-muted/50 rounded-lg border">
+                <TrendingDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.como_melhorar?.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-primary">
+            <Lightbulb className="w-5 h-5" />
+            <h3 className="font-semibold">💡 Como Melhorar</h3>
+            <span className="text-xs text-muted-foreground">(clique para expandir)</span>
+          </div>
+          <ul className="space-y-2">
+            {result.como_melhorar.map((item, idx) => renderComoMelhorarItem(item, idx))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header with toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold">Análise de Calls & Conversas</h3>
+          <p className="text-sm text-muted-foreground">
+            Analise transcrições e prints para melhorar sua performance
+          </p>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === "new" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("new")}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Nova
+          </Button>
+          <Button
+            variant={viewMode === "history" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("history")}
+          >
+            <History className="w-4 h-4 mr-2" />
+            Histórico
+            {savedAnalyses.length > 0 && (
+              <Badge variant="secondary" className="ml-2">{savedAnalyses.length}</Badge>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "new" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Input Section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Envie para Análise
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="transcricao" className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Transcrição
+                  </TabsTrigger>
+                  <TabsTrigger value="prints" className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Prints
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="transcricao" className="space-y-4 mt-4">
+                  <div
+                    className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={() => document.getElementById("training-pdf-input")?.click()}
+                  >
+                    <input
+                      id="training-pdf-input"
+                      type="file"
+                      accept=".pdf,.txt,.doc,.docx"
+                      className="hidden"
+                      onChange={handlePdfUpload}
+                    />
+                    <FileText className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-xs text-muted-foreground">
+                      Arraste um PDF ou arquivo de texto
+                    </p>
+                    {transcriptionFile && (
+                      <Badge variant="secondary" className="mt-2">
+                        {transcriptionFile.name}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                      <span className="bg-background px-2 text-xs text-muted-foreground">
+                        ou cole a transcrição
+                      </span>
+                    </div>
+                    <hr className="border-muted-foreground/20" />
+                  </div>
+
+                  <Textarea
+                    placeholder="Cole aqui a transcrição da sua reunião ou chamada de vendas..."
+                    value={transcription}
+                    onChange={(e) => setTranscription(e.target.value)}
+                    rows={6}
+                    className="resize-none"
+                  />
+                </TabsContent>
+
+                <TabsContent value="prints" className="space-y-4 mt-4">
+                  <div
+                    className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-4 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById("training-image-input")?.click()}
+                  >
+                    <input
+                      id="training-image-input"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                    <ImageIcon className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-xs text-muted-foreground">
+                      Arraste prints de conversas (até 10)
+                    </p>
+                  </div>
+
+                  {images.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2">
+                      {images.map((img, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group">
+                          <img src={img} alt="" className="w-full h-full object-cover" />
+                          <button
+                            className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage(idx);
+                            }}
+                          >
+                            <X className="w-3 h-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-muted-foreground text-right">
+                    {images.length}/10 imagens
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex gap-2 mt-4">
+                {analysisResult && (
+                  <Button variant="outline" onClick={clearAnalysis} size="sm">
+                    Limpar
+                  </Button>
+                )}
+                <Button
+                  className="flex-1"
+                  onClick={analyzeContent}
+                  disabled={isAnalyzing || (activeTab === "transcricao" && !transcription && !transcriptionFile) || (activeTab === "prints" && images.length === 0)}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Analisando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Analisar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Results Section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-primary" />
+                  Resultado
+                </span>
+                {analysisResult?.nota_geral !== undefined && analysisResult.nota_geral > 0 && (
+                  <span className={`text-xl font-bold ${getNoteColor(analysisResult.nota_geral)}`}>
+                    {analysisResult.nota_geral}/100
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                  <p className="text-sm text-muted-foreground">Analisando sua performance...</p>
+                </div>
+              ) : analysisResult ? (
+                <ScrollArea className="h-[400px] pr-4">
+                  {renderAnalysisContent(analysisResult)}
+                </ScrollArea>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Sparkles className="w-10 h-10 text-muted-foreground/30 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Envie uma transcrição ou prints para análise
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        /* History View */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="w-4 h-4 text-primary" />
+                Suas Análises
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : savedAnalyses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Nenhuma análise salva</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2 pr-4">
+                    {savedAnalyses.map((analysis) => (
+                      <div
+                        key={analysis.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedAnalysis?.id === analysis.id
+                            ? "bg-primary/10 border-primary"
+                            : "hover:bg-muted/50"
+                        }`}
+                        onClick={() => setSelectedAnalysis(analysis)}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {analysis.analysis_type === "transcricao" ? (
+                              <><FileText className="w-3 h-3 mr-1" /> Call</>
+                            ) : (
+                              <><MessageSquare className="w-3 h-3 mr-1" /> Prints</>
+                            )}
+                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-bold ${getNoteColor(analysis.nota_geral)}`}>
+                              {analysis.nota_geral}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteAnalysis(analysis.id);
+                              }}
+                              disabled={isDeleting === analysis.id}
+                            >
+                              {isDeleting === analysis.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {analysis.resumo || "Sem resumo"}
+                        </p>
+                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {format(new Date(analysis.created_at), "dd MMM, HH:mm", { locale: ptBR })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-primary" />
+                  Detalhes
+                </span>
+                {selectedAnalysis && (
+                  <span className={`text-xl font-bold ${getNoteColor(selectedAnalysis.nota_geral)}`}>
+                    {selectedAnalysis.nota_geral}/100
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedAnalysis ? (
+                <ScrollArea className="h-[400px] pr-4">
+                  <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Calendar className="w-3 h-3" />
+                    {format(new Date(selectedAnalysis.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {selectedAnalysis.analysis_type === "transcricao" ? "Transcrição" : "Prints"}
+                    </Badge>
+                  </div>
+                  {renderAnalysisContent(selectedAnalysis)}
+                </ScrollArea>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <History className="w-10 h-10 text-muted-foreground/30 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Selecione uma análise para ver os detalhes
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
