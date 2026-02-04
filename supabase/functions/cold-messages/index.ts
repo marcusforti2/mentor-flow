@@ -35,58 +35,152 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating cold messages for:', leadName, 'platform:', platform);
+    console.log('Generating cold messages for:', leadName, 'platform:', platform, 'tone:', tone);
 
     const toneDescriptions: Record<string, string> = {
-      casual: 'casual e leve, como se estivesse conversando com um amigo. Use linguagem informal, emojis moderadamente e seja descontraído.',
-      professional: 'profissional mas ainda acessível. Linguagem mais formal, sem emojis exagerados, mantendo cordialidade.',
-      direct: 'direto ao ponto, sem rodeios. Seja objetivo mas educado, focando em valor imediato.',
+      casual: 'casual e leve, como se estivesse conversando com um amigo. Use linguagem informal, emojis moderadamente e seja descontraído mas ainda profissional.',
+      professional: 'profissional e corporativo. Linguagem formal, sem emojis, mantendo cordialidade e respeito. Ideal para executivos e profissionais de alto escalão.',
+      direct: 'direto ao ponto, sem rodeios. Seja objetivo mas educado, focando em valor imediato e resultados tangíveis. Não perca tempo com amenidades.',
     };
 
     const platformInstructions: Record<string, string> = {
-      instagram: `Para Instagram DM:
-- MENSAGEM 1 (Conexão): Simples e humanizada. Apenas "oi, tudo bem" + elogio genuíno sobre algo específico do perfil. NÃO venda nada. Max 3 linhas.
-- MENSAGEM 2 (Follow-up): Só enviar APÓS resposta. Introduz o que você faz de forma suave, menciona possível sinergia, convida para conversa sem pressão. Max 5 linhas.`,
-      linkedin: `Para LinkedIn:
-- CONVITE DE CONEXÃO: Mensagem curta (max 200 caracteres) que menciona algo específico do perfil e por que quer conectar. NÃO venda.
-- MENSAGEM PÓS-CONEXÃO: Agradece a conexão, introduz brevemente o que faz, menciona possível valor mútuo, convida para conversa. Max 5 linhas.`,
+      whatsapp: `Para WhatsApp (prospecção de alto ticket):
+CONTEXTO: WhatsApp é pessoal e direto. A pessoa verá sua mensagem imediatamente.
+
+MENSAGEM 1 - ABERTURA (max 4 linhas):
+- Saudação personalizada com nome
+- Mencione algo específico do contexto do lead (se disponível)
+- Faça uma pergunta ou observação que desperte curiosidade
+- NÃO venda nada ainda, apenas inicie conversa
+
+MENSAGEM 2 - FOLLOW-UP APÓS RESPOSTA (max 6 linhas):
+- Só enviar após o lead responder a mensagem 1
+- Introduza brevemente o que você faz e como ajuda
+- Conecte com uma dor/desejo específico do perfil do lead
+- Convide para uma conversa rápida (call de 15 min)
+- Seja educado mas confiante`,
+
+      instagram: `Para Instagram DM (prospecção social):
+CONTEXTO: Instagram é visual e casual. Leads esperam interação mais leve.
+
+MENSAGEM 1 - CONEXÃO (max 3 linhas):
+- "Oi [nome]" + elogio GENUÍNO sobre algo específico do perfil/conteúdo
+- Mostre que você realmente viu o perfil da pessoa
+- NÃO mencione vendas, apenas crie conexão humana
+
+MENSAGEM 2 - TRANSIÇÃO (max 5 linhas):
+- Enviar 24-48h depois OU após resposta
+- Mencione algo que vocês têm em comum
+- Introduza sutilmente o que você faz
+- Convide para trocar uma ideia, sem pressão`,
+
+      linkedin: `Para LinkedIn (networking profissional):
+CONTEXTO: LinkedIn é business-focused. Profissionais esperam abordagem mais séria.
+
+MENSAGEM 1 - CONVITE DE CONEXÃO (max 200 caracteres):
+- Mensagem curta e direta
+- Mencione algo específico do perfil/experiência
+- Explique brevemente por que quer conectar
+- NÃO venda nada no convite
+
+MENSAGEM 2 - PÓS-CONEXÃO (max 6 linhas):
+- Agradeça pela conexão
+- Compartilhe brevemente o que você faz
+- Mencione como poderia agregar valor
+- Convide para uma call rápida de 15 min`,
+
+      email: `Para Email (prospecção formal):
+CONTEXTO: Email permite mais detalhamento. Ideal para propostas estruturadas.
+
+EMAIL 1 - COLD EMAIL INICIAL:
+- Assunto: Curto (max 50 chars), desperte curiosidade ou mencione resultado específico
+- Abertura: Referência pessoal (pesquisa que você fez sobre a pessoa/empresa)
+- Corpo: 1 parágrafo sobre dor/problema + 1 parágrafo sobre sua solução + resultado tangível
+- CTA: Pergunta simples ou convite para responder
+- Max 150 palavras total
+
+EMAIL 2 - FOLLOW-UP 1 (3-4 dias depois):
+- Assunto: "Re:" do anterior ou novo ângulo
+- Corpo curto: Adicione valor (case, insight, dado relevante)
+- Reforce o CTA de forma diferente
+- Max 100 palavras
+
+EMAIL 3 - FOLLOW-UP FINAL (5-7 dias depois):
+- Assunto: "Última tentativa" ou similar
+- Tom: Educado mas direto
+- Mencione que não vai mais incomodar
+- Deixe porta aberta para futuro
+- Max 80 palavras`,
     };
 
-    const systemPrompt = `Você é um copywriter especialista em prospecção fria e comunicação persuasiva.
-Sua tarefa é criar mensagens de prospecção que pareçam NATURAIS e HUMANAS, não robóticas.
+    const systemPrompt = `Você é um copywriter ESPECIALISTA em prospecção fria para vendas de alto ticket (mentorias, consultorias, serviços premium de R$ 10k a R$ 150k).
 
-REGRAS IMPORTANTES:
-- Mensagens devem parecer escritas por uma pessoa real, não um bot
-- NUNCA use templates genéricos ou frases clichês de vendas
-- Personalize baseado no contexto do lead quando disponível
-- Mantenha o tom especificado
-- Respeite os limites de tamanho
-- Retorne APENAS o JSON válido`;
+SEU PAPEL: Criar mensagens que pareçam escritas por um HUMANO REAL, não um robô ou vendedor genérico.
+
+REGRAS CRÍTICAS:
+1. NUNCA use templates genéricos ou frases clichês ("espero que esteja bem", "vim aqui te dar uma oportunidade")
+2. SEMPRE personalize baseado no contexto do lead quando disponível
+3. O objetivo NÃO é vender na primeira mensagem, é ABRIR CONVERSA
+4. Cada mensagem deve ter um propósito claro na sequência
+5. Respeite RIGOROSAMENTE os limites de tamanho de cada plataforma
+6. Para email, SEMPRE inclua campo "subject" com o assunto
+7. O tom deve ser confiante mas nunca arrogante
+8. Foque em TRANSFORMAÇÃO e RESULTADOS, não em features
+
+CONTEXTO DE HIGH TICKET:
+- Leads de alto ticket são ocupados e céticos
+- Eles recebem dezenas de abordagens por dia
+- Diferenciação vem de PERSONALIZAÇÃO genuína
+- O objetivo é marcar uma call, não fechar venda por mensagem
+
+Retorne APENAS o JSON válido, sem markdown ou texto adicional.`;
 
     const userPrompt = `## CONTEXTO DO NEGÓCIO DO VENDEDOR:
 ${businessProfile ? `
 - Nome do Negócio: ${businessProfile.business_name || 'Não informado'}
-- Oferta Principal: ${businessProfile.main_offer || 'Não informado'}
-- Público-Alvo: ${businessProfile.target_audience || 'Não informado'}
+- Tipo: ${businessProfile.business_type || 'Não informado'}
+- Oferta Principal: ${businessProfile.main_offer || 'Serviço de alto valor'}
+- Público-Alvo: ${businessProfile.target_audience || 'Profissionais e empresários'}
 - Proposta de Valor: ${businessProfile.unique_value_proposition || 'Não informado'}
 - Dores que Resolve: ${businessProfile.pain_points_solved?.join(', ') || 'Não informado'}
-` : 'Perfil de negócio não configurado - crie mensagens mais genéricas'}
+- Faixa de Preço: ${businessProfile.price_range || 'Alto ticket'}
+` : 'Perfil de negócio não configurado - crie mensagens para venda de mentoria/consultoria de alto ticket'}
 
 ## INFORMAÇÕES DO LEAD:
 - Nome: ${leadName}
-- Contexto/Observações: ${leadContext || 'Não informado'}
+- Contexto/Observações: ${leadContext || 'Nenhum contexto adicional fornecido'}
 - Plataforma: ${platform}
 
 ## TOM DA MENSAGEM:
-${toneDescriptions[tone] || toneDescriptions.casual}
+${toneDescriptions[tone] || toneDescriptions.direct}
 
-## INSTRUÇÕES DA PLATAFORMA:
-${platformInstructions[platform] || platformInstructions.instagram}
+## INSTRUÇÕES ESPECÍFICAS DA PLATAFORMA:
+${platformInstructions[platform] || platformInstructions.whatsapp}
 
 ## TAREFA:
-Crie as mensagens de prospecção e retorne no formato JSON:
+Crie a sequência de mensagens e retorne no formato JSON:
 
-{
+${platform === 'email' ? `{
+  "message1": {
+    "title": "Cold Email Inicial",
+    "subject": "<assunto do email - max 50 chars>",
+    "content": "<corpo do email>",
+    "timing": "Enviar imediatamente"
+  },
+  "message2": {
+    "title": "Follow-up 1",
+    "subject": "<assunto do follow-up>",
+    "content": "<corpo do email>",
+    "timing": "Enviar 3-4 dias depois se não responder"
+  },
+  "message3": {
+    "title": "Follow-up Final",
+    "subject": "<assunto final>",
+    "content": "<corpo do email>",
+    "timing": "Enviar 5-7 dias depois do follow-up 1"
+  },
+  "tips": ["<dica 1>", "<dica 2>", "<dica 3>", "<dica 4>"]
+}` : `{
   "message1": {
     "title": "<título descritivo>",
     "content": "<conteúdo da mensagem>",
@@ -98,7 +192,7 @@ Crie as mensagens de prospecção e retorne no formato JSON:
     "timing": "<quando enviar>"
   },
   "tips": ["<dica 1>", "<dica 2>", "<dica 3>"]
-}`;
+}`}`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -112,7 +206,7 @@ Crie as mensagens de prospecção e retorne no formato JSON:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.8,
+        temperature: 0.75,
       }),
     });
 
@@ -156,7 +250,7 @@ Crie as mensagens de prospecção e retorne no formato JSON:
 
     const messages = JSON.parse(jsonString.trim());
 
-    console.log('Messages generated successfully');
+    console.log('Cold messages generated successfully for platform:', platform);
 
     return new Response(
       JSON.stringify({ success: true, messages }),

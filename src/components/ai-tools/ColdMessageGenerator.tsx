@@ -6,30 +6,52 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MessageSquare, 
-  Send, 
   Copy, 
   Check, 
   Loader2, 
   Instagram, 
   Linkedin,
+  Mail,
+  Phone,
   Lightbulb,
-  Sparkles
+  Sparkles,
+  Clock,
+  Target,
+  Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { coldMessagesApi, ColdMessagesResult, BusinessProfile } from '@/lib/api/firecrawl';
+import { BusinessProfile } from '@/lib/api/firecrawl';
 
 interface ColdMessageGeneratorProps {
   mentoradoId: string | null;
 }
 
+type Platform = 'instagram' | 'linkedin' | 'whatsapp' | 'email';
+type Tone = 'casual' | 'professional' | 'direct';
+
+interface ColdMessage {
+  title: string;
+  content: string;
+  timing: string;
+  subject?: string; // For email
+}
+
+interface ColdMessagesResult {
+  message1: ColdMessage;
+  message2: ColdMessage;
+  message3?: ColdMessage;
+  tips: string[];
+}
+
 export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps) {
   const [leadName, setLeadName] = useState('');
   const [leadContext, setLeadContext] = useState('');
-  const [platform, setPlatform] = useState<'instagram' | 'linkedin'>('instagram');
-  const [tone, setTone] = useState<'casual' | 'professional' | 'direct'>('casual');
+  const [platform, setPlatform] = useState<Platform>('whatsapp');
+  const [tone, setTone] = useState<Tone>('direct');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ColdMessagesResult | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
@@ -67,19 +89,23 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
     setMessages(null);
 
     try {
-      const result = await coldMessagesApi.generate({
-        leadName,
-        leadContext,
-        platform,
-        tone,
-        businessProfile: businessProfile || undefined,
+      const { data, error } = await supabase.functions.invoke('cold-messages', {
+        body: {
+          leadName,
+          leadContext,
+          platform,
+          tone,
+          businessProfile,
+        },
       });
 
-      if (result.success && result.messages) {
-        setMessages(result.messages);
-        toast.success('Mensagens geradas!');
+      if (error) throw error;
+
+      if (data.success && data.messages) {
+        setMessages(data.messages);
+        toast.success('Sequência de mensagens gerada!');
       } else {
-        toast.error(result.error || 'Erro ao gerar mensagens');
+        toast.error(data.error || 'Erro ao gerar mensagens');
       }
     } catch (error) {
       console.error('Generation error:', error);
@@ -92,9 +118,42 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
-    toast.success('Copiado!');
+    toast.success('Copiado para área de transferência!');
     setTimeout(() => setCopiedField(null), 2000);
   };
+
+  const platformConfig = {
+    whatsapp: {
+      icon: Phone,
+      label: 'WhatsApp',
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10',
+      description: 'Mensagens diretas e conversacionais',
+    },
+    instagram: {
+      icon: Instagram,
+      label: 'Instagram DM',
+      color: 'text-pink-500',
+      bgColor: 'bg-pink-500/10',
+      description: 'Abordagem casual e visual',
+    },
+    linkedin: {
+      icon: Linkedin,
+      label: 'LinkedIn',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-600/10',
+      description: 'Networking profissional',
+    },
+    email: {
+      icon: Mail,
+      label: 'Email',
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-500/10',
+      description: 'Comunicação formal e detalhada',
+    },
+  };
+
+  const PlatformIcon = platformConfig[platform].icon;
 
   return (
     <div className="space-y-6">
@@ -105,33 +164,37 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
             Gerador de Cold Messages
           </CardTitle>
           <CardDescription>
-            Crie mensagens de prospecção fria personalizadas para Instagram DM e LinkedIn
+            Crie sequências de prospecção fria personalizadas para cada canal
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Platform Selection */}
           <div className="space-y-3">
-            <Label>Plataforma</Label>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant={platform === 'instagram' ? 'default' : 'outline'}
-                onClick={() => setPlatform('instagram')}
-                className="flex-1"
-              >
-                <Instagram className="mr-2 h-4 w-4" />
-                Instagram DM
-              </Button>
-              <Button
-                type="button"
-                variant={platform === 'linkedin' ? 'default' : 'outline'}
-                onClick={() => setPlatform('linkedin')}
-                className="flex-1"
-              >
-                <Linkedin className="mr-2 h-4 w-4" />
-                LinkedIn
-              </Button>
+            <Label className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              Canal de Prospecção
+            </Label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(Object.keys(platformConfig) as Platform[]).map((p) => {
+                const config = platformConfig[p];
+                const Icon = config.icon;
+                return (
+                  <Button
+                    key={p}
+                    type="button"
+                    variant={platform === p ? 'default' : 'outline'}
+                    onClick={() => setPlatform(p)}
+                    className={`flex flex-col h-auto py-3 ${platform === p ? '' : 'hover:bg-muted/50'}`}
+                  >
+                    <Icon className={`h-5 w-5 mb-1 ${platform === p ? '' : config.color}`} />
+                    <span className="text-xs font-medium">{config.label}</span>
+                  </Button>
+                );
+              })}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {platformConfig[platform].description}
+            </p>
           </div>
 
           {/* Lead Name */}
@@ -139,7 +202,7 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
             <Label htmlFor="leadName">Nome do Lead *</Label>
             <Input
               id="leadName"
-              placeholder="Ex: Marina Silva"
+              placeholder="Ex: Dr. João Silva"
               value={leadName}
               onChange={(e) => setLeadName(e.target.value)}
             />
@@ -150,40 +213,43 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
             <Label htmlFor="leadContext">Contexto do Lead (opcional)</Label>
             <Textarea
               id="leadContext"
-              placeholder="Ex: Coach de emagrecimento, posta muito sobre mindset e transformação pessoal, tem ~5k seguidores"
+              placeholder="Ex: Médico cardiologista, dono de clínica própria em SP, posta sobre qualidade de vida, ~10k seguidores, interesse em escalar consultório..."
               value={leadContext}
               onChange={(e) => setLeadContext(e.target.value)}
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
-              Quanto mais contexto, mais personalizadas as mensagens
+              Quanto mais contexto, mais personalizadas as mensagens serão
             </p>
           </div>
 
           {/* Tone Selection */}
           <div className="space-y-3">
-            <Label>Tom da Mensagem</Label>
-            <RadioGroup value={tone} onValueChange={(v) => setTone(v as typeof tone)}>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex items-center space-x-2 flex-1 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+            <Label className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-muted-foreground" />
+              Tom da Abordagem
+            </Label>
+            <RadioGroup value={tone} onValueChange={(v) => setTone(v as Tone)}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-all ${tone === 'casual' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
                   <RadioGroupItem value="casual" id="casual" />
                   <Label htmlFor="casual" className="cursor-pointer flex-1">
-                    <span className="font-medium">😊 Casual e Leve</span>
+                    <span className="font-medium">😊 Casual</span>
                     <p className="text-xs text-muted-foreground">Descontraído, com emojis</p>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 flex-1 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+                <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-all ${tone === 'professional' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
                   <RadioGroupItem value="professional" id="professional" />
                   <Label htmlFor="professional" className="cursor-pointer flex-1">
                     <span className="font-medium">💼 Profissional</span>
-                    <p className="text-xs text-muted-foreground">Cordial mas formal</p>
+                    <p className="text-xs text-muted-foreground">Cordial e formal</p>
                   </Label>
                 </div>
-                <div className="flex items-center space-x-2 flex-1 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+                <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-all ${tone === 'direct' ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}>
                   <RadioGroupItem value="direct" id="direct" />
                   <Label htmlFor="direct" className="cursor-pointer flex-1">
                     <span className="font-medium">🎯 Direto</span>
-                    <p className="text-xs text-muted-foreground">Objetivo e sem rodeios</p>
+                    <p className="text-xs text-muted-foreground">Objetivo, sem rodeios</p>
                   </Label>
                 </div>
               </div>
@@ -191,48 +257,61 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
           </div>
 
           {/* Generate Button */}
-          <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
+          <Button onClick={handleGenerate} disabled={isLoading} className="w-full" size="lg">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Gerando mensagens...
+                Criando sequência de {platform === 'email' ? '3' : '2'} mensagens...
               </>
             ) : (
               <>
                 <Sparkles className="mr-2 h-4 w-4" />
-                Gerar Mensagens
+                Gerar Sequência de Prospecção
               </>
             )}
           </Button>
+
+          {!businessProfile && (
+            <p className="text-xs text-center text-muted-foreground">
+              💡 Complete seu perfil de negócio para mensagens mais personalizadas
+            </p>
+          )}
         </CardContent>
       </Card>
 
       {/* Results */}
       {messages && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            {platform === 'instagram' ? (
-              <Instagram className="h-5 w-5 text-pink-500" />
-            ) : (
-              <Linkedin className="h-5 w-5 text-blue-600" />
-            )}
-            <h3 className="font-semibold">
-              {platform === 'instagram' ? 'Instagram DM' : 'LinkedIn'}
-            </h3>
+          <div className={`flex items-center gap-3 p-3 rounded-lg ${platformConfig[platform].bgColor}`}>
+            <PlatformIcon className={`h-6 w-6 ${platformConfig[platform].color}`} />
+            <div>
+              <h3 className="font-semibold text-foreground">Sequência para {platformConfig[platform].label}</h3>
+              <p className="text-xs text-muted-foreground">
+                {platform === 'email' ? '3 emails' : '2 mensagens'} prontas para enviar
+              </p>
+            </div>
           </div>
 
           {/* Message 1 */}
-          <Card>
+          <Card className="overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-primary to-primary/50" />
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">📨 Mensagem 1</Badge>
-                  <span className="text-sm font-medium">{messages.message1.title}</span>
+                  <Badge className="bg-primary/10 text-primary hover:bg-primary/20">
+                    1ª Mensagem
+                  </Badge>
+                  <span className="text-sm font-medium text-foreground">{messages.message1.title}</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(messages.message1.content, 'msg1')}
+                  onClick={() => copyToClipboard(
+                    messages.message1.subject 
+                      ? `Assunto: ${messages.message1.subject}\n\n${messages.message1.content}`
+                      : messages.message1.content, 
+                    'msg1'
+                  )}
                 >
                   {copiedField === 'msg1' ? (
                     <Check className="h-4 w-4 text-green-500" />
@@ -242,28 +321,44 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
                 </Button>
               </div>
               
+              {messages.message1.subject && (
+                <div className="bg-muted/50 rounded-lg p-3 mb-3 border-l-2 border-primary">
+                  <p className="text-xs text-muted-foreground mb-1">Assunto:</p>
+                  <p className="text-sm font-medium text-foreground">{messages.message1.subject}</p>
+                </div>
+              )}
+              
               <div className="bg-muted rounded-lg p-4 mb-3">
-                <p className="whitespace-pre-wrap">{messages.message1.content}</p>
+                <p className="whitespace-pre-wrap text-foreground">{messages.message1.content}</p>
               </div>
               
-              <p className="text-xs text-muted-foreground">
-                ⏰ {messages.message1.timing}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {messages.message1.timing}
+              </div>
             </CardContent>
           </Card>
 
           {/* Message 2 */}
-          <Card>
+          <Card className="overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-amber-500 to-amber-500/50" />
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">📨 Mensagem 2</Badge>
-                  <span className="text-sm font-medium">{messages.message2.title}</span>
+                  <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20">
+                    2ª Mensagem
+                  </Badge>
+                  <span className="text-sm font-medium text-foreground">{messages.message2.title}</span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(messages.message2.content, 'msg2')}
+                  onClick={() => copyToClipboard(
+                    messages.message2.subject 
+                      ? `Assunto: ${messages.message2.subject}\n\n${messages.message2.content}`
+                      : messages.message2.content,
+                    'msg2'
+                  )}
                 >
                   {copiedField === 'msg2' ? (
                     <Check className="h-4 w-4 text-green-500" />
@@ -273,29 +368,86 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
                 </Button>
               </div>
               
+              {messages.message2.subject && (
+                <div className="bg-muted/50 rounded-lg p-3 mb-3 border-l-2 border-amber-500">
+                  <p className="text-xs text-muted-foreground mb-1">Assunto:</p>
+                  <p className="text-sm font-medium text-foreground">{messages.message2.subject}</p>
+                </div>
+              )}
+              
               <div className="bg-muted rounded-lg p-4 mb-3">
-                <p className="whitespace-pre-wrap">{messages.message2.content}</p>
+                <p className="whitespace-pre-wrap text-foreground">{messages.message2.content}</p>
               </div>
               
-              <p className="text-xs text-muted-foreground">
-                ⏰ {messages.message2.timing}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {messages.message2.timing}
+              </div>
             </CardContent>
           </Card>
+
+          {/* Message 3 (for email) */}
+          {messages.message3 && (
+            <Card className="overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-green-500 to-green-500/50" />
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
+                      3ª Mensagem
+                    </Badge>
+                    <span className="text-sm font-medium text-foreground">{messages.message3.title}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(
+                      messages.message3!.subject 
+                        ? `Assunto: ${messages.message3!.subject}\n\n${messages.message3!.content}`
+                        : messages.message3!.content,
+                      'msg3'
+                    )}
+                  >
+                    {copiedField === 'msg3' ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                
+                {messages.message3.subject && (
+                  <div className="bg-muted/50 rounded-lg p-3 mb-3 border-l-2 border-green-500">
+                    <p className="text-xs text-muted-foreground mb-1">Assunto:</p>
+                    <p className="text-sm font-medium text-foreground">{messages.message3.subject}</p>
+                  </div>
+                )}
+                
+                <div className="bg-muted rounded-lg p-4 mb-3">
+                  <p className="whitespace-pre-wrap text-foreground">{messages.message3.content}</p>
+                </div>
+                
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {messages.message3.timing}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tips */}
           {messages.tips && messages.tips.length > 0 && (
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="pt-6">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-4">
                   <Lightbulb className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Dicas para Maximizar Resultados</h4>
+                  <h4 className="font-semibold text-foreground">Dicas para Maximizar Conversão</h4>
                 </div>
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {messages.tips.map((tip, i) => (
-                    <li key={i} className="text-sm flex items-start gap-2">
-                      <span className="text-primary mt-0.5">💡</span>
-                      {tip}
+                    <li key={i} className="text-sm flex items-start gap-3">
+                      <span className="text-primary font-bold">{i + 1}.</span>
+                      <span className="text-foreground">{tip}</span>
                     </li>
                   ))}
                 </ul>
