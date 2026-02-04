@@ -146,7 +146,7 @@ export function ContentGenerator({ mentoradoId }: ContentGeneratorProps) {
         </CardHeader>
         <CardContent>
           {result ? (
-            <div className="prose prose-sm max-w-none dark:prose-invert">
+            <div className="prose-ai-content max-h-[500px] overflow-y-auto pr-2">
               <ReactMarkdown>{result}</ReactMarkdown>
             </div>
           ) : (
