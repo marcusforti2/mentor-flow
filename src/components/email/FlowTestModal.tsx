@@ -219,32 +219,32 @@ export default function FlowTestModal({
             <Label className="text-sm font-medium">Preview Mobile</Label>
             
             {/* Phone Frame */}
-            <div className="mx-auto w-[280px] h-[500px] bg-foreground/5 rounded-[40px] p-3 shadow-2xl border-4 border-foreground/10">
+            <div className="mx-auto w-[280px] h-[500px] bg-zinc-900 rounded-[40px] p-3 shadow-2xl border-4 border-zinc-800">
               {/* Phone Notch */}
-              <div className="w-24 h-6 bg-foreground/20 rounded-full mx-auto mb-2" />
+              <div className="w-24 h-6 bg-zinc-800 rounded-full mx-auto mb-2" />
               
-              {/* Phone Screen */}
-              <div className="bg-background rounded-[28px] h-[calc(100%-32px)] overflow-hidden flex flex-col">
+              {/* Phone Screen - White background like real email */}
+              <div className="bg-white rounded-[28px] h-[calc(100%-32px)] overflow-hidden flex flex-col">
                 {/* Email Header */}
-                <div className="bg-card p-3 border-b border-border">
-                  <p className="text-xs text-muted-foreground">De: sua-mentoria@email.com</p>
-                  <p className="text-sm font-semibold truncate mt-1">
+                <div className="bg-gray-100 p-3 border-b border-gray-200">
+                  <p className="text-xs text-gray-500">De: sua-mentoria@email.com</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate mt-1">
                     {previewContent?.subject || 'Selecione um email'}
                   </p>
                 </div>
                 
-                {/* Email Body */}
-                <ScrollArea className="flex-1 p-3">
+                {/* Email Body - White bg with dark text like real email client */}
+                <ScrollArea className="flex-1 p-3 bg-white">
                   {previewContent ? (
                     <div 
-                      className="text-sm prose prose-sm dark:prose-invert max-w-none"
+                      className="text-sm text-gray-800 email-preview-content"
                       dangerouslySetInnerHTML={{ 
                         __html: previewContent.body
                           .replace(/\{\{nome\}\}/g, '<strong>João Silva</strong>')
                       }} 
                     />
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
+                    <p className="text-sm text-gray-400 text-center py-8">
                       Adicione emails ao fluxo para visualizar
                     </p>
                   )}
