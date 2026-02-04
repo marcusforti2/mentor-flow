@@ -10,10 +10,24 @@ const SYSTEM_CONCEPT = `
 LBV TECH - SISTEMA OPERACIONAL DE GOVERNO PARA MENTORIAS HIGH TICKET
 
 Data de Concepção: Fevereiro 2025
-Autor/Idealizador: Marcus Forti
 Nome do Sistema: LBV TECH
 
-1. VISÃO GERAL E PROPÓSITO
+=== TITULAR DOS DIREITOS DE PROPRIEDADE INTELECTUAL ===
+
+MARCUS VINICIUS BARRETO FORTI 38791232848
+Pessoa jurídica de direito privado
+CNPJ/MF nº. 30.192.804/0001-09
+Sede: Rua Vinte e Quatro de Fevereiro, nº.470, Centro, Capão Bonito/SP, CEP: 18300-360
+
+Representada na forma de seu contrato social por seu sócio administrador:
+Sr. Marcus Vinicius Barreto Forti
+Nacionalidade: Brasileiro
+Estado Civil: Casado
+RG nº. 46.835.234-X
+CPF/MF nº. 387.912.328-48
+
+=== VISÃO GERAL E PROPÓSITO ===
+
 Plataforma SaaS multi-tenant projetada para escalabilidade superior a 200 mentorados, focada no nicho de educação High Ticket (mentorias e consultorias) para profissionais de saúde (médicos, dentistas, advogados), com tickets de alto valor (R$ 50.000 a R$ 120.000).
 
 O sistema opera como um "Sistema Operacional de Governo" para mentorias, adotando estética sóbria de "Sala de Guerra" com foco em previsibilidade de vendas, clareza de gargalos e tomada de decisão empresarial.
@@ -138,8 +152,10 @@ Deno.serve(async (req) => {
       '=== VERSÃO ===',
       '1.0.0',
       '',
-      '=== AUTOR ===',
-      'Marcus Forti',
+      '=== TITULAR ===',
+      'MARCUS VINICIUS BARRETO FORTI 38791232848',
+      'CNPJ: 30.192.804/0001-09',
+      'CPF: 387.912.328-48',
       '',
       '=== SISTEMA ===',
       'LBV TECH',
@@ -157,13 +173,21 @@ Deno.serve(async (req) => {
         content_summary: 'LBV TECH - Sistema Operacional de Governo para Mentorias High Ticket. Plataforma SaaS multi-tenant com 8 ferramentas de IA, gamificação, CRM, trilhas e mais.',
         full_content: fullContent,
         version: '1.0.0',
-        author: 'Marcus Forti',
+        author: 'Marcus Vinicius Barreto Forti',
         system_name: 'LBV TECH',
         metadata: {
           files_count: SYSTEM_FILES.length,
           concept_length: SYSTEM_CONCEPT.length,
           generated_at: timestamp,
-          purpose: 'Registro de anterioridade para ata notarial'
+          purpose: 'Registro de anterioridade para ata notarial',
+          titular: {
+            razao_social: 'MARCUS VINICIUS BARRETO FORTI 38791232848',
+            cnpj: '30.192.804/0001-09',
+            endereco: 'Rua Vinte e Quatro de Fevereiro, nº.470, Centro, Capão Bonito/SP, CEP: 18300-360',
+            representante: 'Marcus Vinicius Barreto Forti',
+            rg: '46.835.234-X',
+            cpf: '387.912.328-48'
+          }
         }
       })
       .select()
