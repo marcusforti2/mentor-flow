@@ -200,9 +200,15 @@ export default function FlowTestModal({
     }).filter(Boolean);
   };
 
+  // Count email nodes properly
+  const emailNodeIndices = nodes
+    .map((node, idx) => ({ node, idx }))
+    .filter(({ node }) => node.type === 'email')
+    .map(({ idx }, emailIdx) => ({ originalIdx: idx, emailNumber: emailIdx + 1 }));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5 text-primary" />
@@ -213,13 +219,20 @@ export default function FlowTestModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
           {/* Left: Phone Preview */}
           <div className="space-y-4">
-            <Label className="text-sm font-medium">Preview Mobile</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Preview Mobile</Label>
+              {emailNodes.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  Email {selectedPreviewIndex + 1} de {emailNodes.length}
+                </Badge>
+              )}
+            </div>
             
             {/* Phone Frame */}
-            <div className="mx-auto w-[280px] h-[500px] bg-zinc-900 rounded-[40px] p-3 shadow-2xl border-4 border-zinc-800">
+            <div className="mx-auto w-[300px] h-[520px] bg-zinc-900 rounded-[40px] p-3 shadow-2xl border-4 border-zinc-800">
               {/* Phone Notch */}
               <div className="w-24 h-6 bg-zinc-800 rounded-full mx-auto mb-2" />
               
@@ -227,7 +240,7 @@ export default function FlowTestModal({
               <div className="bg-white rounded-[28px] h-[calc(100%-32px)] overflow-hidden flex flex-col">
                 {/* Email Header */}
                 <div className="bg-gray-100 p-3 border-b border-gray-200">
-                  <p className="text-xs text-gray-500">De: sua-mentoria@email.com</p>
+                  <p className="text-xs text-gray-500">De: noreply@equipe.aceleracaoforti.online</p>
                   <p className="text-sm font-semibold text-gray-900 truncate mt-1">
                     {previewContent?.subject || 'Selecione um email'}
                   </p>
@@ -252,20 +265,24 @@ export default function FlowTestModal({
               </div>
             </div>
 
-            {/* Email Selector */}
-            {emailNodes.length > 1 && (
-              <div className="flex gap-2 justify-center">
-                {emailNodes.map((_, index) => (
-                  <Button
-                    key={index}
-                    variant={selectedPreviewIndex === index ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedPreviewIndex(index)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {index + 1}
-                  </Button>
-                ))}
+            {/* Email Selector - Always show if there are emails */}
+            {emailNodes.length > 0 && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {emailNodes.map((node, index) => {
+                  const content = getEmailContent(node);
+                  return (
+                    <Button
+                      key={index}
+                      variant={selectedPreviewIndex === index ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedPreviewIndex(index)}
+                      className="h-auto py-1 px-3 text-xs"
+                      title={content.subject}
+                    >
+                      Email {index + 1}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -274,28 +291,42 @@ export default function FlowTestModal({
           <div className="space-y-4">
             {/* Flow Steps */}
             <div>
-              <Label className="text-sm font-medium mb-3 block">Etapas do Fluxo</Label>
-              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2">
-                {getFlowSteps().map((step, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center gap-3 p-2 rounded-lg bg-card/50 border border-border/50"
-                  >
-                    <div className={`h-8 w-8 rounded-lg ${step?.bgColor} flex items-center justify-center`}>
-                      {step?.icon && <step.icon className={`h-4 w-4 ${step.color}`} />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{step?.label}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{step?.type}</p>
-                    </div>
-                    {step?.type === 'email' && (
-                      <Badge variant="secondary" className="text-xs">
-                        Email {emailNodes.findIndex(n => nodes.indexOf(n as any) === index) + 1}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-sm font-medium">Etapas do Fluxo</Label>
+                <Badge variant="secondary" className="text-xs">
+                  {nodes.length} etapas • {emailNodes.length} emails
+                </Badge>
               </div>
+              <ScrollArea className="h-[220px] pr-2">
+                <div className="space-y-2">
+                  {getFlowSteps().map((step, index) => {
+                    const emailInfo = emailNodeIndices.find(e => e.originalIdx === index);
+                    return (
+                      <div 
+                        key={index}
+                        className="flex items-center gap-3 p-2.5 rounded-lg bg-card/50 border border-border/50"
+                      >
+                        <div className={`h-9 w-9 rounded-lg ${step?.bgColor} flex items-center justify-center shrink-0`}>
+                          {step?.icon && <step.icon className={`h-4 w-4 ${step.color}`} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{step?.label}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{step?.type}</p>
+                        </div>
+                        {emailInfo && (
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs shrink-0 cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                            onClick={() => setSelectedPreviewIndex(emailInfo.emailNumber - 1)}
+                          >
+                            Email {emailInfo.emailNumber}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
             </div>
 
             {/* Test Emails */}
@@ -317,40 +348,42 @@ export default function FlowTestModal({
               </div>
 
               {/* Email List */}
-              <div className="space-y-2 max-h-[120px] overflow-y-auto">
-                {testEmails.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-3">
-                    Adicione emails para enviar o teste
-                  </p>
-                ) : (
-                  testEmails.map((email) => (
-                    <div 
-                      key={email} 
-                      className="flex items-center justify-between p-2 rounded-lg bg-card border border-border"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{email}</span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:text-destructive"
-                        onClick={() => removeEmail(email)}
+              <ScrollArea className="h-[100px]">
+                <div className="space-y-2 pr-2">
+                  {testEmails.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-3">
+                      Adicione emails para enviar o teste
+                    </p>
+                  ) : (
+                    testEmails.map((email) => (
+                      <div 
+                        key={email} 
+                        className="flex items-center justify-between p-2 rounded-lg bg-card border border-border"
                       >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate">{email}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:text-destructive shrink-0"
+                          onClick={() => removeEmail(email)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </div>
 
             {/* Send Button */}
             <Button 
               onClick={handleSendTest}
               disabled={isSending || testEmails.length === 0 || emailNodes.length === 0}
-              className="w-full gradient-gold text-primary-foreground"
+              className="w-full gradient-gold text-primary-foreground h-12"
             >
               {isSending ? (
                 <>
@@ -366,7 +399,7 @@ export default function FlowTestModal({
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">
-              Todos os emails do fluxo serão enviados de uma vez para testar
+              Todos os {emailNodes.length} emails do fluxo serão enviados de uma vez
             </p>
           </div>
         </div>
