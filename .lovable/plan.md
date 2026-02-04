@@ -1,195 +1,142 @@
 
-# Plano: Integrar ScraperAPI e Piloterr para Scraping de Instagram
+# Sistema de Formulário de Onboarding Personalizado
 
-## Objetivo
-Substituir o Apify por ScraperAPI (primário) e Piloterr (fallback) para scraping de perfis do Instagram, mantendo maior confiabilidade e evitando problemas de assinatura.
+## Visão Geral
+Criar um sistema onde o mentor pode configurar perguntas personalizadas de onboarding e gerar um link único. Quando o mentorado acessa o link, ele cria sua conta e responde o formulário automaticamente, já vinculado ao mentor.
 
-## Visão Geral da Arquitetura
+## Fluxo do Sistema
 
 ```text
-+---------------+     +-----------------------+
-|   Frontend    | --> | lead-qualifier (Edge) |
-+---------------+     +-----------------------+
-                              |
-                              v
-                    +-------------------+
-                    | detectPlatform()  |
-                    +-------------------+
-                              |
-              +---------------+---------------+
-              |                               |
-        instagram                      linkedin/outros
-              |                               |
-              v                               v
-    +-------------------+           +------------------+
-    | ScraperAPI        |           | Apify/Firecrawl  |
-    | (render=true)     |           |                  |
-    +-------------------+           +------------------+
-              |
-         [falha?]
-              |
-              v
-    +-------------------+
-    | Piloterr          |
-    | (API direta)      |
-    +-------------------+
+┌─────────────────────────────────────────────────────────────────┐
+│                    ÁREA DO MENTOR (Admin)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Nova página: /admin/formularios                             │
+│     - Criar/editar perguntas do formulário                      │
+│     - Tipos: texto, múltipla escolha, escala, sim/não           │
+│     - Reordenar perguntas (drag & drop)                         │
+│     - Preview do formulário                                     │
+│     - Gerar link único com mentor_id                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    LINK PARA MENTORADO                          │
+├─────────────────────────────────────────────────────────────────┤
+│  /onboarding?mentor=UUID                                        │
+│  - Página pública estilo typeform                               │
+│  - Pergunta por pergunta (full-screen)                          │
+│  - Animações suaves de transição                                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    FLUXO DO MENTORADO                           │
+├─────────────────────────────────────────────────────────────────┤
+│  Etapa 1: Dados básicos (nome, email, WhatsApp)                 │
+│  Etapa 2: Dados do negócio (nome, tipo, etc.)                   │
+│  Etapa 3: Perguntas personalizadas do mentor                    │
+│  Etapa 4: Confirmação e criação da conta                        │
+│  → Redireciona para /app (área do mentorado)                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Etapas de Implementação
+## Estrutura Técnica
 
-### 1. Configuração de Secrets
-Adicionar duas novas secrets no projeto:
-- `SCRAPERAPI_KEY` - Chave da API do ScraperAPI
-- `PILOTERR_API_KEY` - Chave da API do Piloterr (fallback)
+### 1. Nova Página: Editor de Formulários (`/admin/formularios`)
+**Arquivo:** `src/pages/admin/Formularios.tsx`
 
-### 2. Atualização do Edge Function lead-qualifier
+- Interface para gerenciar perguntas usando a tabela `behavioral_questions` existente
+- Funcionalidades:
+  - Adicionar nova pergunta (texto, múltipla escolha, escala 1-10, sim/não)
+  - Editar pergunta existente
+  - Excluir pergunta
+  - Reordenar perguntas
+  - Ativar/desativar perguntas
+  - Preview do formulário completo
+- Gerar link personalizado: `{domain}/onboarding?mentor={mentor_id}`
 
-**2.1. Adicionar variáveis de ambiente:**
-```typescript
-const SCRAPERAPI_KEY = Deno.env.get('SCRAPERAPI_KEY');
-const PILOTERR_API_KEY = Deno.env.get('PILOTERR_API_KEY');
-```
+### 2. Nova Página: Formulário de Onboarding (`/onboarding`)
+**Arquivo:** `src/pages/Onboarding.tsx`
 
-**2.2. Nova função scrapeInstagramWithScraperAPI:**
-```typescript
-async function scrapeInstagramWithScraperAPI(username: string): Promise<{success: boolean; data?: string; error?: string}> {
-  if (!SCRAPERAPI_KEY) {
-    return { success: false, error: 'ScraperAPI key não configurada' };
-  }
+- Página pública (sem autenticação)
+- Estilo typeform:
+  - Uma pergunta por tela (full-screen)
+  - Navegação com Enter ou botão
+  - Barra de progresso
+  - Animações de transição
+- Fluxo:
+  1. Validar mentor_id da URL
+  2. Coletar dados básicos (nome, email, WhatsApp)
+  3. Coletar dados do negócio
+  4. Mostrar perguntas personalizadas do mentor
+  5. Enviar OTP e criar conta
+  6. Salvar respostas em `behavioral_responses`
+  7. Criar registro em `mentorados` vinculado ao mentor
+  8. Redirecionar para `/app`
 
-  const instagramUrl = `https://www.instagram.com/${username}/`;
-  const scraperApiUrl = `http://api.scraperapi.com?api_key=${SCRAPERAPI_KEY}&url=${encodeURIComponent(instagramUrl)}&render=true&country_code=us`;
+### 3. Edge Function: Processar Onboarding
+**Arquivo:** `supabase/functions/process-onboarding/index.ts`
 
-  const response = await fetch(scraperApiUrl);
-  const html = await response.text();
-  
-  // Parse HTML para extrair dados do perfil
-  const profileData = parseInstagramHTML(html);
-  
-  if (profileData) {
-    return { success: true, data: formatInstagramToMarkdown(profileData) };
-  }
-  return { success: false, error: 'Não foi possível extrair dados do HTML' };
-}
-```
+- Recebe todos os dados do formulário
+- Cria usuário via `auth.admin.createUser`
+- Cria profile e business_profile
+- Vincula ao mentor (tabela `mentorados`)
+- Salva respostas das perguntas (tabela `behavioral_responses`)
+- Retorna magic link para auto-login
 
-**2.3. Nova função de parsing HTML:**
-```typescript
-function parseInstagramHTML(html: string): any {
-  // Tentar window._sharedData (formato antigo)
-  let match = html.match(/window\._sharedData\s*=\s*(\{.+?\});<\/script>/s);
-  if (match) {
-    const data = JSON.parse(match[1]);
-    return data?.entry_data?.ProfilePage?.[0]?.graphql?.user;
-  }
-  
-  // Tentar window.__additionalDataLoaded (formato novo)
-  match = html.match(/window\.__additionalDataLoaded\s*\(\s*['"].*?['"]\s*,\s*(\{.+?\})\s*\)/s);
-  if (match) {
-    const data = JSON.parse(match[1]);
-    return data?.graphql?.user || data?.user;
-  }
-  
-  // Fallback: meta tags
-  return parseInstagramMetaTags(html);
-}
-```
+### 4. Atualização do Modal "Adicionar Mentorado"
+**Arquivo:** `src/pages/admin/Mentorados.tsx`
 
-**2.4. Nova função scrapeInstagramWithPiloterr (fallback):**
-```typescript
-async function scrapeInstagramWithPiloterr(username: string): Promise<{success: boolean; data?: string; error?: string}> {
-  if (!PILOTERR_API_KEY) {
-    return { success: false, error: 'Piloterr API key não configurada' };
-  }
+- Ao clicar em "Enviar Formulário de Onboarding"
+- Mostrar link dinâmico com mentor_id real
+- Opção de copiar ou enviar via WhatsApp
 
-  const apiUrl = `https://piloterr.com/api/v2/instagram/user/info?query=${encodeURIComponent(username)}`;
-  
-  const response = await fetch(apiUrl, {
-    headers: { 'x-api-key': PILOTERR_API_KEY }
-  });
-  
-  const data = await response.json();
-  
-  if (data && !data.error) {
-    return { success: true, data: formatPiloterrToMarkdown(data) };
-  }
-  return { success: false, error: data?.error || 'Erro no Piloterr' };
-}
-```
+### 5. Navegação
+**Arquivo:** `src/components/layouts/AdminLayout.tsx`
 
-**2.5. Atualizar lógica de roteamento para Instagram:**
-```typescript
-if (platform === 'instagram') {
-  console.log('Instagram detected, trying ScraperAPI...');
-  const scraperResult = await scrapeInstagramWithScraperAPI(username);
-  
-  if (scraperResult.success) {
-    profileData = scraperResult.data;
-    scrapeMethod = 'scraperapi';
-  } else {
-    console.log('ScraperAPI failed, trying Piloterr fallback...');
-    const piloterrResult = await scrapeInstagramWithPiloterr(username);
-    
-    if (piloterrResult.success) {
-      profileData = piloterrResult.data;
-      scrapeMethod = 'piloterr';
-    } else {
-      // Manter Apify como último fallback
-      const apifyResult = await scrapeWithApify(profileUrl, platform);
-      if (apifyResult.success) {
-        profileData = apifyResult.data;
-        scrapeMethod = 'apify';
-      }
-    }
-  }
-}
-```
+- Adicionar item no menu: "Formulários" com ícone ClipboardList
 
-### 3. Funções de Formatação
+## Componentes UI do Typeform
 
-**formatInstagramToMarkdown:**
-```typescript
-function formatInstagramToMarkdown(profile: any): string {
-  return `
-# Perfil Instagram: @${profile.username}
+### QuestionCard
+- Pergunta em destaque (grande)
+- Input/opções adaptados ao tipo
+- Animação fade-in
+- Tecla Enter para avançar
 
-**Nome:** ${profile.full_name || 'N/A'}
-**Bio:** ${profile.biography || 'N/A'}
-**Seguidores:** ${profile.edge_followed_by?.count || profile.follower_count || 'N/A'}
-**Seguindo:** ${profile.edge_follow?.count || profile.following_count || 'N/A'}
-**Posts:** ${profile.edge_owner_to_timeline_media?.count || profile.media_count || 'N/A'}
-**Website:** ${profile.external_url || 'N/A'}
-**Verificado:** ${profile.is_verified ? 'Sim' : 'Não'}
-**Conta Business:** ${profile.is_business_account ? 'Sim' : 'Não'}
-**Categoria:** ${profile.business_category_name || profile.category_name || 'N/A'}
-  `.trim();
-}
-```
+### ProgressBar
+- Barra fina no topo
+- Mostra progresso das perguntas
 
-## Detalhes Técnicos
+### StepIndicator
+- Indicador visual de etapas (dados → negócio → perguntas → finalizar)
 
-### Secrets Necessárias
-| Secret | Serviço | Onde obter |
-|--------|---------|------------|
-| SCRAPERAPI_KEY | ScraperAPI | https://www.scraperapi.com/signup |
-| PILOTERR_API_KEY | Piloterr | https://piloterr.com/ |
+## Banco de Dados
+A estrutura já existe e será reutilizada:
 
-### Fluxo de Fallback para Instagram
-1. **ScraperAPI** (primário) - Renderiza JavaScript, bypassa proteções
-2. **Piloterr** (secundário) - API direta de dados do Instagram
-3. **Apify** (terciário) - Actor gratuito como último recurso
-4. **Entrada Manual** - Se todos falharem
+- `behavioral_questions`: perguntas por mentor (question_text, question_type, options, order_index, is_active)
+- `behavioral_responses`: respostas dos mentorados
+- `mentorados`: vínculo com mentor via mentor_id
+- `mentorado_business_profiles`: dados do negócio
 
-### Arquivos a Modificar
-- `supabase/functions/lead-qualifier/index.ts` - Adicionar novas funções de scraping
+## Arquivos a Criar/Modificar
 
-### Vantagens desta Abordagem
-1. **Maior confiabilidade** - ScraperAPI tem melhor taxa de sucesso com sites protegidos
-2. **Sem assinatura de actors** - APIs com planos pay-as-you-go
-3. **Múltiplos fallbacks** - 4 níveis de redundância
-4. **Melhor parsing** - Código específico para estrutura do Instagram
+| Arquivo | Ação |
+|---------|------|
+| `src/pages/admin/Formularios.tsx` | Criar - Editor de perguntas |
+| `src/pages/Onboarding.tsx` | Criar - Formulário typeform |
+| `src/components/onboarding/QuestionCard.tsx` | Criar - Card de pergunta |
+| `src/components/onboarding/ProgressBar.tsx` | Criar - Barra de progresso |
+| `supabase/functions/process-onboarding/index.ts` | Criar - Processamento |
+| `src/pages/admin/Mentorados.tsx` | Modificar - Link dinâmico |
+| `src/components/layouts/AdminLayout.tsx` | Modificar - Menu |
+| `src/App.tsx` | Modificar - Rotas |
 
-## Próximos Passos
-1. Você precisa fornecer as API keys do ScraperAPI e Piloterr
-2. Implementarei as funções de scraping
-3. Testaremos com um perfil real do Instagram
+## Design Visual
+
+- Fundo escuro com gradiente sutil
+- Perguntas centralizadas na tela
+- Fontes grandes e legíveis
+- Transições suaves (300ms)
+- Cores do mentor (se configuradas)
+- Mobile-first
