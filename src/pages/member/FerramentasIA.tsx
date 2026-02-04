@@ -103,8 +103,8 @@ export default function FerramentasIA() {
           <Sparkles className="h-6 w-6 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-2xl font-display font-bold">Ferramentas de IA</h1>
-          <p className="text-muted-foreground">8 ferramentas para otimizar seus resultados</p>
+          <h1 className="text-2xl font-display font-bold">Arsenal de Vendas</h1>
+          <p className="text-muted-foreground">8 armas de IA para dominar suas negociações</p>
         </div>
       </div>
 
