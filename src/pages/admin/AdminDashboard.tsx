@@ -141,10 +141,10 @@ export default function AdminDashboard() {
         {/* Quick Actions - Wide card */}
         <BentoCard size="wide" className="!p-0 overflow-hidden">
           <div className="h-full flex">
-            <Link to="/admin/crm" className="flex-1 p-6 group hover:bg-primary/5 transition-colors border-r border-border">
+            <Link to="/admin/jornada-cs" className="flex-1 p-6 group hover:bg-primary/5 transition-colors border-r border-border">
               <Target className="h-8 w-8 text-primary mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="font-semibold text-foreground text-lg">Gerenciar CRM</h3>
-              <p className="text-muted-foreground text-sm mt-1">Pipeline e leads</p>
+              <h3 className="font-semibold text-foreground text-lg">Gerenciar Jornada</h3>
+              <p className="text-muted-foreground text-sm mt-1">Etapas e sucesso do cliente</p>
             </Link>
             <Link to="/admin/mentorados" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
               <Users className="h-8 w-8 text-accent mb-4 group-hover:scale-110 transition-transform" />
