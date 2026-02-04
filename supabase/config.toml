@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.generate-email-campaign]
 verify_jwt = false
+
+[functions.system-fingerprint]
+verify_jwt = false

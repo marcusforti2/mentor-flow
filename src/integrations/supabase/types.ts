@@ -1495,6 +1495,42 @@ export type Database = {
           },
         ]
       }
+      system_fingerprints: {
+        Row: {
+          author: string | null
+          content_summary: string | null
+          created_at: string | null
+          full_content: string | null
+          id: string
+          metadata: Json | null
+          sha256_hash: string
+          system_name: string | null
+          version: string | null
+        }
+        Insert: {
+          author?: string | null
+          content_summary?: string | null
+          created_at?: string | null
+          full_content?: string | null
+          id?: string
+          metadata?: Json | null
+          sha256_hash: string
+          system_name?: string | null
+          version?: string | null
+        }
+        Update: {
+          author?: string | null
+          content_summary?: string | null
+          created_at?: string | null
+          full_content?: string | null
+          id?: string
+          metadata?: Json | null
+          sha256_hash?: string
+          system_name?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
       trail_lessons: {
         Row: {
           content_text: string | null
