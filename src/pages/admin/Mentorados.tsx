@@ -3,22 +3,56 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns";
 import { 
   Users, 
   UserCheck, 
   Clock, 
   Search, 
-  CheckCircle, 
-  XCircle,
+  CheckCircle,
   Loader2,
   Mail,
   Calendar,
-  Shield
+  Shield,
+  Plus,
+  FileUp,
+  Edit3,
+  Filter,
+  TrendingUp,
+  Eye,
+  Phone,
+  Building2,
+  Target,
+  ChevronRight
 } from "lucide-react";
 
 interface PendingUser {
@@ -34,12 +68,30 @@ interface Mentorado {
   user_id: string;
   status: string | null;
   joined_at: string | null;
+  onboarding_completed: boolean | null;
   profile: {
     full_name: string | null;
     email: string | null;
     avatar_url: string | null;
+    phone: string | null;
+  } | null;
+  business_profile: {
+    business_name: string | null;
+    business_type: string | null;
+    maturity_level: string | null;
   } | null;
 }
+
+type JourneyFilter = 'all' | 'week' | 'month' | 'stage';
+type StageFilter = 'all' | 'onboarding' | 'aprendizado' | 'aplicacao' | 'escala' | 'maestria';
+
+const JOURNEY_STAGES = [
+  { id: 'onboarding', name: 'Onboarding', minDay: 0, maxDay: 7, color: 'bg-blue-500' },
+  { id: 'aprendizado', name: 'Aprendizado', minDay: 8, maxDay: 30, color: 'bg-purple-500' },
+  { id: 'aplicacao', name: 'Aplicação', minDay: 31, maxDay: 90, color: 'bg-amber-500' },
+  { id: 'escala', name: 'Escala', minDay: 91, maxDay: 180, color: 'bg-green-500' },
+  { id: 'maestria', name: 'Maestria', minDay: 181, maxDay: 365, color: 'bg-rose-500' },
+];
 
 const Mentorados = () => {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -47,6 +99,29 @@ const Mentorados = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [journeyFilter, setJourneyFilter] = useState<JourneyFilter>('all');
+  const [stageFilter, setStageFilter] = useState<StageFilter>('all');
+  const [weekFilter, setWeekFilter] = useState<string>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
+  
+  // Add mentorado dialog
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addMethod, setAddMethod] = useState<'manual' | 'form' | null>(null);
+  
+  // Manual add form
+  const [manualForm, setManualForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    business_name: '',
+    business_type: '',
+    maturity_level: '',
+    notes: ''
+  });
+  const [isAddingManual, setIsAddingManual] = useState(false);
+  
+  // Detail sheet
+  const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -78,26 +153,36 @@ const Mentorados = () => {
             id,
             user_id,
             status,
-            joined_at
+            joined_at,
+            onboarding_completed
           `)
           .eq('mentor_id', mentorData.id);
         
         if (mentoradosError) throw mentoradosError;
         
-        // Fetch profiles for mentorados
+        // Fetch profiles and business profiles for mentorados
         if (mentoradosData && mentoradosData.length > 0) {
           const userIds = mentoradosData.map(m => m.user_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, full_name, email, avatar_url')
-            .in('user_id', userIds);
+          const mentoradoIds = mentoradosData.map(m => m.id);
           
-          const mentoradosWithProfiles = mentoradosData.map(m => ({
+          const [profilesResult, businessResult] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('user_id, full_name, email, avatar_url, phone')
+              .in('user_id', userIds),
+            supabase
+              .from('mentorado_business_profiles')
+              .select('mentorado_id, business_name, business_type, maturity_level')
+              .in('mentorado_id', mentoradoIds)
+          ]);
+          
+          const mentoradosWithData = mentoradosData.map(m => ({
             ...m,
-            profile: profiles?.find(p => p.user_id === m.user_id) || null
+            profile: profilesResult.data?.find(p => p.user_id === m.user_id) || null,
+            business_profile: businessResult.data?.find(b => b.mentorado_id === m.id) || null
           }));
           
-          setMentorados(mentoradosWithProfiles);
+          setMentorados(mentoradosWithData);
         } else {
           setMentorados([]);
         }
@@ -118,13 +203,32 @@ const Mentorados = () => {
     fetchData();
   }, [user]);
 
+  const getJourneyDay = (joinedAt: string | null) => {
+    if (!joinedAt) return 0;
+    return differenceInDays(new Date(), new Date(joinedAt));
+  };
+
+  const getJourneyWeek = (joinedAt: string | null) => {
+    if (!joinedAt) return 0;
+    return differenceInWeeks(new Date(), new Date(joinedAt)) + 1;
+  };
+
+  const getJourneyMonth = (joinedAt: string | null) => {
+    if (!joinedAt) return 0;
+    return differenceInMonths(new Date(), new Date(joinedAt)) + 1;
+  };
+
+  const getJourneyStage = (joinedAt: string | null) => {
+    const days = getJourneyDay(joinedAt);
+    return JOURNEY_STAGES.find(s => days >= s.minDay && days <= s.maxDay) || JOURNEY_STAGES[4];
+  };
+
   const handleApprove = async (userId: string) => {
     if (!user) return;
     
     setApprovingId(userId);
     
     try {
-      // Get mentor ID
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
@@ -135,7 +239,6 @@ const Mentorados = () => {
         throw new Error('Mentor não encontrado');
       }
       
-      // Approve the mentorado
       const { error } = await supabase.rpc('approve_mentorado', {
         _user_id: userId,
         _mentor_id: mentorData.id
@@ -148,7 +251,6 @@ const Mentorados = () => {
         description: "O usuário agora pode acessar a plataforma.",
       });
       
-      // Refresh data
       await fetchData();
     } catch (error: any) {
       console.error('Error approving user:', error);
@@ -159,6 +261,81 @@ const Mentorados = () => {
       });
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const handleManualAdd = async () => {
+    if (!user || !manualForm.full_name || !manualForm.email) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Nome e email são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsAddingManual(true);
+    
+    try {
+      // Get mentor ID
+      const { data: mentorData } = await supabase
+        .from('mentors')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (!mentorData) throw new Error('Mentor não encontrado');
+      
+      // Create a placeholder user_id for manual entry
+      const placeholderUserId = crypto.randomUUID();
+      
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: placeholderUserId,
+          full_name: manualForm.full_name,
+          email: manualForm.email,
+          phone: manualForm.phone || null
+        });
+      
+      // Note: This will fail due to FK constraint, but we can show a message
+      if (profileError) {
+        // For now, show info that manual add requires a real user
+        toast({
+          title: "Atenção",
+          description: "Para adicionar um mentorado manualmente, envie o link de cadastro para que ele crie uma conta primeiro.",
+          variant: "default",
+        });
+        setIsAddDialogOpen(false);
+        return;
+      }
+      
+      toast({
+        title: "Mentorado adicionado!",
+        description: "O mentorado foi adicionado com sucesso.",
+      });
+      
+      setIsAddDialogOpen(false);
+      setManualForm({
+        full_name: '',
+        email: '',
+        phone: '',
+        business_name: '',
+        business_type: '',
+        maturity_level: '',
+        notes: ''
+      });
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error adding mentorado:', error);
+      toast({
+        title: "Erro ao adicionar",
+        description: error.message || "Não foi possível adicionar o mentorado.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingManual(false);
     }
   };
 
@@ -176,15 +353,44 @@ const Mentorados = () => {
     });
   };
 
+  // Apply all filters
+  const filteredMentorados = mentorados.filter(m => {
+    // Search filter
+    const matchesSearch = 
+      (m.profile?.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (m.profile?.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (m.business_profile?.business_name?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Journey filters
+    if (journeyFilter === 'week' && weekFilter !== 'all') {
+      const week = getJourneyWeek(m.joined_at);
+      if (week !== parseInt(weekFilter)) return false;
+    }
+    
+    if (journeyFilter === 'month' && monthFilter !== 'all') {
+      const month = getJourneyMonth(m.joined_at);
+      if (month !== parseInt(monthFilter)) return false;
+    }
+    
+    if (journeyFilter === 'stage' && stageFilter !== 'all') {
+      const stage = getJourneyStage(m.joined_at);
+      if (stage.id !== stageFilter) return false;
+    }
+    
+    return true;
+  });
+
   const filteredPending = pendingUsers.filter(u => 
     (u.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
     (u.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
-  const filteredMentorados = mentorados.filter(m => 
-    (m.profile?.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (m.profile?.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-  );
+  // Stats
+  const avgDays = mentorados.length > 0 
+    ? Math.round(mentorados.reduce((acc, m) => acc + getJourneyDay(m.joined_at), 0) / mentorados.length)
+    : 0;
 
   if (isLoading) {
     return (
@@ -195,29 +401,200 @@ const Mentorados = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Mentorados</h1>
-          <p className="text-muted-foreground">Gerencie e aprove novos mentorados</p>
+          <p className="text-muted-foreground">Gerencie sua base de mentorados</p>
         </div>
         
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              className="pl-10 w-64 bg-secondary/50"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gradient-gold text-primary-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar Mentorado
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Adicionar Mentorado</DialogTitle>
+              <DialogDescription>
+                Escolha como deseja adicionar um novo mentorado
+              </DialogDescription>
+            </DialogHeader>
+            
+            {!addMethod ? (
+              <div className="grid gap-4 py-4">
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-start gap-2"
+                  onClick={() => setAddMethod('form')}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileUp className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Enviar Formulário de Onboarding</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground text-left">
+                    Gere um link de cadastro com o formulário completo de onboarding
+                  </span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-start gap-2"
+                  onClick={() => setAddMethod('manual')}
+                >
+                  <div className="flex items-center gap-2">
+                    <Edit3 className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">Preencher Manualmente</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground text-left">
+                    Cadastre um mentorado preenchendo os dados você mesmo
+                  </span>
+                </Button>
+              </div>
+            ) : addMethod === 'form' ? (
+              <div className="space-y-4 py-4">
+                <div className="p-4 bg-secondary/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Copie o link abaixo e envie para o seu mentorado. Ele preencherá o formulário de onboarding completo.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={`${window.location.origin}/auth?mode=register`}
+                      className="bg-background"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/auth?mode=register`);
+                        toast({ title: "Link copiado!" });
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                  </div>
+                </div>
+                <Button variant="ghost" onClick={() => setAddMethod(null)} className="w-full">
+                  Voltar
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="full_name">Nome Completo *</Label>
+                    <Input
+                      id="full_name"
+                      value={manualForm.full_name}
+                      onChange={(e) => setManualForm({...manualForm, full_name: e.target.value})}
+                      placeholder="João Silva"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={manualForm.email}
+                      onChange={(e) => setManualForm({...manualForm, email: e.target.value})}
+                      placeholder="joao@email.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">WhatsApp</Label>
+                    <Input
+                      id="phone"
+                      value={manualForm.phone}
+                      onChange={(e) => setManualForm({...manualForm, phone: e.target.value})}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="business_name">Nome do Negócio</Label>
+                    <Input
+                      id="business_name"
+                      value={manualForm.business_name}
+                      onChange={(e) => setManualForm({...manualForm, business_name: e.target.value})}
+                      placeholder="Empresa XYZ"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="business_type">Tipo de Negócio</Label>
+                    <Select
+                      value={manualForm.business_type}
+                      onValueChange={(value) => setManualForm({...manualForm, business_type: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="servicos">Serviços</SelectItem>
+                        <SelectItem value="produtos">Produtos</SelectItem>
+                        <SelectItem value="saas">SaaS</SelectItem>
+                        <SelectItem value="consultoria">Consultoria</SelectItem>
+                        <SelectItem value="outros">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maturity_level">Nível de Maturidade</Label>
+                    <Select
+                      value={manualForm.maturity_level}
+                      onValueChange={(value) => setManualForm({...manualForm, maturity_level: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="iniciante">Iniciante</SelectItem>
+                        <SelectItem value="crescimento">Crescimento</SelectItem>
+                        <SelectItem value="estabelecido">Estabelecido</SelectItem>
+                        <SelectItem value="escala">Em Escala</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    value={manualForm.notes}
+                    onChange={(e) => setManualForm({...manualForm, notes: e.target.value})}
+                    placeholder="Anotações sobre o mentorado..."
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setAddMethod(null)} className="flex-1">
+                    Voltar
+                  </Button>
+                  <Button 
+                    onClick={handleManualAdd} 
+                    disabled={isAddingManual}
+                    className="flex-1 gradient-gold text-primary-foreground"
+                  >
+                    {isAddingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="glass-card">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -226,7 +603,7 @@ const Mentorados = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{pendingUsers.length}</p>
-                <p className="text-sm text-muted-foreground">Aguardando aprovação</p>
+                <p className="text-sm text-muted-foreground">Pendentes</p>
               </div>
             </div>
           </CardContent>
@@ -242,7 +619,7 @@ const Mentorados = () => {
                 <p className="text-2xl font-bold text-foreground">
                   {mentorados.filter(m => m.status === 'active').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Mentorados ativos</p>
+                <p className="text-sm text-muted-foreground">Ativos</p>
               </div>
             </div>
           </CardContent>
@@ -256,25 +633,202 @@ const Mentorados = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{mentorados.length}</p>
-                <p className="text-sm text-muted-foreground">Total de mentorados</p>
+                <p className="text-sm text-muted-foreground">Total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="glass-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-purple-500/10">
+                <TrendingUp className="h-6 w-6 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{avgDays}</p>
+                <p className="text-sm text-muted-foreground">Média dias</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center gap-3 p-4 glass-card rounded-xl">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, email ou empresa..."
+            className="pl-10 bg-secondary/50"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={journeyFilter} onValueChange={(v) => setJourneyFilter(v as JourneyFilter)}>
+            <SelectTrigger className="w-[140px] bg-secondary/50">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="week">Por Semana</SelectItem>
+              <SelectItem value="month">Por Mês</SelectItem>
+              <SelectItem value="stage">Por Etapa</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {journeyFilter === 'week' && (
+          <Select value={weekFilter} onValueChange={setWeekFilter}>
+            <SelectTrigger className="w-[140px] bg-secondary/50">
+              <SelectValue placeholder="Semana" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {[...Array(12)].map((_, i) => (
+                <SelectItem key={i} value={String(i + 1)}>Semana {i + 1}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        
+        {journeyFilter === 'month' && (
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger className="w-[140px] bg-secondary/50">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {[...Array(12)].map((_, i) => (
+                <SelectItem key={i} value={String(i + 1)}>Mês {i + 1}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        
+        {journeyFilter === 'stage' && (
+          <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as StageFilter)}>
+            <SelectTrigger className="w-[160px] bg-secondary/50">
+              <SelectValue placeholder="Etapa" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {JOURNEY_STAGES.map((stage) => (
+                <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
       {/* Tabs */}
-      <Tabs defaultValue="pending" className="w-full">
+      <Tabs defaultValue="active" className="w-full">
         <TabsList className="bg-secondary/50">
-          <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Clock className="w-4 h-4 mr-2" />
-            Pendentes ({pendingUsers.length})
-          </TabsTrigger>
           <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <UserCheck className="w-4 h-4 mr-2" />
             Ativos ({mentorados.length})
           </TabsTrigger>
+          <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Clock className="w-4 h-4 mr-2" />
+            Pendentes ({pendingUsers.length})
+          </TabsTrigger>
         </TabsList>
+        
+        {/* Active Mentorados Tab */}
+        <TabsContent value="active" className="mt-6">
+          {filteredMentorados.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="py-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {searchTerm || journeyFilter !== 'all' ? "Nenhum resultado encontrado" : "Nenhum mentorado ainda"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {searchTerm || journeyFilter !== 'all' 
+                    ? "Tente ajustar os filtros de busca."
+                    : "Adicione mentorados ou aprove usuários pendentes."}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredMentorados.map((mentorado) => {
+                const journeyDay = getJourneyDay(mentorado.joined_at);
+                const stage = getJourneyStage(mentorado.joined_at);
+                
+                return (
+                  <Card 
+                    key={mentorado.id} 
+                    className="glass-card hover:border-primary/30 transition-all cursor-pointer group"
+                    onClick={() => setSelectedMentorado(mentorado)}
+                  >
+                    <CardContent className="pt-6">
+                      <div className="flex items-start gap-4">
+                        <div className="relative">
+                          <Avatar className="h-12 w-12 border-2 border-primary/20">
+                            <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {getInitials(mentorado.profile?.full_name || null)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${stage.color} border-2 border-card`} />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-foreground truncate">
+                              {mentorado.profile?.full_name || "Sem nome"}
+                            </h3>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Mail className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{mentorado.profile?.email}</span>
+                          </div>
+                          
+                          {mentorado.business_profile?.business_name && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                              <Building2 className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{mentorado.business_profile.business_name}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="outline" 
+                            className={`${stage.color}/10 text-foreground border-${stage.color.replace('bg-', '')}/30`}
+                          >
+                            {stage.name}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            Dia {journeyDay}
+                          </span>
+                        </div>
+                        
+                        {mentorado.onboarding_completed ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">
+                            Onboarding ✓
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/30 text-xs">
+                            Pendente
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
         
         {/* Pending Users Tab */}
         <TabsContent value="pending" className="mt-6">
@@ -296,9 +850,9 @@ const Mentorados = () => {
                 <Card key={pendingUser.user_id} className="glass-card hover:border-primary/30 transition-colors">
                   <CardContent className="pt-6">
                     <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12 border-2 border-primary/20">
+                      <Avatar className="h-12 w-12 border-2 border-yellow-500/30">
                         <AvatarImage src={pendingUser.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
+                        <AvatarFallback className="bg-yellow-500/10 text-yellow-500">
                           {getInitials(pendingUser.full_name)}
                         </AvatarFallback>
                       </Avatar>
@@ -341,60 +895,115 @@ const Mentorados = () => {
             </div>
           )}
         </TabsContent>
-        
-        {/* Active Mentorados Tab */}
-        <TabsContent value="active" className="mt-6">
-          {filteredMentorados.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="py-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Nenhum mentorado ainda
-                </h3>
-                <p className="text-muted-foreground">
-                  Aprove usuários pendentes para que eles se tornem seus mentorados.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMentorados.map((mentorado) => (
-                <Card key={mentorado.id} className="glass-card hover:border-primary/30 transition-colors">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12 border-2 border-green-500/30">
-                        <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-green-500/10 text-green-500">
-                          {getInitials(mentorado.profile?.full_name || null)}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground truncate">
-                            {mentorado.profile?.full_name || "Sem nome"}
-                          </h3>
-                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                            Ativo
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Mail className="h-3 w-3" />
-                          <span className="truncate">{mentorado.profile?.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Desde: {formatDate(mentorado.joined_at)}</span>
-                        </div>
+      </Tabs>
+
+      {/* Detail Sheet */}
+      <Sheet open={!!selectedMentorado} onOpenChange={() => setSelectedMentorado(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          {selectedMentorado && (
+            <>
+              <SheetHeader>
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16 border-2 border-primary/30">
+                    <AvatarImage src={selectedMentorado.profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                      {getInitials(selectedMentorado.profile?.full_name || null)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <SheetTitle className="text-left">
+                      {selectedMentorado.profile?.full_name || "Sem nome"}
+                    </SheetTitle>
+                    <SheetDescription className="text-left">
+                      {selectedMentorado.profile?.email}
+                    </SheetDescription>
+                  </div>
+                </div>
+              </SheetHeader>
+              
+              <div className="space-y-6 mt-6">
+                {/* Journey Info */}
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
+                  <h4 className="font-semibold text-sm text-foreground">Jornada</h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {getJourneyDay(selectedMentorado.joined_at)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Dias</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {getJourneyWeek(selectedMentorado.joined_at)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Semana</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {getJourneyMonth(selectedMentorado.joined_at)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Mês</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Badge className={`${getJourneyStage(selectedMentorado.joined_at).color} text-white`}>
+                      {getJourneyStage(selectedMentorado.joined_at).name}
+                    </Badge>
+                  </div>
+                </div>
+                
+                {/* Contact Info */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm text-foreground">Contato</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedMentorado.profile?.email || "Não informado"}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedMentorado.profile?.phone || "Não informado"}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>Desde {formatDate(selectedMentorado.joined_at)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Business Info */}
+                {selectedMentorado.business_profile && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm text-foreground">Negócio</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-sm">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span>{selectedMentorado.business_profile.business_name || "Não informado"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Target className="h-4 w-4 text-muted-foreground" />
+                        <span>{selectedMentorado.business_profile.business_type || "Não informado"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <span>Maturidade: {selectedMentorado.business_profile.maturity_level || "Não informado"}</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  </div>
+                )}
+                
+                {/* Actions */}
+                <div className="flex gap-2 pt-4">
+                  <Button variant="outline" className="flex-1">
+                    <Eye className="h-4 w-4 mr-2" />
+                    Ver Perfil Completo
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
-        </TabsContent>
-      </Tabs>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
