@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, code, fullName, phone, userType } = await req.json();
+    const { email, code, fullName, phone, userType, devMode, mentorId } = await req.json();
 
     if (!email || !code) {
       throw new Error("Email e código são obrigatórios");
@@ -29,29 +29,38 @@ serve(async (req) => {
     const normalizedCode = code.replace(/\D/g, '');
     const normalizedEmail = email.toLowerCase().trim();
     
-    console.log("Verifying OTP:", { email: normalizedEmail, code: normalizedCode });
+    console.log("Verifying OTP:", { email: normalizedEmail, code: normalizedCode, devMode });
     
-    // Find any valid OTP for this email/code combination that hasn't expired
-    const { data: otpData, error: otpError } = await supabase
-      .from("otp_codes")
-      .select("*")
-      .eq("email", normalizedEmail)
-      .eq("code", normalizedCode)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    console.log("OTP query result:", { found: !!otpData, error: otpError?.message });
+    // DEV MODE: Skip OTP validation with special code
+    let otpData = null;
+    if (devMode && normalizedCode === '000000') {
+      console.log("DEV MODE: Bypassing OTP validation");
+      otpData = { id: 'dev-mode', devMode: true };
+    } else {
+      // Find any valid OTP for this email/code combination that hasn't expired
+      const { data: foundOtp, error: otpError } = await supabase
+        .from("otp_codes")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .eq("code", normalizedCode)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      console.log("OTP query result:", { found: !!foundOtp, error: otpError?.message });
 
-    if (otpError) {
-      console.error("OTP query error:", otpError);
-      throw new Error("Erro ao verificar código");
-    }
+      if (otpError) {
+        console.error("OTP query error:", otpError);
+        throw new Error("Erro ao verificar código");
+      }
 
-    if (!otpData) {
-      console.log("No valid OTP found for:", { email: normalizedEmail, code: normalizedCode });
-      throw new Error("Código inválido ou expirado");
+      if (!foundOtp) {
+        console.log("No valid OTP found for:", { email: normalizedEmail, code: normalizedCode });
+        throw new Error("Código inválido ou expirado");
+      }
+      
+      otpData = foundOtp;
     }
 
     // Check if user exists
@@ -72,11 +81,13 @@ serve(async (req) => {
         throw new Error("Erro ao autenticar");
       }
 
-      // Mark code as used ONLY after successful link generation
-      await supabase
-        .from("otp_codes")
-        .update({ used: true })
-        .eq("id", otpData.id);
+      // Mark code as used ONLY after successful link generation (skip in devMode)
+      if (!devMode && otpData?.id) {
+        await supabase
+          .from("otp_codes")
+          .update({ used: true })
+          .eq("id", otpData.id);
+      }
 
       console.log("Magic link generated for existing user:", normalizedEmail);
 
@@ -154,6 +165,55 @@ serve(async (req) => {
         }
 
         console.log(`Role '${validUserType}' assigned to user:`, userId);
+
+        // If mentorado, create the mentorado record
+        if (validUserType === 'mentorado') {
+          // Get mentor_id - use provided mentorId or find first available mentor
+          let targetMentorId = mentorId;
+          if (!targetMentorId) {
+            const { data: firstMentor } = await supabase
+              .from("mentors")
+              .select("id")
+              .limit(1)
+              .single();
+            targetMentorId = firstMentor?.id;
+          }
+
+          if (targetMentorId) {
+            const { error: mentoradoError } = await supabase
+              .from("mentorados")
+              .insert({
+                user_id: userId,
+                mentor_id: targetMentorId,
+                status: 'active',
+                onboarding_completed: devMode ? true : false,
+              });
+
+            if (mentoradoError) {
+              console.error("Error creating mentorado:", mentoradoError);
+            } else {
+              console.log("Mentorado record created for user:", userId);
+            }
+          }
+        }
+
+        // If mentor in devMode, create mentor record
+        if (validUserType === 'mentor' && devMode) {
+          const { data: mentorRecord, error: mentorError } = await supabase
+            .from("mentors")
+            .insert({
+              user_id: userId,
+              business_name: `Mentoria de ${fullName}`,
+            })
+            .select()
+            .single();
+
+          if (mentorError) {
+            console.error("Error creating mentor:", mentorError);
+          } else {
+            console.log("Mentor record created:", mentorRecord?.id);
+          }
+        }
       }
 
       // Generate magic link for the new user
@@ -167,11 +227,13 @@ serve(async (req) => {
         throw new Error("Erro ao autenticar novo usuário");
       }
 
-      // Mark code as used ONLY after everything succeeded
-      await supabase
-        .from("otp_codes")
-        .update({ used: true })
-        .eq("id", otpData.id);
+      // Mark code as used ONLY after everything succeeded (skip in devMode)
+      if (!devMode && otpData?.id) {
+        await supabase
+          .from("otp_codes")
+          .update({ used: true })
+          .eq("id", otpData.id);
+      }
 
       console.log("New user created and magic link generated:", normalizedEmail);
 
@@ -180,6 +242,7 @@ serve(async (req) => {
           success: true,
           isNewUser: true,
           userType: validUserType,
+          userId: userId,
           actionLink: linkData.properties?.action_link,
           tokenHash: linkData.properties?.hashed_token,
           email: normalizedEmail,

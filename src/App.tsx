@@ -21,6 +21,7 @@ import { MemberLayout } from "@/components/layouts/MemberLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Mentorados from "./pages/admin/Mentorados";
 import AdminTrilhas from "./pages/admin/Trilhas";
+import DevTools from "./pages/admin/DevTools";
 
 // Member Pages
 import MemberDashboard from "./pages/member/MemberDashboard";
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
               <Route path="emails" element={<PlaceholderPage title="Email Marketing" />} />
               <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
+              <Route path="devtools" element={<DevTools />} />
             </Route>
 
             {/* Member Routes (Mentorado + Admin Master) */}
