@@ -240,7 +240,7 @@ export default function FlowTestModal({
               <div className="bg-white rounded-[28px] h-[calc(100%-32px)] overflow-hidden flex flex-col">
                 {/* Email Header */}
                 <div className="bg-gray-100 p-3 border-b border-gray-200">
-                  <p className="text-xs text-gray-500">De: noreply@equipe.aceleracaoforti.online</p>
+                  <p className="text-xs text-gray-500">De: LBV TECH &lt;noreply@equipe.aceleracaoforti.online&gt;</p>
                   <p className="text-sm font-semibold text-gray-900 truncate mt-1">
                     {previewContent?.subject || 'Selecione um email'}
                   </p>
