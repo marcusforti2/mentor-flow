@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
 import { DevModeSelector } from '@/components/DevModeSelector';
+import { WhatsAppGroupModal } from '@/components/WhatsAppGroupModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
@@ -148,6 +149,9 @@ export function MemberLayout() {
 
       {/* Dev Mode Selector */}
       <DevModeSelector />
+
+      {/* WhatsApp Group Modal - First Login */}
+      <WhatsAppGroupModal />
     </div>
   );
 }
