@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   MessageSquare, 
   Copy, 
@@ -20,7 +20,9 @@ import {
   Sparkles,
   Clock,
   Target,
-  Zap
+  Zap,
+  Users,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +39,7 @@ interface ColdMessage {
   title: string;
   content: string;
   timing: string;
-  subject?: string; // For email
+  subject?: string;
 }
 
 interface ColdMessagesResult {
@@ -45,6 +47,16 @@ interface ColdMessagesResult {
   message2: ColdMessage;
   message3?: ColdMessage;
   tips: string[];
+}
+
+interface SavedLead {
+  id: string;
+  contact_name: string;
+  company: string | null;
+  temperature: string | null;
+  ai_insights: any;
+  notes: string | null;
+  updated_at: string | null;
 }
 
 export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps) {
@@ -56,28 +68,108 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
   const [messages, setMessages] = useState<ColdMessagesResult | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [savedLeads, setSavedLeads] = useState<SavedLead[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('');
+  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
 
+  // Fetch business profile and saved leads
   useEffect(() => {
-    const fetchBusinessProfile = async () => {
+    const fetchData = async () => {
       if (!mentoradoId) return;
 
+      setIsLoadingLeads(true);
+
       try {
-        const { data } = await supabase
+        // Fetch business profile
+        const { data: profileData } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
           .eq('mentorado_id', mentoradoId)
           .single();
 
-        if (data) {
-          setBusinessProfile(data);
+        if (profileData) {
+          setBusinessProfile(profileData);
+        }
+
+        // Fetch saved leads from CRM (most recent first)
+        const { data: leadsData } = await supabase
+          .from('crm_prospections')
+          .select('id, contact_name, company, temperature, ai_insights, notes, updated_at')
+          .eq('mentorado_id', mentoradoId)
+          .order('updated_at', { ascending: false })
+          .limit(20);
+
+        if (leadsData) {
+          setSavedLeads(leadsData);
         }
       } catch (error) {
-        console.error('Error fetching business profile:', error);
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoadingLeads(false);
       }
     };
 
-    fetchBusinessProfile();
+    fetchData();
   }, [mentoradoId]);
+
+  // Handle lead selection
+  const handleLeadSelect = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    
+    if (leadId === 'manual') {
+      setLeadName('');
+      setLeadContext('');
+      return;
+    }
+
+    const lead = savedLeads.find(l => l.id === leadId);
+    if (!lead) return;
+
+    setLeadName(lead.contact_name);
+    
+    // Build context from saved data
+    const contextParts: string[] = [];
+    
+    if (lead.company) {
+      contextParts.push(`Empresa: ${lead.company}`);
+    }
+    
+    if (lead.temperature) {
+      const tempLabels: Record<string, string> = {
+        hot: 'Lead quente',
+        warm: 'Lead morno',
+        cold: 'Lead frio'
+      };
+      contextParts.push(tempLabels[lead.temperature] || lead.temperature);
+    }
+    
+    // Extract AI insights if available
+    if (lead.ai_insights) {
+      const insights = lead.ai_insights;
+      
+      if (insights.profileSummary) {
+        contextParts.push(`Perfil: ${insights.profileSummary}`);
+      }
+      
+      if (insights.painPoints && Array.isArray(insights.painPoints)) {
+        contextParts.push(`Dores: ${insights.painPoints.slice(0, 3).join(', ')}`);
+      }
+      
+      if (insights.opportunityScore) {
+        contextParts.push(`Score de oportunidade: ${insights.opportunityScore}/10`);
+      }
+      
+      if (insights.suggestedApproach) {
+        contextParts.push(`Abordagem sugerida: ${insights.suggestedApproach}`);
+      }
+    }
+    
+    if (lead.notes) {
+      contextParts.push(`Notas: ${lead.notes}`);
+    }
+    
+    setLeadContext(contextParts.join('\n'));
+  };
 
   const handleGenerate = async () => {
     if (!leadName.trim()) {
@@ -168,6 +260,51 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Lead Selector */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              Selecionar Lead
+            </Label>
+            <Select value={selectedLeadId} onValueChange={handleLeadSelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={isLoadingLeads ? "Carregando leads..." : "Escolha um lead salvo ou digite manualmente"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    <span>Digitar manualmente</span>
+                  </div>
+                </SelectItem>
+                {savedLeads.map((lead) => (
+                  <SelectItem key={lead.id} value={lead.id}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{lead.contact_name}</span>
+                      {lead.company && (
+                        <span className="text-muted-foreground text-xs">• {lead.company}</span>
+                      )}
+                      {lead.temperature && (
+                        <Badge variant="outline" className={`text-xs ml-1 ${
+                          lead.temperature === 'hot' ? 'border-destructive/50 text-destructive' :
+                          lead.temperature === 'warm' ? 'border-warning/50 text-warning' :
+                          'border-muted-foreground/50'
+                        }`}>
+                          {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
+                        </Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {savedLeads.length === 0 && !isLoadingLeads && (
+              <p className="text-xs text-muted-foreground">
+                Nenhum lead salvo. Adicione leads no CRM ou qualifique via IA.
+              </p>
+            )}
+          </div>
+
           {/* Platform Selection */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
@@ -205,6 +342,7 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
               placeholder="Ex: Dr. João Silva"
               value={leadName}
               onChange={(e) => setLeadName(e.target.value)}
+              disabled={selectedLeadId && selectedLeadId !== 'manual'}
             />
           </div>
 
