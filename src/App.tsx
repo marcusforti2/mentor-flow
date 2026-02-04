@@ -24,6 +24,7 @@ import Mentorados from "./pages/admin/Mentorados";
 import JornadaCS from "./pages/admin/JornadaCS";
 import AdminTrilhas from "./pages/admin/Trilhas";
 import DevTools from "./pages/admin/DevTools";
+import PropriedadeIntelectual from "./pages/admin/PropriedadeIntelectual";
 import EmailMarketing from "./pages/admin/EmailMarketing";
 import Calendario from "./pages/admin/Calendario";
 // Formularios is now embedded within Mentorados page
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="emails" element={<EmailMarketing />} />
               <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
               <Route path="devtools" element={<DevTools />} />
+              <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
             </Route>
 
             {/* Member Routes (Mentorado + Admin Master) */}
