@@ -2,19 +2,38 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Bot, Send, RefreshCw, User, Lightbulb } from 'lucide-react';
+import { Bot, Send, RefreshCw, User, Lightbulb, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import { buildQualificationContext } from '@/hooks/useLeadsWithQualification';
+import type { LeadQualificationReport } from '@/lib/api/firecrawl';
 
 interface VirtualMentorProps {
-  mentoradoId: string;
+  mentoradoId: string | null;
 }
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface SavedLead {
+  id: string;
+  contact_name: string;
+  company: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  temperature: string | null;
+  status: string | null;
+  ai_insights: any;
+  notes: string | null;
+  updated_at: string | null;
 }
 
 const quickQuestions = [
@@ -30,12 +49,71 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Lead selection
+  const [leads, setLeads] = useState<SavedLead[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState('');
+  const [selectedLead, setSelectedLead] = useState<SavedLead | null>(null);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const [showLeadContext, setShowLeadContext] = useState(false);
+
+  // Fetch leads
+  useEffect(() => {
+    const fetchLeads = async () => {
+      if (!mentoradoId) return;
+      setIsLoadingLeads(true);
+      try {
+        const { data, error } = await supabase
+          .from('crm_prospections')
+          .select('id, contact_name, company, contact_email, contact_phone, temperature, status, ai_insights, notes, updated_at')
+          .eq('mentorado_id', mentoradoId)
+          .order('updated_at', { ascending: false })
+          .limit(50);
+        
+        if (error) throw error;
+        setLeads(data || []);
+      } catch (error) {
+        console.error('Error fetching leads:', error);
+      } finally {
+        setIsLoadingLeads(false);
+      }
+    };
+    
+    fetchLeads();
+  }, [mentoradoId]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const handleLeadSelect = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    if (leadId === 'none') {
+      setSelectedLead(null);
+      return;
+    }
+    const lead = leads.find((l) => l.id === leadId);
+    setSelectedLead(lead || null);
+    if (lead) {
+      const hasQualification = !!(lead.ai_insights as any)?.behavioral_profile;
+      toast.success(`Lead "${lead.contact_name}" selecionado${hasQualification ? ' (com qualificação)' : ''}`);
+    }
+  };
+
+  const buildLeadContextString = (): string => {
+    if (!selectedLead) return '';
+    
+    // Adapta para o formato esperado pelo buildQualificationContext
+    const enrichedLead = {
+      ...selectedLead,
+      ai_insights: selectedLead.ai_insights as LeadQualificationReport | null,
+      hasQualification: !!(selectedLead.ai_insights as any)?.behavioral_profile
+    };
+    
+    return buildQualificationContext(enrichedLead);
+  };
 
   const sendMessage = async (messageText?: string) => {
     const text = messageText || input.trim();
@@ -48,6 +126,9 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
 
     // Create abort controller for this request
     abortControllerRef.current = new AbortController();
+
+    // Build context with lead info if selected
+    const leadContext = buildLeadContextString();
 
     try {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tools`;
@@ -64,6 +145,7 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
           stream: true,
           data: {
             messages: [...messages, userMessage],
+            leadContext: leadContext || undefined,
           },
         }),
         signal: abortControllerRef.current.signal,
@@ -186,6 +268,8 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
     setInput('');
   };
 
+  const hasQualification = !!(selectedLead?.ai_insights as any)?.behavioral_profile;
+
   return (
     <Card className="glass-card flex flex-col h-[700px] lg:h-[750px]">
       <CardHeader className="pb-4 border-b border-border/50">
@@ -208,6 +292,81 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
             </Button>
           )}
         </div>
+        
+        {/* Lead Selector */}
+        <div className="mt-4 pt-4 border-t border-border/30 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                Contexto de Lead (opcional)
+              </Label>
+              <Select value={selectedLeadId} onValueChange={handleLeadSelect}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder={isLoadingLeads ? "Carregando..." : "Selecione um lead para contextualizar"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem lead específico</SelectItem>
+                  {leads.map((lead) => {
+                    const hasQual = !!(lead.ai_insights as any)?.behavioral_profile;
+                    return (
+                      <SelectItem key={lead.id} value={lead.id}>
+                        <div className="flex items-center gap-2">
+                          {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
+                          <span>{lead.contact_name}</span>
+                          {lead.company && <span className="text-muted-foreground text-xs">• {lead.company}</span>}
+                          {hasQual && <span className="text-primary text-[10px]">✓IA</span>}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          {selectedLead && (
+            <div className="p-3 rounded-lg bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{selectedLead.contact_name}</span>
+                  {hasQualification && (
+                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                      ✓ Qualificado
+                    </Badge>
+                  )}
+                </div>
+                {hasQualification && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setShowLeadContext(!showLeadContext)}
+                  >
+                    {showLeadContext ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+                    {showLeadContext ? 'Ocultar' : 'Ver dados'}
+                  </Button>
+                )}
+              </div>
+              {selectedLead.company && (
+                <p className="text-xs text-muted-foreground">{selectedLead.company}</p>
+              )}
+              {showLeadContext && hasQualification && (
+                <div className="mt-2 pt-2 border-t border-border/30 text-xs space-y-1 max-h-32 overflow-y-auto">
+                  {selectedLead.ai_insights?.behavioral_profile?.primary_style && (
+                    <p><span className="text-muted-foreground">DISC:</span> {selectedLead.ai_insights.behavioral_profile.primary_style.toUpperCase()}</p>
+                  )}
+                  {selectedLead.ai_insights?.score && (
+                    <p><span className="text-muted-foreground">Score:</span> {selectedLead.ai_insights.score}/100</p>
+                  )}
+                  {selectedLead.ai_insights?.summary && (
+                    <p><span className="text-muted-foreground">Resumo:</span> {selectedLead.ai_insights.summary}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 p-4 lg:p-6">
@@ -218,7 +377,9 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
             </div>
             <h3 className="text-xl font-display font-semibold mb-3">Olá! Sou seu Mentor Virtual</h3>
             <p className="text-base text-muted-foreground mb-8 max-w-lg leading-relaxed">
-              Estou aqui para ajudar com estratégias de vendas, scripts, objeções e tudo sobre seu negócio. Pergunte qualquer coisa!
+              {selectedLead 
+                ? `Posso te ajudar com estratégias específicas para ${selectedLead.contact_name}. O que você precisa?`
+                : 'Estou aqui para ajudar com estratégias de vendas, scripts, objeções e tudo sobre seu negócio. Selecione um lead para contexto ou pergunte qualquer coisa!'}
             </p>
 
             <div className="w-full max-w-xl space-y-3">
@@ -227,7 +388,12 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
                 Perguntas rápidas:
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {quickQuestions.map((question, index) => (
+                {(selectedLead ? [
+                  `Como abordar ${selectedLead.contact_name}?`,
+                  `Quais objeções esperar de ${selectedLead.contact_name}?`,
+                  `Estratégia de follow-up para esse lead`,
+                  `Como fechar com esse perfil?`,
+                ] : quickQuestions).map((question, index) => (
                   <Button
                     key={index}
                     variant="outline"
@@ -300,7 +466,7 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
 
             <div className="flex gap-3 mt-4 pt-4 border-t border-border/50">
               <Input
-                placeholder="Digite sua pergunta..."
+                placeholder={selectedLead ? `Pergunte sobre ${selectedLead.contact_name}...` : "Digite sua pergunta..."}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
