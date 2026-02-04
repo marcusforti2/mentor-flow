@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { 
   FileText, 
   MessageSquare, 
-  UserCheck, 
   Pen, 
   FileSignature, 
   TrendingUp, 
@@ -15,30 +14,25 @@ import {
   Sparkles,
   AlertCircle,
   Target,
-  Send,
   User
 } from 'lucide-react';
-import { ScriptGenerator } from '@/components/ai-tools/ScriptGenerator';
 import { ObjectionSimulator } from '@/components/ai-tools/ObjectionSimulator';
-import { FollowUpCoach } from '@/components/ai-tools/FollowUpCoach';
 import { ContentGenerator } from '@/components/ai-tools/ContentGenerator';
 import { ProposalCreator } from '@/components/ai-tools/ProposalCreator';
 import { ConversionAnalyzer } from '@/components/ai-tools/ConversionAnalyzer';
 import { VirtualMentor } from '@/components/ai-tools/VirtualMentor';
 import { LeadQualifier } from '@/components/ai-tools/LeadQualifier';
-import { ColdMessageGenerator } from '@/components/ai-tools/ColdMessageGenerator';
 import { BioGenerator } from '@/components/ai-tools/BioGenerator';
+import { CommunicationHub } from '@/components/ai-tools/CommunicationHub';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 const tools = [
   { id: 'qualifier', label: 'Qualificador', icon: Target, description: 'Qualificador de Leads com IA' },
-  { id: 'coldmsg', label: 'Cold Msg', icon: Send, description: 'Gerador de Cold Messages' },
+  { id: 'communication', label: 'Comunicação', icon: MessageSquare, description: 'Scripts, Follow-up e Cold Messages' },
   { id: 'bio', label: 'Bio', icon: User, description: 'Gerador de Bio Otimizada' },
-  { id: 'scripts', label: 'Scripts', icon: FileText, description: 'Gerador de Scripts de Vendas' },
-  { id: 'roleplay', label: 'Role-Play', icon: MessageSquare, description: 'Simulador de Objeções' },
-  { id: 'followup', label: 'Follow-up', icon: UserCheck, description: 'Coach de Follow-up' },
+  { id: 'roleplay', label: 'Role-Play', icon: FileText, description: 'Simulador de Objeções' },
   { id: 'content', label: 'Conteúdo', icon: Pen, description: 'Gerador de Conteúdo' },
   { id: 'proposal', label: 'Propostas', icon: FileSignature, description: 'Criador de Propostas' },
   { id: 'analytics', label: 'Análise', icon: TrendingUp, description: 'Analisador de Conversão' },
@@ -60,7 +54,6 @@ export default function FerramentasIA() {
       }
 
       try {
-        // Get mentorado_id - check for any user (mentor can also have mentorado record for testing)
         const { data: mentorado } = await supabase
           .from('mentorados')
           .select('id')
@@ -70,7 +63,6 @@ export default function FerramentasIA() {
         if (mentorado) {
           setMentoradoId(mentorado.id);
 
-          // Check if business profile exists
           const { data: profile } = await supabase
             .from('mentorado_business_profiles')
             .select('id, business_name, main_offer')
@@ -79,12 +71,10 @@ export default function FerramentasIA() {
 
           setHasBusinessProfile(!!(profile?.business_name || profile?.main_offer));
         } else {
-          // Use user.id as fallback for users without mentorado record
           setMentoradoId(user.id);
         }
       } catch (error) {
         console.error('Error fetching mentorado data:', error);
-        // Use user.id as fallback on error
         if (user) setMentoradoId(user.id);
       } finally {
         setIsLoading(false);
@@ -114,7 +104,7 @@ export default function FerramentasIA() {
         </div>
         <div>
           <h1 className="text-2xl font-display font-bold">Ferramentas de IA</h1>
-          <p className="text-muted-foreground">7 ferramentas para otimizar seus resultados</p>
+          <p className="text-muted-foreground">8 ferramentas para otimizar seus resultados</p>
         </div>
       </div>
 
@@ -157,24 +147,16 @@ export default function FerramentasIA() {
             <LeadQualifier mentoradoId={mentoradoId} />
           </TabsContent>
 
-          <TabsContent value="coldmsg">
-            <ColdMessageGenerator mentoradoId={mentoradoId} />
+          <TabsContent value="communication">
+            <CommunicationHub mentoradoId={mentoradoId} />
           </TabsContent>
 
           <TabsContent value="bio">
             <BioGenerator mentoradoId={mentoradoId} />
           </TabsContent>
 
-          <TabsContent value="scripts">
-            <ScriptGenerator mentoradoId={mentoradoId} />
-          </TabsContent>
-
           <TabsContent value="roleplay">
             <ObjectionSimulator mentoradoId={mentoradoId} />
-          </TabsContent>
-
-          <TabsContent value="followup">
-            <FollowUpCoach mentoradoId={mentoradoId} />
           </TabsContent>
 
           <TabsContent value="content">
