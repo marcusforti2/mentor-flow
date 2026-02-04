@@ -229,22 +229,11 @@ serve(async (req) => {
   }
 
   try {
-    const { profileUrl, businessProfile, manualProfileData } = await req.json();
+    const { profileUrl, businessProfile } = await req.json();
 
-    // Mode 1: Manual data
-    if (manualProfileData && manualProfileData.trim().length > 50) {
-      console.log('Processing manual data, length:', manualProfileData.length);
-      const report = await analyzeWithAI(manualProfileData, businessProfile);
-      return new Response(
-        JSON.stringify({ success: true, report }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Mode 2: URL scraping (Instagram only via Piloterr)
     if (!profileUrl) {
       return new Response(
-        JSON.stringify({ success: false, error: 'URL ou dados manuais são obrigatórios' }),
+        JSON.stringify({ success: false, error: 'URL do perfil é obrigatória' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -278,31 +267,16 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: `Não foi possível extrair dados do Instagram: ${piloterrResult.error}. Use a opção "Colar Perfil Manualmente".`,
-            requiresManualInput: true,
-            blockedPlatform: 'instagram'
+            error: `Não foi possível extrair dados do Instagram: ${piloterrResult.error}`
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    } else if (platform) {
-      // Other platforms - require manual input
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Plataforma ${platform} requer entrada manual. Use a opção "Colar Perfil Manualmente".`,
-          requiresManualInput: true,
-          blockedPlatform: platform
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     } else {
-      // Non-social websites - require manual input
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Para sites não-sociais, use a opção "Colar Perfil Manualmente".',
-          requiresManualInput: true
+          error: 'Apenas perfis do Instagram são suportados. Use uma URL como: https://instagram.com/username'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -312,8 +286,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Dados insuficientes extraídos. Verifique a URL ou use entrada manual.',
-          requiresManualInput: true
+          error: 'Dados insuficientes extraídos do perfil.'
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
