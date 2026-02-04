@@ -24,7 +24,8 @@ import {
   Ban,
   Zap,
   FileText,
-  Link2
+  Link2,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,7 +91,13 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
 
       if (result.success && result.report) {
         setReport(result.report);
-        toast.success('Análise concluída!');
+        
+        // Auto-save to CRM
+        if (mentoradoId) {
+          await saveLeadToCRM(result.report);
+        }
+        
+        toast.success('Análise concluída e lead salvo no CRM!');
       } else {
         // Check if it's a blocked platform error
         if (result.requiresManualInput) {
@@ -106,6 +113,72 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       toast.error('Erro ao analisar perfil');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const saveLeadToCRM = async (reportData: LeadQualificationReport) => {
+    if (!mentoradoId) return;
+
+    try {
+      const extractedData = reportData.extracted_data;
+      const leadName = extractedData?.name || 'Lead Qualificado';
+      
+      // Determine temperature based on recommendation
+      const temperatureMap: Record<string, string> = {
+        'pursue_hot': 'hot',
+        'nurture': 'warm',
+        'low_priority': 'cold',
+        'not_fit': 'cold'
+      };
+      const temperature = temperatureMap[reportData.recommendation] || 'warm';
+
+      // Check if lead already exists by name
+      const { data: existingLead } = await supabase
+        .from('crm_prospections')
+        .select('id')
+        .eq('mentorado_id', mentoradoId)
+        .eq('contact_name', leadName)
+        .maybeSingle();
+
+      if (existingLead) {
+        // Update existing lead with new insights
+        await supabase
+          .from('crm_prospections')
+          .update({
+            ai_insights: JSON.parse(JSON.stringify(reportData)),
+            temperature,
+            company: extractedData?.company || null,
+            notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingLead.id);
+        
+        console.log('Lead updated in CRM:', existingLead.id);
+      } else {
+        // Create new lead
+        const { data: newLead, error } = await supabase
+          .from('crm_prospections')
+          .insert([{
+            mentorado_id: mentoradoId,
+            contact_name: leadName,
+            company: extractedData?.company || null,
+            temperature,
+            status: 'contacted',
+            ai_insights: JSON.parse(JSON.stringify(reportData)),
+            notes: `Score: ${reportData.score}/100 - ${reportData.summary}`,
+            points: reportData.score >= 75 ? 3 : reportData.score >= 50 ? 2 : 1
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error saving lead:', error);
+        } else {
+          console.log('Lead saved to CRM:', newLead?.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving lead to CRM:', error);
     }
   };
 
