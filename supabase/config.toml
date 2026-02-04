@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.apify-scrape]
 verify_jwt = false
+
+[functions.process-onboarding]
+verify_jwt = false
