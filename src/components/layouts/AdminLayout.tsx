@@ -36,7 +36,6 @@ const menuItems = [
   { icon: Trophy, label: 'Rankings', path: '/admin/ranking' },
   { icon: Mail, label: 'Emails', path: '/admin/emails' },
   { icon: BarChart3, label: 'Relatórios', path: '/admin/relatorios' },
-  { icon: ClipboardList, label: 'Propriedade IP', path: '/admin/propriedade-intelectual' },
 ];
 
 export function AdminLayout() {
