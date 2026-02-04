@@ -27,7 +27,19 @@ import {
   Target,
   Trash2,
   X,
+  TrendingUp,
+  AlertTriangle,
+  Sparkles,
+  User,
+  Globe,
+  MapPin,
+  Users,
+  Zap,
+  Shield,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -203,17 +215,187 @@ export function LeadDetailSheet({
               )}
             </div>
 
-            {/* AI Insights */}
+            {/* AI Insights - Full Qualification Report */}
             {lead.ai_insights && (
               <>
                 <Separator />
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Lightbulb className="w-3 h-3" />
-                    INSIGHTS DA IA
+                    <Sparkles className="w-3 h-3" />
+                    QUALIFICAÇÃO IA
                   </Label>
 
-                  {lead.ai_insights.insights && lead.ai_insights.insights.length > 0 && (
+                  {/* Score and Recommendation - Only show if has qualifier data */}
+                  {lead.ai_insights.score !== undefined && (
+                    <div className="p-4 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold ${
+                            lead.ai_insights.score >= 75 ? 'bg-green-500/20 text-green-500' :
+                            lead.ai_insights.score >= 50 ? 'bg-yellow-500/20 text-yellow-500' :
+                            lead.ai_insights.score >= 25 ? 'bg-orange-500/20 text-orange-500' :
+                            'bg-red-500/20 text-red-500'
+                          }`}>
+                            {lead.ai_insights.score}
+                          </div>
+                          <div>
+                            <p className="font-medium">Score de Qualificação</p>
+                            <p className="text-xs text-muted-foreground">
+                              {lead.ai_insights.score >= 75 ? 'Excelente fit!' :
+                               lead.ai_insights.score >= 50 ? 'Bom potencial' :
+                               lead.ai_insights.score >= 25 ? 'Potencial moderado' :
+                               'Baixo fit'}
+                            </p>
+                          </div>
+                        </div>
+                        {lead.ai_insights.recommendation && (
+                          <Badge className={`${
+                            lead.ai_insights.recommendation === 'pursue_hot' ? 'bg-green-500 hover:bg-green-600' :
+                            lead.ai_insights.recommendation === 'nurture' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                            lead.ai_insights.recommendation === 'low_priority' ? 'bg-orange-500 hover:bg-orange-600' :
+                            'bg-red-500 hover:bg-red-600'
+                          }`}>
+                            {lead.ai_insights.recommendation === 'pursue_hot' ? '🔥 Prioridade' :
+                             lead.ai_insights.recommendation === 'nurture' ? '🌱 Nutrir' :
+                             lead.ai_insights.recommendation === 'low_priority' ? '⏳ Baixa' :
+                             '❌ Não fit'}
+                          </Badge>
+                        )}
+                      </div>
+                      <Progress value={lead.ai_insights.score} className="h-2" />
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {lead.ai_insights.summary && (
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-sm">{lead.ai_insights.summary}</p>
+                    </div>
+                  )}
+
+                  {/* Tabs for detailed info */}
+                  {(lead.ai_insights.pain_points || lead.ai_insights.opportunities || lead.ai_insights.approach_strategy) && (
+                    <Tabs defaultValue="opportunities" className="w-full">
+                      <TabsList className="w-full grid grid-cols-3">
+                        <TabsTrigger value="opportunities" className="text-xs">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          Oportunidades
+                        </TabsTrigger>
+                        <TabsTrigger value="pain_points" className="text-xs">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          Dores
+                        </TabsTrigger>
+                        <TabsTrigger value="approach" className="text-xs">
+                          <Target className="w-3 h-3 mr-1" />
+                          Abordagem
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="opportunities" className="mt-3">
+                        {lead.ai_insights.opportunities && lead.ai_insights.opportunities.length > 0 ? (
+                          <ul className="space-y-2">
+                            {lead.ai_insights.opportunities.map((opp, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm">
+                                <Zap className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                                <span>{opp}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="pain_points" className="mt-3">
+                        {lead.ai_insights.pain_points && lead.ai_insights.pain_points.length > 0 ? (
+                          <ul className="space-y-2">
+                            {lead.ai_insights.pain_points.map((pain, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm">
+                                <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                                <span>{pain}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="approach" className="mt-3 space-y-3">
+                        {lead.ai_insights.approach_strategy ? (
+                          <>
+                            {lead.ai_insights.approach_strategy.opening_hook && (
+                              <div className="p-2 bg-primary/5 rounded-lg border border-primary/20">
+                                <p className="text-xs text-primary font-medium mb-1">🎯 Gancho de Abertura</p>
+                                <p className="text-sm">{lead.ai_insights.approach_strategy.opening_hook}</p>
+                              </div>
+                            )}
+                            {lead.ai_insights.approach_strategy.value_proposition && (
+                              <div className="p-2 bg-green-500/5 rounded-lg border border-green-500/20">
+                                <p className="text-xs text-green-600 font-medium mb-1">💎 Proposta de Valor</p>
+                                <p className="text-sm">{lead.ai_insights.approach_strategy.value_proposition}</p>
+                              </div>
+                            )}
+                            {lead.ai_insights.approach_strategy.conversation_starters && lead.ai_insights.approach_strategy.conversation_starters.length > 0 && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-2">💬 Iniciadores de Conversa</p>
+                                <ul className="space-y-1">
+                                  {lead.ai_insights.approach_strategy.conversation_starters.map((starter, idx) => (
+                                    <li key={idx} className="text-sm p-2 bg-muted/30 rounded">"{starter}"</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  )}
+
+                  {/* Extracted Profile Data */}
+                  {lead.ai_insights.extracted_data && (
+                    <div className="p-3 bg-muted/30 rounded-lg space-y-2">
+                      <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                        <User className="w-3 h-3" /> PERFIL EXTRAÍDO
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {lead.ai_insights.extracted_data.platform && (
+                          <div className="flex items-center gap-1">
+                            <Globe className="w-3 h-3 text-muted-foreground" />
+                            <span className="capitalize">{lead.ai_insights.extracted_data.platform}</span>
+                          </div>
+                        )}
+                        {lead.ai_insights.extracted_data.location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                            <span>{lead.ai_insights.extracted_data.location}</span>
+                          </div>
+                        )}
+                        {lead.ai_insights.extracted_data.followers && (
+                          <div className="flex items-center gap-1">
+                            <Users className="w-3 h-3 text-muted-foreground" />
+                            <span>{lead.ai_insights.extracted_data.followers} seguidores</span>
+                          </div>
+                        )}
+                        {lead.ai_insights.extracted_data.website && (
+                          <div className="flex items-center gap-1 col-span-2">
+                            <Globe className="w-3 h-3 text-muted-foreground" />
+                            <a href={lead.ai_insights.extracted_data.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                              {lead.ai_insights.extracted_data.website}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      {lead.ai_insights.extracted_data.bio && (
+                        <p className="text-xs text-muted-foreground mt-2 italic">"{lead.ai_insights.extracted_data.bio}"</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Legacy insights - for screenshot-based leads */}
+                  {lead.ai_insights.insights && lead.ai_insights.insights.length > 0 && !lead.ai_insights.score && (
                     <div className="flex flex-wrap gap-1.5">
                       {lead.ai_insights.insights.map((insight, idx) => (
                         <Badge key={idx} variant="secondary" className="text-xs">
@@ -223,7 +405,7 @@ export function LeadDetailSheet({
                     </div>
                   )}
 
-                  {lead.ai_insights.suggested_approach && (
+                  {lead.ai_insights.suggested_approach && !lead.ai_insights.score && (
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                       <div className="flex items-center gap-1 text-xs text-primary mb-1">
                         <Target className="w-3 h-3" />

@@ -15,12 +15,36 @@ export interface Lead {
   status: string | null;
   temperature: string | null;
   ai_insights: {
+    // Legacy fields from screenshot analysis
     interests?: string[];
     objections?: string[];
     insights?: string[];
     suggested_approach?: string;
     conversation_summary?: string;
     source_type?: string;
+    // Lead Qualifier fields
+    score?: number;
+    recommendation?: string;
+    summary?: string;
+    pain_points?: string[];
+    opportunities?: string[];
+    approach_strategy?: {
+      opening_hook?: string;
+      value_proposition?: string;
+      conversation_starters?: string[];
+      objection_handlers?: Record<string, string>;
+    };
+    extracted_data?: {
+      name?: string;
+      company?: string;
+      platform?: string;
+      bio?: string;
+      followers?: string;
+      posts_count?: string;
+      website?: string;
+      headline?: string;
+      location?: string;
+    };
   } | null;
   screenshot_urls: string[] | null;
   created_at: string | null;
