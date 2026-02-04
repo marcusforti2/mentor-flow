@@ -603,6 +603,123 @@
 }
 
 /* ========================================
+   PROSE / MARKDOWN PREMIUM LEGIBILITY
+   Explicit colors for dark mode AI content
+   ======================================== */
+.prose-ai-content {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: hsl(var(--foreground));
+}
+
+.prose-ai-content h1,
+.prose-ai-content h2,
+.prose-ai-content h3,
+.prose-ai-content h4,
+.prose-ai-content h5,
+.prose-ai-content h6 {
+  color: hsl(var(--foreground));
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+}
+
+.prose-ai-content p {
+  color: hsl(var(--foreground));
+  margin-bottom: 1em;
+}
+
+.prose-ai-content strong {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+.prose-ai-content em {
+  color: hsl(var(--foreground));
+  font-style: italic;
+}
+
+.prose-ai-content ul,
+.prose-ai-content ol {
+  color: hsl(var(--foreground));
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.prose-ai-content li {
+  color: hsl(var(--foreground));
+  margin-bottom: 0.5em;
+}
+
+.prose-ai-content li::marker {
+  color: hsl(var(--primary));
+}
+
+.prose-ai-content blockquote {
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 1em;
+  margin: 1em 0;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.prose-ai-content code {
+  background: hsl(var(--muted));
+  color: hsl(var(--primary));
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+}
+
+.prose-ai-content pre {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.prose-ai-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.prose-ai-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-ai-content a:hover {
+  color: hsl(var(--gold-glow));
+}
+
+.prose-ai-content hr {
+  border-color: hsl(var(--border));
+  margin: 2em 0;
+}
+
+.prose-ai-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.prose-ai-content th,
+.prose-ai-content td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5em 0.75em;
+  color: hsl(var(--foreground));
+}
+
+.prose-ai-content th {
+  background: hsl(var(--muted));
+  font-weight: 600;
+}
+
+/* ========================================
    NETFLIX-STYLE TRAIL COMPONENTS
    ======================================== */
 @layer components {
