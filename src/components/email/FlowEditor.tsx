@@ -44,7 +44,9 @@ import {
   Calendar,
   AlertTriangle,
   Trophy,
+  PlayCircle,
 } from "lucide-react";
+import FlowTestModal from './FlowTestModal';
 
 // Custom Node Components
 import TriggerNode from './nodes/TriggerNode';
@@ -90,6 +92,7 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
   const [edges, setEdges, onEdgesChange] = useEdgesState(flow.edges || []);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isNodeSheetOpen, setIsNodeSheetOpen] = useState(false);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Initialize with trigger node if empty
@@ -179,10 +182,20 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
             <p className="text-sm text-muted-foreground">Editor de Fluxo</p>
           </div>
         </div>
-        <Button onClick={handleSave} className="gradient-gold text-primary-foreground">
-          <Save className="h-4 w-4 mr-2" />
-          Salvar Fluxo
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsTestModalOpen(true)}
+            className="gap-2"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Testar Fluxo
+          </Button>
+          <Button onClick={handleSave} className="gradient-gold text-primary-foreground">
+            <Save className="h-4 w-4 mr-2" />
+            Salvar Fluxo
+          </Button>
+        </div>
       </div>
 
       {/* Canvas */}
@@ -405,6 +418,15 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Test Flow Modal */}
+      <FlowTestModal
+        open={isTestModalOpen}
+        onOpenChange={setIsTestModalOpen}
+        flowName={flow.name}
+        nodes={nodes}
+        templates={templates}
+      />
     </div>
   );
 }
