@@ -89,6 +89,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
+          is_required: boolean | null
           mentor_id: string
           options: Json
           order_index: number | null
@@ -99,6 +100,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_required?: boolean | null
           mentor_id: string
           options: Json
           order_index?: number | null
@@ -109,6 +111,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_required?: boolean | null
           mentor_id?: string
           options?: Json
           order_index?: number | null

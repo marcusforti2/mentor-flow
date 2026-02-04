@@ -56,8 +56,10 @@ import {
   MessageCircle,
   Video,
   History,
-  ExternalLink
+  ExternalLink,
+  ClipboardList
 } from "lucide-react";
+import Formularios from "./Formularios";
 
 interface PendingUser {
   user_id: string;
@@ -107,6 +109,9 @@ const Mentorados = () => {
   const [stageFilter, setStageFilter] = useState<StageFilter>('all');
   const [weekFilter, setWeekFilter] = useState<string>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
+  
+  // View state
+  const [showFormEditor, setShowFormEditor] = useState(false);
   
   // Add mentorado dialog
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -406,6 +411,18 @@ const Mentorados = () => {
     );
   }
 
+  // Show form editor view
+  if (showFormEditor && mentorId) {
+    return (
+      <div className="max-w-[1200px] mx-auto">
+        <Formularios 
+          mentorId={mentorId} 
+          onBack={() => setShowFormEditor(false)} 
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -415,14 +432,24 @@ const Mentorados = () => {
           <p className="text-muted-foreground">Gerencie sua base de mentorados</p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gradient-gold text-primary-foreground">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Mentorado
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowFormEditor(true)}
+            disabled={!mentorId}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Formulário Onboarding
+          </Button>
+          
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gradient-gold text-primary-foreground">
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Mentorado
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Adicionar Mentorado</DialogTitle>
               <DialogDescription>
@@ -483,7 +510,16 @@ const Mentorados = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Configure as perguntas em <a href="/admin/formularios" className="text-primary underline">Formulários</a>
+                    <button 
+                      onClick={() => {
+                        setIsAddDialogOpen(false);
+                        setAddMethod(null);
+                        setShowFormEditor(true);
+                      }}
+                      className="text-primary underline"
+                    >
+                      Editar perguntas do formulário
+                    </button>
                   </p>
                 </div>
                 <Button variant="ghost" onClick={() => setAddMethod(null)} className="w-full">
@@ -600,6 +636,7 @@ const Mentorados = () => {
             )}
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}

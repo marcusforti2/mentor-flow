@@ -31,7 +31,6 @@ const menuItems = [
   { icon: Compass, label: 'Jornada CS', path: '/admin/jornada-cs' },
   { icon: Users, label: 'Mentorados', path: '/admin/mentorados' },
   { icon: BookOpen, label: 'Trilhas', path: '/admin/trilhas' },
-  { icon: ClipboardList, label: 'Formulários', path: '/admin/formularios' },
   { icon: Calendar, label: 'Calendário', path: '/admin/calendario' },
   { icon: AlertTriangle, label: 'Centro SOS', path: '/admin/sos' },
   { icon: Trophy, label: 'Rankings', path: '/admin/ranking' },

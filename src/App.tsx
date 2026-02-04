@@ -24,7 +24,7 @@ import Mentorados from "./pages/admin/Mentorados";
 import JornadaCS from "./pages/admin/JornadaCS";
 import AdminTrilhas from "./pages/admin/Trilhas";
 import DevTools from "./pages/admin/DevTools";
-import Formularios from "./pages/admin/Formularios";
+// Formularios is now embedded within Mentorados page
 
 // Member Pages
 import MemberDashboard from "./pages/member/MemberDashboard";
@@ -69,7 +69,7 @@ const App = () => (
               <Route path="jornada-cs" element={<JornadaCS />} />
               <Route path="mentorados" element={<Mentorados />} />
               <Route path="trilhas" element={<AdminTrilhas />} />
-              <Route path="formularios" element={<Formularios />} />
+              {/* Formularios is now embedded within Mentorados page */}
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
               <Route path="sos" element={<AdminCentroSOS />} />
               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />

@@ -25,6 +25,7 @@ interface Question {
   question_type: string;
   options: any;
   order_index: number;
+  is_required: boolean;
 }
 
 interface FormData {
@@ -141,7 +142,7 @@ const Onboarding = () => {
       // Fetch questions
       const { data: questionsData, error: questionsError } = await supabase
         .from('behavioral_questions')
-        .select('id, question_text, question_type, options, order_index')
+        .select('id, question_text, question_type, options, order_index, is_required')
         .eq('mentor_id', mentorId)
         .eq('is_active', true)
         .order('order_index', { ascending: true });
@@ -196,6 +197,28 @@ const Onboarding = () => {
     return true;
   };
 
+  const validateCurrentQuestion = () => {
+    const currentQuestion = questions[currentQuestionIndex];
+    if (!currentQuestion) return true;
+    
+    // Skip validation if question is optional
+    if (!currentQuestion.is_required) return true;
+    
+    const response = formData.responses[currentQuestion.id];
+    
+    // Check if there's a valid response
+    if (response === undefined || response === null || response === '') {
+      toast({ 
+        title: "Resposta obrigatória", 
+        description: "Esta pergunta precisa ser respondida",
+        variant: "destructive" 
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleNext = async () => {
     switch (step) {
       case 'intro':
@@ -215,6 +238,7 @@ const Onboarding = () => {
         }
         break;
       case 'questions':
+        if (!validateCurrentQuestion()) return;
         if (currentQuestionIndex < questions.length - 1) {
           setCurrentQuestionIndex(prev => prev + 1);
         } else {
@@ -597,6 +621,82 @@ const Onboarding = () => {
                       </Button>
                     ))}
                   </div>
+                )}
+
+                {questions[currentQuestionIndex].question_type === 'link' && (
+                  <Input
+                    type="url"
+                    value={formData.responses[questions[currentQuestionIndex].id] || ''}
+                    onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)}
+                    placeholder="https://..."
+                    className="h-12 text-lg"
+                    autoFocus
+                  />
+                )}
+
+                {questions[currentQuestionIndex].question_type === 'image' && (
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          // Convert to base64 for now (in production would upload to storage)
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            updateResponse(questions[currentQuestionIndex].id, {
+                              fileName: file.name,
+                              fileSize: file.size,
+                              preview: reader.result,
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                      {formData.responses[questions[currentQuestionIndex].id]?.preview ? (
+                        <div className="space-y-2">
+                          <img 
+                            src={formData.responses[questions[currentQuestionIndex].id].preview} 
+                            alt="Preview" 
+                            className="max-h-48 mx-auto rounded-lg"
+                          />
+                          <p className="text-sm text-muted-foreground">
+                            {formData.responses[questions[currentQuestionIndex].id].fileName}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateResponse(questions[currentQuestionIndex].id, null);
+                            }}
+                          >
+                            Trocar imagem
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="h-12 w-12 mx-auto rounded-xl bg-primary/20 flex items-center justify-center mb-3">
+                            <MessageSquare className="h-6 w-6 text-primary" />
+                          </div>
+                          <p className="text-foreground font-medium">Clique ou arraste uma imagem</p>
+                          <p className="text-sm text-muted-foreground">PNG, JPG até 10MB</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Optional indicator */}
+                {!questions[currentQuestionIndex].is_required && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Esta pergunta é opcional
+                  </p>
                 )}
               </div>
             </OnboardingQuestionCard>
