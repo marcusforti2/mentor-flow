@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
+import { AIToolsAnalyticsCard } from '@/components/admin/AIToolsAnalyticsCard';
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
@@ -223,6 +224,11 @@ export default function AdminDashboard() {
               <RankingItem position={3} name="Pedro Costa" points={320} />
             </div>
           </div>
+        </BentoCard>
+
+        {/* AI Tools Analytics */}
+        <BentoCard size="md" glow>
+          <AIToolsAnalyticsCard />
         </BentoCard>
 
         {/* Trail Progress */}
