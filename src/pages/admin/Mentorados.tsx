@@ -123,6 +123,7 @@ const Mentorados = () => {
     notes: ''
   });
   const [isAddingManual, setIsAddingManual] = useState(false);
+  const [mentorId, setMentorId] = useState<string | null>(null);
   
   // Detail sheet
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
@@ -151,6 +152,7 @@ const Mentorados = () => {
         .single();
       
       if (mentorData) {
+        setMentorId(mentorData.id);
         const { data: mentoradosData, error: mentoradosError } = await supabase
           .from('mentorados')
           .select(`
@@ -462,24 +464,27 @@ const Mentorados = () => {
               <div className="space-y-4 py-4">
                 <div className="p-4 bg-secondary/50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-3">
-                    Copie o link abaixo e envie para o seu mentorado. Ele preencherá o formulário de onboarding completo.
+                    Copie o link abaixo e envie para o seu mentorado. Ele preencherá o formulário de onboarding completo com perguntas personalizadas.
                   </p>
                   <div className="flex gap-2">
                     <Input
                       readOnly
-                      value={`${window.location.origin}/auth?mode=register`}
+                      value={`${window.location.origin}/onboarding?mentor=${mentorId || ''}`}
                       className="bg-background"
                     />
                     <Button
                       variant="secondary"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/auth?mode=register`);
+                        navigator.clipboard.writeText(`${window.location.origin}/onboarding?mentor=${mentorId}`);
                         toast({ title: "Link copiado!" });
                       }}
                     >
                       Copiar
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Configure as perguntas em <a href="/admin/formularios" className="text-primary underline">Formulários</a>
+                  </p>
                 </div>
                 <Button variant="ghost" onClick={() => setAddMethod(null)} className="w-full">
                   Voltar

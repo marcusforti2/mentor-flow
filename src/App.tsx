@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Setup from "./pages/Setup";
 import NotFound from "./pages/NotFound";
+import Onboarding from "./pages/Onboarding";
 
 // Layouts
 import { AdminLayout } from "@/components/layouts/AdminLayout";
@@ -23,6 +24,7 @@ import Mentorados from "./pages/admin/Mentorados";
 import JornadaCS from "./pages/admin/JornadaCS";
 import AdminTrilhas from "./pages/admin/Trilhas";
 import DevTools from "./pages/admin/DevTools";
+import Formularios from "./pages/admin/Formularios";
 
 // Member Pages
 import MemberDashboard from "./pages/member/MemberDashboard";
@@ -50,6 +52,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/setup" element={<Setup />} />
             
             {/* Admin Routes (Mentor + Admin Master) */}
@@ -66,6 +69,7 @@ const App = () => (
               <Route path="jornada-cs" element={<JornadaCS />} />
               <Route path="mentorados" element={<Mentorados />} />
               <Route path="trilhas" element={<AdminTrilhas />} />
+              <Route path="formularios" element={<Formularios />} />
               <Route path="calendario" element={<PlaceholderPage title="Calendário" />} />
               <Route path="sos" element={<AdminCentroSOS />} />
               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
