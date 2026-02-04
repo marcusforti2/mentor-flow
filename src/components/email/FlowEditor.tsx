@@ -165,9 +165,17 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
 
   const updateNodeData = (nodeId: string, newData: any) => {
     setNodes((nds) =>
-      nds.map((node) =>
-        node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
-      )
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          const updatedNode = { ...node, data: { ...node.data, ...newData } };
+          // Also update selectedNode so the UI reflects the change immediately
+          if (selectedNode?.id === nodeId) {
+            setSelectedNode(updatedNode);
+          }
+          return updatedNode;
+        }
+        return node;
+      })
     );
   };
 
@@ -305,6 +313,68 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
                           config: { ...(selectedNode.data.config as any || {}), days: parseInt(e.target.value) }
                         })}
                       />
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {[3, 7, 14, 30].map(day => (
+                          <Badge 
+                            key={day}
+                            variant={(selectedNode.data.config as any)?.days === day ? "default" : "outline"}
+                            className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                            onClick={() => updateNodeData(selectedNode.id, { 
+                              config: { ...(selectedNode.data.config as any || {}), days: day }
+                            })}
+                          >
+                            {day} dias
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Dispara quando o mentorado não acessa a plataforma por X dias.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Trail Completion Config */}
+                  {selectedNode.data.triggerType === 'trail_completion' && (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Qual Trilha?</Label>
+                        <Select
+                          value={(selectedNode.data.config as any)?.trailOption || 'any'}
+                          onValueChange={(value) => updateNodeData(selectedNode.id, { 
+                            config: { ...(selectedNode.data.config as any || {}), trailOption: value }
+                          })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Qualquer trilha</SelectItem>
+                            <SelectItem value="first">Primeira trilha</SelectItem>
+                            <SelectItem value="specific">Trilha específica</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Dispara quando o mentorado conclui uma trilha de aprendizado.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Onboarding Config */}
+                  {selectedNode.data.triggerType === 'onboarding' && (
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="text-sm text-foreground">
+                        <strong>Ação automática:</strong> Este fluxo será disparado automaticamente quando um novo mentorado for cadastrado no programa.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Manual Config */}
+                  {selectedNode.data.triggerType === 'manual' && (
+                    <div className="p-3 rounded-lg bg-muted border">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Disparo manual:</strong> Você precisará iniciar este fluxo manualmente através do painel de controle ou via API.
+                      </p>
                     </div>
                   )}
 
