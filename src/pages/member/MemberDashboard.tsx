@@ -247,11 +247,11 @@ export default function MemberDashboard() {
               <h3 className="font-semibold text-foreground text-lg">Registrar Prospecção</h3>
               <p className="text-muted-foreground text-sm mt-1">Ganhe pontos no ranking</p>
             </Link>
-            <Link to="/app/treinamento" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors border-r border-border">
+            <Link to="/app/ferramentas" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors border-r border-border">
               <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <TrendingUp className="h-6 w-6 text-emerald-500" />
               </div>
-              <h3 className="font-semibold text-foreground text-lg">Analisar Call</h3>
+              <h3 className="font-semibold text-foreground text-lg">Ferramentas IA</h3>
               <p className="text-muted-foreground text-sm mt-1">IA analisa sua performance</p>
             </Link>
             <Link to="/app/ranking" className="flex-1 p-6 group hover:bg-primary/5 transition-colors">
@@ -280,9 +280,9 @@ export default function MemberDashboard() {
                   <p className="text-xs text-muted-foreground mt-1">{totalAnalyses} análise{totalAnalyses !== 1 ? 's' : ''} de treinamento</p>
                 </div>
               ) : (
-                <Link to="/app/treinamento" className="text-center">
+                <Link to="/app/ferramentas" className="text-center">
                   <p className="text-muted-foreground text-sm">Nenhuma análise</p>
-                  <p className="text-xs text-primary mt-1 hover:underline">Fazer primeira análise →</p>
+                  <p className="text-xs text-primary mt-1 hover:underline">Usar ferramentas IA →</p>
                 </Link>
               )}
             </div>
