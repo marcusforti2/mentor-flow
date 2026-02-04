@@ -1,164 +1,195 @@
 
-# Plano: Sistema de Hierarquia de Roles (Admin Master)
+# Plano: Integrar ScraperAPI e Piloterr para Scraping de Instagram
 
-## Resumo
-Criar uma nova role **Admin Master** para o email `marcusforti2@gmail.com` que terá acesso completo ao sistema com capacidade de alternar entre as visões de Mentor e Mentorado. As roles regulares (mentor e mentorado) permanecerão restritas às suas respectivas áreas.
+## Objetivo
+Substituir o Apify por ScraperAPI (primário) e Piloterr (fallback) para scraping de perfis do Instagram, mantendo maior confiabilidade e evitando problemas de assinatura.
 
----
-
-## Arquitetura de Roles
+## Visão Geral da Arquitetura
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                      ADMIN MASTER                           │
-│            (marcusforti2@gmail.com)                         │
-│                                                             │
-│  ✓ Acesso ao Painel Mentor (/admin)                        │
-│  ✓ Acesso à Área de Membros (/app)                         │
-│  ✓ DevMode Selector visível                                │
-│  ✓ Pode alternar entre visões                              │
-└─────────────────────────────────────────────────────────────┘
-           │                              │
-           ▼                              ▼
-┌──────────────────────┐     ┌──────────────────────┐
-│       MENTOR         │     │      MENTORADO       │
-│                      │     │                      │
-│  ✓ Acesso: /admin    │     │  ✓ Acesso: /app      │
-│  ✗ Acesso: /app      │     │  ✗ Acesso: /admin    │
-│  ✗ DevMode Selector  │     │  ✗ DevMode Selector  │
-└──────────────────────┘     └──────────────────────┘
++---------------+     +-----------------------+
+|   Frontend    | --> | lead-qualifier (Edge) |
++---------------+     +-----------------------+
+                              |
+                              v
+                    +-------------------+
+                    | detectPlatform()  |
+                    +-------------------+
+                              |
+              +---------------+---------------+
+              |                               |
+        instagram                      linkedin/outros
+              |                               |
+              v                               v
+    +-------------------+           +------------------+
+    | ScraperAPI        |           | Apify/Firecrawl  |
+    | (render=true)     |           |                  |
+    +-------------------+           +------------------+
+              |
+         [falha?]
+              |
+              v
+    +-------------------+
+    | Piloterr          |
+    | (API direta)      |
+    +-------------------+
 ```
-
----
 
 ## Etapas de Implementação
 
-### 1. Migração do Banco de Dados
-Adicionar a nova role `admin_master` ao enum `app_role` e atribuir ao usuário master.
+### 1. Configuração de Secrets
+Adicionar duas novas secrets no projeto:
+- `SCRAPERAPI_KEY` - Chave da API do ScraperAPI
+- `PILOTERR_API_KEY` - Chave da API do Piloterr (fallback)
 
-**SQL a executar:**
-```sql
--- Adicionar novo valor ao enum app_role
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'admin_master';
+### 2. Atualização do Edge Function lead-qualifier
 
--- Atualizar a role do usuário master
-UPDATE public.user_roles 
-SET role = 'admin_master' 
-WHERE user_id = '178685ca-85bb-49ed-b5d2-72a7ada8bedb';
+**2.1. Adicionar variáveis de ambiente:**
+```typescript
+const SCRAPERAPI_KEY = Deno.env.get('SCRAPERAPI_KEY');
+const PILOTERR_API_KEY = Deno.env.get('PILOTERR_API_KEY');
 ```
 
-### 2. Atualizar Tipos TypeScript
-Adicionar `admin_master` ao tipo `AppRole` em todos os arquivos relevantes:
-- `src/hooks/useAuth.tsx`
-- `src/hooks/useDevMode.tsx`
-- `src/components/ProtectedRoute.tsx`
-
-### 3. Atualizar ProtectedRoute
-Modificar a lógica para permitir que `admin_master` acesse ambas as áreas:
-
+**2.2. Nova função scrapeInstagramWithScraperAPI:**
 ```typescript
-// Lógica atual
-if (allowedRoles && !allowedRoles.includes(role)) {
-  // Redireciona para área correta
-}
+async function scrapeInstagramWithScraperAPI(username: string): Promise<{success: boolean; data?: string; error?: string}> {
+  if (!SCRAPERAPI_KEY) {
+    return { success: false, error: 'ScraperAPI key não configurada' };
+  }
 
-// Nova lógica
-if (role === 'admin_master') {
-  // Admin master tem acesso total, não redireciona
-  return <>{children}</>;
-}
-```
+  const instagramUrl = `https://www.instagram.com/${username}/`;
+  const scraperApiUrl = `http://api.scraperapi.com?api_key=${SCRAPERAPI_KEY}&url=${encodeURIComponent(instagramUrl)}&render=true&country_code=us`;
 
-### 4. Atualizar DevModeSelector
-Restringir o seletor para aparecer apenas para `admin_master`:
-
-```typescript
-// Verificar se é admin_master antes de renderizar
-const { role: realRole } = useAuth();
-
-// Se não for admin_master, não mostra o componente
-if (realRole !== 'admin_master') {
-  return null;
+  const response = await fetch(scraperApiUrl);
+  const html = await response.text();
+  
+  // Parse HTML para extrair dados do perfil
+  const profileData = parseInstagramHTML(html);
+  
+  if (profileData) {
+    return { success: true, data: formatInstagramToMarkdown(profileData) };
+  }
+  return { success: false, error: 'Não foi possível extrair dados do HTML' };
 }
 ```
 
-### 5. Atualizar useAuth Hook
-Adicionar helpers para verificar se é admin master:
-
+**2.3. Nova função de parsing HTML:**
 ```typescript
-interface AuthContextType {
-  // ... existing
-  isAdminMaster: boolean;
+function parseInstagramHTML(html: string): any {
+  // Tentar window._sharedData (formato antigo)
+  let match = html.match(/window\._sharedData\s*=\s*(\{.+?\});<\/script>/s);
+  if (match) {
+    const data = JSON.parse(match[1]);
+    return data?.entry_data?.ProfilePage?.[0]?.graphql?.user;
+  }
+  
+  // Tentar window.__additionalDataLoaded (formato novo)
+  match = html.match(/window\.__additionalDataLoaded\s*\(\s*['"].*?['"]\s*,\s*(\{.+?\})\s*\)/s);
+  if (match) {
+    const data = JSON.parse(match[1]);
+    return data?.graphql?.user || data?.user;
+  }
+  
+  // Fallback: meta tags
+  return parseInstagramMetaTags(html);
 }
-
-// No provider
-isAdminMaster: role === 'admin_master',
 ```
 
-### 6. Atualizar App.tsx
-Garantir que as rotas protegidas incluam `admin_master` nas roles permitidas:
-
+**2.4. Nova função scrapeInstagramWithPiloterr (fallback):**
 ```typescript
-// Rotas Admin - permitir mentor E admin_master
-<ProtectedRoute allowedRoles={['mentor', 'admin_master']}>
-  <AdminLayout />
-</ProtectedRoute>
+async function scrapeInstagramWithPiloterr(username: string): Promise<{success: boolean; data?: string; error?: string}> {
+  if (!PILOTERR_API_KEY) {
+    return { success: false, error: 'Piloterr API key não configurada' };
+  }
 
-// Rotas Member - permitir mentorado E admin_master
-<ProtectedRoute allowedRoles={['mentorado', 'admin_master']}>
-  <MemberLayout />
-</ProtectedRoute>
+  const apiUrl = `https://piloterr.com/api/v2/instagram/user/info?query=${encodeURIComponent(username)}`;
+  
+  const response = await fetch(apiUrl, {
+    headers: { 'x-api-key': PILOTERR_API_KEY }
+  });
+  
+  const data = await response.json();
+  
+  if (data && !data.error) {
+    return { success: true, data: formatPiloterrToMarkdown(data) };
+  }
+  return { success: false, error: data?.error || 'Erro no Piloterr' };
+}
 ```
 
----
+**2.5. Atualizar lógica de roteamento para Instagram:**
+```typescript
+if (platform === 'instagram') {
+  console.log('Instagram detected, trying ScraperAPI...');
+  const scraperResult = await scrapeInstagramWithScraperAPI(username);
+  
+  if (scraperResult.success) {
+    profileData = scraperResult.data;
+    scrapeMethod = 'scraperapi';
+  } else {
+    console.log('ScraperAPI failed, trying Piloterr fallback...');
+    const piloterrResult = await scrapeInstagramWithPiloterr(username);
+    
+    if (piloterrResult.success) {
+      profileData = piloterrResult.data;
+      scrapeMethod = 'piloterr';
+    } else {
+      // Manter Apify como último fallback
+      const apifyResult = await scrapeWithApify(profileUrl, platform);
+      if (apifyResult.success) {
+        profileData = apifyResult.data;
+        scrapeMethod = 'apify';
+      }
+    }
+  }
+}
+```
 
-## Arquivos a Modificar
+### 3. Funções de Formatação
 
-| Arquivo | Mudança |
-|---------|---------|
-| `supabase/migrations/` | Nova migração para adicionar role ao enum |
-| `src/hooks/useAuth.tsx` | Adicionar `admin_master` ao tipo e helper |
-| `src/hooks/useDevMode.tsx` | Atualizar tipo `AppRole` |
-| `src/components/ProtectedRoute.tsx` | Lógica especial para admin_master |
-| `src/components/DevModeSelector.tsx` | Mostrar apenas para admin_master |
-| `src/App.tsx` | Incluir admin_master nas rotas protegidas |
+**formatInstagramToMarkdown:**
+```typescript
+function formatInstagramToMarkdown(profile: any): string {
+  return `
+# Perfil Instagram: @${profile.username}
 
----
-
-## Comportamento Esperado
-
-### Para Admin Master (marcusforti2@gmail.com):
-1. Login → Vai para `/admin` por padrão
-2. DevMode Selector visível no canto inferior direito
-3. Pode alternar para `/app` usando o seletor
-4. Acesso completo a todas as funcionalidades
-
-### Para Mentor Regular:
-1. Login → Vai para `/admin`
-2. DevMode Selector **não aparece**
-3. Tentativa de acessar `/app` → Redireciona para `/admin`
-
-### Para Mentorado Regular:
-1. Login → Vai para `/app`
-2. DevMode Selector **não aparece**
-3. Tentativa de acessar `/admin` → Redireciona para `/app`
-
----
+**Nome:** ${profile.full_name || 'N/A'}
+**Bio:** ${profile.biography || 'N/A'}
+**Seguidores:** ${profile.edge_followed_by?.count || profile.follower_count || 'N/A'}
+**Seguindo:** ${profile.edge_follow?.count || profile.following_count || 'N/A'}
+**Posts:** ${profile.edge_owner_to_timeline_media?.count || profile.media_count || 'N/A'}
+**Website:** ${profile.external_url || 'N/A'}
+**Verificado:** ${profile.is_verified ? 'Sim' : 'Não'}
+**Conta Business:** ${profile.is_business_account ? 'Sim' : 'Não'}
+**Categoria:** ${profile.business_category_name || profile.category_name || 'N/A'}
+  `.trim();
+}
+```
 
 ## Detalhes Técnicos
 
-### Função RPC para Verificar Role
-A função `get_user_role` existente continuará funcionando, retornando a role do usuário (incluindo `admin_master`).
+### Secrets Necessárias
+| Secret | Serviço | Onde obter |
+|--------|---------|------------|
+| SCRAPERAPI_KEY | ScraperAPI | https://www.scraperapi.com/signup |
+| PILOTERR_API_KEY | Piloterr | https://piloterr.com/ |
 
-### Segurança
-- A role `admin_master` é verificada server-side via RPC
-- Não é possível "fingir" ser admin_master via localStorage
-- O DevMode só funciona para quem JÁ TEM a role `admin_master` no banco
+### Fluxo de Fallback para Instagram
+1. **ScraperAPI** (primário) - Renderiza JavaScript, bypassa proteções
+2. **Piloterr** (secundário) - API direta de dados do Instagram
+3. **Apify** (terciário) - Actor gratuito como último recurso
+4. **Entrada Manual** - Se todos falharem
 
-### Fluxo de Autenticação
-```text
-Login → get_user_role() → 
-  Se admin_master: mostra DevMode, acesso total
-  Se mentor: só /admin
-  Se mentorado: só /app
-```
+### Arquivos a Modificar
+- `supabase/functions/lead-qualifier/index.ts` - Adicionar novas funções de scraping
+
+### Vantagens desta Abordagem
+1. **Maior confiabilidade** - ScraperAPI tem melhor taxa de sucesso com sites protegidos
+2. **Sem assinatura de actors** - APIs com planos pay-as-you-go
+3. **Múltiplos fallbacks** - 4 níveis de redundância
+4. **Melhor parsing** - Código específico para estrutura do Instagram
+
+## Próximos Passos
+1. Você precisa fornecer as API keys do ScraperAPI e Piloterr
+2. Implementarei as funções de scraping
+3. Testaremos com um perfil real do Instagram
