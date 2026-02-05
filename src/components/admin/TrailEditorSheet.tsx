@@ -26,27 +26,54 @@ import {
   Save,
   Image as ImageIcon,
 } from 'lucide-react';
-import { MockTrail, MockModule, MockLesson } from '@/data/mockTrails';
+import type { Trail, TrailInput, TrailModule, TrailLesson } from '@/hooks/useTrails';
 
 interface TrailEditorSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trail: MockTrail | null;
-  onSave: (trail: MockTrail) => void;
+  trail: Trail | null;
+  onSave: (trail: TrailInput) => void;
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 const getYouTubeThumbnail = (url: string) => {
-  // Handle full YouTube URLs or just video IDs
   const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)?([^&\s]+)/);
   const videoId = match ? match[1] : url;
   return videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
 };
 
+interface FormModule {
+  id: string;
+  title: string;
+  description: string;
+  order_index: number;
+  lessons: FormLesson[];
+}
+
+interface FormLesson {
+  id: string;
+  title: string;
+  description: string;
+  content_url: string;
+  duration_minutes: number;
+  order_index: number;
+}
+
+interface FormData {
+  id?: string;
+  title: string;
+  description: string;
+  thumbnail_url: string;
+  modules: FormModule[];
+  total_lessons: number;
+  total_duration: number;
+  is_featured: boolean;
+  is_published: boolean;
+}
+
 export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEditorSheetProps) {
-  const [formData, setFormData] = useState<MockTrail>({
-    id: '',
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
     thumbnail_url: '',
@@ -54,14 +81,37 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
     total_lessons: 0,
     total_duration: 0,
     is_featured: false,
+    is_published: true,
   });
 
   useEffect(() => {
     if (trail) {
-      setFormData(trail);
+      setFormData({
+        id: trail.id,
+        title: trail.title,
+        description: trail.description,
+        thumbnail_url: trail.thumbnail_url,
+        modules: trail.modules.map(m => ({
+          id: m.id,
+          title: m.title,
+          description: m.description,
+          order_index: m.order_index,
+          lessons: m.lessons.map(l => ({
+            id: l.id,
+            title: l.title,
+            description: l.description,
+            content_url: l.content_url,
+            duration_minutes: l.duration_minutes,
+            order_index: l.order_index,
+          })),
+        })),
+        total_lessons: trail.total_lessons,
+        total_duration: trail.total_duration,
+        is_featured: trail.is_featured,
+        is_published: trail.is_published,
+      });
     } else {
       setFormData({
-        id: generateId(),
         title: '',
         description: '',
         thumbnail_url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800',
@@ -69,11 +119,12 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
         total_lessons: 0,
         total_duration: 0,
         is_featured: false,
+        is_published: true,
       });
     }
   }, [trail, open]);
 
-  const recalculateTotals = (modules: MockModule[]): { total_lessons: number; total_duration: number } => {
+  const recalculateTotals = (modules: FormModule[]): { total_lessons: number; total_duration: number } => {
     let total_lessons = 0;
     let total_duration = 0;
     modules.forEach(mod => {
@@ -106,7 +157,7 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
     setFormData({ ...formData, modules: newModules, ...totals });
   };
 
-  const updateModule = (moduleId: string, updates: Partial<MockModule>) => {
+  const updateModule = (moduleId: string, updates: Partial<FormModule>) => {
     const newModules = formData.modules.map((m) =>
       m.id === moduleId ? { ...m, ...updates } : m
     );
@@ -118,7 +169,7 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
     const module = formData.modules.find((m) => m.id === moduleId);
     if (!module) return;
 
-    const newLessons: MockLesson[] = [
+    const newLessons: FormLesson[] = [
       ...module.lessons,
       {
         id: generateId(),
@@ -141,7 +192,7 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
     });
   };
 
-  const updateLesson = (moduleId: string, lessonId: string, updates: Partial<MockLesson>) => {
+  const updateLesson = (moduleId: string, lessonId: string, updates: Partial<FormLesson>) => {
     const module = formData.modules.find((m) => m.id === moduleId);
     if (!module) return;
 
@@ -152,7 +203,27 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
   };
 
   const handleSave = () => {
-    onSave(formData);
+    const trailInput: TrailInput = {
+      id: formData.id,
+      title: formData.title,
+      description: formData.description,
+      thumbnail_url: formData.thumbnail_url,
+      is_featured: formData.is_featured,
+      is_published: formData.is_published,
+      modules: formData.modules.map((m, mi) => ({
+        title: m.title,
+        description: m.description,
+        order_index: mi,
+        lessons: m.lessons.map((l, li) => ({
+          title: l.title,
+          description: l.description,
+          duration_minutes: l.duration_minutes,
+          content_url: l.content_url,
+          order_index: li,
+        })),
+      })),
+    };
+    onSave(trailInput);
   };
 
   return (
@@ -229,6 +300,20 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                   id="featured"
                   checked={formData.is_featured || false}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label htmlFor="published">Publicada</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Trilhas não publicadas ficam como rascunho
+                  </p>
+                </div>
+                <Switch
+                  id="published"
+                  checked={formData.is_published}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })}
                 />
               </div>
             </div>

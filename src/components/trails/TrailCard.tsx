@@ -2,17 +2,16 @@ import { Play, Clock, BookOpen } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { MockTrail } from '@/data/mockTrails';
-import { calculateTrailProgress } from '@/data/mockTrails';
+import type { Trail } from '@/types/trails';
 
 interface TrailCardProps {
-  trail: MockTrail;
+  trail: Trail;
   onClick: () => void;
   size?: 'default' | 'large';
+  progress?: number;
 }
 
-export function TrailCard({ trail, onClick, size = 'default' }: TrailCardProps) {
-  const progress = calculateTrailProgress(trail.id);
+export function TrailCard({ trail, onClick, size = 'default', progress = 0 }: TrailCardProps) {
   const totalHours = Math.floor(trail.total_duration / 60);
   const totalMinutes = trail.total_duration % 60;
 

@@ -8,12 +8,12 @@ import { VideoPlayerModal } from '@/components/trails/VideoPlayerModal';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import type { MockTrail, MockLesson } from '@/data/mockTrails';
+import type { Trail, TrailLesson } from '@/types/trails';
 
 export default function Trilhas() {
   const { activeMembership } = useTenant();
-  const [selectedTrail, setSelectedTrail] = useState<MockTrail | null>(null);
-  const [selectedLesson, setSelectedLesson] = useState<MockLesson | null>(null);
+  const [selectedTrail, setSelectedTrail] = useState<Trail | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<TrailLesson | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
 
@@ -31,6 +31,7 @@ export default function Trilhas() {
           description,
           thumbnail_url,
           is_published,
+          is_featured,
           trail_modules (
             id,
             title,
@@ -48,7 +49,7 @@ export default function Trilhas() {
         `)
         .eq('tenant_id', activeMembership.tenant_id)
         .eq('is_published', true)
-        .order('created_at', { ascending: false });
+        .order('order_index', { ascending: true });
       
       if (error) throw error;
       
@@ -58,7 +59,7 @@ export default function Trilhas() {
         title: trail.title,
         description: trail.description || '',
         thumbnail_url: trail.thumbnail_url || 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop',
-        is_featured: false, // Podemos adicionar essa coluna depois
+        is_featured: trail.is_featured || false,
         modules: (trail.trail_modules || [])
           .sort((a, b) => a.order_index - b.order_index)
           .map(mod => ({
@@ -88,23 +89,23 @@ export default function Trilhas() {
           ), 
           0
         )
-      })) as MockTrail[];
+      })) as Trail[];
     },
     enabled: !!activeMembership?.tenant_id
   });
 
-  // Featured trail (primeiro da lista)
-  const featuredTrail = trails[0];
+  // Featured trail (primeira com is_featured=true ou primeira da lista)
+  const featuredTrail = trails.find(t => t.is_featured) || trails[0];
   
   // Trails with progress (continue watching) - TODO: implement real progress
-  const continueWatching: MockTrail[] = [];
+  const continueWatching: Trail[] = [];
 
-  const handleTrailClick = (trail: MockTrail) => {
+  const handleTrailClick = (trail: Trail) => {
     setSelectedTrail(trail);
     setIsDetailOpen(true);
   };
 
-  const handleLessonClick = (lesson: MockLesson) => {
+  const handleLessonClick = (lesson: TrailLesson) => {
     setSelectedLesson(lesson);
     setIsDetailOpen(false);
     setIsVideoOpen(true);
