@@ -7,17 +7,18 @@
  import { Button } from '@/components/ui/button';
  import { LogOut, Settings, ArrowLeft } from 'lucide-react';
  import { LBVLogo } from '@/components/LBVLogo';
- import {
-   LayoutDashboard,
-   Users,
-   BookOpen,
-   Calendar,
-   AlertTriangle,
-   Trophy,
-   Mail,
-   BarChart3,
-   Compass,
- } from 'lucide-react';
+  import {
+    LayoutDashboard,
+    Users,
+    BookOpen,
+    Calendar,
+    AlertTriangle,
+    Trophy,
+    Mail,
+    BarChart3,
+    Compass,
+    Target,
+  } from 'lucide-react';
  import {
    Tooltip,
    TooltipContent,
@@ -25,17 +26,18 @@
  } from '@/components/ui/tooltip';
  import { cn } from '@/lib/utils';
  
- const menuItems = [
-   { icon: LayoutDashboard, label: 'Dashboard', path: '/mentor' },
-   { icon: Compass, label: 'Jornada CS', path: '/mentor/jornada-cs' },
-   { icon: Users, label: 'Mentorados', path: '/mentor/mentorados' },
-   { icon: BookOpen, label: 'Trilhas', path: '/mentor/trilhas' },
-   { icon: Calendar, label: 'Calendário', path: '/mentor/calendario' },
-   { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
-   { icon: Trophy, label: 'Rankings', path: '/mentor/ranking' },
-   { icon: Mail, label: 'Emails', path: '/mentor/emails' },
-   { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
- ];
+  const menuItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/mentor' },
+    { icon: Compass, label: 'Jornada CS', path: '/mentor/jornada-cs' },
+    { icon: Users, label: 'Mentorados', path: '/mentor/mentorados' },
+    { icon: Target, label: 'CRM', path: '/mentor/crm' },
+    { icon: BookOpen, label: 'Trilhas', path: '/mentor/trilhas' },
+    { icon: Calendar, label: 'Calendário', path: '/mentor/calendario' },
+    { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
+    { icon: Trophy, label: 'Rankings', path: '/mentor/ranking' },
+    { icon: Mail, label: 'Emails', path: '/mentor/emails' },
+    { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
+  ];
  
  export function MentorLayout() {
    const { profile, signOut } = useAuth();
