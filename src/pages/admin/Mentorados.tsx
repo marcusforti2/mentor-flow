@@ -57,9 +57,11 @@ import {
   Video,
   History,
   ExternalLink,
-  ClipboardList
+  ClipboardList,
+  FolderOpen
 } from "lucide-react";
 import Formularios from "./Formularios";
+import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager";
 
 interface PendingUser {
   user_id: string;
@@ -1035,6 +1037,17 @@ const Mentorados = () => {
                         <span>Maturidade: {selectedMentorado.business_profile.maturity_level || "Não informado"}</span>
                       </div>
                     </div>
+                  </div>
+                )}
+                
+                {/* Files Section */}
+                {mentorId && (
+                  <div className="pt-4 border-t border-border">
+                    <MentoradoFilesManager
+                      mentoradoId={selectedMentorado.id}
+                      mentorId={mentorId}
+                      mentoradoName={selectedMentorado.profile?.full_name || "Mentorado"}
+                    />
                   </div>
                 )}
                 

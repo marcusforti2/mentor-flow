@@ -39,6 +39,7 @@ import LojaPremios from "./pages/member/LojaPremios";
 import FerramentasIA from "./pages/member/FerramentasIA";
 import CalendarioMembro from "./pages/member/Calendario";
 import Comunidade from "./pages/member/Comunidade";
+import MeusArquivos from "./pages/member/MeusArquivos";
 
 // Admin Pages (additional)
 import AdminCentroSOS from "./pages/admin/CentroSOS";
@@ -103,6 +104,7 @@ const App = () => (
               <Route path="perfil" element={<Perfil />} />
               <Route path="ferramentas" element={<FerramentasIA />} />
               <Route path="loja" element={<LojaPremios />} />
+              <Route path="meus-arquivos" element={<MeusArquivos />} />
             </Route>
 
             {/* Legacy route redirect */}
