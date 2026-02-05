@@ -1,100 +1,125 @@
 
-# Plano: Correção da Função RPC Duplicada
+# Plano: Dashboard Master com Dados Reais
 
-## Diagnóstico Confirmado
+## Objetivo
+Substituir os números hardcoded do Master Dashboard por queries reais ao banco de dados.
 
-O login via OTP funciona corretamente, mas o redirecionamento falha porque:
-
-1. **Função `get_user_memberships` está duplicada** no banco de dados
-2. Existem duas versões:
-   - `get_user_memberships(_user_id uuid)` (PL/pgSQL)
-   - `get_user_memberships(_user_id uuid, _tenant_id uuid DEFAULT NULL)` (SQL)
-3. Quando o frontend chama a função, PostgREST retorna erro `PGRST203` (função não única)
-4. O `TenantContext.fetchMemberships()` falha silenciosamente
-5. `activeMembership` fica `null`, mostrando "Acesso não configurado"
+## Dados Atuais no Banco
+| Métrica | Valor Real |
+|---------|------------|
+| Tenants | 2 (LBV Tech, LBV Preview Sandbox) |
+| Usuários Únicos | 32 |
+| Memberships | 34 (31 mentees, 2 mentors, 1 master_admin) |
 
 ---
 
-## Solução
+## Implementação
 
-### 1. Migration SQL - Remover função duplicada
+### 1. Criar Hook `useMasterDashboardStats`
 
-Dropar ambas as versões e recriar uma única função unificada que:
-- Aceita `_user_id` obrigatório
-- Aceita `_tenant_id` opcional (para filtrar por tenant específico)
-- Retorna as memberships ordenadas por privilégio
+Novo hook que busca estatísticas em tempo real:
 
-```sql
--- Drop both existing versions
-DROP FUNCTION IF EXISTS public.get_user_memberships(uuid);
-DROP FUNCTION IF EXISTS public.get_user_memberships(uuid, uuid);
+```typescript
+// src/hooks/useMasterDashboardStats.tsx
+export function useMasterDashboardStats() {
+  // Query 1: Count tenants
+  const { data: tenantsCount } = useQuery({
+    queryKey: ['master-stats-tenants'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('tenants')
+        .select('*', { count: 'exact', head: true });
+      return count || 0;
+    }
+  });
 
--- Create single unified function
-CREATE OR REPLACE FUNCTION public.get_user_memberships(
-  _user_id uuid,
-  _tenant_id uuid DEFAULT NULL
-)
-RETURNS TABLE(
-  id uuid, 
-  tenant_id uuid, 
-  tenant_name text, 
-  tenant_slug text, 
-  role membership_role, 
-  status text
-)
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT 
-    m.id,
-    m.tenant_id,
-    t.name as tenant_name,
-    t.slug as tenant_slug,
-    m.role,
-    m.status
-  FROM public.memberships m
-  JOIN public.tenants t ON t.id = m.tenant_id
-  WHERE m.user_id = _user_id
-    AND m.status = 'active'
-    AND (_tenant_id IS NULL OR m.tenant_id = _tenant_id)
-  ORDER BY 
-    CASE m.role 
-      WHEN 'master_admin' THEN 1
-      WHEN 'admin' THEN 2
-      WHEN 'ops' THEN 3
-      WHEN 'mentor' THEN 4
-      WHEN 'mentee' THEN 5
-    END;
-$$;
+  // Query 2: Count unique active users
+  const { data: usersCount } = useQuery({
+    queryKey: ['master-stats-users'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('memberships')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('status', 'active');
+      return count || 0;
+    }
+  });
+
+  // Query 3: Recent activity (últimos memberships criados)
+  const { data: recentActivity } = useQuery({
+    queryKey: ['master-recent-activity'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('memberships')
+        .select(`
+          id, role, created_at,
+          tenants!inner(name),
+          profiles!inner(full_name, email)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      return data || [];
+    }
+  });
+
+  return { tenantsCount, usersCount, recentActivity, isLoading };
+}
 ```
 
-### 2. Verificação pós-correção
+### 2. Atualizar MasterDashboard.tsx
 
-Após a migration, o fluxo será:
+Substituir valores hardcoded pelo hook:
 
-1. Usuário digita código OTP
-2. `verify-otp` valida e retorna `tokenHash`
-3. Frontend verifica token com Supabase Auth
-4. `bootstrapAfterAuth()` chama `refreshMembershipsAndWait()`
-5. ✅ `get_user_memberships()` retorna memberships corretamente
-6. ✅ Redirect para `/master`, `/mentor` ou `/mentorado` baseado no role
+```typescript
+export default function MasterDashboard() {
+  const { tenantsCount, usersCount, recentActivity, isLoading } = useMasterDashboardStats();
+
+  const stats = [
+    { label: 'Tenants Ativos', value: tenantsCount?.toString() || '...', icon: Building2 },
+    { label: 'Usuários Totais', value: usersCount?.toString() || '...', icon: Users },
+    { label: 'Memberships', value: membershipsCount?.toString() || '...', icon: Activity },
+  ];
+  
+  // Renderizar atividade recente dinamicamente
+}
+```
+
+### 3. Criar Tabela `activity_logs` (Opcional - Fase 2)
+
+Para rastrear atividades em tempo real como logins, criações, etc:
+
+```sql
+CREATE TABLE public.activity_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id),
+  tenant_id uuid REFERENCES tenants(id),
+  action text NOT NULL, -- 'login', 'create_user', 'update_trail', etc
+  resource_type text,   -- 'membership', 'trail', 'post', etc
+  resource_id uuid,
+  metadata jsonb DEFAULT '{}',
+  created_at timestamptz DEFAULT now()
+);
+
+-- RLS: Apenas master_admin pode ler todos os logs
+CREATE POLICY "master_admin_read_logs" ON activity_logs
+  FOR SELECT USING (is_master_admin());
+```
 
 ---
 
-## Arquivos Modificados
+## Arquivos a Modificar
 
 | Arquivo | Mudança |
 |---------|---------|
-| Migration SQL (nova) | Drop funções duplicadas, criar versão unificada |
+| `src/hooks/useMasterDashboardStats.tsx` | **Novo** - Hook com queries reais |
+| `src/pages/master/MasterDashboard.tsx` | Usar hook e renderizar dados reais |
 
 ---
 
 ## Resultado Esperado
 
-Após a correção:
-- Login via OTP funciona normalmente
-- Sessão é criada e persistida
-- Memberships são carregadas corretamente
-- Usuário é redirecionado automaticamente para a área correta
-- Não aparece mais "Acesso não configurado"
+- **Tenants Ativos**: Contagem real da tabela `tenants`
+- **Usuários Totais**: Contagem real de `memberships` ativos
+- **Atividade Recente**: Lista dinâmica dos últimos memberships/ações criadas
+- Loading states enquanto dados carregam
+- Atualização automática via React Query
