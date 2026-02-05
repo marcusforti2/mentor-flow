@@ -59,18 +59,20 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     login_url: string;
   } | null>(null);
 
-  // Determine effective tenant for mentor lookup
-  const effectiveTenantForMentors = propTenantId || selectedTenantId || activeMembership?.tenant_id;
+  // Determine effective tenant for mentor lookup - master admin must select tenant explicitly
+  const effectiveTenantForMentors = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
-  // Fetch mentors when tenant changes
+  // Fetch mentors when tenant changes or modal opens
   useEffect(() => {
     const fetchMentors = async () => {
-      if (!effectiveTenantForMentors) {
+      if (!effectiveTenantForMentors || !open) {
+        if (!open) return; // Don't clear when closed
         setMentorOptions([]);
         return;
       }
       
       setMentorsLoading(true);
+      console.log('[CreateMenteeModal] Fetching mentors for tenant:', effectiveTenantForMentors);
       try {
         const { data, error } = await supabase
           .from('memberships')
@@ -78,6 +80,8 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
           .eq('tenant_id', effectiveTenantForMentors)
           .eq('role', 'mentor')
           .eq('status', 'active');
+        
+        console.log('[CreateMenteeModal] Mentors query result:', { data, error });
         
         if (error) throw error;
         
@@ -96,6 +100,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
               email: profile?.email || '',
             };
           });
+          console.log('[CreateMenteeModal] Mentor options:', options);
           setMentorOptions(options);
           
           // Auto-select if only one mentor
@@ -103,10 +108,11 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
             setSelectedMentorId(options[0].membership_id);
           }
         } else {
+          console.log('[CreateMenteeModal] No mentors found');
           setMentorOptions([]);
         }
       } catch (err) {
-        console.error('Error fetching mentors:', err);
+        console.error('[CreateMenteeModal] Error fetching mentors:', err);
         setMentorOptions([]);
       } finally {
         setMentorsLoading(false);
@@ -114,13 +120,13 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     };
     
     fetchMentors();
-  }, [effectiveTenantForMentors]);
+  }, [effectiveTenantForMentors, open]);
 
-  // Determine if we need to show tenant selector
-  const showTenantSelector = isMasterAdmin && !propTenantId && !activeMembership?.tenant_id;
+  // Master admin should ALWAYS see tenant selector (they manage all tenants)
+  const showTenantSelector = isMasterAdmin && !propTenantId;
   
   // Get effective tenant_id
-  const effectiveTenantId = propTenantId || selectedTenantId || activeMembership?.tenant_id;
+  const effectiveTenantId = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
   const resetForm = () => {
     setSelectedTenantId('');
