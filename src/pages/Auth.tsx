@@ -57,11 +57,12 @@ const Auth = () => {
     }
   };
 
-  // Bootstrap function: Wait for session and membership, then redirect
-  const bootstrapAfterAuth = async () => {
+  // Bootstrap function: Use get-bootstrap Edge Function for reliable post-auth
+  const bootstrapAfterAuth = async (redirectHint?: string) => {
     console.log('[Auth] Starting bootstrap after OTP verification...');
     
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Small delay to ensure session is persisted
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     const { data: { session } } = await supabase.auth.getSession();
     console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id });
@@ -76,28 +77,54 @@ const Auth = () => {
       return;
     }
     
-    console.log('[Auth] Fetching memberships...');
-    const memberships = await refreshMembershipsAndWait();
-    console.log('[Auth] Memberships result:', { 
-      count: memberships?.length ?? 0, 
-      roles: memberships?.map(m => m.role) ?? [] 
-    });
-    
-    if (!memberships || memberships.length === 0) {
-      console.error('[Auth] No memberships found for user');
+    // Call get-bootstrap for reliable membership resolution
+    try {
+      const { data: bootstrap, error: bootstrapError } = await supabase.functions.invoke('get-bootstrap');
+      
+      if (bootstrapError) {
+        console.error('[Auth] Bootstrap error:', bootstrapError);
+        // Fallback to context-based approach
+        const memberships = await refreshMembershipsAndWait();
+        if (memberships && memberships.length > 0) {
+          const targetPath = getTargetPath(memberships[0].role);
+          navigate(targetPath, { replace: true });
+          return;
+        }
+        throw bootstrapError;
+      }
+      
+      console.log('[Auth] Bootstrap result:', { 
+        hasMemberships: bootstrap.has_memberships,
+        redirectPath: bootstrap.redirect_path,
+        role: bootstrap.active_membership?.role
+      });
+      
+      if (!bootstrap.has_memberships) {
+        console.warn('[Auth] No memberships found, user may need to wait for invite acceptance');
+        toast({
+          title: "Acesso pendente",
+          description: "Sua conta foi autenticada, mas o acesso ainda está sendo configurado. Tente novamente em alguns segundos.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Use redirect hint from verify-otp if available, otherwise use bootstrap result
+      const targetPath = redirectHint || bootstrap.redirect_path || '/mentorado';
+      console.log('[Auth] Redirecting to:', targetPath);
+      
+      // Refresh context memberships before redirect
+      await refreshMembershipsAndWait();
+      
+      navigate(targetPath, { replace: true });
+    } catch (err) {
+      console.error('[Auth] Bootstrap failed:', err);
       toast({
-        title: "Acesso não configurado",
-        description: "Sua conta ainda não foi configurada. Entre em contato com o administrador.",
+        title: "Erro ao carregar perfil",
+        description: "Não foi possível carregar suas permissões. Tente fazer login novamente.",
         variant: "destructive",
       });
-      return;
     }
-    
-    const primaryMembership = memberships[0];
-    const targetPath = getTargetPath(primaryMembership.role);
-    
-    console.log('[Auth] Redirecting to:', targetPath, 'for role:', primaryMembership.role);
-    navigate(targetPath, { replace: true });
   };
 
   // Countdown timer for resend
@@ -258,7 +285,8 @@ const Auth = () => {
           });
         }
 
-        await bootstrapAfterAuth();
+        // Pass redirect hint from verify-otp response
+        await bootstrapAfterAuth(data.redirect_path);
       }
     } catch (error: any) {
       const errorType = error.error_type || 'otp_invalid';

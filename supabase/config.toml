@@ -1,5 +1,11 @@
 project_id = "kovjaodhpnnmtrtbrwnf"
 
+[functions.create-invite]
+verify_jwt = false
+
+[functions.get-bootstrap]
+verify_jwt = false
+
 [functions.ai-analysis]
 verify_jwt = false
 
