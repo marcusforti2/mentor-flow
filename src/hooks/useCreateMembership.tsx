@@ -48,6 +48,8 @@ export const useCreateMembership = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['memberships'] });
+      queryClient.invalidateQueries({ queryKey: ['all-memberships'] });
+      queryClient.invalidateQueries({ queryKey: ['all-invites'] });
       queryClient.invalidateQueries({ queryKey: ['invites'] });
       toast.success(`Convite criado para ${data.invite.email}`);
     },
