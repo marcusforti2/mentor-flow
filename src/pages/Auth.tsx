@@ -61,11 +61,22 @@ const Auth = () => {
   const bootstrapAfterAuth = async (redirectHint?: string) => {
     console.log('[Auth] Starting bootstrap after OTP verification...');
     
-    // Small delay to ensure session is persisted
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Wait for Supabase auth state to fully propagate
+    // This is critical because onAuthStateChange may not have fired yet
+    let session = null;
+    let attempts = 0;
+    const maxAttempts = 10;
     
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id });
+    while (!session && attempts < maxAttempts) {
+      const { data } = await supabase.auth.getSession();
+      session = data.session;
+      if (!session) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        attempts++;
+      }
+    }
+    
+    console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id, attempts });
     
     if (!session?.user) {
       console.error('[Auth] No session after verification');
@@ -83,13 +94,6 @@ const Auth = () => {
       
       if (bootstrapError) {
         console.error('[Auth] Bootstrap error:', bootstrapError);
-        // Fallback to context-based approach
-        const memberships = await refreshMembershipsAndWait();
-        if (memberships && memberships.length > 0) {
-          const targetPath = getTargetPath(memberships[0].role);
-          navigate(targetPath, { replace: true });
-          return;
-        }
         throw bootstrapError;
       }
       
@@ -113,8 +117,15 @@ const Auth = () => {
       const targetPath = redirectHint || bootstrap.redirect_path || '/mentorado';
       console.log('[Auth] Redirecting to:', targetPath);
       
-      // Refresh context memberships before redirect
+      // Wait for TenantContext to pick up the new session via onAuthStateChange
+      // This ensures activeMembership is populated before navigation
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Force refresh memberships in context to ensure it has latest data
       await refreshMembershipsAndWait();
+      
+      // Small additional delay for React state to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       navigate(targetPath, { replace: true });
     } catch (err) {
