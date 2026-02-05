@@ -8,6 +8,7 @@ import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import { BusinessProfileForm } from "@/components/crm/BusinessProfileForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
 import { logActivity } from "@/hooks/useActivityLog";
 import type { Lead } from "@/components/crm/LeadCard";
 import {
@@ -29,43 +30,34 @@ const columns = [
 
 export default function MeuCRM() {
   const { toast } = useToast();
+  const { activeMembership } = useTenant();
   const [isLoading, setIsLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  const [mentoradoId, setMentoradoId] = useState<string | null>(null);
+
+  const membershipId = activeMembership?.id;
+  const tenantId = activeMembership?.tenant_id;
 
   useEffect(() => {
-    loadMentoradoAndLeads();
-  }, []);
+    if (membershipId) {
+      loadLeads();
+    } else {
+      setIsLoading(false);
+    }
+  }, [membershipId]);
 
-  const loadMentoradoAndLeads = async () => {
+  const loadLeads = async () => {
+    if (!membershipId) return;
+    
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-
-      // Get mentorado record
-      const { data: mentorado, error: mentoradoError } = await supabase
-        .from("mentorados")
-        .select("id")
-        .eq("user_id", userData.user.id)
-        .single();
-
-      if (mentoradoError || !mentorado) {
-        console.error("Mentorado not found");
-        setIsLoading(false);
-        return;
-      }
-
-      setMentoradoId(mentorado.id);
-
-      // Load leads
+      setIsLoading(true);
       const { data: leadsData, error: leadsError } = await supabase
         .from("crm_prospections")
         .select("*")
-        .eq("mentorado_id", mentorado.id)
+        .eq("membership_id", membershipId)
         .order("created_at", { ascending: false });
 
       if (leadsError) throw leadsError;
@@ -93,9 +85,10 @@ export default function MeuCRM() {
       if (error) throw error;
 
       // Log activity
-      if (mentoradoId) {
+      if (membershipId) {
         logActivity({
-          mentoradoId,
+          membershipId,
+          tenantId,
           actionType: 'lead_status_changed',
           description: `Lead movido para ${newStatus}`,
           metadata: { leadId, newStatus },
@@ -208,26 +201,27 @@ export default function MeuCRM() {
         </TabsContent>
 
         <TabsContent value="config">
-          {mentoradoId && <BusinessProfileForm mentoradoId={mentoradoId} />}
+          {membershipId && <BusinessProfileForm membershipId={membershipId} />}
         </TabsContent>
       </Tabs>
 
       {/* Modals */}
-      {mentoradoId && (
+      {membershipId && (
         <LeadUploadModal
           open={uploadModalOpen}
           onOpenChange={setUploadModalOpen}
           onLeadCreated={() => {
-            loadMentoradoAndLeads();
-            // Log activity when lead is created
+            loadLeads();
             logActivity({
-              mentoradoId,
+              membershipId,
+              tenantId,
               actionType: 'lead_created',
               description: 'Novo lead cadastrado via IA',
               pointsEarned: 10,
             });
           }}
-          mentoradoId={mentoradoId}
+          membershipId={membershipId}
+          tenantId={tenantId}
         />
       )}
 
@@ -235,7 +229,7 @@ export default function MeuCRM() {
         lead={selectedLead}
         open={detailSheetOpen}
         onOpenChange={setDetailSheetOpen}
-        onUpdate={loadMentoradoAndLeads}
+        onUpdate={loadLeads}
       />
     </div>
   );

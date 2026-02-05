@@ -53,13 +53,13 @@ const actionLabels: Record<string, string> = {
 };
 
 interface RecentActivityFeedProps {
-  mentoradoId?: string;
+  membershipId?: string;
   limit?: number;
   showEmpty?: boolean;
 }
 
 export function RecentActivityFeed({
-  mentoradoId,
+  membershipId,
   limit = 5,
   showEmpty = true,
 }: RecentActivityFeedProps) {
@@ -67,7 +67,7 @@ export function RecentActivityFeed({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!mentoradoId) {
+    if (!membershipId) {
       setIsLoading(false);
       return;
     }
@@ -76,7 +76,7 @@ export function RecentActivityFeed({
       const { data, error } = await supabase
         .from("activity_logs")
         .select("*")
-        .eq("mentorado_id", mentoradoId)
+        .eq("membership_id", membershipId)
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -92,14 +92,14 @@ export function RecentActivityFeed({
 
     // Subscribe to realtime updates
     const channel = supabase
-      .channel(`activity-${mentoradoId}`)
+      .channel(`activity-${membershipId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "activity_logs",
-          filter: `mentorado_id=eq.${mentoradoId}`,
+          filter: `membership_id=eq.${membershipId}`,
         },
         (payload) => {
           setActivities((prev) => [payload.new as ActivityLog, ...prev.slice(0, limit - 1)]);
@@ -110,7 +110,7 @@ export function RecentActivityFeed({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [mentoradoId, limit]);
+  }, [membershipId, limit]);
 
   if (isLoading) {
     return (

@@ -33,7 +33,7 @@ import { ptBR } from 'date-fns/locale';
 
 export default function MemberDashboard() {
   const { profile, user } = useAuth();
-  const { isMentor } = useTenant();
+  const { activeMembership } = useTenant();
   const { stats: dashboardStats, isLoading: isLoadingDashboard } = useMenteeDashboardStats();
   const { badges, stats: gamificationStats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
@@ -47,7 +47,7 @@ export default function MemberDashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user || isMentor) return;
+      if (!user || activeMembership?.role === 'mentor' || activeMembership?.role === 'admin') return;
       
       try {
         let mentoradoIdLocal: string | null = null;
@@ -101,7 +101,7 @@ export default function MemberDashboard() {
     };
     
     fetchStats();
-  }, [user, isMentor]);
+  }, [user, activeMembership]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-emerald-500";
@@ -399,7 +399,7 @@ export default function MemberDashboard() {
               <h3 className="font-semibold text-foreground">Atividade Recente</h3>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <RecentActivityFeed mentoradoId={mentoradoId || undefined} limit={5} />
+              <RecentActivityFeed membershipId={activeMembership?.id || undefined} limit={5} />
             </div>
           </div>
         </BentoCard>

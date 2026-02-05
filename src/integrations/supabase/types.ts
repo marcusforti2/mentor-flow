@@ -21,7 +21,7 @@ export type Database = {
           created_at: string
           id: string
           membership_id: string | null
-          mentorado_id: string
+          mentorado_id: string | null
           metadata: Json | null
           points_earned: number | null
           tenant_id: string | null
@@ -32,7 +32,7 @@ export type Database = {
           created_at?: string
           id?: string
           membership_id?: string | null
-          mentorado_id: string
+          mentorado_id?: string | null
           metadata?: Json | null
           points_earned?: number | null
           tenant_id?: string | null
@@ -43,7 +43,7 @@ export type Database = {
           created_at?: string
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
+          mentorado_id?: string | null
           metadata?: Json | null
           points_earned?: number | null
           tenant_id?: string | null
@@ -77,7 +77,7 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
+          mentorado_id: string | null
           tenant_id: string | null
           tool_type: string
         }
@@ -85,7 +85,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
+          mentorado_id?: string | null
           tenant_id?: string | null
           tool_type: string
         }
@@ -93,7 +93,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
+          mentorado_id?: string | null
           tenant_id?: string | null
           tool_type?: string
         }
@@ -898,7 +898,7 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
+          mentorado_id: string | null
           notes: string | null
           points: number | null
           profile_url: string | null
@@ -917,7 +917,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
+          mentorado_id?: string | null
           notes?: string | null
           points?: number | null
           profile_url?: string | null
@@ -936,7 +936,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
+          mentorado_id?: string | null
           notes?: string | null
           points?: number | null
           profile_url?: string | null

@@ -49,7 +49,7 @@ interface BusinessProfile {
 }
 
 interface BusinessProfileFormProps {
-  mentoradoId: string;
+  membershipId: string;
 }
 
 const businessTypes = [
@@ -163,7 +163,7 @@ const conversionRates = [
   { value: "nao_sei", label: "Não sei" },
 ];
 
-export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
+export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -196,14 +196,14 @@ export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
 
   useEffect(() => {
     loadProfile();
-  }, [mentoradoId]);
+  }, [membershipId]);
 
   const loadProfile = async () => {
     try {
       const { data, error } = await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .eq("mentorado_id", mentoradoId)
+        .eq("mentorado_id", membershipId)
         .single();
 
       if (data && !error) {
@@ -245,7 +245,7 @@ export function BusinessProfileForm({ mentoradoId }: BusinessProfileFormProps) {
     setIsSaving(true);
     try {
       const payload = {
-        mentorado_id: mentoradoId,
+        mentorado_id: membershipId,
         business_name: profile.business_name || null,
         business_type: profile.business_type || null,
         target_audience: profile.target_audience || null,

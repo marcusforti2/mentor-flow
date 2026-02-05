@@ -27,7 +27,8 @@ interface LeadUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLeadCreated: () => void;
-  mentoradoId: string;
+  membershipId: string;
+  tenantId?: string;
 }
 
 interface ExtractedData {
@@ -54,7 +55,8 @@ export function LeadUploadModal({
   open,
   onOpenChange,
   onLeadCreated,
-  mentoradoId,
+  membershipId,
+  tenantId,
 }: LeadUploadModalProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<"upload" | "analyzing" | "review">("upload");
@@ -156,7 +158,7 @@ export function LeadUploadModal({
       for (let i = 0; i < images.length; i++) {
         const base64Data = images[i].split(",")[1];
         const byteArray = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-        const fileName = `${mentoradoId}/${Date.now()}-${i}.png`;
+        const fileName = `${membershipId}/${Date.now()}-${i}.png`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("lead-screenshots")
@@ -169,9 +171,10 @@ export function LeadUploadModal({
         }
       }
 
-      // Create the lead
+      // Create the lead using membership_id
       const { error: insertError } = await supabase.from("crm_prospections").insert({
-        mentorado_id: mentoradoId,
+        membership_id: membershipId,
+        tenant_id: tenantId,
         contact_name: editedData.name,
         contact_email: editedData.email || null,
         contact_phone: editedData.phone || null,
