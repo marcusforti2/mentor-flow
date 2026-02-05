@@ -1,67 +1,110 @@
 
-# Correção: Usuário Travado no Login sem Role
+# Plano: Upload de Planilha + Sistema de Convites
 
-## Diagnóstico
+## Problema Identificado
+Atualmente, quando um mentor cadastra um mentorado manualmente ou via planilha, não há garantia de que o email usado no cadastro será o mesmo usado pelo mentorado ao acessar a plataforma.
 
-A usuária **Mariana Chinarelli** (mariana@atlasalesinvest.com) está travada porque:
+## Solução Proposta
+Criar um sistema de "pré-cadastro" onde o mentor importa os dados e gera automaticamente uma mensagem de convite personalizada para cada mentorado.
 
-1. **Tentou se cadastrar como "Mentor"** - mas já existe um mentor no sistema (Marcus Forti)
-2. **A atribuição de role falhou** - o banco retornou erro "Já existe um mentor cadastrado no sistema"
-3. **O código continuou mesmo assim** - criou o usuário e gerou magic link, mas sem atribuir role
-4. **Resultado:** Usuária autenticada mas sem role → tela de "Aguardando aprovação"
+---
 
-## Solução em 2 Partes
+## Funcionalidades
 
-### Parte 1: Correção Imediata (Banco de Dados)
+### 1. Upload de Planilha com IA
+- Modal para upload de arquivos CSV/Excel
+- IA analisa e mapeia automaticamente as colunas (nome, email, telefone, empresa, etc.)
+- Preview dos dados antes de confirmar importação
+- Validação de emails duplicados
 
-Executar migração para:
-1. Atribuir role `mentorado` para a Mariana
-2. Criar registro na tabela `mentorados` vinculando ao mentor existente
+### 2. Sistema de Pré-Cadastro
+- Criar tabela `mentorado_invites` para armazenar convites pendentes
+- Cada convite tem um `token` único (código de 8 caracteres)
+- Status: `pending`, `accepted`, `expired`
 
-```sql
--- Atribuir role de mentorado
-INSERT INTO user_roles (user_id, role)
-VALUES ('1ffe23f6-386e-4e2c-986b-69ce665901fa', 'mentorado')
-ON CONFLICT (user_id, role) DO NOTHING;
+### 3. Mensagem de Boas-Vindas Automática
+Quando o mentor cadastra um mentorado (manual ou planilha), o sistema gera automaticamente:
 
--- Criar registro de mentorado vinculado ao mentor
-INSERT INTO mentorados (user_id, mentor_id, status, joined_at)
-VALUES (
-  '1ffe23f6-386e-4e2c-986b-69ce665901fa',
-  'ea66854f-10ce-41c8-9609-b128d5a237f8',
-  'active',
-  now()
-)
-ON CONFLICT DO NOTHING;
+```
+Olá [NOME]! 👋
+
+Você foi convidado(a) para a mentoria [NOME_MENTORIA].
+
+Clique no link abaixo para criar sua conta e começar sua jornada:
+[LINK_COM_TOKEN]
+
+Esse link é exclusivo para você.
 ```
 
-### Parte 2: Prevenção (Edge Function)
+### 4. Fluxo de Vinculação Garantida
+1. Mentor importa planilha ou cadastra manualmente
+2. Sistema cria registro em `mentorado_invites` com token único
+3. Mensagem de boas-vindas fica disponível no perfil para copiar
+4. Mentorado acessa o link com token
+5. Sistema valida token e vincula automaticamente ao mentor correto
+6. Não importa qual email o mentorado use - a vinculação é pelo token
 
-Atualizar `verify-otp` para **impedir a criação de usuário** quando:
-- O userType selecionado é `mentor`
-- Já existe um mentor no sistema
+---
 
-**Lógica melhorada:**
+## Arquitetura Técnica
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  ANTES de criar o usuário:                                  │
-├─────────────────────────────────────────────────────────────┤
-│  1. Se userType === 'mentor'                                │
-│  2. Verificar se já existe mentor no sistema                │
-│  3. Se existir → ERRO: "Já existe um mentor cadastrado"     │
-│  4. NÃO criar o usuário sem role                            │
-└─────────────────────────────────────────────────────────────┘
-```
+### Nova Tabela: `mentorado_invites`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | uuid | PK |
+| mentor_id | uuid | FK para mentors |
+| invite_token | text | Token único (8 chars) |
+| email | text | Email informado pelo mentor |
+| full_name | text | Nome do mentorado |
+| phone | text | Telefone (opcional) |
+| business_name | text | Empresa (opcional) |
+| status | text | pending/accepted/expired |
+| welcome_message | text | Mensagem gerada |
+| mentorado_id | uuid | FK preenchido após aceite |
+| created_at | timestamp | Data de criação |
+| expires_at | timestamp | Validade do convite (30 dias) |
 
-## Arquivos a Modificar
+### Novos Componentes
+1. `MentoradoUploadModal.tsx` - Modal de upload de planilha
+2. `WelcomeMessageCard.tsx` - Card com mensagem para copiar
+3. Atualização do `Mentorados.tsx` - Integrar upload e exibir convites pendentes
 
-| Arquivo | Mudança |
-|---------|---------|
-| Migração SQL | Corrigir dados da Mariana |
-| `supabase/functions/verify-otp/index.ts` | Validar mentor antes de criar usuário |
+### Edge Function: `parse-mentorado-spreadsheet`
+- Recebe arquivo base64
+- Usa IA para identificar colunas
+- Retorna dados estruturados
 
-## Resultado Esperado
+### Modificação no Onboarding
+- Aceitar parâmetro `?token=XXXXXXXX` além de `?mentor=ID`
+- Validar token e vincular automaticamente
 
-1. **Mariana** poderá fazer login e será redirecionada para `/app` (portal do mentorado)
-2. **Futuros usuários** que tentarem se cadastrar como Mentor receberão erro claro antes de criar a conta
+---
+
+## Interface do Usuário
+
+### Botão "Importar Planilha"
+Ao lado do botão "Adicionar Mentorado" existente
+
+### Modal de Upload
+1. **Passo 1**: Upload do arquivo (CSV, Excel)
+2. **Passo 2**: IA mostra preview com mapeamento de colunas
+3. **Passo 3**: Confirmação e criação dos convites
+
+### Lista de Mentorados
+- Nova aba "Convites Pendentes" mostrando quem ainda não aceitou
+- Cada card mostra: Nome, Email, Data do convite, Botão "Copiar Mensagem"
+
+### Perfil do Mentorado (pré-cadastro)
+- Card destacado com a mensagem de boas-vindas
+- Botão "Copiar para WhatsApp" / "Copiar para Email"
+- Indicador se o convite foi visualizado/aceito
+
+---
+
+## Benefícios
+
+1. **Controle Total**: O mentor sabe exatamente quem está vinculado a ele
+2. **Facilidade**: Mensagem pronta para enviar via WhatsApp/Email
+3. **Segurança**: Token único garante que só quem recebeu o convite pode acessar
+4. **Escalabilidade**: Upload em massa via planilha
+5. **Rastreabilidade**: Histórico de quem aceitou, quem está pendente
