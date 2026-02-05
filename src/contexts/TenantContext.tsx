@@ -48,6 +48,7 @@
    switchMembership: (membershipId: string) => Promise<void>;
    endImpersonation: () => Promise<void>;
    refreshMemberships: () => Promise<void>;
+  refreshMembershipsAndWait: () => Promise<Membership[]>;
    
    // Helpers
    hasRole: (roles: MembershipRole | MembershipRole[]) => boolean;
@@ -63,6 +64,9 @@
  
  const ACTIVE_MEMBERSHIP_KEY = 'active_membership_id';
  const IMPERSONATION_LOG_KEY = 'impersonation_log_id';
+
+// Role priority order (highest privilege first)
+const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'];
  
  export function TenantProvider({ children }: { children: ReactNode }) {
    const { user } = useAuth();
@@ -125,12 +129,17 @@
        setMemberships(fullMemberships);
  
        // Determine real membership (highest privilege)
-       const roleOrder: MembershipRole[] = ['admin', 'ops', 'mentor', 'mentee'];
        const sortedMemberships = [...fullMemberships].sort(
-         (a, b) => roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role)
+        (a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)
        );
        const real = sortedMemberships[0];
        setRealMembership(real);
+      
+      console.log('[TenantContext] Memberships loaded:', {
+        count: fullMemberships.length,
+        realRole: real?.role,
+        roles: fullMemberships.map(m => m.role),
+      });
  
        // Check for stored active membership (for impersonation persistence)
        const storedMembershipId = localStorage.getItem(ACTIVE_MEMBERSHIP_KEY);
@@ -162,8 +171,11 @@
          
          setTenant(tenantData);
        }
+      
+      return fullMemberships;
      } catch (error) {
        console.error('Error fetching memberships:', error);
+      return [];
      } finally {
        setIsLoading(false);
      }
@@ -279,7 +291,8 @@
      isLoading,
      switchMembership,
      endImpersonation,
-     refreshMemberships: fetchMemberships,
+     refreshMemberships: async () => { await fetchMemberships(); },
+     refreshMembershipsAndWait: fetchMemberships,
      hasRole,
      isAdmin: hasRole('admin'),
      isOps: hasRole('ops'),
