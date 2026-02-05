@@ -11,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Users, Search, MoreHorizontal, Shield, UserCog, Power, Eye } from 'lucide-react';
+import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { InviteMentorModal } from '@/components/admin/InviteMentorModal';
+import { toast } from 'sonner';
 
 const roleConfig = {
   master_admin: { label: 'Master Admin', variant: 'default' as const, color: 'bg-amber-500' },
@@ -29,10 +31,23 @@ const statusConfig = {
   suspended: { label: 'Suspenso', variant: 'destructive' as const },
 };
 
+const LOGIN_URL = 'https://client-flourish-ai.lovable.app/auth';
+
+const canInviteMentor = (membership: MembershipWithDetails): boolean => {
+  return (
+    membership.role === 'mentor' &&
+    membership.status === 'active' &&
+    !!membership.profile?.email &&
+    !!membership.tenant?.name
+  );
+};
+
 export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [selectedMembership, setSelectedMembership] = useState<MembershipWithDetails | null>(null);
   
   const { tenants } = useTenants();
   const { memberships, isLoading, updateMembershipRole, updateMembershipStatus, toggleImpersonation } = useMemberships(
@@ -61,6 +76,24 @@ export default function UsersPage() {
 
   const handleImpersonationToggle = (membership: MembershipWithDetails) => {
     toggleImpersonation.mutate({ id: membership.id, canImpersonate: !membership.can_impersonate });
+  };
+
+  const handleInviteMentor = (membership: MembershipWithDetails) => {
+    if (!canInviteMentor(membership)) {
+      toast.error('Não é possível convidar este usuário. Verifique se é um mentor ativo com email e tenant válidos.');
+      return;
+    }
+    setSelectedMembership(membership);
+    setInviteModalOpen(true);
+  };
+
+  const handleCopyLoginLink = async () => {
+    try {
+      await navigator.clipboard.writeText(LOGIN_URL);
+      toast.success('Link de acesso copiado!');
+    } catch {
+      toast.error('Erro ao copiar link');
+    }
   };
 
   // Stats
@@ -253,6 +286,26 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                              {membership.role === 'mentor' && (
+                                <>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleInviteMentor(membership)}
+                                    className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
+                                    disabled={!canInviteMentor(membership)}
+                                  >
+                                    <MessageCircle className="mr-2 h-4 w-4 text-green-400" />
+                                    Convidar (WhatsApp)
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={handleCopyLoginLink}
+                                    className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
+                                  >
+                                    <Link className="mr-2 h-4 w-4" />
+                                    Copiar link de acesso
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator className="bg-slate-700" />
+                                </>
+                              )}
                               <DropdownMenuItem 
                                 className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                                 disabled={membership.role === 'master_admin'}
@@ -288,6 +341,12 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <InviteMentorModal
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+        membership={selectedMembership}
+      />
     </div>
   );
 }
