@@ -1,384 +1,161 @@
 
-# Plano: Refatoração Multi-Tenant com RBAC e Impersonation
+# Plano: Correção do Multi-Tenant e RLS para Conteúdo de Mentorados
 
-## Visão Geral
+## Diagnóstico Atual
 
-Transformar a arquitetura atual (baseada em `user_roles` + `mentors` + `mentorados`) para um modelo multi-tenant verdadeiro com:
-- **Tenant** como empresa guarda-chuva (ex: LBV)
-- **Membership** como vínculo usuário-tenant com role
-- **Impersonation** por troca de contexto de membership (sem criar usuários)
+### O que já está funcionando
+- Tabelas `tenants`, `memberships`, `mentor_profiles`, `mentee_profiles`, `mentor_mentee_assignments` criadas
+- `TenantContext` implementado corretamente (só troca contexto, não cria usuários)
+- `SwitchContextPanel` funcional para impersonation
+- Funções RPC de impersonation (`start_impersonation`, `end_impersonation`)
 
----
+### Problemas identificados
 
-## Arquitetura Atual vs Nova
+1. **Edge Functions desatualizadas**
+   - `verify-otp`: Ainda escreve em `user_roles` e `mentorados` (antigos)
+   - `process-onboarding`: Ainda escreve em `user_roles` e `mentorados` (antigos)
+   - Não criam `memberships` nem perfis nas novas tabelas
 
-### Estrutura Atual
-```
-profiles (user_id) ─┬─ user_roles (role: mentor|mentorado|admin_master)
-                    ├─ mentors (business_name, bio...)
-                    └─ mentorados (mentor_id, status...)
-```
+2. **Tabelas de conteúdo sem tenant_id**
+   - `ai_tool_usage`: usa `mentorado_id` (FK antiga)
+   - `trail_progress`: usa `mentorado_id` (FK antiga)
+   - `crm_leads`: usa `mentor_id` (FK antiga)
+   - Outras tabelas funcionais ainda no modelo antigo
 
-**Problemas identificados:**
-1. Sem isolamento por tenant - dados globais
-2. Role é global (não contextual ao tenant)
-3. DevMode usa localStorage para override - inconsistente
-4. Não escala para múltiplos "LBVs" no futuro
-
-### Nova Estrutura
-
-```
-User (auth.users) ─┐
-                   │
-Tenant (LBV) ──────┼── Membership (user_id, tenant_id, role)
-                   │        │
-                   │        ├── MentorProfile (dados extras do mentor)
-                   │        └── MenteeProfile (dados extras do mentorado)
-                   │
-                   └── MentorMenteeAssignment (mentor_membership_id, mentee_membership_id)
-```
+3. **useAuth usando sistema antigo**
+   - Chama `get_user_role()` que lê de `user_roles`
+   - Precisa ser atualizado ou substituído pelo `useTenant`
 
 ---
 
-## Entidades do Banco de Dados
+## Solução Proposta
 
-### 1. `tenants` (Nova)
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| name | text | Nome da empresa (ex: "LBV Tech") |
-| slug | text | Identificador único (ex: "lbv") |
-| logo_url | text | Logo do tenant |
-| primary_color | text | Cor primária |
-| settings | jsonb | Configurações personalizadas |
-| created_at | timestamp | Data de criação |
+### Etapa 1: Atualizar Edge Functions
 
-### 2. `memberships` (Nova - substitui user_roles)
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| tenant_id | uuid | FK para tenants |
-| user_id | uuid | FK para auth.users |
-| role | enum | admin, ops, mentor, mentee |
-| status | text | active, suspended, inactive |
-| created_at | timestamp | Data de criação |
-| **unique** | | (tenant_id, user_id, role) |
+**verify-otp/index.ts** - Criar membership ao invés de user_role:
+```typescript
+// Ao criar novo usuário:
+// 1. Criar profile
+// 2. Criar membership no tenant com role correto
+// 3. Criar mentor_profile ou mentee_profile conforme o caso
+// 4. NÃO escrever em user_roles/mentorados (deprecados)
+```
 
-### 3. `mentor_profiles` (Substitui mentors)
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| membership_id | uuid | FK para membership (role=mentor) |
-| bio | text | Biografia |
-| specialties | text[] | Especialidades |
-| settings | jsonb | Configurações do mentor |
+**process-onboarding/index.ts** - Mesma atualização:
+```typescript
+// 1. Criar/atualizar profile
+// 2. Criar membership (role=mentee) no tenant do mentor
+// 3. Criar mentee_profile
+// 4. Criar mentor_mentee_assignment
+// 5. Marcar invite como aceito se aplicável
+```
 
-### 4. `mentee_profiles` (Evolução de mentorados)
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| membership_id | uuid | FK para membership (role=mentee) |
-| business_name | text | Nome do negócio |
-| onboarding_completed | boolean | Status do onboarding |
-| business_profile | jsonb | Dados do perfil de negócio |
+### Etapa 2: Migrar Tabelas de Conteúdo
 
-### 5. `mentor_mentee_assignments` (Nova - substitui mentor_id em mentorados)
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| tenant_id | uuid | FK para tenants |
-| mentor_membership_id | uuid | FK para membership (mentor) |
-| mentee_membership_id | uuid | FK para membership (mentee) |
-| status | text | active, paused, completed |
-| assigned_at | timestamp | Data de atribuição |
+Adicionar `tenant_id` e `owner_membership_id` nas tabelas funcionais:
 
-### 6. `impersonation_logs` (Nova - auditoria)
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | uuid | PK |
-| admin_membership_id | uuid | Quem fez impersonation |
-| target_membership_id | uuid | Quem está sendo impersonado |
-| started_at | timestamp | Início |
-| ended_at | timestamp | Fim |
-| ip_address | text | IP de origem |
+| Tabela | Mudança |
+|--------|---------|
+| `ai_tool_usage` | + `tenant_id`, trocar `mentorado_id` → `membership_id` |
+| `trail_progress` | + `tenant_id`, trocar `mentorado_id` → `membership_id` |
+| `crm_leads` | + `tenant_id`, trocar `mentor_id` → `owner_membership_id` |
+| `sos_requests` | + `tenant_id`, atualizar FKs |
+| `behavioral_responses` | + `tenant_id`, atualizar FKs |
+| `user_badges` | + `tenant_id`, atualizar FKs |
+| `user_streaks` | + `tenant_id`, atualizar FKs |
+| `mentorado_files` | + `tenant_id`, atualizar FKs |
+| `community_posts` | + `tenant_id` |
+| `community_messages` | + `tenant_id` |
 
----
+### Etapa 3: RLS Policies para Isolamento
 
-## Sistema de Roles (RBAC)
-
-### Hierarquia de Permissões
-
-| Role | Descrição | Permissões |
-|------|-----------|------------|
-| **admin** | Super admin do tenant | Tudo: CRUD memberships, assignments, ver tudo |
-| **ops** | Operações | Ver todos mentorados, editar dados, não pode criar mentors |
-| **mentor** | Mentor | CRUD seus mentorados atribuídos, criar trilhas |
-| **mentee** | Mentorado | CRUD próprios dados, consumir conteúdo |
-
-### Funções RPC de Verificação
+**Padrão para tabelas de conteúdo do mentorado:**
 
 ```sql
--- Verifica se membership tem role específico
-has_tenant_role(membership_id, role) → boolean
+-- Mentee vê apenas seus próprios dados
+CREATE POLICY "mentee_own_data" ON ai_tool_usage
+FOR SELECT USING (
+  membership_id IN (
+    SELECT id FROM memberships WHERE user_id = auth.uid()
+  )
+);
 
--- Retorna role efetiva (considerando impersonation)
-get_effective_role(user_id, tenant_id) → role
-
--- Verifica se pode ver mentorado específico
-can_view_mentee(viewer_membership_id, mentee_membership_id) → boolean
+-- Staff (admin/ops/mentor) vê tudo do tenant
+CREATE POLICY "staff_view_all" ON ai_tool_usage
+FOR SELECT USING (
+  tenant_id IN (
+    SELECT tenant_id FROM memberships 
+    WHERE user_id = auth.uid() 
+    AND role IN ('admin', 'ops', 'mentor')
+  )
+);
 ```
 
----
+### Etapa 4: Atualizar useAuth / useTenant
 
-## Modo Dev / Impersonation
+**Opção A**: Deprecar `useAuth.role` e usar apenas `useTenant.activeMembership.role`
 
-### Fluxo de Switch Context
+**Opção B**: Atualizar `useAuth` para ler de memberships:
+```typescript
+// Em vez de:
+const { data: roleData } = await supabase.rpc('get_user_role', { _user_id: userId });
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Switch Context Panel (visível apenas para admin)               │
-├─────────────────────────────────────────────────────────────────┤
-│  Memberships disponíveis no tenant:                             │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ 👤 Marcus Forti (admin)           [Você]                  │  │
-│  │ 👨‍🏫 Maria Silva (mentor)          [Impersonar]           │  │
-│  │ 👨‍💼 João Santos (mentee)          [Impersonar]           │  │
-│  │ 👨‍💼 Ana Costa (mentee)            [Impersonar]           │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  ⚠️ Impersonando: Maria Silva (mentor)                          │
-│  [Encerrar Impersonation]                                       │
-└─────────────────────────────────────────────────────────────────┘
+// Usar:
+const { data: membershipData } = await supabase.rpc('get_user_memberships', { _user_id: userId });
 ```
 
-### Armazenamento do Contexto
-
-**Atual (problemático):**
-```js
-localStorage.setItem('dev_mode_role_override', 'mentor')
-// Problema: Cria comportamento inconsistente, não logado
-```
-
-**Novo (via state + banco):**
-```js
-// Context global
-{
-  activeMembershipId: uuid, // Membership ativo (real ou impersonado)
-  isImpersonating: boolean,
-  realMembershipId: uuid,   // Membership real do usuário
-}
-
-// Validação server-side via RPC
-get_active_membership(user_id) → membership com tenant context
-```
-
-### Regras de Impersonation
-
-1. **Em DEV**: Qualquer admin pode impersonar qualquer membership do mesmo tenant
-2. **Em PROD**: Requer permissão explícita (`can_impersonate = true` no membership)
-3. **Logging obrigatório**: Toda impersonation é registrada
-4. **Tempo limite**: Impersonation expira após 2h ou logout
-
----
-
-## Migração de Dados
-
-### Fase 1: Criar Estrutura
+### Etapa 5: Script de Migração de Dados
 
 ```sql
--- 1. Criar tenant LBV
-INSERT INTO tenants (name, slug) VALUES ('LBV Tech', 'lbv');
-
--- 2. Migrar mentors → memberships + mentor_profiles
-INSERT INTO memberships (tenant_id, user_id, role)
-SELECT t.id, m.user_id, 'mentor'
-FROM mentors m, tenants t WHERE t.slug = 'lbv';
-
--- 3. Migrar mentorados → memberships + mentee_profiles
-INSERT INTO memberships (tenant_id, user_id, role)
-SELECT t.id, m.user_id, 'mentee'
-FROM mentorados m, tenants t WHERE t.slug = 'lbv';
-
--- 4. Criar assignments (de mentor_id em mentorados)
-INSERT INTO mentor_mentee_assignments (...)
-SELECT ...
-```
-
-### Fase 2: Migrar Dados Funcionais
-
-Todas as tabelas que usam `mentor_id` ou `mentorado_id` precisam ganhar `tenant_id`:
-
-| Tabela | Campo Atual | Novo Campo |
-|--------|-------------|------------|
-| trails | mentor_id | tenant_id + creator_membership_id |
-| badges | mentor_id | tenant_id |
-| calendar_events | mentor_id | tenant_id |
-| crm_leads | mentor_id | tenant_id + owner_membership_id |
-| ai_tool_usage | mentorado_id | membership_id |
-| trail_progress | mentorado_id | membership_id |
-| ... | ... | ... |
-
-### Fase 3: Deprecar Tabelas Antigas
-
-Após validação:
-- Remover `user_roles` (substituído por `memberships`)
-- Remover `mentors` (substituído por `mentor_profiles`)
-- Refatorar `mentorados` (substituído por `mentee_profiles`)
-
----
-
-## Modificações no Frontend
-
-### 1. Novo Context: `TenantContext`
-
-```tsx
-interface TenantContextType {
-  tenant: Tenant | null;
-  activeMembership: Membership | null;
-  isImpersonating: boolean;
-  realMembership: Membership | null;
-  switchMembership: (membershipId: string) => Promise<void>;
-  endImpersonation: () => void;
-}
-```
-
-### 2. Hook `usePermissions`
-
-```tsx
-const { canView, canEdit, canDelete, canManage } = usePermissions();
-
-// Uso
-if (canView('mentees')) { ... }
-if (canEdit('trails')) { ... }
-```
-
-### 3. Componente `SwitchContextPanel`
-
-Substituir `DevModeSelector` por painel mais robusto:
-- Lista memberships do tenant
-- Botão impersonar/encerrar
-- Badge visual de impersonation
-- Log de ações
-
-### 4. `ProtectedRoute` Atualizado
-
-```tsx
-<ProtectedRoute 
-  requiredRole={['admin', 'mentor']}
-  requiredPermission="view_mentees"
->
+-- Migrar dados existentes para incluir tenant_id
+UPDATE ai_tool_usage SET 
+  tenant_id = (SELECT tenant_id FROM memberships WHERE user_id = (
+    SELECT user_id FROM mentorados WHERE id = ai_tool_usage.mentorado_id
+  ) LIMIT 1),
+  membership_id = (SELECT id FROM memberships WHERE user_id = (
+    SELECT user_id FROM mentorados WHERE id = ai_tool_usage.mentorado_id
+  ) AND role = 'mentee' LIMIT 1);
 ```
 
 ---
 
-## RLS Policies
+## Arquivos a Modificar
 
-### Padrão Base
+### Edge Functions
+- `supabase/functions/verify-otp/index.ts` - Criar memberships
+- `supabase/functions/process-onboarding/index.ts` - Criar memberships
 
-```sql
--- Todas as tabelas com tenant_id
-CREATE POLICY "tenant_isolation" ON table_name
-  USING (
-    tenant_id IN (
-      SELECT tenant_id FROM memberships 
-      WHERE user_id = auth.uid()
-    )
-  );
-```
+### Database Migration (nova)
+- Adicionar colunas `tenant_id` e `membership_id` nas tabelas funcionais
+- Criar script de migração de dados
+- Criar RLS policies novas
 
-### Exemplo: mentee_profiles
+### Frontend
+- `src/hooks/useAuth.tsx` - Atualizar para usar memberships (ou deprecar role)
+- `src/pages/Auth.tsx` - Verificar se redireciona corretamente com novo sistema
 
-```sql
--- Mentee só vê próprio perfil
-CREATE POLICY "mentee_own_profile" ON mentee_profiles
-  FOR SELECT USING (
-    membership_id IN (
-      SELECT id FROM memberships WHERE user_id = auth.uid()
-    )
-  );
-
--- Admin/Ops/Mentor vê todos do tenant
-CREATE POLICY "staff_view_profiles" ON mentee_profiles
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM memberships m
-      WHERE m.user_id = auth.uid()
-      AND m.tenant_id = (
-        SELECT tenant_id FROM memberships 
-        WHERE id = mentee_profiles.membership_id
-      )
-      AND m.role IN ('admin', 'ops', 'mentor')
-    )
-  );
-```
+### Componentes que usam dados antigos
+- Todos que fazem query com `mentorado_id` ou `mentor_id` precisam ser atualizados para usar `membership_id`
 
 ---
 
-## Sequência de Implementação
+## Ordem de Execução
 
-### Sprint 1: Fundação (Banco)
-1. Criar tabelas: `tenants`, `memberships`, `mentor_profiles`, `mentee_profiles`, `mentor_mentee_assignments`, `impersonation_logs`
-2. Criar migration de dados
-3. Criar funções RPC de verificação de role
-4. Atualizar RLS policies
-
-### Sprint 2: Auth & Context
-1. Criar `TenantProvider` e `useTenant` hook
-2. Atualizar `useAuth` para incluir membership
-3. Criar `usePermissions` hook
-4. Atualizar `ProtectedRoute`
-
-### Sprint 3: UI de Impersonation
-1. Criar `SwitchContextPanel`
-2. Remover `DevModeSelector` antigo
-3. Adicionar indicador visual de impersonation
-4. Implementar logging
-
-### Sprint 4: Migração de Tabelas Funcionais
-1. Adicionar `tenant_id` às tabelas existentes
-2. Atualizar queries e mutations
-3. Atualizar edge functions
-
-### Sprint 5: Cleanup & Testes
-1. Remover tabelas depreciadas
-2. Testes E2E de fluxos
-3. Validação de RLS
+1. **Migration SQL**: Adicionar colunas novas (sem remover antigas ainda)
+2. **Edge Functions**: Atualizar para escrever nos dois sistemas (transição)
+3. **Frontend queries**: Atualizar para usar novas colunas
+4. **RLS Policies**: Implementar isolamento por tenant
+5. **Cleanup**: Remover colunas/tabelas antigas após validação
 
 ---
 
-## Arquivos Afetados
+## Validação Final
 
-### Banco de Dados
-- Nova migration: `create_multi_tenant_schema.sql`
-- Nova migration: `migrate_existing_data.sql`
-- Nova migration: `update_functional_tables.sql`
-
-### Frontend - Novos
-- `src/contexts/TenantContext.tsx`
-- `src/hooks/useTenant.tsx`
-- `src/hooks/usePermissions.tsx`
-- `src/components/SwitchContextPanel.tsx`
-
-### Frontend - Modificados
-- `src/hooks/useAuth.tsx` - Incluir membership
-- `src/hooks/useDevMode.tsx` - **Remover** (substituído por TenantContext)
-- `src/components/DevModeSelector.tsx` - **Remover**
-- `src/components/ProtectedRoute.tsx` - Usar memberships
-- `src/App.tsx` - Adicionar TenantProvider
-- Todas páginas admin/member que usam `mentor_id` ou `mentorado_id`
-
-### Edge Functions - Modificados
-- `verify-otp/index.ts` - Criar membership ao invés de user_role
-- `process-onboarding/index.ts` - Usar tenant context
-- Todas functions que usam `mentor_id` ou `mentorado_id`
-
----
-
-## Riscos e Mitigações
-
-| Risco | Mitigação |
-|-------|-----------|
-| Dados órfãos na migração | Script de validação pré/pós migração |
-| Quebra de RLS | Testes automatizados de permissão |
-| Impersonation abusada | Logging obrigatório + alertas |
-| Performance queries tenant | Índices em tenant_id + membership_id |
+Após implementação, verificar:
+- [ ] Novo usuário via Auth cria membership corretamente
+- [ ] Novo mentorado via onboarding cria membership + mentee_profile
+- [ ] Switch context NÃO cria usuários (apenas troca contexto)
+- [ ] Mentee só vê seus próprios dados
+- [ ] Mentor vê todos os dados do tenant
+- [ ] Admin pode impersonar qualquer membership
+- [ ] Impersonation logs são registrados
