@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
+ import { useAuth } from '@/hooks/useAuth';
+ import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -43,7 +44,8 @@ const tools = [
 ];
 
 export default function FerramentasIA() {
-  const { user, isMentor } = useAuth();
+   const { user } = useAuth();
+   const { isMentor } = useTenant();
   const navigate = useNavigate();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
