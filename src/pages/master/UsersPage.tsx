@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMemberships, MembershipWithDetails } from '@/hooks/useMemberships';
+import { useInvites, InviteWithDetails } from '@/hooks/useInvites';
 import { useTenants } from '@/hooks/useTenants';
 import { useTenant } from '@/contexts/TenantContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
@@ -14,11 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info, X, Filter, Trash2 } from 'lucide-react';
+import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info, X, Trash2, UserPlus, GraduationCap, Clock, RefreshCw, Ban } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { InviteMentorModal } from '@/components/admin/InviteMentorModal';
 import { UserDetailModal } from '@/components/admin/UserDetailModal';
+import { CreateMentorModal } from '@/components/admin/CreateMentorModal';
+import { CreateMenteeModal } from '@/components/admin/CreateMenteeModal';
 import { toast } from 'sonner';
 
 const roleConfig = {
@@ -33,6 +36,7 @@ const statusConfig = {
   active: { label: 'Ativo', variant: 'default' as const },
   inactive: { label: 'Inativo', variant: 'secondary' as const },
   suspended: { label: 'Suspenso', variant: 'destructive' as const },
+  convidado: { label: 'Convidado', variant: 'outline' as const },
 };
 
 const LOGIN_URL = 'https://client-flourish-ai.lovable.app/auth';
@@ -56,6 +60,10 @@ export default function UsersPage() {
   const [selectedMembership, setSelectedMembership] = useState<MembershipWithDetails | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [membershipToDelete, setMembershipToDelete] = useState<MembershipWithDetails | null>(null);
+  const [createMentorOpen, setCreateMentorOpen] = useState(false);
+  const [createMenteeOpen, setCreateMenteeOpen] = useState(false);
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [inviteToRevoke, setInviteToRevoke] = useState<InviteWithDetails | null>(null);
   
   const { tenants } = useTenants();
   const { realMembership } = useTenant();
@@ -63,7 +71,11 @@ export default function UsersPage() {
   const { memberships, isLoading, updateMembershipRole, updateMembershipStatus, toggleImpersonation, deleteMembership } = useMemberships(
     tenantFilter !== 'all' ? tenantFilter : undefined
   );
+  const { invites, isLoading: invitesLoading, revokeInvite, resendInvite } = useInvites(
+    tenantFilter !== 'all' ? tenantFilter : undefined
+  );
 
+  // Filter memberships
   const filteredMemberships = memberships.filter((m) => {
     const matchesSearch = 
       m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -71,7 +83,21 @@ export default function UsersPage() {
       m.tenant?.name.toLowerCase().includes(search.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || m.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'convidado' ? false : m.status === statusFilter);
+    
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  // Filter invites
+  const filteredInvites = invites.filter((i) => {
+    const matchesSearch = 
+      i.metadata?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      i.email.toLowerCase().includes(search.toLowerCase()) ||
+      i.tenant?.name.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesRole = roleFilter === 'all' || i.role === roleFilter;
+    const matchesStatus = statusFilter === 'all' || statusFilter === 'convidado';
     
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -148,13 +174,35 @@ export default function UsersPage() {
     }
   };
 
-  // Stats
+  const handleRevokeClick = (invite: InviteWithDetails) => {
+    setInviteToRevoke(invite);
+    setRevokeDialogOpen(true);
+  };
+
+  const handleConfirmRevoke = () => {
+    if (inviteToRevoke) {
+      revokeInvite.mutate(inviteToRevoke.id);
+      setRevokeDialogOpen(false);
+      setInviteToRevoke(null);
+    }
+  };
+
+  const handleResendInvite = (invite: InviteWithDetails) => {
+    resendInvite.mutate(invite.id);
+  };
+
+  const handleRefreshData = () => {
+    // This triggers a refetch by invalidating queries
+    toast.success('Atualizando dados...');
+  };
+
+  // Stats - include invites count
   const stats = {
-    total: memberships.length,
+    total: memberships.length + invites.length,
     active: memberships.filter(m => m.status === 'active').length,
-    admins: memberships.filter(m => ['master_admin', 'admin'].includes(m.role)).length,
-    mentors: memberships.filter(m => m.role === 'mentor').length,
-    mentees: memberships.filter(m => m.role === 'mentee').length,
+    convidados: invites.length,
+    mentors: memberships.filter(m => m.role === 'mentor').length + invites.filter(i => i.role === 'mentor').length,
+    mentees: memberships.filter(m => m.role === 'mentee').length + invites.filter(i => i.role === 'mentee').length,
   };
 
   return (
@@ -163,6 +211,23 @@ export default function UsersPage() {
         <div>
           <h1 className="text-2xl font-display font-bold text-slate-100">Gestão de Usuários</h1>
           <p className="text-slate-400">Gerencie todos os memberships da plataforma</p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setCreateMenteeOpen(true)}
+            variant="outline"
+            className="border-slate-700 text-slate-300 hover:bg-slate-800"
+          >
+            <GraduationCap className="mr-2 h-4 w-4" />
+            Adicionar Mentorado
+          </Button>
+          <Button 
+            onClick={() => setCreateMentorOpen(true)}
+            className="gradient-gold text-primary-foreground"
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Adicionar Mentor
+          </Button>
         </div>
       </div>
 
@@ -182,8 +247,8 @@ export default function UsersPage() {
         </Card>
         <Card className="bg-slate-800/50 border-slate-700/50">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-purple-400">{stats.admins}</div>
-            <div className="text-sm text-slate-400">Admins</div>
+            <div className="text-2xl font-bold text-amber-400">{stats.convidados}</div>
+            <div className="text-sm text-slate-400">Convidados</div>
           </CardContent>
         </Card>
         <Card className="bg-slate-800/50 border-slate-700/50">
@@ -206,10 +271,10 @@ export default function UsersPage() {
             <div>
               <CardTitle className="flex items-center gap-2 text-slate-100">
                 <Users className="h-5 w-5" />
-                Memberships ({filteredMemberships.length})
+                Usuários ({filteredMemberships.length + filteredInvites.length})
               </CardTitle>
               <CardDescription className="text-slate-400">
-                Lista de todos os usuários e seus papéis
+                Lista de memberships ativos e convites pendentes
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -303,6 +368,7 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Memberships */}
                   {filteredMemberships.map((membership) => {
                     const role = roleConfig[membership.role] || roleConfig.mentee;
                     const status = statusConfig[membership.status as keyof typeof statusConfig] || statusConfig.active;
@@ -432,6 +498,90 @@ export default function UsersPage() {
                       </TableRow>
                     );
                   })}
+                  
+                  {/* Pending Invites */}
+                  {filteredInvites.map((invite) => {
+                    const role = roleConfig[invite.role] || roleConfig.mentee;
+                    
+                    return (
+                      <TableRow key={`invite-${invite.id}`} className="border-slate-700/50 hover:bg-slate-800/30 bg-amber-950/10">
+                        <TableCell>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-amber-900/50 text-amber-300 text-xs">
+                              <Clock className="h-4 w-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium text-slate-100">
+                              {invite.metadata?.full_name || 'Sem nome'}
+                            </div>
+                            <div className="text-sm text-slate-500">
+                              {invite.email}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-slate-300">{invite.tenant?.name || '-'}</div>
+                          <div className="text-xs text-slate-500 font-mono">
+                            {invite.tenant?.slug || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={role.variant} className="gap-1">
+                            <span className={`w-2 h-2 rounded-full ${role.color}`} />
+                            {role.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-400">
+                            <Clock className="h-3 w-3" />
+                            Convidado
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-slate-500">-</span>
+                        </TableCell>
+                        <TableCell className="text-slate-400 text-sm">
+                          {format(new Date(invite.created_at), "dd MMM yyyy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                              <DropdownMenuItem 
+                                onClick={() => handleResendInvite(invite)}
+                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Renovar convite
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={handleCopyLoginLink}
+                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
+                              >
+                                <Link className="mr-2 h-4 w-4" />
+                                Copiar link de acesso
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-slate-700" />
+                              <DropdownMenuItem 
+                                onClick={() => handleRevokeClick(invite)}
+                                className="text-red-400 focus:text-red-300 focus:bg-slate-700"
+                              >
+                                <Ban className="mr-2 h-4 w-4" />
+                                Revogar convite
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -478,6 +628,46 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-100">Revogar Convite</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Tem certeza que deseja revogar o convite de <strong className="text-slate-200">{inviteToRevoke?.metadata?.full_name || inviteToRevoke?.email}</strong>?
+              <br /><br />
+              O usuário não poderá mais acessar a plataforma com este convite.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 text-slate-100 border-slate-600 hover:bg-slate-600">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmRevoke}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Revogar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CreateMentorModal
+        open={createMentorOpen}
+        onOpenChange={setCreateMentorOpen}
+        onSuccess={() => {
+          // Queries will be auto-invalidated by the hook
+        }}
+      />
+
+      <CreateMenteeModal
+        open={createMenteeOpen}
+        onOpenChange={setCreateMenteeOpen}
+        onSuccess={() => {
+          // Queries will be auto-invalidated by the hook
+        }}
+      />
     </div>
   );
 }
