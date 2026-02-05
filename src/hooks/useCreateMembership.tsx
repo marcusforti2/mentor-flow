@@ -8,6 +8,7 @@ interface CreateMembershipParams {
   full_name?: string;
   phone?: string;
   role: 'mentor' | 'mentee';
+  mentor_membership_id?: string; // Required for mentee when created by admin/master
 }
 
 interface CreateMembershipResult {

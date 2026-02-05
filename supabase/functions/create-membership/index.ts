@@ -172,7 +172,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tenant_id, email, full_name, phone, role } = await req.json();
+    const { tenant_id, email, full_name, phone, role, mentor_membership_id } = await req.json();
 
     // ========== VALIDATION ==========
     if (!tenant_id || !email || !role) {
@@ -255,19 +255,56 @@ serve(async (req) => {
     // - mentor: can create only mentee in their tenant
     // - mentee: cannot create anyone
     
+    // Determine the mentor_membership_id for mentee creation
+    let effectiveMentorMembershipId: string | null = null;
+    
+    if (role === 'mentee') {
+      if (isTenantMentor && callerMembershipInTenant) {
+        // Mentor creating mentee → auto-assign to themselves
+        effectiveMentorMembershipId = callerMembershipInTenant.id;
+        console.log("create-membership: Mentor auto-assigning mentee to self:", effectiveMentorMembershipId);
+      } else if (isMasterAdmin || isTenantAdmin) {
+        // Master Admin or Admin creating mentee → must specify mentor
+        if (!mentor_membership_id) {
+          console.log("create-membership: Admin must specify mentor_membership_id for mentee");
+          return new Response(
+            JSON.stringify({ error: "Para criar mentorado, é obrigatório especificar o mentor responsável (mentor_membership_id)" }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        // Validate that mentor_membership_id is a valid mentor in this tenant
+        const { data: mentorMembership, error: mentorCheckError } = await supabaseAdmin
+          .from("memberships")
+          .select("id, role, tenant_id")
+          .eq("id", mentor_membership_id)
+          .eq("tenant_id", tenant_id)
+          .eq("role", "mentor")
+          .eq("status", "active")
+          .single();
+        
+        if (mentorCheckError || !mentorMembership) {
+          console.log("create-membership: Invalid mentor_membership_id:", mentor_membership_id);
+          return new Response(
+            JSON.stringify({ error: "mentor_membership_id inválido. O mentor deve existir e estar ativo neste tenant." }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        effectiveMentorMembershipId = mentor_membership_id;
+        console.log("create-membership: Admin specified mentor:", effectiveMentorMembershipId);
+      } else {
+        console.log("create-membership: Permission denied - caller not authorized for mentee creation");
+        return new Response(
+          JSON.stringify({ error: "Você não tem permissão para criar mentorados neste programa" }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+    
     if (role === 'mentor') {
       if (!isMasterAdmin && !isTenantAdmin) {
         console.log("create-membership: Permission denied - only master_admin/admin can create mentor");
         return new Response(
           JSON.stringify({ error: "Apenas Master Admin ou Admin do tenant pode criar mentores" }),
-          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
-    } else if (role === 'mentee') {
-      if (!isMasterAdmin && !isTenantAdmin && !isTenantMentor) {
-        console.log("create-membership: Permission denied - caller not authorized");
-        return new Response(
-          JSON.stringify({ error: "Você não tem permissão para criar mentorados neste programa" }),
           { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
@@ -454,6 +491,27 @@ serve(async (req) => {
 
     console.log("create-membership: Created membership:", membership.id);
 
+    // ========== CREATE MENTOR-MENTEE ASSIGNMENT (for mentees only) ==========
+    if (role === 'mentee' && effectiveMentorMembershipId) {
+      const { error: assignmentError } = await supabaseAdmin
+        .from("mentor_mentee_assignments")
+        .insert({
+          mentor_membership_id: effectiveMentorMembershipId,
+          mentee_membership_id: membership.id,
+          tenant_id: tenant_id,
+          status: "active",
+          assigned_at: new Date().toISOString(),
+        });
+
+      if (assignmentError) {
+        console.error("create-membership: Error creating mentor-mentee assignment:", assignmentError);
+        // Don't fail the whole operation, just log the error
+        // The membership was already created successfully
+      } else {
+        console.log("create-membership: Created mentor-mentee assignment - mentor:", effectiveMentorMembershipId, "mentee:", membership.id);
+      }
+    }
+
     // ========== AUDIT LOG ==========
     await createAuditLog(supabaseAdmin, {
       userId: caller.id,
@@ -469,6 +527,7 @@ serve(async (req) => {
         is_new_user: isNewUser,
         actor_role: isMasterAdmin ? 'master_admin' : (isTenantAdmin ? 'admin' : 'mentor'),
         actor_membership_id: callerMembershipInTenant?.id || null,
+        assigned_mentor_membership_id: effectiveMentorMembershipId || null,
       },
     });
 
