@@ -1,83 +1,74 @@
 
-# Plano: Corrigir Bug "Cannot read properties of undefined (reading 'length')"
 
-## Diagnostico
+# Plano: Corrigir Sincronização de Dados na Criação de Usuários
 
-O erro ocorre no `Auth.tsx` linha 81:
-```typescript
-console.log('[Auth] Memberships result:', { count: memberships.length, ... });
+## Problema
+Ao criar um mentor, os dados (nome, telefone) não aparecem na lista de usuários porque:
+1. O trigger de criação de profile ignora o `full_name` do `user_metadata`
+2. O UPDATE subsequente no Edge Function não tem tratamento de erro
+3. Potencial condição de corrida entre trigger e UPDATE
+
+## Solução
+
+### 1. Atualizar Trigger `handle_new_user` (Migration SQL)
+Modificar o trigger para extrair `full_name` e `phone` do `raw_user_meta_data`:
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    INSERT INTO public.profiles (user_id, email, full_name, phone)
+    VALUES (
+      NEW.id, 
+      NEW.email,
+      NEW.raw_user_meta_data->>'full_name',
+      NEW.raw_user_meta_data->>'phone'
+    );
+    RETURN NEW;
+END;
+$$;
 ```
 
-A funcao `refreshMembershipsAndWait` (que chama `fetchMemberships`) retorna `undefined` quando:
-- Linha 91: `!user?.id` - retorna sem valor explicito
-- Linha 107: `!membershipData` - retorna sem valor explicito
-
-Quando o usuario faz login, existe um timing issue onde a sessao ainda nao propagou para o TenantContext, entao `user` e `undefined` momentaneamente.
-
----
-
-## Solucao
-
-### 1. Corrigir `TenantContext.tsx` - Garantir retorno de array
-
-**Arquivo**: `src/contexts/TenantContext.tsx`
-
-Modificar a funcao `fetchMemberships` para SEMPRE retornar um array:
+### 2. Melhorar Edge Function `create-membership`
+- Usar UPSERT em vez de UPDATE para garantir que os dados sejam salvos
+- Adicionar log de erro
+- Adicionar pequeno retry se necessário
 
 ```typescript
-// Linha 91 - quando nao ha user
-if (!user?.id) {
-  setMemberships([]);
-  setActiveMembership(null);
-  setRealMembership(null);
-  setTenant(null);
-  setIsLoading(false);
-  return []; // ADICIONAR ESTA LINHA
-}
+// Substituir UPDATE por UPSERT (usando ON CONFLICT)
+const { error: profileError } = await supabaseAdmin
+  .from("profiles")
+  .upsert({
+    user_id: targetUserId,
+    full_name: full_name || null,
+    phone: phone || null,
+    email: normalizedEmail,
+    updated_at: new Date().toISOString()
+  }, {
+    onConflict: 'user_id'
+  });
 
-// Linha 107 - quando nao ha membershipData
-if (!membershipData || membershipData.length === 0) {
-  setMemberships([]);
-  setActiveMembership(null);
-  setRealMembership(null);
-  setTenant(null);
-  setIsLoading(false);
-  return []; // ADICIONAR ESTA LINHA
-}
-```
-
-### 2. Adicionar verificacao defensiva no `Auth.tsx`
-
-**Arquivo**: `src/pages/Auth.tsx`
-
-Modificar `bootstrapAfterAuth` para verificar se memberships e um array:
-
-```typescript
-const memberships = await refreshMembershipsAndWait();
-console.log('[Auth] Memberships result:', { 
-  count: memberships?.length ?? 0, 
-  roles: memberships?.map(m => m.role) ?? [] 
-});
-
-if (!memberships || memberships.length === 0) {
-  // ... tratamento de erro
+if (profileError) {
+  console.error("create-membership: Profile update error:", profileError);
 }
 ```
 
----
+### 3. Garantir Invalidação de Cache no Frontend
+Verificar que `useCreateMembership` invalida corretamente as queries após sucesso (já está correto).
 
 ## Arquivos a Modificar
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/contexts/TenantContext.tsx` | Adicionar `return []` nas linhas 91 e 107 |
-| `src/pages/Auth.tsx` | Adicionar optional chaining `memberships?.length` na linha 81 |
+| Arquivo | Alteração |
+|---------|-----------|
+| `supabase/migrations/[novo].sql` | Atualizar trigger `handle_new_user` |
+| `supabase/functions/create-membership/index.ts` | UPSERT + log de erro |
 
----
+## Resultado Esperado
+- Nome e telefone aparecem imediatamente após criação
+- Logs de erro visíveis se houver falha
+- Sem condição de corrida
 
-## Validacao
-
-Apos a correcao:
-1. Login com codigo OTP deve funcionar sem erros
-2. Usuario deve ser redirecionado corretamente
-3. Se nao houver memberships, deve mostrar mensagem "Acesso nao configurado"
