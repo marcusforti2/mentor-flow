@@ -13,10 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link } from 'lucide-react';
+import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { InviteMentorModal } from '@/components/admin/InviteMentorModal';
+import { UserDetailModal } from '@/components/admin/UserDetailModal';
 import { toast } from 'sonner';
 
 const roleConfig = {
@@ -49,6 +50,7 @@ export default function UsersPage() {
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedMembership, setSelectedMembership] = useState<MembershipWithDetails | null>(null);
   
   const { tenants } = useTenants();
@@ -309,6 +311,17 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setSelectedMembership(membership);
+                                  setDetailModalOpen(true);
+                                }}
+                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
+                              >
+                                <Info className="mr-2 h-4 w-4" />
+                                Ver detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-slate-700" />
                               {membership.role === 'mentor' && (
                                 <>
                                   <DropdownMenuItem 
@@ -370,6 +383,16 @@ export default function UsersPage() {
         open={inviteModalOpen}
         onOpenChange={setInviteModalOpen}
         membership={selectedMembership}
+      />
+
+      <UserDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        membership={selectedMembership}
+        onImpersonate={handleStartImpersonation}
+        onToggleStatus={handleStatusToggle}
+        onToggleImpersonation={handleImpersonationToggle}
+        onInvite={handleInviteMentor}
       />
     </div>
   );
