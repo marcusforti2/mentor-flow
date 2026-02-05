@@ -1139,6 +1139,71 @@ export type Database = {
           },
         ]
       }
+      mentor_library: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string
+          id: string
+          link_title: string | null
+          link_url: string | null
+          mentor_id: string
+          mime_type: string | null
+          note_content: string | null
+          note_title: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type: string
+          id?: string
+          link_title?: string | null
+          link_url?: string | null
+          mentor_id: string
+          mime_type?: string | null
+          note_content?: string | null
+          note_title?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          link_title?: string | null
+          link_url?: string | null
+          mentor_id?: string
+          mime_type?: string | null
+          note_content?: string | null
+          note_title?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_library_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorado_business_profiles: {
         Row: {
           average_ticket: string | null
