@@ -400,16 +400,24 @@ serve(async (req) => {
         isNewUser = true;
         console.log("create-membership: Created new user:", targetUserId);
 
-        // Update profile with name and phone if provided
-        if (full_name || phone) {
-          await supabaseAdmin
-            .from("profiles")
-            .update({ 
-              full_name: full_name || null, 
-              phone: phone || null,
-              updated_at: new Date().toISOString()
-            })
-            .eq("user_id", targetUserId);
+        // UPSERT profile to ensure data is saved even if trigger hasn't run yet
+        const { error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .upsert({
+            user_id: targetUserId,
+            email: normalizedEmail,
+            full_name: full_name || null,
+            phone: phone || null,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          });
+
+        if (profileError) {
+          console.error("create-membership: Profile upsert error:", profileError);
+          // Don't fail the whole operation, just log the error
+        } else {
+          console.log("create-membership: Profile upserted successfully for user:", targetUserId);
         }
       }
     }
