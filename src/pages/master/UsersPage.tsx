@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useMemberships, MembershipWithDetails } from '@/hooks/useMemberships';
 import { useTenants } from '@/hooks/useTenants';
+import { useTenant } from '@/contexts/TenantContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +52,8 @@ export default function UsersPage() {
   const [selectedMembership, setSelectedMembership] = useState<MembershipWithDetails | null>(null);
   
   const { tenants } = useTenants();
+  const { realMembership } = useTenant();
+  const { startImpersonation, isImpersonating } = useImpersonation();
   const { memberships, isLoading, updateMembershipRole, updateMembershipStatus, toggleImpersonation } = useMemberships(
     tenantFilter !== 'all' ? tenantFilter : undefined
   );
@@ -76,6 +80,25 @@ export default function UsersPage() {
 
   const handleImpersonationToggle = (membership: MembershipWithDetails) => {
     toggleImpersonation.mutate({ id: membership.id, canImpersonate: !membership.can_impersonate });
+  };
+
+  const handleStartImpersonation = async (membership: MembershipWithDetails) => {
+    if (!membership.can_impersonate) {
+      toast.error('Este usuário não tem permissão para ser impersonado. Ative a opção primeiro.');
+      return;
+    }
+    
+    if (membership.role === 'master_admin') {
+      toast.error('Não é possível impersonar um Master Admin');
+      return;
+    }
+
+    if (!realMembership) {
+      toast.error('Erro: Membership do admin não encontrado');
+      return;
+    }
+
+    await startImpersonation(membership, realMembership.id);
   };
 
   const handleInviteMentor = (membership: MembershipWithDetails) => {
@@ -314,8 +337,9 @@ export default function UsersPage() {
                                 Alterar Papel
                               </DropdownMenuItem>
                               <DropdownMenuItem 
+                                onClick={() => handleStartImpersonation(membership)}
                                 className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
-                                disabled={membership.role === 'master_admin'}
+                                disabled={membership.role === 'master_admin' || !membership.can_impersonate}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Impersonar
