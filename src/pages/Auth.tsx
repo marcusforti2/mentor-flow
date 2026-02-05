@@ -49,10 +49,12 @@ const Auth = () => {
   useEffect(() => {
     if (!authLoading && !tenantLoading && user && activeMembership) {
       const role = activeMembership.role;
-      if (role === 'admin' || role === 'ops' || role === 'mentor') {
-        navigate('/admin');
+       if (role === 'master_admin') {
+         navigate('/master');
+       } else if (role === 'admin' || role === 'ops' || role === 'mentor') {
+         navigate('/mentor');
       } else if (role === 'mentee') {
-        navigate('/app');
+         navigate('/mentorado');
       }
     }
   }, [user, activeMembership, authLoading, tenantLoading, navigate]);

@@ -57,7 +57,11 @@ export function ProtectedRoute({
   // Check if user has required role
    if (allowedRoles && !allowedRoles.includes(activeMembership.role)) {
     // Redirect to appropriate dashboard based on role
-     const correctPath = activeMembership.role === 'mentee' ? '/app' : '/admin';
+      const correctPath = activeMembership.role === 'master_admin' 
+        ? '/master' 
+        : activeMembership.role === 'mentee' 
+          ? '/mentorado' 
+          : '/mentor';
     return <Navigate to={correctPath} replace />;
   }
 
