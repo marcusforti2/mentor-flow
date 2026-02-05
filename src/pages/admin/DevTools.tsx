@@ -1,12 +1,12 @@
-import { DevToolsPanel } from '@/components/dev/DevToolsPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+ import { DevToolsPanel } from '@/components/dev/DevToolsPanel';
+ import { useTenant } from '@/contexts/TenantContext';
+ import { Navigate } from 'react-router-dom';
 
 export default function DevTools() {
-  const { isAdminMaster, isLoading } = useAuth();
+   const { realMembership, isLoading } = useTenant();
 
-  // Only admin_master can access
-  if (!isLoading && !isAdminMaster) {
+   // Only admin can access
+   if (!isLoading && realMembership?.role !== 'admin') {
     return <Navigate to="/admin" replace />;
   }
 

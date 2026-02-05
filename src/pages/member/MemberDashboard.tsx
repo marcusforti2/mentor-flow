@@ -1,4 +1,5 @@
-import { useAuth } from '@/hooks/useAuth';
+ import { useAuth } from '@/hooks/useAuth';
+ import { useTenant } from '@/contexts/TenantContext';
 import { useGamification } from '@/hooks/useGamification';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { BadgeCard } from '@/components/gamification/BadgeCard';
@@ -26,7 +27,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function MemberDashboard() {
-  const { profile, user, isMentor } = useAuth();
+   const { profile, user } = useAuth();
+   const { isMentor } = useTenant();
   const { badges, stats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);

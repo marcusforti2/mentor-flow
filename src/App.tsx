@@ -3,9 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import { DevModeProvider } from "@/hooks/useDevMode";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+ import { AuthProvider } from "@/hooks/useAuth";
+ import { TenantProvider } from "@/contexts/TenantContext";
+ import { ProtectedRoute } from "@/components/ProtectedRoute";
+ import { SwitchContextPanel } from "@/components/SwitchContextPanel";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -53,7 +54,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <DevModeProvider>
+           <TenantProvider>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
@@ -61,11 +62,11 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/setup" element={<Setup />} />
             
-            {/* Admin Routes (Mentor + Admin Master) */}
+             {/* Admin Routes (Admin + Ops + Mentor) */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRoles={['mentor', 'admin_master']}>
+                 <ProtectedRoute allowedRoles={['admin', 'ops', 'mentor']}>
                   <AdminLayout />
                 </ProtectedRoute>
               }
@@ -85,11 +86,11 @@ const App = () => (
               <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
             </Route>
 
-            {/* Member Routes (Mentorado + Admin Master) */}
+             {/* Member Routes (Mentee - all roles can access for impersonation) */}
             <Route
               path="/app"
               element={
-                <ProtectedRoute allowedRoles={['mentorado', 'admin_master']}>
+                 <ProtectedRoute allowedRoles={['admin', 'ops', 'mentor', 'mentee']}>
                   <MemberLayout />
                 </ProtectedRoute>
               }
@@ -113,7 +114,8 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          </DevModeProvider>
+           <SwitchContextPanel />
+           </TenantProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

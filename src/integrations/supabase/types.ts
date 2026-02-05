@@ -1002,6 +1002,48 @@ export type Database = {
           },
         ]
       }
+      impersonation_logs: {
+        Row: {
+          admin_membership_id: string
+          ended_at: string | null
+          id: string
+          ip_address: string | null
+          started_at: string | null
+          target_membership_id: string
+        }
+        Insert: {
+          admin_membership_id: string
+          ended_at?: string | null
+          id?: string
+          ip_address?: string | null
+          started_at?: string | null
+          target_membership_id: string
+        }
+        Update: {
+          admin_membership_id?: string
+          ended_at?: string | null
+          id?: string
+          ip_address?: string | null
+          started_at?: string | null
+          target_membership_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "impersonation_logs_admin_membership_id_fkey"
+            columns: ["admin_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "impersonation_logs_target_membership_id_fkey"
+            columns: ["target_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_attendees: {
         Row: {
           attended: boolean | null
@@ -1139,6 +1181,91 @@ export type Database = {
           },
         ]
       }
+      memberships: {
+        Row: {
+          can_impersonate: boolean | null
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["membership_role"]
+          status: string
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          can_impersonate?: boolean | null
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["membership_role"]
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          can_impersonate?: boolean | null
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["membership_role"]
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentee_profiles: {
+        Row: {
+          business_name: string | null
+          business_profile: Json | null
+          created_at: string | null
+          id: string
+          joined_at: string | null
+          membership_id: string
+          onboarding_completed: boolean | null
+          onboarding_step: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_name?: string | null
+          business_profile?: Json | null
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          membership_id: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_name?: string | null
+          business_profile?: Json | null
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          membership_id?: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentee_profiles_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: true
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_library: {
         Row: {
           category: string | null
@@ -1200,6 +1327,102 @@ export type Database = {
             columns: ["mentor_id"]
             isOneToOne: false
             referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_mentee_assignments: {
+        Row: {
+          assigned_at: string | null
+          created_at: string | null
+          id: string
+          mentee_membership_id: string
+          mentor_membership_id: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          created_at?: string | null
+          id?: string
+          mentee_membership_id: string
+          mentor_membership_id: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          created_at?: string | null
+          id?: string
+          mentee_membership_id?: string
+          mentor_membership_id?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_mentee_assignments_mentee_membership_id_fkey"
+            columns: ["mentee_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_mentee_assignments_mentor_membership_id_fkey"
+            columns: ["mentor_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_mentee_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_profiles: {
+        Row: {
+          bio: string | null
+          business_name: string | null
+          created_at: string | null
+          id: string
+          membership_id: string
+          settings: Json | null
+          specialties: string[] | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          bio?: string | null
+          business_name?: string | null
+          created_at?: string | null
+          id?: string
+          membership_id: string
+          settings?: Json | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          bio?: string | null
+          business_name?: string | null
+          created_at?: string | null
+          id?: string
+          membership_id?: string
+          settings?: Json | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_profiles_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: true
+            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
         ]
@@ -1899,6 +2122,42 @@ export type Database = {
         }
         Relationships: []
       }
+      tenants: {
+        Row: {
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          secondary_color: string | null
+          settings: Json | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          settings?: Json | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          settings?: Json | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       trail_lessons: {
         Row: {
           content_text: string | null
@@ -2244,8 +2503,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      can_view_mentee: {
+        Args: { _mentee_membership_id: string; _viewer_membership_id: string }
+        Returns: boolean
+      }
       cleanup_expired_otp_codes: { Args: never; Returns: undefined }
+      end_impersonation: { Args: { _log_id: string }; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
+      get_effective_membership: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: {
+          can_impersonate: boolean
+          membership_id: string
+          role: Database["public"]["Enums"]["membership_role"]
+        }[]
+      }
       get_pending_users: {
         Args: never
         Returns: {
@@ -2256,9 +2528,28 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_memberships: {
+        Args: { _tenant_id?: string; _user_id: string }
+        Returns: {
+          id: string
+          role: Database["public"]["Enums"]["membership_role"]
+          status: string
+          tenant_id: string
+          tenant_name: string
+          tenant_slug: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_membership_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["membership_role"]
+          _tenant_id: string
+          _user_id: string
+        }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -2268,9 +2559,18 @@ export type Database = {
         Returns: boolean
       }
       is_first_mentor: { Args: never; Returns: boolean }
+      start_impersonation: {
+        Args: {
+          _admin_membership_id: string
+          _ip_address?: string
+          _target_membership_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "mentor" | "mentorado" | "admin_master"
+      membership_role: "admin" | "ops" | "mentor" | "mentee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2399,6 +2699,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["mentor", "mentorado", "admin_master"],
+      membership_role: ["admin", "ops", "mentor", "mentee"],
     },
   },
 } as const

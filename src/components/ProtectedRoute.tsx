@@ -1,24 +1,11 @@
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
-
-type AppRole = 'mentor' | 'mentorado' | 'admin_master';
-
-const DEV_MODE_KEY = 'dev_mode_role_override';
-
-// Função helper para ler override do localStorage de forma segura
-function getDevModeOverride(): AppRole | null {
-  if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(DEV_MODE_KEY);
-  if (stored === 'mentor' || stored === 'mentorado') {
-    return stored;
-  }
-  return null;
-}
+ import { Navigate, useLocation } from 'react-router-dom';
+ import { useAuth } from '@/hooks/useAuth';
+ import { useTenant, MembershipRole } from '@/contexts/TenantContext';
+ import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: AppRole[];
+   allowedRoles?: MembershipRole[];
   redirectTo?: string;
 }
 
@@ -27,14 +14,13 @@ export function ProtectedRoute({
   allowedRoles,
   redirectTo = '/auth'
 }: ProtectedRouteProps) {
-  const { user, role: realRole, isLoading } = useAuth();
+   const { user, isLoading: authLoading } = useAuth();
+   const { activeMembership, isLoading: tenantLoading } = useTenant();
   const location = useLocation();
-  
-  // Role efetiva: override do DevMode tem prioridade (lido do localStorage)
-  const overrideRole = getDevModeOverride();
-  const role = overrideRole || realRole;
 
-  if (isLoading) {
+   const isLoading = authLoading || tenantLoading;
+ 
+   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -49,8 +35,8 @@ export function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // If no role assigned yet, redirect to a waiting page or show message
-  if (!role) {
+   // If no membership assigned yet, redirect to a waiting page or show message
+   if (!activeMembership) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -63,15 +49,15 @@ export function ProtectedRoute({
     );
   }
 
-  // Admin master has full access to everything
-  if (role === 'admin_master') {
+   // Admin has full access to everything
+   if (activeMembership.role === 'admin') {
     return <>{children}</>;
   }
 
   // Check if user has required role
-  if (allowedRoles && !allowedRoles.includes(role)) {
+   if (allowedRoles && !allowedRoles.includes(activeMembership.role)) {
     // Redirect to appropriate dashboard based on role
-    const correctPath = role === 'mentor' ? '/admin' : '/app';
+     const correctPath = activeMembership.role === 'mentee' ? '/app' : '/admin';
     return <Navigate to={correctPath} replace />;
   }
 
