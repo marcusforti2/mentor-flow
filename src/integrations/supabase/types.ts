@@ -2843,6 +2843,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_user_tenant_ids: { Args: { _user_id?: string }; Returns: string[] }
       has_membership_role: {
         Args: {
           _role: Database["public"]["Enums"]["membership_role"]
@@ -2860,6 +2861,10 @@ export type Database = {
       }
       is_first_mentor: { Args: never; Returns: boolean }
       is_master_admin: { Args: { _user_id?: string }; Returns: boolean }
+      is_tenant_admin: {
+        Args: { _tenant_id: string; _user_id?: string }
+        Returns: boolean
+      }
       start_impersonation: {
         Args: {
           _admin_membership_id: string
