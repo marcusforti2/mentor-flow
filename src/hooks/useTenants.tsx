@@ -125,6 +125,24 @@ export function useTenants() {
     },
   });
 
+  const deleteTenant = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('tenants')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants-with-counts'] });
+      toast.success('Tenant excluído com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao excluir tenant: ${error.message}`);
+    },
+  });
+
   return {
     tenants: tenantsQuery.data || [],
     isLoading: tenantsQuery.isLoading,
@@ -132,5 +150,6 @@ export function useTenants() {
     createTenant,
     updateTenant,
     toggleStatus,
+    deleteTenant,
   };
 }

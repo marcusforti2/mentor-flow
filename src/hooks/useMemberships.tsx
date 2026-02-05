@@ -134,6 +134,24 @@ export function useMemberships(tenantFilter?: string) {
     },
   });
 
+  const deleteMembership = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('memberships')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-memberships'] });
+      toast.success('Membership excluído com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao excluir membership: ${error.message}`);
+    },
+  });
+
   return {
     memberships: membershipsQuery.data || [],
     isLoading: membershipsQuery.isLoading,
@@ -141,5 +159,6 @@ export function useMemberships(tenantFilter?: string) {
     updateMembershipRole,
     updateMembershipStatus,
     toggleImpersonation,
+    deleteMembership,
   };
 }

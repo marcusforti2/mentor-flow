@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Building2, Plus, Search, MoreHorizontal, Pencil, Power, Users } from 'lucide-react';
+import { Building2, Plus, Search, MoreHorizontal, Pencil, Power, Users, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -20,10 +21,12 @@ const statusConfig = {
 };
 
 export default function TenantsPage() {
-  const { tenants, isLoading, createTenant, updateTenant, toggleStatus } = useTenants();
+  const { tenants, isLoading, createTenant, updateTenant, toggleStatus, deleteTenant } = useTenants();
   const [search, setSearch] = useState('');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
 
   const filteredTenants = tenants.filter(
     (t) =>
@@ -55,6 +58,19 @@ export default function TenantsPage() {
   const handleToggleStatus = (tenant: Tenant) => {
     const newStatus = tenant.status === 'active' ? 'suspended' : 'active';
     toggleStatus.mutate({ id: tenant.id, status: newStatus });
+  };
+
+  const handleDeleteClick = (tenant: Tenant) => {
+    setTenantToDelete(tenant);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (tenantToDelete) {
+      deleteTenant.mutate(tenantToDelete.id);
+      setDeleteDialogOpen(false);
+      setTenantToDelete(null);
+    }
   };
 
   return (
@@ -158,7 +174,7 @@ export default function TenantsPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleEdit(tenant)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
@@ -166,6 +182,14 @@ export default function TenantsPage() {
                             <DropdownMenuItem onClick={() => handleToggleStatus(tenant)}>
                               <Power className="mr-2 h-4 w-4" />
                               {tenant.status === 'active' ? 'Suspender' : 'Ativar'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(tenant)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -186,6 +210,28 @@ export default function TenantsPage() {
         onSubmit={handleSubmit}
         isSubmitting={createTenant.isPending || updateTenant.isPending}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Tenant</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o tenant <strong>{tenantToDelete?.name}</strong>?
+              <br /><br />
+              Esta ação é irreversível e irá remover todos os dados associados a este tenant.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
