@@ -7,23 +7,15 @@ interface CreateMembershipParams {
   email: string;
   full_name?: string;
   phone?: string;
-  role: 'mentor' | 'mentee' | 'admin' | 'ops';
+  role: 'mentor' | 'mentee';
 }
 
 interface CreateMembershipResult {
   success: boolean;
-  invite: {
-    id: string;
-    email: string;
-    role: string;
-    full_name: string | null;
-  };
-  tenant: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  login_url: string;
+  membership_id: string;
+  status: 'active' | 'reactivated';
+  user_id: string;
+  is_new_user?: boolean;
 }
 
 export const useCreateMembership = () => {
@@ -37,7 +29,7 @@ export const useCreateMembership = () => {
       
       if (error) {
         console.error('create-membership error:', error);
-        throw new Error(error.message || 'Erro ao criar convite');
+        throw new Error(error.message || 'Erro ao criar membership');
       }
       
       if (data?.error) {
@@ -47,14 +39,22 @@ export const useCreateMembership = () => {
       return data;
     },
     onSuccess: (data) => {
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['memberships'] });
       queryClient.invalidateQueries({ queryKey: ['all-memberships'] });
       queryClient.invalidateQueries({ queryKey: ['all-invites'] });
       queryClient.invalidateQueries({ queryKey: ['invites'] });
-      toast.success(`Convite criado para ${data.invite.email}`);
+      
+      const statusMsg = data.status === 'reactivated' 
+        ? 'Membership reativado com sucesso!' 
+        : data.is_new_user 
+          ? 'Usuário criado e membership ativado!' 
+          : 'Membership criado com sucesso!';
+      
+      toast.success(statusMsg);
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Erro ao criar convite');
+      toast.error(error.message || 'Erro ao criar membership');
     },
   });
 };

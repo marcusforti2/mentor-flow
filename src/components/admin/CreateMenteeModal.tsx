@@ -73,8 +73,12 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
       return;
     }
 
+    // Get tenant name for the message
+    const selectedTenant = tenants.find(t => t.id === effectiveTenantId);
+    const tenantName = selectedTenant?.name || 'LBV TECH';
+
     try {
-      const result = await createMembership.mutateAsync({
+      await createMembership.mutateAsync({
         tenant_id: effectiveTenantId,
         email: email.trim(),
         full_name: fullName.trim(),
@@ -82,11 +86,12 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
         role: 'mentee',
       });
 
+      // Use local data for WhatsApp message (more secure - backend returns minimal data)
       setCreatedInvite({
-        full_name: result.invite.full_name || fullName,
-        email: result.invite.email,
-        tenant_name: result.tenant.name,
-        login_url: result.login_url,
+        full_name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        tenant_name: tenantName,
+        login_url: `${window.location.origin}/auth`,
       });
       setShowWhatsAppMessage(true);
       onSuccess?.();
