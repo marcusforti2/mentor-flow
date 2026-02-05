@@ -11,50 +11,90 @@ const corsHeaders = {
 };
 
 function generateOTPCode(): string {
-  // Generate 6 random digits
   return Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join('');
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { email } = await req.json();
+    const { email, tenant_hint } = await req.json();
 
     if (!email) {
       throw new Error("Email é obrigatório");
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw new Error("Email inválido");
     }
 
-    // Create Supabase client with service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log("send-otp: Checking permission for:", normalizedEmail, "tenant_hint:", tenant_hint);
+
+    // INVITE-ONLY CHECK: Verify if email has permission to receive OTP
+    const { data: permissionRows, error: permError } = await supabase
+      .rpc('can_receive_otp', { 
+        _email: normalizedEmail,
+        _tenant_hint: tenant_hint || null 
+      });
+
+    if (permError) {
+      console.error("Error checking OTP permission:", permError);
+      throw new Error("Erro ao verificar permissão de acesso");
+    }
+
+    const permission = permissionRows?.[0];
+    console.log("send-otp: Permission result:", permission);
+
+    if (!permission?.allowed) {
+      if (permission?.reason === 'multiple_invites') {
+        // Multiple tenants - return list for user to choose
+        console.log("send-otp: Multiple invites found, returning tenant list");
+        return new Response(
+          JSON.stringify({ 
+            error: 'multiple_tenants',
+            tenants: permission.tenants,
+            message: 'Selecione o programa que deseja acessar'
+          }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
+      // Not invited - block OTP
+      console.log("send-otp: OTP blocked for:", normalizedEmail, "reason:", permission?.reason);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Acesso não configurado. Você precisa ser convidado para acessar a plataforma.' 
+        }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    console.log("send-otp: OTP allowed for:", normalizedEmail, "reason:", permission.reason);
 
     // Generate OTP code
     const code = generateOTPCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Delete any existing unused codes for this email (used can be null on older rows)
+    // Delete any existing unused codes for this email
     await supabase
       .from("otp_codes")
       .delete()
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .or("used.is.null,used.eq.false");
 
     // Insert new OTP code
     const { error: insertError } = await supabase
       .from("otp_codes")
       .insert({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         code: code,
         expires_at: expiresAt.toISOString(),
         used: false,
@@ -68,7 +108,7 @@ serve(async (req) => {
     // Send email via Resend
     const { error: emailError } = await resend.emails.send({
       from: "LBV TECH <noreply@equipe.aceleracaoforti.online>",
-      to: [email],
+      to: [normalizedEmail],
       subject: "Seu código de acesso - LBV TECH",
       html: `
         <!DOCTYPE html>
@@ -82,7 +122,6 @@ serve(async (req) => {
             <tr>
               <td align="center">
                 <table width="100%" max-width="480" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #1a1a1d 0%, #0d0d0e 100%); border-radius: 16px; border: 1px solid #27272a; overflow: hidden;">
-                  <!-- Header -->
                   <tr>
                     <td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #27272a;">
                       <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #c9a227 100%); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
@@ -92,27 +131,21 @@ serve(async (req) => {
                       <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 14px;">Seu código de acesso chegou</p>
                     </td>
                   </tr>
-                  
-                  <!-- Code -->
                   <tr>
                     <td style="padding: 32px;">
                       <p style="margin: 0 0 16px; color: #d4d4d8; font-size: 15px; line-height: 1.6;">
                         Use o código abaixo para acessar sua conta:
                       </p>
-                      
                       <div style="background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #c9a227 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
                         <span style="font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #0a0a0b; font-family: 'Monaco', 'Consolas', monospace;">
                           ${code}
                         </span>
                       </div>
-                      
                       <p style="margin: 24px 0 0; color: #71717a; font-size: 13px; text-align: center;">
                         ⏱️ Este código expira em <strong style="color: #d4af37;">10 minutos</strong>
                       </p>
                     </td>
                   </tr>
-                  
-                  <!-- Footer -->
                   <tr>
                     <td style="padding: 24px 32px; background-color: #09090b; border-top: 1px solid #27272a;">
                       <p style="margin: 0; color: #52525b; font-size: 12px; text-align: center; line-height: 1.5;">
@@ -135,10 +168,16 @@ serve(async (req) => {
       throw new Error("Erro ao enviar email. Verifique se o email está correto.");
     }
 
-    console.log(`OTP sent to ${email}`);
+    console.log(`OTP sent to ${normalizedEmail}`);
 
     return new Response(
-      JSON.stringify({ success: true, message: "Código enviado para seu email" }),
+      JSON.stringify({ 
+        success: true, 
+        message: "Código enviado para seu email",
+        // Include tenant info if resolved
+        tenant_id: permission.tenant_id,
+        role: permission.role,
+      }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },

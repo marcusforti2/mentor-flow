@@ -7,58 +7,50 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Helper to get or create the default tenant
-async function getDefaultTenant(supabase: any): Promise<string> {
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("id")
-    .eq("slug", "lbv")
-    .single();
-  
-  if (tenant) return tenant.id;
-  
-  // Create default tenant if not exists
-  const { data: newTenant, error } = await supabase
-    .from("tenants")
-    .insert({ name: "LBV Tech", slug: "lbv" })
-    .select("id")
-    .single();
-  
-  if (error) throw new Error("Failed to create default tenant");
-  return newTenant.id;
+// Helper to get redirect path by role
+function getRedirectPath(role: string): string {
+  switch (role) {
+    case 'master_admin':
+      return '/master';
+    case 'admin':
+    case 'ops':
+    case 'mentor':
+      return '/mentor';
+    case 'mentee':
+      return '/mentorado';
+    default:
+      return '/mentorado';
+  }
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { email, code, fullName, phone, userType, devMode, mentorId, tenantSlug } = await req.json();
+    const { email, code, tenant_id, devMode } = await req.json();
 
     if (!email || !code) {
       throw new Error("Email e código são obrigatórios");
     }
 
-    // Create Supabase client with service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Normalize code - remove spaces and keep only digits
     const normalizedCode = code.replace(/\D/g, '');
     const normalizedEmail = email.toLowerCase().trim();
     
-    console.log("Verifying OTP:", { email: normalizedEmail, code: normalizedCode, devMode });
+    console.log("verify-otp: Verifying for:", normalizedEmail, "tenant_id:", tenant_id, "devMode:", devMode);
     
     // DEV MODE: Skip OTP validation with special code
     let otpData = null;
     if (devMode && normalizedCode === '000000') {
-      console.log("DEV MODE: Bypassing OTP validation");
+      console.log("verify-otp: DEV MODE bypassing OTP validation");
       otpData = { id: 'dev-mode', devMode: true };
     } else {
-      // Find any valid OTP for this email/code combination that hasn't expired
+      // Find valid OTP
       const { data: foundOtp, error: otpError } = await supabase
         .from("otp_codes")
         .select("*")
@@ -69,48 +61,57 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
       
-      console.log("OTP query result:", { found: !!foundOtp, error: otpError?.message });
+      console.log("verify-otp: OTP query result:", { found: !!foundOtp, error: otpError?.message });
 
       if (otpError) {
-        console.error("OTP query error:", otpError);
+        console.error("verify-otp: OTP query error:", otpError);
         throw new Error("Erro ao verificar código");
       }
 
       if (!foundOtp) {
-        console.log("No valid OTP found for:", { email: normalizedEmail, code: normalizedCode });
+        console.log("verify-otp: No valid OTP found");
         throw new Error("Código inválido ou expirado");
       }
       
       otpData = foundOtp;
     }
 
-    // Check if user exists
+    // Check if user already exists
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(
       (u) => u.email?.toLowerCase() === normalizedEmail
     );
 
     if (existingUser) {
-      // User exists - generate magic link
+      // EXISTING USER - generate magic link and return
+      console.log("verify-otp: Existing user found:", existingUser.id);
+      
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: "magiclink",
         email: normalizedEmail,
       });
 
       if (linkError) {
-        console.error("Error generating magic link:", linkError);
+        console.error("verify-otp: Error generating magic link:", linkError);
         throw new Error("Erro ao autenticar");
       }
 
-      // Mark code as used ONLY after successful link generation (skip in devMode)
-      if (!devMode && otpData?.id) {
-        await supabase
-          .from("otp_codes")
-          .update({ used: true })
-          .eq("id", otpData.id);
+      // Mark OTP as used
+      if (!devMode && otpData?.id && otpData.id !== 'dev-mode') {
+        await supabase.from("otp_codes").update({ used: true }).eq("id", otpData.id);
       }
 
-      console.log("Magic link generated for existing user:", normalizedEmail);
+      // Get user's membership for redirect info
+      const { data: membership } = await supabase
+        .from("memberships")
+        .select("tenant_id, role")
+        .eq("user_id", existingUser.id)
+        .eq("status", "active")
+        .order("role")
+        .limit(1)
+        .maybeSingle();
+
+      console.log("verify-otp: Magic link generated for existing user");
 
       return new Response(
         JSON.stringify({
@@ -119,239 +120,233 @@ serve(async (req) => {
           actionLink: linkData.properties?.action_link,
           tokenHash: linkData.properties?.hashed_token,
           email: normalizedEmail,
+          tenant_id: membership?.tenant_id,
+          role: membership?.role,
+          redirect_path: membership ? getRedirectPath(membership.role) : '/mentorado',
         }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
-    } else {
-      // New user - need registration data
-      if (!fullName) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            isNewUser: true,
-            needsName: true,
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          }
-        );
-      }
-
-      // Validate userType
-      const validRole = userType === 'mentor' ? 'mentor' : 'mentee';
-
-      // PREVENT creating user if trying to register as mentor but mentor already exists
-      if (validRole === 'mentor') {
-        // Check if admin membership exists in any tenant
-        const { data: existingAdmin } = await supabase
-          .from("memberships")
-          .select("id")
-          .eq("role", "admin")
-          .maybeSingle();
-        
-        if (existingAdmin) {
-          console.log("Mentor registration blocked - mentor already exists");
-          return new Response(
-            JSON.stringify({ 
-              error: "Já existe um mentor cadastrado no sistema. Por favor, selecione 'Mentorado' para criar sua conta." 
-            }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json", ...corsHeaders },
-            }
-          );
-        }
-      }
-
-      // Create new user with random password (they'll use OTP)
-      const randomPassword = crypto.randomUUID();
-      
-      const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
-        email: normalizedEmail,
-        password: randomPassword,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          phone: phone || null,
-        },
-      });
-
-      if (signUpError) {
-        console.error("Error creating user:", signUpError);
-        throw new Error("Erro ao criar conta");
-      }
-
-      const userId = signUpData.user?.id;
-      
-      if (userId) {
-        // Update profile with full name and phone
-        await supabase
-          .from("profiles")
-          .update({ 
-            full_name: fullName,
-            phone: phone || null,
-          })
-          .eq("user_id", userId);
-
-        // Get tenant ID (use provided slug or default)
-        const tenantId = await getDefaultTenant(supabase);
-        console.log("Using tenant:", tenantId);
-
-        // Create membership based on role
-        const membershipRole = validRole === 'mentor' ? 'admin' : 'mentee';
-        const { data: membership, error: membershipError } = await supabase
-          .from("memberships")
-          .insert({
-            user_id: userId,
-            tenant_id: tenantId,
-            role: membershipRole,
-            status: 'active',
-          })
-          .select()
-          .single();
-
-        if (membershipError) {
-          console.error("Error creating membership:", membershipError);
-        } else {
-          console.log(`Membership '${membershipRole}' created for user:`, userId);
-
-          // Create role-specific profile
-          if (validRole === 'mentee') {
-            // Find a mentor to assign (get first admin/mentor membership in tenant)
-            const { data: mentorMembership } = await supabase
-              .from("memberships")
-              .select("id")
-              .eq("tenant_id", tenantId)
-              .in("role", ["admin", "mentor"])
-              .limit(1)
-              .single();
-
-            // Create mentee_profile
-            const { error: profileError } = await supabase
-              .from("mentee_profiles")
-              .insert({
-                membership_id: membership.id,
-                onboarding_completed: devMode || false,
-              });
-
-            if (profileError) {
-              console.error("Error creating mentee_profile:", profileError);
-            } else {
-              console.log("Mentee profile created for membership:", membership.id);
-            }
-
-            // Create assignment if mentor exists
-            if (mentorMembership) {
-              await supabase
-                .from("mentor_mentee_assignments")
-                .insert({
-                  tenant_id: tenantId,
-                  mentor_membership_id: mentorMembership.id,
-                  mentee_membership_id: membership.id,
-                  status: 'active',
-                });
-            }
-
-            // BACKWARD COMPATIBILITY: Also create legacy mentorado record
-            const { data: legacyMentor } = await supabase
-              .from("mentors")
-              .select("id")
-              .limit(1)
-              .single();
-
-            if (legacyMentor) {
-              await supabase
-                .from("mentorados")
-                .insert({
-                  user_id: userId,
-                  mentor_id: legacyMentor.id,
-                  status: 'active',
-                  onboarding_completed: devMode || false,
-                });
-            }
-          } else {
-            // Create mentor_profile for admin role
-            const { error: profileError } = await supabase
-              .from("mentor_profiles")
-              .insert({
-                membership_id: membership.id,
-                business_name: `Mentoria de ${fullName}`,
-              });
-
-            if (profileError) {
-              console.error("Error creating mentor_profile:", profileError);
-            } else {
-              console.log("Mentor profile created for membership:", membership.id);
-            }
-
-            // BACKWARD COMPATIBILITY: Also create legacy mentor record
-            await supabase
-              .from("mentors")
-              .insert({
-                user_id: userId,
-                business_name: `Mentoria de ${fullName}`,
-              });
-
-            // Also create legacy user_role
-            await supabase
-              .from("user_roles")
-              .insert({
-                user_id: userId,
-                role: 'mentor',
-              });
-          }
-        }
-      }
-
-      // Generate magic link for the new user
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: "magiclink",
-        email: normalizedEmail,
-      });
-
-      if (linkError) {
-        console.error("Error generating link for new user:", linkError);
-        throw new Error("Erro ao autenticar novo usuário");
-      }
-
-      // Mark code as used ONLY after everything succeeded (skip in devMode)
-      if (!devMode && otpData?.id) {
-        await supabase
-          .from("otp_codes")
-          .update({ used: true })
-          .eq("id", otpData.id);
-      }
-
-      console.log("New user created and magic link generated:", normalizedEmail);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          isNewUser: true,
-          userType: validRole === 'mentor' ? 'mentor' : 'mentorado',
-          userId: userId,
-          actionLink: linkData.properties?.action_link,
-          tokenHash: linkData.properties?.hashed_token,
-          email: normalizedEmail,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    // NEW USER - must have invite to proceed
+    console.log("verify-otp: New user, checking for invite");
+    
+    // Find pending invite for this email
+    let inviteQuery = supabase
+      .from("invites")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString());
+    
+    // Filter by tenant_id if provided
+    if (tenant_id) {
+      inviteQuery = inviteQuery.eq("tenant_id", tenant_id);
+    }
+    
+    const { data: invite, error: inviteError } = await inviteQuery.limit(1).maybeSingle();
+
+    if (inviteError) {
+      console.error("verify-otp: Error fetching invite:", inviteError);
+      throw new Error("Erro ao verificar convite");
+    }
+
+    if (!invite) {
+      console.log("verify-otp: No valid invite found for new user");
+      return new Response(
+        JSON.stringify({ 
+          error: "Convite não encontrado ou expirado. Você precisa ser convidado para acessar a plataforma." 
+        }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    console.log("verify-otp: Found invite:", { id: invite.id, tenant_id: invite.tenant_id, role: invite.role });
+
+    // Extract data from invite metadata
+    const fullName = invite.metadata?.full_name || '';
+    const phone = invite.metadata?.phone || '';
+
+    // Create new user with random password
+    const randomPassword = crypto.randomUUID();
+    
+    const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+      email: normalizedEmail,
+      password: randomPassword,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        phone: phone || null,
+      },
+    });
+
+    if (signUpError) {
+      console.error("verify-otp: Error creating user:", signUpError);
+      throw new Error("Erro ao criar conta");
+    }
+
+    const userId = signUpData.user?.id;
+    console.log("verify-otp: User created:", userId);
+    
+    if (userId) {
+      // Update profile with invite data
+      await supabase
+        .from("profiles")
+        .update({ 
+          full_name: fullName,
+          phone: phone || null,
+        })
+        .eq("user_id", userId);
+
+      // Create membership using invite data
+      const { data: membership, error: membershipError } = await supabase
+        .from("memberships")
+        .insert({
+          user_id: userId,
+          tenant_id: invite.tenant_id,
+          role: invite.role,
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (membershipError) {
+        console.error("verify-otp: Error creating membership:", membershipError);
+      } else {
+        console.log(`verify-otp: Membership '${invite.role}' created for user:`, userId);
+
+        // Create role-specific profile
+        if (invite.role === 'mentee') {
+          // Find a mentor to assign
+          const { data: mentorMembership } = await supabase
+            .from("memberships")
+            .select("id")
+            .eq("tenant_id", invite.tenant_id)
+            .in("role", ["admin", "mentor"])
+            .limit(1)
+            .single();
+
+          // Create mentee_profile
+          const { error: profileError } = await supabase
+            .from("mentee_profiles")
+            .insert({
+              membership_id: membership.id,
+              onboarding_completed: devMode || false,
+            });
+
+          if (profileError) {
+            console.error("verify-otp: Error creating mentee_profile:", profileError);
+          }
+
+          // Create assignment if mentor exists
+          if (mentorMembership) {
+            await supabase
+              .from("mentor_mentee_assignments")
+              .insert({
+                tenant_id: invite.tenant_id,
+                mentor_membership_id: mentorMembership.id,
+                mentee_membership_id: membership.id,
+                status: 'active',
+              });
+          }
+
+          // BACKWARD COMPATIBILITY: Create legacy mentorado record
+          const { data: legacyMentor } = await supabase
+            .from("mentors")
+            .select("id")
+            .limit(1)
+            .single();
+
+          if (legacyMentor) {
+            await supabase
+              .from("mentorados")
+              .insert({
+                user_id: userId,
+                mentor_id: legacyMentor.id,
+                status: 'active',
+                onboarding_completed: devMode || false,
+              });
+          }
+        } else if (['mentor', 'admin'].includes(invite.role)) {
+          // Create mentor_profile
+          const { error: profileError } = await supabase
+            .from("mentor_profiles")
+            .insert({
+              membership_id: membership.id,
+              business_name: fullName ? `Mentoria de ${fullName}` : 'Minha Mentoria',
+            });
+
+          if (profileError) {
+            console.error("verify-otp: Error creating mentor_profile:", profileError);
+          }
+
+          // BACKWARD COMPATIBILITY: Create legacy mentor record
+          await supabase
+            .from("mentors")
+            .insert({
+              user_id: userId,
+              business_name: fullName ? `Mentoria de ${fullName}` : 'Minha Mentoria',
+            });
+
+          // Also create legacy user_role
+          await supabase
+            .from("user_roles")
+            .insert({
+              user_id: userId,
+              role: 'mentor',
+            });
+        }
+      }
+
+      // Mark invite as accepted
+      await supabase
+        .from("invites")
+        .update({ 
+          status: 'accepted', 
+          accepted_at: new Date().toISOString() 
+        })
+        .eq("id", invite.id);
+
+      console.log("verify-otp: Invite marked as accepted");
+    }
+
+    // Generate magic link for the new user
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email: normalizedEmail,
+    });
+
+    if (linkError) {
+      console.error("verify-otp: Error generating link for new user:", linkError);
+      throw new Error("Erro ao autenticar novo usuário");
+    }
+
+    // Mark OTP as used
+    if (!devMode && otpData?.id && otpData.id !== 'dev-mode') {
+      await supabase.from("otp_codes").update({ used: true }).eq("id", otpData.id);
+    }
+
+    console.log("verify-otp: New user created and authenticated:", normalizedEmail);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        isNewUser: true,
+        userId: userId,
+        actionLink: linkData.properties?.action_link,
+        tokenHash: linkData.properties?.hashed_token,
+        email: normalizedEmail,
+        tenant_id: invite.tenant_id,
+        role: invite.role,
+        redirect_path: getRedirectPath(invite.role),
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
   } catch (error: any) {
-    console.error("Error in verify-otp:", error);
+    console.error("verify-otp: Error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Erro interno" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });

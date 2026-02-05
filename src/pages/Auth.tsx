@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, User, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Phone, Users, GraduationCap } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,21 +16,25 @@ import { LBVLogo } from "@/components/LBVLogo";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const emailSchema = z.string().email("Email inválido");
-const phoneSchema = z.string().min(10, "Telefone inválido").max(15, "Telefone inválido");
 
-type AuthStep = "email" | "code" | "register";
-type UserType = "mentor" | "mentorado";
+type AuthStep = "email" | "code" | "selectTenant";
+
+interface TenantOption {
+  id: string;
+  name: string;
+}
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [userType, setUserType] = useState<UserType>("mentorado");
   const [step, setStep] = useState<AuthStep>("email");
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; code?: string; fullName?: string; phone?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
   const [countdown, setCountdown] = useState(0);
+  
+  // Multi-tenant selection state
+  const [availableTenants, setAvailableTenants] = useState<TenantOption[]>([]);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>("");
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -57,10 +61,8 @@ const Auth = () => {
   const bootstrapAfterAuth = async () => {
     console.log('[Auth] Starting bootstrap after OTP verification...');
     
-    // Wait a moment for session to propagate
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Get current session
     const { data: { session } } = await supabase.auth.getSession();
     console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id });
     
@@ -74,7 +76,6 @@ const Auth = () => {
       return;
     }
     
-    // Refresh memberships and get the result
     console.log('[Auth] Fetching memberships...');
     const memberships = await refreshMembershipsAndWait();
     console.log('[Auth] Memberships result:', { count: memberships.length, roles: memberships.map(m => m.role) });
@@ -89,13 +90,10 @@ const Auth = () => {
       return;
     }
     
-    // Get highest privilege role (first in the sorted list)
     const primaryMembership = memberships[0];
     const targetPath = getTargetPath(primaryMembership.role);
     
     console.log('[Auth] Redirecting to:', targetPath, 'for role:', primaryMembership.role);
-    
-    // Explicit navigation
     navigate(targetPath, { replace: true });
   };
 
@@ -109,7 +107,6 @@ const Auth = () => {
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
-    // Only auto-redirect if user already logged in (not during OTP flow)
     if (!authLoading && !tenantLoading && user && activeMembership && step === 'email') {
       console.log('[Auth] Auto-redirecting logged-in user:', activeMembership.role);
       const targetPath = getTargetPath(activeMembership.role);
@@ -130,7 +127,7 @@ const Auth = () => {
     }
   };
 
-  const handleSendCode = async (e?: React.FormEvent) => {
+  const handleSendCode = async (e?: React.FormEvent, tenantHint?: string) => {
     e?.preventDefault();
     if (!validateEmail()) return;
     
@@ -138,10 +135,20 @@ const Auth = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email },
+        body: { email, tenant_hint: tenantHint || selectedTenantId || undefined },
       });
 
       if (error) throw error;
+      
+      // Handle multiple tenants case (409)
+      if (data.error === 'multiple_tenants' && data.tenants) {
+        console.log('[Auth] Multiple tenants found:', data.tenants);
+        setAvailableTenants(data.tenants);
+        setStep("selectTenant");
+        setIsLoading(false);
+        return;
+      }
+      
       if (data.error) throw new Error(data.error);
 
       toast({
@@ -152,14 +159,38 @@ const Auth = () => {
       setStep("code");
       setCountdown(60);
     } catch (error: any) {
-      toast({
-        title: "Erro ao enviar código",
-        description: error.message || "Tente novamente",
-        variant: "destructive",
-      });
+      // Handle 403 (not invited)
+      if (error.message?.includes('não configurado') || error.message?.includes('convidado')) {
+        toast({
+          title: "Acesso restrito",
+          description: "Você precisa ser convidado para acessar a plataforma. Entre em contato com o administrador.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao enviar código",
+          description: error.message || "Tente novamente",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSelectTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTenantId) {
+      toast({
+        title: "Selecione um programa",
+        description: "Escolha o programa que deseja acessar",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Resend OTP with tenant hint
+    await handleSendCode(undefined, selectedTenantId);
   };
 
   const isSubmittingRef = useRef(false);
@@ -174,7 +205,6 @@ const Auth = () => {
       return;
     }
 
-    // Prevent duplicate submissions
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     
@@ -182,22 +212,17 @@ const Auth = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { email, code: finalCode },
+        body: { 
+          email, 
+          code: finalCode,
+          tenant_id: selectedTenantId || undefined,
+        },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      if (data.needsName) {
-        // New user needs to complete registration
-        setStep("register");
-        setIsLoading(false);
-        isSubmittingRef.current = false;
-        return;
-      }
-
       if (data.tokenHash) {
-        // Verify the token hash with Supabase
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: data.tokenHash,
           type: "magiclink",
@@ -213,7 +238,6 @@ const Auth = () => {
           description: data.isNewUser ? "Sua conta foi criada com sucesso." : "Login realizado com sucesso.",
         });
 
-        // EXPLICIT BOOTSTRAP AND REDIRECT
         await bootstrapAfterAuth();
       }
     } catch (error: any) {
@@ -241,7 +265,6 @@ const Auth = () => {
   const handlePasteCode = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      // Extract only digits
       const digits = text.replace(/\D/g, '').slice(0, 6);
       if (digits.length > 0) {
         setCode(digits);
@@ -258,72 +281,6 @@ const Auth = () => {
     }
   };
 
-  const handleCreateAccount = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    
-    const newErrors: typeof errors = {};
-    
-    if (!fullName.trim()) {
-      newErrors.fullName = "Nome é obrigatório";
-    }
-    
-    // Validate phone (remove non-digits for validation)
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      newErrors.phone = "Telefone inválido (mínimo 10 dígitos)";
-    }
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { 
-          email, 
-          code, 
-          fullName: fullName.trim(),
-          phone: cleanPhone,
-          userType 
-        },
-      });
-
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-
-      if (data.tokenHash) {
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: data.tokenHash,
-          type: "magiclink",
-        });
-
-        if (verifyError) {
-          console.error("verifyOtp error:", verifyError);
-          throw new Error("Erro ao autenticar. Tente novamente.");
-        }
-
-        toast({
-          title: "Conta criada!",
-          description: `Bem-vindo ao LBV TECH como ${userType === 'mentor' ? 'Mentor' : 'Mentorado'}!`,
-        });
-
-        // EXPLICIT BOOTSTRAP AND REDIRECT
-        await bootstrapAfterAuth();
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro ao criar conta",
-        description: error.message || "Tente novamente",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleResendCode = () => {
     if (countdown === 0) {
       handleSendCode();
@@ -335,9 +292,10 @@ const Auth = () => {
       setStep("email");
       setCode("");
       setErrors({});
-    } else if (step === "register") {
-      setStep("code");
-      setErrors({});
+    } else if (step === "selectTenant") {
+      setStep("email");
+      setSelectedTenantId("");
+      setAvailableTenants([]);
     }
   };
 
@@ -371,7 +329,7 @@ const Auth = () => {
             <CardDescription className="text-muted-foreground">
               {step === "email" && "Digite seu email para receber o código de acesso"}
               {step === "code" && "Digite o código enviado para seu email"}
-              {step === "register" && "Complete seu cadastro"}
+              {step === "selectTenant" && "Selecione o programa que deseja acessar"}
             </CardDescription>
           </CardHeader>
           
@@ -409,6 +367,68 @@ const Auth = () => {
                   ) : (
                     <>
                       Enviar código
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
+
+            {/* Step: Select Tenant (for multiple invites) */}
+            {step === "selectTenant" && (
+              <form onSubmit={handleSelectTenant} className="space-y-6">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  Voltar
+                </button>
+
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 text-center mb-4">
+                  <p className="text-sm text-foreground">
+                    Você tem acesso a múltiplos programas.<br />
+                    Selecione qual deseja acessar agora.
+                  </p>
+                </div>
+
+                <RadioGroup
+                  value={selectedTenantId}
+                  onValueChange={setSelectedTenantId}
+                  className="space-y-3"
+                >
+                  {availableTenants.map((tenant) => (
+                    <div key={tenant.id}>
+                      <RadioGroupItem
+                        value={tenant.id}
+                        id={tenant.id}
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor={tenant.id}
+                        className="flex items-center gap-3 rounded-lg border-2 border-border bg-secondary p-4 hover:bg-secondary/80 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
+                      >
+                        <Building2 className="h-5 w-5 text-primary" />
+                        <span className="font-medium">{tenant.name}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full gradient-gold text-primary-foreground hover:opacity-90"
+                  disabled={isLoading || !selectedTenantId}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando código...
+                    </>
+                  ) : (
+                    <>
+                      Continuar
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </>
                   )}
@@ -501,118 +521,6 @@ const Auth = () => {
                     }
                   </button>
                 </div>
-              </form>
-            )}
-
-            {/* Step: Register (new user) */}
-            {step === "register" && (
-              <form onSubmit={handleCreateAccount} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ArrowLeft className="w-3 h-3" />
-                  Voltar
-                </button>
-
-                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 text-center mb-4">
-                  <p className="text-sm text-foreground">
-                    🎉 Parece que você é novo por aqui!<br />
-                    Complete seu cadastro abaixo.
-                  </p>
-                </div>
-
-                {/* Nome */}
-                <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-foreground">Nome Completo</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Seu nome completo"
-                      className="pl-10 bg-secondary border-border"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                  {errors.fullName && <p className="text-sm text-destructive">{errors.fullName}</p>}
-                </div>
-
-                {/* Telefone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-foreground">Telefone (WhatsApp)</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="(11) 99999-9999"
-                      className="pl-10 bg-secondary border-border"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-                  {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
-                </div>
-
-                {/* Tipo de usuário */}
-                <div className="space-y-3">
-                  <Label className="text-foreground">Você é:</Label>
-                  <RadioGroup
-                    value={userType}
-                    onValueChange={(value) => setUserType(value as UserType)}
-                    className="grid grid-cols-2 gap-3"
-                  >
-                    <div>
-                      <RadioGroupItem
-                        value="mentor"
-                        id="mentor"
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor="mentor"
-                        className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-secondary p-4 hover:bg-secondary/80 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
-                      >
-                        <Users className="h-6 w-6 mb-2 text-primary" />
-                        <span className="font-medium">Mentor</span>
-                        <span className="text-xs text-muted-foreground">Gerencio mentorados</span>
-                      </Label>
-                    </div>
-                    <div>
-                      <RadioGroupItem
-                        value="mentorado"
-                        id="mentorado"
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor="mentorado"
-                        className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-secondary p-4 hover:bg-secondary/80 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-all"
-                      >
-                        <GraduationCap className="h-6 w-6 mb-2 text-primary" />
-                        <span className="font-medium">Mentorado</span>
-                        <span className="text-xs text-muted-foreground">Sou aluno de mentor</span>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full gradient-gold text-primary-foreground hover:opacity-90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Criando conta...
-                    </>
-                  ) : (
-                    "Criar minha conta"
-                  )}
-                </Button>
               </form>
             )}
             
