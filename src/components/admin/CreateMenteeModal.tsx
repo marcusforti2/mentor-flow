@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useTenants } from '@/hooks/useTenants';
 import { useCreateMembership } from '@/hooks/useCreateMembership';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,12 @@ import {
 import { Loader2, UserPlus, MessageCircle, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface MentorOption {
+  membership_id: string;
+  full_name: string;
+  email: string;
+}
+
 interface CreateMenteeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +43,9 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
   const createMembership = useCreateMembership();
   
   const [selectedTenantId, setSelectedTenantId] = useState<string>('');
+  const [selectedMentorId, setSelectedMentorId] = useState<string>('');
+  const [mentorOptions, setMentorOptions] = useState<MentorOption[]>([]);
+  const [mentorsLoading, setMentorsLoading] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -49,6 +59,63 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     login_url: string;
   } | null>(null);
 
+  // Determine effective tenant for mentor lookup
+  const effectiveTenantForMentors = propTenantId || selectedTenantId || activeMembership?.tenant_id;
+
+  // Fetch mentors when tenant changes
+  useEffect(() => {
+    const fetchMentors = async () => {
+      if (!effectiveTenantForMentors) {
+        setMentorOptions([]);
+        return;
+      }
+      
+      setMentorsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('memberships')
+          .select('id, user_id, tenant_id')
+          .eq('tenant_id', effectiveTenantForMentors)
+          .eq('role', 'mentor')
+          .eq('status', 'active');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const userIds = data.map(m => m.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, email')
+            .in('user_id', userIds);
+          
+          const options: MentorOption[] = data.map(m => {
+            const profile = profiles?.find(p => p.user_id === m.user_id);
+            return {
+              membership_id: m.id,
+              full_name: profile?.full_name || 'Sem nome',
+              email: profile?.email || '',
+            };
+          });
+          setMentorOptions(options);
+          
+          // Auto-select if only one mentor
+          if (options.length === 1) {
+            setSelectedMentorId(options[0].membership_id);
+          }
+        } else {
+          setMentorOptions([]);
+        }
+      } catch (err) {
+        console.error('Error fetching mentors:', err);
+        setMentorOptions([]);
+      } finally {
+        setMentorsLoading(false);
+      }
+    };
+    
+    fetchMentors();
+  }, [effectiveTenantForMentors]);
+
   // Determine if we need to show tenant selector
   const showTenantSelector = isMasterAdmin && !propTenantId && !activeMembership?.tenant_id;
   
@@ -57,6 +124,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
 
   const resetForm = () => {
     setSelectedTenantId('');
+    setSelectedMentorId('');
     setFullName('');
     setEmail('');
     setPhone('');
@@ -73,6 +141,11 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
       return;
     }
 
+    if (!selectedMentorId) {
+      toast.error('Selecione o mentor responsável');
+      return;
+    }
+
     // Get tenant name for the message
     const selectedTenant = tenants.find(t => t.id === effectiveTenantId);
     const tenantName = selectedTenant?.name || 'LBV TECH';
@@ -84,6 +157,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
         full_name: fullName.trim(),
         phone: phone.trim() || undefined,
         role: 'mentee',
+        mentor_membership_id: selectedMentorId,
       });
 
       // Use local data for WhatsApp message (more secure - backend returns minimal data)
@@ -178,6 +252,29 @@ Estou aqui para ajudar! 🚀`;
               </div>
             )}
 
+            {/* Mentor selector - always shown for master admin */}
+            <div className="space-y-2">
+              <Label htmlFor="mentor" className="text-slate-200">Mentor Responsável *</Label>
+              <Select value={selectedMentorId} onValueChange={setSelectedMentorId} required>
+                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                  <SelectValue placeholder={mentorsLoading ? "Carregando mentores..." : "Selecione o mentor"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {mentorsLoading ? (
+                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                  ) : mentorOptions.length === 0 ? (
+                    <SelectItem value="none" disabled>Nenhum mentor neste programa</SelectItem>
+                  ) : (
+                    mentorOptions.map((mentor) => (
+                      <SelectItem key={mentor.membership_id} value={mentor.membership_id}>
+                        {mentor.full_name} ({mentor.email})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="fullName" className="text-slate-200">Nome Completo *</Label>
               <Input
@@ -226,7 +323,7 @@ Estou aqui para ajudar! 🚀`;
               </Button>
               <Button
                 type="submit"
-                disabled={createMembership.isPending || !email || !fullName || (showTenantSelector && !selectedTenantId)}
+                disabled={createMembership.isPending || !email || !fullName || !selectedMentorId || (showTenantSelector && !selectedTenantId)}
                 className="flex-1 gradient-gold text-primary-foreground"
               >
                 {createMembership.isPending ? (
