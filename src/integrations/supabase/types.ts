@@ -2778,29 +2778,17 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_user_memberships:
-        | {
-            Args: { _user_id: string }
-            Returns: {
-              id: string
-              role: Database["public"]["Enums"]["membership_role"]
-              status: string
-              tenant_id: string
-              tenant_name: string
-              tenant_slug: string
-            }[]
-          }
-        | {
-            Args: { _tenant_id?: string; _user_id: string }
-            Returns: {
-              id: string
-              role: Database["public"]["Enums"]["membership_role"]
-              status: string
-              tenant_id: string
-              tenant_name: string
-              tenant_slug: string
-            }[]
-          }
+      get_user_memberships: {
+        Args: { _tenant_id?: string; _user_id: string }
+        Returns: {
+          id: string
+          role: Database["public"]["Enums"]["membership_role"]
+          status: string
+          tenant_id: string
+          tenant_name: string
+          tenant_slug: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
