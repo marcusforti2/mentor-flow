@@ -82,14 +82,14 @@ const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 
  
    // Fetch memberships when user changes
    const fetchMemberships = useCallback(async () => {
-     if (!user?.id) {
-       setMemberships([]);
-       setActiveMembership(null);
-       setRealMembership(null);
-       setTenant(null);
-       setIsLoading(false);
-       return;
-     }
+      if (!user?.id) {
+        setMemberships([]);
+        setActiveMembership(null);
+        setRealMembership(null);
+        setTenant(null);
+        setIsLoading(false);
+        return [];
+      }
  
      try {
        // Get all memberships for user
@@ -98,14 +98,14 @@ const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 
  
        if (error) throw error;
  
-       if (!membershipData || membershipData.length === 0) {
-         setMemberships([]);
-         setActiveMembership(null);
-         setRealMembership(null);
-         setTenant(null);
-         setIsLoading(false);
-         return;
-       }
+        if (!membershipData || membershipData.length === 0) {
+          setMemberships([]);
+          setActiveMembership(null);
+          setRealMembership(null);
+          setTenant(null);
+          setIsLoading(false);
+          return [];
+        }
  
        // Map to full membership objects
        const fullMemberships: Membership[] = membershipData.map((m: {

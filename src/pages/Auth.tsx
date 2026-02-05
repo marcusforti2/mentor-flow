@@ -78,7 +78,10 @@ const Auth = () => {
     
     console.log('[Auth] Fetching memberships...');
     const memberships = await refreshMembershipsAndWait();
-    console.log('[Auth] Memberships result:', { count: memberships.length, roles: memberships.map(m => m.role) });
+    console.log('[Auth] Memberships result:', { 
+      count: memberships?.length ?? 0, 
+      roles: memberships?.map(m => m.role) ?? [] 
+    });
     
     if (!memberships || memberships.length === 0) {
       console.error('[Auth] No memberships found for user');
