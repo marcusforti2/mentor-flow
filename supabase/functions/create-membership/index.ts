@@ -3,7 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
-// Helper function to send welcome email via Resend
+// ============================================
+// HELPER: Send Welcome Email via Resend
+// ============================================
 async function sendWelcomeEmail(params: {
   email: string;
   fullName: string | null;
@@ -46,7 +48,6 @@ async function sendWelcomeEmail(params: {
     .info-box { border-left: 4px solid #d4af37; padding: 15px; background: #fdf9e8; margin: 20px 0; }
     .info-box strong { color: #1a1a2e; }
     .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5; color: #666; font-size: 14px; }
-    .button { display: inline-block; background: #d4af37; color: #1a1a2e; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: 600; margin: 20px 0; }
   </style>
 </head>
 <body>
@@ -113,7 +114,7 @@ async function sendWelcomeEmail(params: {
       return { success: false, error: result };
     }
 
-    console.log("Welcome email sent successfully to:", email, "Result:", result);
+    console.log("Welcome email sent successfully to:", email);
     return { success: true, messageId: result.id };
   } catch (error: any) {
     console.error("Error sending welcome email:", error);
@@ -121,12 +122,50 @@ async function sendWelcomeEmail(params: {
   }
 }
 
+// ============================================
+// HELPER: Create Audit Log Entry
+// ============================================
+async function createAuditLog(
+  supabase: any,
+  params: {
+    userId: string | null;
+    action: string;
+    resourceType: string;
+    resourceId: string;
+    tenantId: string;
+    metadata: Record<string, any>;
+  }
+) {
+  try {
+    const { error } = await supabase.from("audit_logs").insert({
+      user_id: params.userId,
+      action: params.action,
+      resource_type: params.resourceType,
+      resource_id: params.resourceId,
+      tenant_id: params.tenantId,
+      metadata: params.metadata,
+    });
+    
+    if (error) {
+      console.error("Audit log error:", error);
+    }
+  } catch (err) {
+    console.error("Failed to create audit log:", err);
+  }
+}
+
+// ============================================
+// CORS Headers
+// ============================================
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ============================================
+// MAIN HANDLER
+// ============================================
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -135,38 +174,61 @@ serve(async (req) => {
   try {
     const { tenant_id, email, full_name, phone, role } = await req.json();
 
-    // Validate required fields
+    // ========== VALIDATION ==========
     if (!tenant_id || !email || !role) {
-      throw new Error("tenant_id, email e role são obrigatórios");
+      return new Response(
+        JSON.stringify({ error: "tenant_id, email e role são obrigatórios" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    // Validate role
-    if (!['mentor', 'mentee', 'admin', 'ops'].includes(role)) {
-      throw new Error("Role inválido. Use: mentor, mentee, admin ou ops");
+    // Block admin/master_admin creation via this endpoint
+    if (['admin', 'master_admin', 'ops'].includes(role)) {
+      return new Response(
+        JSON.stringify({ error: "Criação de admin/ops não é permitida por esta função" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
+    // Validate allowed roles
+    if (!['mentor', 'mentee'].includes(role)) {
+      return new Response(
+        JSON.stringify({ error: "Role inválido. Use: mentor ou mentee" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ========== SUPABASE CLIENTS ==========
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
 
-    // Get caller's auth token
+    // ========== AUTHENTICATE CALLER ==========
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
-      throw new Error("Token de autenticação não fornecido");
+      return new Response(
+        JSON.stringify({ error: "Token de autenticação não fornecido" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user: caller }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !caller) {
       console.error("create-membership: Auth error:", authError);
-      throw new Error("Não autorizado");
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    console.log("create-membership: Caller:", caller.id, "creating invite for:", email, "role:", role);
+    console.log("create-membership: Caller:", caller.id, "creating membership for:", email, "role:", role);
 
-    // Get caller's memberships to check permissions
-    const { data: callerMemberships, error: membershipError } = await supabase
+    // ========== CHECK CALLER PERMISSIONS ==========
+    const { data: callerMemberships, error: membershipError } = await supabaseAdmin
       .from("memberships")
       .select("id, tenant_id, role")
       .eq("user_id", caller.id)
@@ -174,32 +236,36 @@ serve(async (req) => {
 
     if (membershipError) {
       console.error("create-membership: Error fetching memberships:", membershipError);
-      throw new Error("Erro ao verificar permissões");
+      return new Response(
+        JSON.stringify({ error: "Erro ao verificar permissões" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    // Check permissions
     const isMasterAdmin = callerMemberships?.some(m => m.role === 'master_admin');
-    const isTenantAdmin = callerMemberships?.some(m => m.tenant_id === tenant_id && ['admin', 'mentor'].includes(m.role));
     const callerMembershipInTenant = callerMemberships?.find(m => m.tenant_id === tenant_id);
+    const isTenantMentor = callerMembershipInTenant?.role === 'mentor';
+    const isTenantAdmin = callerMembershipInTenant?.role === 'admin';
 
-    console.log("create-membership: Permissions:", { isMasterAdmin, isTenantAdmin });
+    console.log("create-membership: Permissions:", { isMasterAdmin, isTenantMentor, isTenantAdmin });
 
     // Permission rules:
-    // - master_admin: can create any role in any tenant
-    // - admin/mentor: can create mentee only in their own tenant
-    // - mentor cannot create another mentor
+    // - master_admin: can create mentor/mentee in any tenant
+    // - admin: can create mentor/mentee in their tenant
+    // - mentor: can create only mentee in their tenant
+    // - mentee: cannot create anyone
     
-    if (role === 'mentor' || role === 'admin' || role === 'ops') {
-      if (!isMasterAdmin) {
-        console.log("create-membership: Permission denied - only master_admin can create", role);
+    if (role === 'mentor') {
+      if (!isMasterAdmin && !isTenantAdmin) {
+        console.log("create-membership: Permission denied - only master_admin/admin can create mentor");
         return new Response(
-          JSON.stringify({ error: "Apenas o Master Admin pode criar mentores, admins ou operadores" }),
+          JSON.stringify({ error: "Apenas Master Admin ou Admin do tenant pode criar mentores" }),
           { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
     } else if (role === 'mentee') {
-      if (!isMasterAdmin && !isTenantAdmin) {
-        console.log("create-membership: Permission denied - caller not authorized for tenant");
+      if (!isMasterAdmin && !isTenantAdmin && !isTenantMentor) {
+        console.log("create-membership: Permission denied - caller not authorized");
         return new Response(
           JSON.stringify({ error: "Você não tem permissão para criar mentorados neste programa" }),
           { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -207,8 +273,8 @@ serve(async (req) => {
       }
     }
 
-    // Verify tenant exists
-    const { data: tenant, error: tenantError } = await supabase
+    // ========== VERIFY TENANT EXISTS ==========
+    const { data: tenant, error: tenantError } = await supabaseAdmin
       .from("tenants")
       .select("id, name, slug")
       .eq("id", tenant_id)
@@ -216,151 +282,227 @@ serve(async (req) => {
 
     if (tenantError || !tenant) {
       console.error("create-membership: Tenant not found:", tenantError);
-      throw new Error("Programa não encontrado");
+      return new Response(
+        JSON.stringify({ error: "Programa não encontrado" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    // Normalize email
+    // ========== NORMALIZE EMAIL ==========
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if user already has membership in this tenant with this role
-    const { data: existingProfile } = await supabase
+    // ========== CHECK/CREATE USER VIA ADMIN API ==========
+    let targetUserId: string;
+    let isNewUser = false;
+
+    // Check if user already exists in profiles
+    const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
-      .select("user_id")
+      .select("user_id, full_name")
       .eq("email", normalizedEmail)
       .single();
 
     if (existingProfile?.user_id) {
-      const { data: existingMembership } = await supabase
+      targetUserId = existingProfile.user_id;
+      console.log("create-membership: Found existing user:", targetUserId);
+
+      // Check if user already has membership in this tenant
+      const { data: existingMembership } = await supabaseAdmin
         .from("memberships")
-        .select("id, role")
-        .eq("user_id", existingProfile.user_id)
+        .select("id, role, status")
+        .eq("user_id", targetUserId)
         .eq("tenant_id", tenant_id)
-        .eq("status", "active")
         .single();
 
       if (existingMembership) {
-        console.log("create-membership: User already has membership in tenant");
+        if (existingMembership.status === 'active') {
+          return new Response(
+            JSON.stringify({ error: "Este usuário já possui membership ativo neste programa" }),
+            { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        // Reactivate inactive membership
+        const { data: reactivatedMembership, error: reactivateError } = await supabaseAdmin
+          .from("memberships")
+          .update({ status: 'active', role: role, updated_at: new Date().toISOString() })
+          .eq("id", existingMembership.id)
+          .select("id")
+          .single();
+
+        if (reactivateError) throw reactivateError;
+
+        console.log("create-membership: Reactivated existing membership:", reactivatedMembership.id);
+
+        // Audit log
+        await createAuditLog(supabaseAdmin, {
+          userId: caller.id,
+          action: "membership_reactivated",
+          resourceType: "membership",
+          resourceId: reactivatedMembership.id,
+          tenantId: tenant_id,
+          metadata: {
+            target_user_id: targetUserId,
+            target_email: normalizedEmail,
+            role: role,
+            actor_role: isMasterAdmin ? 'master_admin' : (isTenantAdmin ? 'admin' : 'mentor'),
+          },
+        });
+
         return new Response(
-          JSON.stringify({ error: "Este usuário já está ativo neste programa" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          JSON.stringify({
+            success: true,
+            membership_id: reactivatedMembership.id,
+            status: "reactivated",
+            user_id: targetUserId,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
+      }
+    } else {
+      // Create new user via Admin API
+      console.log("create-membership: Creating new user via Admin API:", normalizedEmail);
+
+      const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          full_name: full_name || null,
+          phone: phone || null,
+        },
+      });
+
+      if (createUserError) {
+        console.error("create-membership: Error creating user:", createUserError);
+        
+        // Handle duplicate email error
+        if (createUserError.message?.includes('already been registered')) {
+          // Try to get user by email from auth
+          const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+          const existingAuthUser = users?.find(u => u.email?.toLowerCase() === normalizedEmail);
+          
+          if (existingAuthUser) {
+            targetUserId = existingAuthUser.id;
+            console.log("create-membership: Found existing auth user:", targetUserId);
+          } else {
+            return new Response(
+              JSON.stringify({ error: "Erro ao criar usuário: " + createUserError.message }),
+              { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+            );
+          }
+        } else {
+          return new Response(
+            JSON.stringify({ error: "Erro ao criar usuário: " + createUserError.message }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+      } else {
+        targetUserId = newUser.user.id;
+        isNewUser = true;
+        console.log("create-membership: Created new user:", targetUserId);
+
+        // Update profile with name and phone if provided
+        if (full_name || phone) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({ 
+              full_name: full_name || null, 
+              phone: phone || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq("user_id", targetUserId);
+        }
       }
     }
 
-    // Check for existing invite
-    const { data: existingInvite } = await supabase
-      .from("invites")
-      .select("id, status")
-      .eq("tenant_id", tenant_id)
-      .eq("email", normalizedEmail)
-      .eq("role", role)
+    // ========== CREATE MEMBERSHIP ==========
+    const { data: membership, error: membershipCreateError } = await supabaseAdmin
+      .from("memberships")
+      .insert({
+        user_id: targetUserId,
+        tenant_id: tenant_id,
+        role: role,
+        status: "active",
+        can_impersonate: false,
+      })
+      .select("id")
       .single();
 
-    if (existingInvite?.status === 'accepted') {
+    if (membershipCreateError) {
+      console.error("create-membership: Error creating membership:", membershipCreateError);
+      
+      // Handle unique constraint violation
+      if (membershipCreateError.code === '23505') {
+        return new Response(
+          JSON.stringify({ error: "Este usuário já possui membership neste programa" }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: "Este convite já foi aceito" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: "Erro ao criar membership: " + membershipCreateError.message }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Upsert invite
-    const inviteData = {
-      tenant_id,
-      email: normalizedEmail,
-      role,
-      status: 'pending',
+    console.log("create-membership: Created membership:", membership.id);
+
+    // ========== AUDIT LOG ==========
+    await createAuditLog(supabaseAdmin, {
+      userId: caller.id,
+      action: "membership_created",
+      resourceType: "membership",
+      resourceId: membership.id,
+      tenantId: tenant_id,
       metadata: {
-        full_name: full_name || null,
-        phone: phone || null,
+        target_user_id: targetUserId,
+        target_email: normalizedEmail,
+        target_name: full_name || null,
+        role: role,
+        is_new_user: isNewUser,
+        actor_role: isMasterAdmin ? 'master_admin' : (isTenantAdmin ? 'admin' : 'mentor'),
+        actor_membership_id: callerMembershipInTenant?.id || null,
       },
-      created_by_membership_id: callerMembershipInTenant?.id || null,
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-    };
+    });
 
-    let invite;
-    if (existingInvite) {
-      // Update existing pending invite
-      const { data, error } = await supabase
-        .from("invites")
-        .update({
-          ...inviteData,
-          revoked_at: null,
-        })
-        .eq("id", existingInvite.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      invite = data;
-      console.log("create-membership: Updated existing invite:", invite.id);
-    } else {
-      // Create new invite
-      const { data, error } = await supabase
-        .from("invites")
-        .insert(inviteData)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      invite = data;
-      console.log("create-membership: Created new invite:", invite.id);
-    }
-
-    // Build login URL
+    // ========== SEND WELCOME EMAIL (async, non-blocking) ==========
     const siteUrl = Deno.env.get("SITE_URL") || "https://client-flourish-ai.lovable.app";
     const loginUrl = `${siteUrl}/auth`;
 
-    console.log("create-membership: Success - invite created for:", normalizedEmail);
+    sendWelcomeEmail({
+      email: normalizedEmail,
+      fullName: full_name || null,
+      role: role,
+      tenantName: tenant.name,
+      loginUrl: loginUrl,
+    }).then((result) => {
+      if (result.success) {
+        console.log("create-membership: Welcome email sent to:", normalizedEmail);
+      } else {
+        console.error("create-membership: Failed to send welcome email:", result.error);
+      }
+    }).catch((err) => {
+      console.error("create-membership: Email send error:", err);
+    });
 
-    // Send welcome email asynchronously (non-blocking)
-    // Only send for new invites, not when updating existing ones
-    if (!existingInvite) {
-      // Fire and forget - don't await, email sending shouldn't block the response
-      sendWelcomeEmail({
-        email: normalizedEmail,
-        fullName: full_name || null,
-        role: role,
-        tenantName: tenant.name,
-        loginUrl: loginUrl,
-      }).then((result) => {
-        if (result.success) {
-          console.log("create-membership: Welcome email sent successfully to:", normalizedEmail);
-        } else {
-          console.error("create-membership: Failed to send welcome email:", result.error);
-        }
-      }).catch((err) => {
-        console.error("create-membership: Email send error:", err);
-      });
-      
-      console.log("create-membership: Welcome email queued for:", normalizedEmail);
-    } else {
-      console.log("create-membership: Skipping email - existing invite updated for:", normalizedEmail);
-    }
+    console.log("create-membership: Success - membership created for:", normalizedEmail);
 
+    // ========== RETURN MINIMAL DATA ==========
     return new Response(
       JSON.stringify({
         success: true,
-        invite: {
-          id: invite.id,
-          email: invite.email,
-          role: invite.role,
-          full_name: full_name || null,
-        },
-        tenant: {
-          id: tenant.id,
-          name: tenant.name,
-          slug: tenant.slug,
-        },
-        login_url: loginUrl,
-        email_sent: !existingInvite, // Indicate if email was sent
+        membership_id: membership.id,
+        status: "active",
+        user_id: targetUserId,
+        is_new_user: isNewUser,
       }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 201, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
+
   } catch (error: any) {
-    console.error("create-membership: Error:", error);
+    console.error("create-membership: Unexpected error:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Erro interno" }),
-      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });
