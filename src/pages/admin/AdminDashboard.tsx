@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { useMentorDashboardStats } from '@/hooks/useDashboardStats';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { 
   Users, 
@@ -11,52 +12,27 @@ import {
   ArrowUpRight,
   Sparkles,
   Activity,
+  Loader2,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { AIToolsAnalyticsCard } from '@/components/admin/AIToolsAnalyticsCard';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 export default function AdminDashboard() {
-  const { profile, user } = useAuth();
-  const [mentoradosCount, setMentoradosCount] = useState(0);
-  const [sosCount, setSosCount] = useState(0);
-  
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) return;
-      
-      // Get mentor id
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (!mentorData) return;
-      
-      // Count mentorados
-      const { count: mentoradosTotal } = await supabase
-        .from('mentorados')
-        .select('*', { count: 'exact', head: true })
-        .eq('mentor_id', mentorData.id)
-        .eq('status', 'active');
-      
-      setMentoradosCount(mentoradosTotal || 0);
-      
-      // Count pending SOS
-      const { count: sosTotal } = await supabase
-        .from('sos_requests')
-        .select('*', { count: 'exact', head: true })
-        .in('status', ['pending', 'in_progress']);
-      
-      setSosCount(sosTotal || 0);
-    };
-    
-    fetchStats();
-  }, [user]);
+  const { profile } = useAuth();
+  const { stats, isLoading } = useMentorDashboardStats();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const hasData = stats.mentoradosCount > 0 || stats.trailsCount > 0;
 
   return (
     <div className="space-y-8">
@@ -67,7 +43,9 @@ export default function AdminDashboard() {
             Olá, {profile?.full_name?.split(' ')[0] || 'Mentor'}
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Aqui está o resumo da sua mentoria hoje.
+            {hasData 
+              ? 'Aqui está o resumo da sua mentoria hoje.'
+              : 'Sua mentoria está pronta para começar!'}
           </p>
         </div>
         <div className="glass-card px-4 py-2 rounded-full flex items-center gap-2">
@@ -83,13 +61,15 @@ export default function AdminDashboard() {
           <div className="flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
               <Users className="h-6 w-6 text-primary" />
-              <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
-                +3 este mês
-              </span>
+              {stats.activeMentoradosCount > 0 && (
+                <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                  {stats.activeMentoradosCount} ativos
+                </span>
+              )}
             </div>
             <div className="mt-4">
-              <p className="stat-value text-gradient-gold">{mentoradosCount}</p>
-              <p className="stat-label mt-1">Mentorados Ativos</p>
+              <p className="stat-value text-gradient-gold">{stats.mentoradosCount}</p>
+              <p className="stat-label mt-1">Mentorados</p>
             </div>
           </div>
         </BentoCard>
@@ -98,12 +78,14 @@ export default function AdminDashboard() {
           <div className="flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
               <TrendingUp className="h-6 w-6 text-emerald-500" />
-              <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
-                +5%
-              </span>
+              {stats.engagementRate > 0 && (
+                <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                  Engajamento
+                </span>
+              )}
             </div>
             <div className="mt-4">
-              <p className="stat-value">87%</p>
+              <p className="stat-value">{stats.engagementRate}%</p>
               <p className="stat-label mt-1">Taxa de Engajamento</p>
             </div>
           </div>
@@ -115,7 +97,7 @@ export default function AdminDashboard() {
               <Calendar className="h-6 w-6 text-accent" />
             </div>
             <div className="mt-4">
-              <p className="stat-value">4</p>
+              <p className="stat-value">{stats.meetingsThisWeek}</p>
               <p className="stat-label mt-1">Encontros Esta Semana</p>
             </div>
           </div>
@@ -125,14 +107,14 @@ export default function AdminDashboard() {
           <div className="flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
               <AlertTriangle className="h-6 w-6 text-amber-500" />
-              {sosCount > 0 && (
+              {stats.sosCount > 0 && (
                 <span className="text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-1 rounded-full">
                   Urgente
                 </span>
               )}
             </div>
             <div className="mt-4">
-              <p className="stat-value text-amber-500">{sosCount}</p>
+              <p className="stat-value text-amber-500">{stats.sosCount}</p>
               <p className="stat-label mt-1">SOS Pendentes</p>
             </div>
           </div>
@@ -166,37 +148,26 @@ export default function AdminDashboard() {
               <Activity className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Atividade Recente</h3>
             </div>
-            <div className="flex-1 space-y-3 overflow-auto">
-              <ActivityItem
-                icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
-                title="João completou Trilha de Prospecção"
-                time="2h atrás"
-                color="emerald"
-              />
-              <ActivityItem
-                icon={<Target className="h-4 w-4 text-accent" />}
-                title="Maria registrou 5 novas prospecções"
-                time="4h atrás"
-                color="accent"
-              />
-              <ActivityItem
-                icon={<Trophy className="h-4 w-4 text-primary" />}
-                title="Pedro subiu para #3 no ranking"
-                time="6h atrás"
-                color="primary"
-              />
-              <ActivityItem
-                icon={<BookOpen className="h-4 w-4 text-purple-500" />}
-                title="Ana iniciou nova trilha"
-                time="8h atrás"
-                color="purple"
-              />
-              <ActivityItem
-                icon={<Calendar className="h-4 w-4 text-cyan-500" />}
-                title="Encontro de grupo confirmado"
-                time="1d atrás"
-                color="cyan"
-              />
+            <div className="flex-1 overflow-auto">
+              {stats.recentActivity.length > 0 ? (
+                <div className="space-y-3">
+                  {stats.recentActivity.map((activity) => (
+                    <ActivityItem
+                      key={activity.id}
+                      icon={getActivityIcon(activity.type)}
+                      title={activity.title}
+                      time={formatRelativeTime(activity.timestamp)}
+                      color={getActivityColor(activity.type)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Activity className="h-10 w-10 text-muted-foreground/50" />}
+                  title="Sem atividade recente"
+                  description="As atividades dos mentorados aparecerão aqui"
+                />
+              )}
             </div>
           </div>
         </BentoCard>
@@ -208,40 +179,47 @@ export default function AdminDashboard() {
               <Sparkles className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Alertas & Insights IA</h3>
             </div>
-            <div className="flex-1 space-y-3">
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-foreground">Carlos não acessa há 7 dias</p>
-                    <p className="text-sm text-muted-foreground mt-1">Último acesso: 24/01/2026</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="shrink-0">
-                    Contatar
-                  </Button>
+            <div className="flex-1">
+              {stats.sosCount > 0 || stats.atRiskCount > 0 ? (
+                <div className="space-y-3">
+                  {stats.sosCount > 0 && (
+                    <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium text-foreground">{stats.sosCount} SOS pendente{stats.sosCount > 1 ? 's' : ''}</p>
+                          <p className="text-sm text-muted-foreground mt-1">Requer atenção urgente</p>
+                        </div>
+                        <Link to="/admin/centro-sos">
+                          <Button size="sm" variant="destructive">
+                            Atender
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                  {stats.atRiskCount > 0 && (
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium text-foreground">{stats.atRiskCount} mentorado{stats.atRiskCount > 1 ? 's' : ''} em risco</p>
+                          <p className="text-sm text-muted-foreground mt-1">Baixo engajamento detectado</p>
+                        </div>
+                        <Link to="/admin/mentorados">
+                          <Button size="sm" variant="outline">
+                            Ver
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-foreground">Ana solicitou SOS urgente</p>
-                    <p className="text-sm text-muted-foreground mt-1">Há 30 minutos</p>
-                  </div>
-                  <Button size="sm" variant="destructive" className="shrink-0">
-                    Atender
-                  </Button>
-                </div>
-              </div>
-              <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-foreground">3 mentorados próximos de concluir trilha</p>
-                    <p className="text-sm text-muted-foreground mt-1">Considere parabenizá-los</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="shrink-0">
-                    Ver
-                  </Button>
-                </div>
-              </div>
+              ) : (
+                <EmptyState
+                  icon={<Sparkles className="h-10 w-10 text-muted-foreground/50" />}
+                  title="Tudo em ordem!"
+                  description="Não há alertas ou SOS pendentes"
+                />
+              )}
             </div>
           </div>
         </BentoCard>
@@ -254,14 +232,39 @@ export default function AdminDashboard() {
                 <Trophy className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-foreground">Top Ranking</h3>
               </div>
-              <Link to="/admin/ranking" className="text-xs text-primary hover:underline flex items-center gap-1">
-                Ver todos <ArrowUpRight className="h-3 w-3" />
-              </Link>
+              {stats.topRanking.length > 0 && (
+                <Link to="/admin/ranking" className="text-xs text-primary hover:underline flex items-center gap-1">
+                  Ver todos <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              )}
             </div>
-            <div className="flex-1 space-y-3">
-              <RankingItem position={1} name="Maria Silva" points={450} />
-              <RankingItem position={2} name="João Santos" points={380} />
-              <RankingItem position={3} name="Pedro Costa" points={320} />
+            <div className="flex-1">
+              {stats.topRanking.length > 0 ? (
+                <div className="space-y-3">
+                  {stats.topRanking.slice(0, 3).map((item) => (
+                    <RankingItem 
+                      key={item.mentoradoId}
+                      position={item.position} 
+                      name={item.name} 
+                      points={item.points} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Trophy className="h-10 w-10 text-muted-foreground/50" />}
+                  title="Ranking vazio"
+                  description="Adicione mentorados para ver o ranking"
+                  action={
+                    <Link to="/admin/mentorados">
+                      <Button size="sm" variant="outline">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Adicionar
+                      </Button>
+                    </Link>
+                  }
+                />
+              )}
             </div>
           </div>
         </BentoCard>
@@ -277,17 +280,57 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-emerald-500" />
-                <h3 className="font-semibold text-foreground">Progresso Geral</h3>
+                <h3 className="font-semibold text-foreground">Progresso nas Trilhas</h3>
               </div>
             </div>
-            <div className="flex-1 space-y-4">
-              <TrailProgress name="Prospecção Avançada" progress={78} />
-              <TrailProgress name="Fechamento de Vendas" progress={65} />
-              <TrailProgress name="Mindset de Alta Performance" progress={52} />
+            <div className="flex-1">
+              {stats.trailProgress.length > 0 ? (
+                <div className="space-y-4">
+                  {stats.trailProgress.map((trail) => (
+                    <TrailProgress key={trail.id} name={trail.name} progress={trail.progress} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<BookOpen className="h-10 w-10 text-muted-foreground/50" />}
+                  title="Nenhuma trilha criada"
+                  description="Crie trilhas para acompanhar o progresso"
+                  action={
+                    <Link to="/admin/trilhas">
+                      <Button size="sm" variant="outline">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Criar Trilha
+                      </Button>
+                    </Link>
+                  }
+                />
+              )}
             </div>
           </div>
         </BentoCard>
       </BentoGrid>
+    </div>
+  );
+}
+
+// Helper components
+function EmptyState({ 
+  icon, 
+  title, 
+  description, 
+  action 
+}: { 
+  icon: React.ReactNode; 
+  title: string; 
+  description: string; 
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+      {icon}
+      <p className="font-medium text-muted-foreground mt-3">{title}</p>
+      <p className="text-sm text-muted-foreground/70 mt-1">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -320,7 +363,7 @@ function RankingItem({ position, name, points }: { position: number; name: strin
   const medals = ['🥇', '🥈', '🥉'];
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
-      <span className="text-xl">{medals[position - 1]}</span>
+      <span className="text-xl">{medals[position - 1] || `#${position}`}</span>
       <div className="flex-1">
         <p className="font-medium text-foreground text-sm">{name}</p>
       </div>
@@ -339,4 +382,52 @@ function TrailProgress({ name, progress }: { name: string; progress: number }) {
       <Progress value={progress} className="h-2" />
     </div>
   );
+}
+
+// Helpers for activity types
+function getActivityIcon(type: string) {
+  switch (type) {
+    case 'trail_completed':
+      return <TrendingUp className="h-4 w-4 text-emerald-500" />;
+    case 'prospection':
+      return <Target className="h-4 w-4 text-accent" />;
+    case 'ranking_up':
+      return <Trophy className="h-4 w-4 text-primary" />;
+    case 'trail_started':
+      return <BookOpen className="h-4 w-4 text-purple-500" />;
+    case 'meeting':
+      return <Calendar className="h-4 w-4 text-cyan-500" />;
+    default:
+      return <Activity className="h-4 w-4 text-muted-foreground" />;
+  }
+}
+
+function getActivityColor(type: string) {
+  switch (type) {
+    case 'trail_completed':
+      return 'emerald';
+    case 'prospection':
+      return 'accent';
+    case 'ranking_up':
+      return 'primary';
+    case 'trail_started':
+      return 'purple';
+    case 'meeting':
+      return 'cyan';
+    default:
+      return 'muted';
+  }
+}
+
+function formatRelativeTime(timestamp: string) {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) return 'Agora';
+  if (diffHours < 24) return `${diffHours}h atrás`;
+  if (diffDays < 7) return `${diffDays}d atrás`;
+  return date.toLocaleDateString('pt-BR');
 }

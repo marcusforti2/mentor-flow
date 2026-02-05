@@ -1,5 +1,6 @@
- import { useAuth } from '@/hooks/useAuth';
- import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/contexts/TenantContext';
+import { useMenteeDashboardStats } from '@/hooks/useDashboardStats';
 import { useGamification } from '@/hooks/useGamification';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { BadgeCard } from '@/components/gamification/BadgeCard';
@@ -19,17 +20,21 @@ import {
   Star,
   Loader2,
   Gift,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function MemberDashboard() {
-   const { profile, user } = useAuth();
-   const { isMentor } = useTenant();
-  const { badges, stats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
+  const { profile, user } = useAuth();
+  const { isMentor } = useTenant();
+  const { stats: dashboardStats, isLoading: isLoadingDashboard } = useMenteeDashboardStats();
+  const { badges, stats: gamificationStats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -41,11 +46,10 @@ export default function MemberDashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user || isMentor) return; // Skip for mentors
+      if (!user || isMentor) return;
       
       try {
-        // Get mentorado ID (or auto-link if missing)
-        let mentoradoId: string | null = null;
+        let mentoradoIdLocal: string | null = null;
 
         const { data: mentorado, error: mentoradoError } = await supabase
           .from("mentorados")
@@ -54,7 +58,7 @@ export default function MemberDashboard() {
           .maybeSingle();
 
         if (mentorado?.id) {
-          mentoradoId = mentorado.id;
+          mentoradoIdLocal = mentorado.id;
         } else {
           if (mentoradoError) {
             console.warn("Mentorado fetch error:", mentoradoError);
@@ -64,20 +68,19 @@ export default function MemberDashboard() {
             { body: {} }
           );
           if (!ensureError && ensured?.mentorado_id) {
-            mentoradoId = ensured.mentorado_id;
+            mentoradoIdLocal = ensured.mentorado_id;
           }
         }
 
-        if (!mentoradoId) {
+        if (!mentoradoIdLocal) {
           setIsLoadingStats(false);
           return;
         }
         
-        // Get training analyses stats
         const { data: analyses } = await supabase
           .from("training_analyses")
           .select("nota_geral")
-          .eq("mentorado_id", mentoradoId);
+          .eq("mentorado_id", mentoradoIdLocal);
         
         if (analyses && analyses.length > 0) {
           const avg = Math.round(
@@ -105,6 +108,28 @@ export default function MemberDashboard() {
     return "text-red-500";
   };
 
+  const formatMeetingDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return format(date, "EEEE, HH'h'", { locale: ptBR });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const isLoading = isLoadingDashboard || isLoadingGamification;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const hasTrailProgress = dashboardStats.trailProgress.length > 0;
+  const hasRanking = dashboardStats.rankingPosition !== null;
+
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Header */}
@@ -118,12 +143,12 @@ export default function MemberDashboard() {
         <Link to="/app/trilhas">
           <Button className="btn-premium px-6 py-5 text-base">
             <Play className="mr-2 h-5 w-5" />
-            <span>Continuar Trilha</span>
+            <span>{hasTrailProgress ? 'Continuar Trilha' : 'Iniciar Trilha'}</span>
           </Button>
         </Link>
       </div>
 
-      {/* Daily Goal Counter - works with mentoradoId or user.id fallback */}
+      {/* Daily Goal Counter */}
       {(mentoradoId || user?.id) && (
         <DailyGoalCounter mentoradoId={mentoradoId || user?.id || ""} />
       )}
@@ -137,18 +162,42 @@ export default function MemberDashboard() {
               <BookOpen className="h-6 w-6 text-primary" />
               <h2 className="text-xl font-semibold text-foreground">Sua Jornada</h2>
             </div>
-            <div className="flex-1 space-y-5">
-              <TrailProgress name="Prospecção Avançada" progress={85} color="primary" />
-              <TrailProgress name="Fechamento de Vendas" progress={60} color="accent" />
-              <TrailProgress name="Mindset de Alta Performance" progress={40} color="emerald" />
-              <TrailProgress name="Comunicação Persuasiva" progress={20} color="purple" />
+            <div className="flex-1">
+              {hasTrailProgress ? (
+                <div className="space-y-5">
+                  {dashboardStats.trailProgress.map((trail) => (
+                    <TrailProgress 
+                      key={trail.id} 
+                      name={trail.name} 
+                      progress={trail.progress} 
+                      color="primary" 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<BookOpen className="h-12 w-12 text-muted-foreground/50" />}
+                  title="Nenhuma trilha iniciada"
+                  description="Comece sua jornada de aprendizado agora"
+                  action={
+                    <Link to="/app/trilhas">
+                      <Button>
+                        <Play className="h-4 w-4 mr-2" />
+                        Explorar Trilhas
+                      </Button>
+                    </Link>
+                  }
+                />
+              )}
             </div>
-            <Link to="/app/trilhas" className="mt-6">
-              <Button variant="outline" className="w-full">
-                Ver Todas as Trilhas
-                <ArrowUpRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            {hasTrailProgress && (
+              <Link to="/app/trilhas" className="mt-6">
+                <Button variant="outline" className="w-full">
+                  Ver Todas as Trilhas
+                  <ArrowUpRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            )}
           </div>
         </BentoCard>
 
@@ -157,11 +206,20 @@ export default function MemberDashboard() {
           <div className="flex flex-col justify-between h-full">
             <Trophy className="h-8 w-8 text-primary" />
             <div className="mt-auto">
-              <p className="stat-value text-gradient-gold">#7</p>
-              <p className="stat-label mt-1">Posição no Ranking</p>
-              <span className="text-xs text-emerald-500 font-medium mt-2 inline-block">
-                +2 posições esta semana
-              </span>
+              {hasRanking ? (
+                <>
+                  <p className="stat-value text-gradient-gold">#{dashboardStats.rankingPosition}</p>
+                  <p className="stat-label mt-1">Posição no Ranking</p>
+                </>
+              ) : (
+                <>
+                  <p className="stat-value text-muted-foreground">-</p>
+                  <p className="stat-label mt-1">Posição no Ranking</p>
+                  <span className="text-xs text-muted-foreground mt-2 inline-block">
+                    Faça prospecções para pontuar
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </BentoCard>
@@ -170,10 +228,10 @@ export default function MemberDashboard() {
           <div className="flex flex-col justify-between h-full">
             <Target className="h-8 w-8 text-accent" />
             <div className="mt-auto">
-              <p className="stat-value">23</p>
+              <p className="stat-value">{dashboardStats.monthlyProspections}</p>
               <p className="stat-label mt-1">Prospecções do Mês</p>
               <span className="text-xs text-muted-foreground mt-2 inline-block">
-                230 pontos acumulados
+                {dashboardStats.totalPoints} pontos acumulados
               </span>
             </div>
           </div>
@@ -187,12 +245,28 @@ export default function MemberDashboard() {
               <h3 className="font-semibold text-foreground">Próximo Encontro</h3>
             </div>
             <div className="flex-1 flex flex-col justify-center items-center text-center p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-              <Clock className="h-10 w-10 text-cyan-500 mb-3" />
-              <p className="text-2xl font-bold text-foreground">Quarta, 14h</p>
-              <p className="text-muted-foreground mt-1">Mentoria em Grupo</p>
-              <Button variant="outline" size="sm" className="mt-4">
-                Confirmar Presença
-              </Button>
+              {dashboardStats.nextMeeting ? (
+                <>
+                  <Clock className="h-10 w-10 text-cyan-500 mb-3" />
+                  <p className="text-2xl font-bold text-foreground capitalize">
+                    {formatMeetingDate(dashboardStats.nextMeeting.scheduledAt)}
+                  </p>
+                  <p className="text-muted-foreground mt-1">{dashboardStats.nextMeeting.title}</p>
+                  {dashboardStats.nextMeeting.meetingUrl && (
+                    <a href={dashboardStats.nextMeeting.meetingUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm" className="mt-4">
+                        Entrar na Reunião
+                      </Button>
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Calendar className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">Nenhum encontro agendado</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Aguarde novos eventos do mentor</p>
+                </>
+              )}
             </div>
           </div>
         </BentoCard>
@@ -207,7 +281,7 @@ export default function MemberDashboard() {
               </div>
               <Link to="/app/loja" className="text-xs text-primary hover:underline flex items-center gap-1">
                 <Gift className="h-3 w-3" />
-                {stats?.totalPoints || 0} pts
+                {gamificationStats?.totalPoints || 0} pts
               </Link>
             </div>
             <div className="flex-1 grid grid-cols-3 gap-2">
@@ -215,7 +289,7 @@ export default function MemberDashboard() {
                 <div className="col-span-3 flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : (
+              ) : badges.length > 0 ? (
                 badges.slice(0, 6).map((badge) => (
                   <BadgeCard
                     key={badge.id}
@@ -229,13 +303,20 @@ export default function MemberDashboard() {
                     showPoints={false}
                   />
                 ))
+              ) : (
+                <div className="col-span-3 flex flex-col items-center justify-center text-center py-4">
+                  <Award className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhuma conquista disponível</p>
+                </div>
               )}
             </div>
-            <Link to="/app/loja" className="mt-3">
-              <Button variant="outline" size="sm" className="w-full text-xs">
-                Ver Todas as Conquistas
-              </Button>
-            </Link>
+            {badges.length > 0 && (
+              <Link to="/app/loja" className="mt-3">
+                <Button variant="outline" size="sm" className="w-full text-xs">
+                  Ver Todas as Conquistas
+                </Button>
+              </Link>
+            )}
           </div>
         </BentoCard>
 
@@ -261,7 +342,9 @@ export default function MemberDashboard() {
                 <Trophy className="h-6 w-6 text-primary" />
               </div>
               <h3 className="font-semibold text-foreground text-lg">Ver Ranking</h3>
-              <p className="text-muted-foreground text-sm mt-1">Sua posição: #7</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                {hasRanking ? `Sua posição: #${dashboardStats.rankingPosition}` : 'Confira a classificação'}
+              </p>
             </Link>
           </div>
         </BentoCard>
@@ -300,13 +383,34 @@ export default function MemberDashboard() {
             </div>
             <div className="flex-1 flex items-center justify-center">
               <StreakCounter 
-                days={stats?.streakDays || 0} 
+                days={gamificationStats?.streakDays || 0} 
                 size="md"
               />
             </div>
           </div>
         </BentoCard>
       </BentoGrid>
+    </div>
+  );
+}
+
+function EmptyState({ 
+  icon, 
+  title, 
+  description, 
+  action 
+}: { 
+  icon: React.ReactNode; 
+  title: string; 
+  description: string; 
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+      {icon}
+      <p className="font-medium text-muted-foreground mt-3">{title}</p>
+      <p className="text-sm text-muted-foreground/70 mt-1">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
