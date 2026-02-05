@@ -7,6 +7,27 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Helper to get or create the default tenant
+async function getDefaultTenant(supabase: any): Promise<string> {
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("id")
+    .eq("slug", "lbv")
+    .single();
+  
+  if (tenant) return tenant.id;
+  
+  // Create default tenant if not exists
+  const { data: newTenant, error } = await supabase
+    .from("tenants")
+    .insert({ name: "LBV Tech", slug: "lbv" })
+    .select("id")
+    .single();
+  
+  if (error) throw new Error("Failed to create default tenant");
+  return newTenant.id;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -14,7 +35,7 @@ serve(async (req) => {
   }
 
   try {
-    const { email, code, fullName, phone, userType, devMode, mentorId } = await req.json();
+    const { email, code, fullName, phone, userType, devMode, mentorId, tenantSlug } = await req.json();
 
     if (!email || !code) {
       throw new Error("Email e código são obrigatórios");
@@ -121,18 +142,18 @@ serve(async (req) => {
       }
 
       // Validate userType
-      const validUserType = userType === 'mentor' ? 'mentor' : 'mentorado';
+      const validRole = userType === 'mentor' ? 'mentor' : 'mentee';
 
       // PREVENT creating user if trying to register as mentor but mentor already exists
-      if (validUserType === 'mentor') {
-        const { data: existingMentor } = await supabase
-          .from("user_roles")
+      if (validRole === 'mentor') {
+        // Check if admin membership exists in any tenant
+        const { data: existingAdmin } = await supabase
+          .from("memberships")
           .select("id")
-          .eq("role", "mentor")
-          .limit(1)
+          .eq("role", "admin")
           .maybeSingle();
         
-        if (existingMentor) {
+        if (existingAdmin) {
           console.log("Mentor registration blocked - mentor already exists");
           return new Response(
             JSON.stringify({ 
@@ -176,65 +197,112 @@ serve(async (req) => {
           })
           .eq("user_id", userId);
 
-        // Assign role based on userType
-        const { error: roleError } = await supabase.rpc('assign_role', {
-          _user_id: userId,
-          _role: validUserType
-        });
+        // Get tenant ID (use provided slug or default)
+        const tenantId = await getDefaultTenant(supabase);
+        console.log("Using tenant:", tenantId);
 
-        if (roleError) {
-          console.error("Error assigning role:", roleError);
-          // Don't throw - user was created, just log the error
-        }
+        // Create membership based on role
+        const membershipRole = validRole === 'mentor' ? 'admin' : 'mentee';
+        const { data: membership, error: membershipError } = await supabase
+          .from("memberships")
+          .insert({
+            user_id: userId,
+            tenant_id: tenantId,
+            role: membershipRole,
+            status: 'active',
+          })
+          .select()
+          .single();
 
-        console.log(`Role '${validUserType}' assigned to user:`, userId);
+        if (membershipError) {
+          console.error("Error creating membership:", membershipError);
+        } else {
+          console.log(`Membership '${membershipRole}' created for user:`, userId);
 
-        // If mentorado, create the mentorado record
-        if (validUserType === 'mentorado') {
-          // Get mentor_id - use provided mentorId or find first available mentor
-          let targetMentorId = mentorId;
-          if (!targetMentorId) {
-            const { data: firstMentor } = await supabase
+          // Create role-specific profile
+          if (validRole === 'mentee') {
+            // Find a mentor to assign (get first admin/mentor membership in tenant)
+            const { data: mentorMembership } = await supabase
+              .from("memberships")
+              .select("id")
+              .eq("tenant_id", tenantId)
+              .in("role", ["admin", "mentor"])
+              .limit(1)
+              .single();
+
+            // Create mentee_profile
+            const { error: profileError } = await supabase
+              .from("mentee_profiles")
+              .insert({
+                membership_id: membership.id,
+                onboarding_completed: devMode || false,
+              });
+
+            if (profileError) {
+              console.error("Error creating mentee_profile:", profileError);
+            } else {
+              console.log("Mentee profile created for membership:", membership.id);
+            }
+
+            // Create assignment if mentor exists
+            if (mentorMembership) {
+              await supabase
+                .from("mentor_mentee_assignments")
+                .insert({
+                  tenant_id: tenantId,
+                  mentor_membership_id: mentorMembership.id,
+                  mentee_membership_id: membership.id,
+                  status: 'active',
+                });
+            }
+
+            // BACKWARD COMPATIBILITY: Also create legacy mentorado record
+            const { data: legacyMentor } = await supabase
               .from("mentors")
               .select("id")
               .limit(1)
               .single();
-            targetMentorId = firstMentor?.id;
-          }
 
-          if (targetMentorId) {
-            const { error: mentoradoError } = await supabase
-              .from("mentorados")
+            if (legacyMentor) {
+              await supabase
+                .from("mentorados")
+                .insert({
+                  user_id: userId,
+                  mentor_id: legacyMentor.id,
+                  status: 'active',
+                  onboarding_completed: devMode || false,
+                });
+            }
+          } else {
+            // Create mentor_profile for admin role
+            const { error: profileError } = await supabase
+              .from("mentor_profiles")
               .insert({
-                user_id: userId,
-                mentor_id: targetMentorId,
-                status: 'active',
-                onboarding_completed: devMode ? true : false,
+                membership_id: membership.id,
+                business_name: `Mentoria de ${fullName}`,
               });
 
-            if (mentoradoError) {
-              console.error("Error creating mentorado:", mentoradoError);
+            if (profileError) {
+              console.error("Error creating mentor_profile:", profileError);
             } else {
-              console.log("Mentorado record created for user:", userId);
+              console.log("Mentor profile created for membership:", membership.id);
             }
-          }
-        }
 
-        // If mentor in devMode, create mentor record
-        if (validUserType === 'mentor' && devMode) {
-          const { data: mentorRecord, error: mentorError } = await supabase
-            .from("mentors")
-            .insert({
-              user_id: userId,
-              business_name: `Mentoria de ${fullName}`,
-            })
-            .select()
-            .single();
+            // BACKWARD COMPATIBILITY: Also create legacy mentor record
+            await supabase
+              .from("mentors")
+              .insert({
+                user_id: userId,
+                business_name: `Mentoria de ${fullName}`,
+              });
 
-          if (mentorError) {
-            console.error("Error creating mentor:", mentorError);
-          } else {
-            console.log("Mentor record created:", mentorRecord?.id);
+            // Also create legacy user_role
+            await supabase
+              .from("user_roles")
+              .insert({
+                user_id: userId,
+                role: 'mentor',
+              });
           }
         }
       }
@@ -264,7 +332,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           isNewUser: true,
-          userType: validUserType,
+          userType: validRole === 'mentor' ? 'mentor' : 'mentorado',
           userId: userId,
           actionLink: linkData.properties?.action_link,
           tokenHash: linkData.properties?.hashed_token,

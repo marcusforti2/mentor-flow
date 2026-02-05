@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +34,8 @@ const Auth = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, role, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { activeMembership, isLoading: tenantLoading } = useTenant();
 
   // Countdown timer for resend
   useEffect(() => {
@@ -45,14 +47,15 @@ const Auth = () => {
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
-    if (!authLoading && user && role) {
-      if (role === 'mentor' || role === 'admin_master') {
+    if (!authLoading && !tenantLoading && user && activeMembership) {
+      const role = activeMembership.role;
+      if (role === 'admin' || role === 'ops' || role === 'mentor') {
         navigate('/admin');
-      } else if (role === 'mentorado') {
+      } else if (role === 'mentee') {
         navigate('/app');
       }
     }
-  }, [user, role, authLoading, navigate]);
+  }, [user, activeMembership, authLoading, tenantLoading, navigate]);
 
   const validateEmail = () => {
     try {
@@ -273,7 +276,7 @@ const Auth = () => {
   };
 
   // Show loading while checking auth
-  if (authLoading) {
+  if (authLoading || tenantLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
