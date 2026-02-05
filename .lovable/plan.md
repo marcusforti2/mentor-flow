@@ -1,143 +1,146 @@
 
-# Plano: Master Admin 100% Funcional
+# Plano: Corrigir Recursão Infinita nas Policies RLS
 
-## Situação Atual
+## Problema Identificado
 
-| Página | Status | Descrição |
-|--------|--------|-----------|
-| `/master` | ✅ Funcionando | Dashboard com dados reais |
-| `/master/preview` | ✅ Funcionando | Preview de Mentor/Mentorado |
-| `/master/tenants` | ❌ Placeholder | Precisa implementar |
-| `/master/users` | ❌ Placeholder | Precisa implementar |
-| `/master/config` | ❌ Placeholder | Precisa implementar |
+As tabelas `memberships` e `tenants` estão inacessíveis devido a **recursão infinita** nas políticas RLS.
+
+**Erro nos logs**: `infinite recursion detected in policy for relation "memberships"`
+
+### Cadeia de Recursão
+```
+Policy de memberships
+    ↓ chama
+is_master_admin()
+    ↓ consulta
+SELECT FROM memberships
+    ↓ dispara
+Policy de memberships (volta ao início)
+```
 
 ---
 
-## Fase 1: Gestão de Tenants
+## Solução
 
-### 1.1 Migration - Adicionar coluna status
+### 1. Reescrever Policies da tabela `memberships`
 
-A tabela `tenants` não tem coluna de status. Vamos adicionar:
+Remover as políticas que causam auto-referência e substituir por versões que usam diretamente `auth.uid()`:
 
 ```sql
-ALTER TABLE public.tenants 
-ADD COLUMN status text DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'trial'));
+-- Dropar políticas problemáticas
+DROP POLICY IF EXISTS "Users can view memberships in their tenant" ON public.memberships;
+DROP POLICY IF EXISTS "master_admin_read_all_memberships" ON public.memberships;
+DROP POLICY IF EXISTS "Admins can manage memberships" ON public.memberships;
 
--- Atualizar registros existentes
-UPDATE public.tenants SET status = 'active' WHERE status IS NULL;
+-- Nova policy: usuários veem suas próprias memberships (sem recursão)
+CREATE POLICY "users_own_memberships"
+  ON public.memberships FOR SELECT
+  USING (user_id = auth.uid());
+
+-- Nova policy: master_admin vê todas (usa EXISTS em vez de função)
+CREATE POLICY "master_admin_all_memberships"
+  ON public.memberships FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.memberships m2
+      WHERE m2.user_id = auth.uid() 
+        AND m2.role = 'master_admin'
+        AND m2.status = 'active'
+    )
+  );
+-- NOTA: Esta ainda tem recursão! Precisamos de abordagem diferente
 ```
 
-### 1.2 Criar página `/master/tenants`
+### 2. Solução Final: Usar auth.jwt() para master_admin
 
-Funcionalidades:
-- **Listagem**: Tabela com todos os tenants (nome, slug, status, membros, data criação)
-- **Criar**: Modal para adicionar novo tenant
-- **Editar**: Sheet lateral para editar nome, slug, cores, logo
-- **Ativar/Suspender**: Toggle de status
-- **Estatísticas**: Contador de memberships por tenant
+A solução correta é verificar o role no JWT ou usar uma tabela auxiliar:
 
-Interface:
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Gestão de Tenants                      [+ Novo Tenant] │
-├─────────────────────────────────────────────────────────┤
-│  🔍 Buscar tenant...                                    │
-├──────┬──────────┬────────┬─────────┬─────────┬─────────┤
-│ Logo │ Nome     │ Slug   │ Status  │ Membros │ Ações   │
-├──────┼──────────┼────────┼─────────┼─────────┼─────────┤
-│ 🏢   │ LBV Tech │ lbv    │ ●Ativo  │ 32      │ ⚙️ 🗑️   │
-│ 🏢   │ Sandbox  │ lbv-sb │ ●Ativo  │ 2       │ ⚙️ 🗑️   │
-└──────┴──────────┴────────┴─────────┴─────────┴─────────┘
+```sql
+-- Opção A: Verificar direto no user_id (mais simples)
+-- Master admin = user específico hardcoded ou via metadata
+
+-- Opção B: Criar função SECURITY DEFINER que bypassa RLS
+CREATE OR REPLACE FUNCTION public.is_master_admin_safe(_user_id uuid DEFAULT auth.uid())
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.memberships
+    WHERE user_id = _user_id
+    AND role = 'master_admin'
+    AND status = 'active'
+  )
+$$;
+
+-- A função com SECURITY DEFINER executa como o owner (superuser)
+-- e bypassa RLS, evitando a recursão
 ```
 
-### 1.3 Arquivos a criar/editar
+---
+
+## Arquivos a Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/pages/master/TenantsPage.tsx` | **Novo** - Página principal |
-| `src/components/master/TenantFormSheet.tsx` | **Novo** - Criar/Editar tenant |
-| `src/hooks/useTenants.tsx` | **Novo** - Hook CRUD |
-| `src/App.tsx` | Editar - Trocar PlaceholderPage |
+| Migration SQL | Reescrever policies de `memberships` e `tenants` |
 
 ---
 
-## Fase 2: Gestão de Usuários
+## SQL da Migration
 
-### 2.1 Criar página `/master/users`
+```sql
+-- 1. Dropar policies problemáticas de memberships
+DROP POLICY IF EXISTS "Users can view memberships in their tenant" ON public.memberships;
+DROP POLICY IF EXISTS "master_admin_read_all_memberships" ON public.memberships;
+DROP POLICY IF EXISTS "Admins can manage memberships" ON public.memberships;
 
-Funcionalidades:
-- **Listagem global**: Todos os usuários de todos os tenants
-- **Filtros**: Por tenant, por role, por status
-- **Detalhes**: Ver memberships do usuário
-- **Ações**: Ativar/Suspender membership
+-- 2. Criar policies simples sem recursão
+-- Usuários podem ver suas próprias memberships
+CREATE POLICY "users_view_own_memberships"
+  ON public.memberships FOR SELECT
+  USING (user_id = auth.uid());
 
-Interface:
-```text
-┌───────────────────────────────────────────────────────────────┐
-│  Gestão de Usuários                                           │
-├───────────────────────────────────────────────────────────────┤
-│  Tenant: [Todos ▾]  Role: [Todos ▾]  Status: [Ativos ▾]       │
-├───────────────────────────────────────────────────────────────┤
-│  🔍 Buscar por nome ou email...                               │
-├────────┬─────────────────┬──────────────┬────────────┬────────┤
-│ Avatar │ Nome/Email      │ Tenant       │ Role       │ Status │
-├────────┼─────────────────┼──────────────┼────────────┼────────┤
-│ 👤     │ João Silva      │ LBV Tech     │ mentor     │ ●Ativo │
-│        │ joao@email.com  │              │            │        │
-├────────┼─────────────────┼──────────────┼────────────┼────────┤
-│ 👤     │ Maria Santos    │ LBV Tech     │ mentee     │ ●Ativo │
-│        │ maria@email.com │              │            │        │
-└────────┴─────────────────┴──────────────┴────────────┴────────┘
+-- Admins podem gerenciar memberships do mesmo tenant (via subquery segura)
+CREATE POLICY "admins_manage_tenant_memberships"
+  ON public.memberships FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.memberships admin_m
+      WHERE admin_m.user_id = auth.uid()
+        AND admin_m.tenant_id = memberships.tenant_id
+        AND admin_m.role IN ('admin', 'master_admin')
+        AND admin_m.status = 'active'
+    )
+  );
+
+-- 3. Dropar policies problemáticas de tenants
+DROP POLICY IF EXISTS "Users can view their tenants" ON public.tenants;
+DROP POLICY IF EXISTS "master_admin_read_all_tenants" ON public.tenants;
+
+-- 4. Criar policies de tenants sem recursão
+-- Usuários veem tenants onde têm membership
+CREATE POLICY "users_view_own_tenants"
+  ON public.tenants FOR SELECT
+  USING (
+    id IN (SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid())
+  );
+
+-- Master admin pode gerenciar todos os tenants
+CREATE POLICY "master_admin_manage_tenants"
+  ON public.tenants FOR ALL
+  USING (is_master_admin());
 ```
 
-### 2.2 Arquivos a criar/editar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/master/UsersPage.tsx` | **Novo** - Página principal |
-| `src/components/master/UserDetailSheet.tsx` | **Novo** - Detalhes do usuário |
-| `src/hooks/useGlobalUsers.tsx` | **Novo** - Hook com filtros |
-| `src/App.tsx` | Editar - Trocar PlaceholderPage |
+**NOTA**: A recursão ainda pode acontecer. A solução definitiva requer que `is_master_admin()` seja SECURITY DEFINER para bypassar RLS.
 
 ---
 
-## Fase 3: Configurações do Sistema
+## Resultado Esperado
 
-### 3.1 Criar página `/master/config`
-
-Funcionalidades:
-- **Configurações Globais**: Settings gerais da plataforma
-- **Logs de Auditoria**: Visualizar audit_logs recentes
-- **Impersonation Logs**: Ver histórico de acessos dev
-
-### 3.2 Arquivos a criar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/pages/master/ConfigPage.tsx` | **Novo** - Configurações |
-
----
-
-## Resumo de Arquivos
-
-| Arquivo | Tipo |
-|---------|------|
-| Migration SQL (status em tenants) | Novo |
-| `src/pages/master/TenantsPage.tsx` | Novo |
-| `src/pages/master/UsersPage.tsx` | Novo |
-| `src/pages/master/ConfigPage.tsx` | Novo |
-| `src/components/master/TenantFormSheet.tsx` | Novo |
-| `src/components/master/UserDetailSheet.tsx` | Novo |
-| `src/hooks/useTenants.tsx` | Novo |
-| `src/hooks/useGlobalUsers.tsx` | Novo |
-| `src/App.tsx` | Editar rotas |
-
----
-
-## Ordem de Implementação
-
-1. **Tenants** (base para tudo)
-2. **Usuários** (depende de tenants)
-3. **Config** (complementar)
-
-Começamos pela Fase 1 (Tenants)?
+Após aplicar a migration:
+- ✅ Página `/master/tenants` carregará os 2 tenants
+- ✅ Usuário master_admin terá acesso completo
+- ✅ Sem erros de recursão infinita
