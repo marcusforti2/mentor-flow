@@ -18,6 +18,7 @@ import {
   Sparkles,
   Gift,
   Users,
+  FolderOpen,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -32,6 +33,7 @@ const menuItems = [
   { icon: Target, label: 'Meu CRM', path: '/app/meu-crm' },
   { icon: Users, label: 'Comunidade', path: '/app/comunidade' },
   { icon: Sparkles, label: 'Arsenal de Vendas', path: '/app/ferramentas' },
+  { icon: FolderOpen, label: 'Meus Arquivos', path: '/app/meus-arquivos' },
   { icon: Gift, label: 'Loja de Prêmios', path: '/app/loja' },
   { icon: Calendar, label: 'Calendário', path: '/app/calendario' },
   { icon: Trophy, label: 'Ranking', path: '/app/ranking' },

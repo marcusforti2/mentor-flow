@@ -1237,6 +1237,78 @@ export type Database = {
           },
         ]
       }
+      mentorado_files: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          file_type: string
+          id: string
+          link_title: string | null
+          link_url: string | null
+          mentor_id: string
+          mentorado_id: string
+          mime_type: string | null
+          note_content: string | null
+          note_title: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type: string
+          id?: string
+          link_title?: string | null
+          link_url?: string | null
+          mentor_id: string
+          mentorado_id: string
+          mime_type?: string | null
+          note_content?: string | null
+          note_title?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          link_title?: string | null
+          link_url?: string | null
+          mentor_id?: string
+          mentorado_id?: string
+          mime_type?: string | null
+          note_content?: string | null
+          note_title?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_files_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorado_files_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorados: {
         Row: {
           created_at: string | null
