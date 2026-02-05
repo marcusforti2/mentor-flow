@@ -110,7 +110,7 @@ export default function Perfil() {
 
         <TabsContent value="negocio" className="mt-6">
           {mentoradoId ? (
-            <BusinessProfileForm mentoradoId={mentoradoId} />
+            <BusinessProfileForm membershipId={mentoradoId} />
           ) : (
             <Card>
               <CardContent className="py-12 text-center">

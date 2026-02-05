@@ -15,8 +15,7 @@ export type ActivityType =
   | 'login';
 
 interface LogActivityParams {
-  mentoradoId: string;
-  membershipId?: string;
+  membershipId: string;
   tenantId?: string;
   actionType: ActivityType;
   description?: string;
@@ -25,7 +24,6 @@ interface LogActivityParams {
 }
 
 export async function logActivity({
-  mentoradoId,
   membershipId,
   tenantId,
   actionType,
@@ -37,7 +35,6 @@ export async function logActivity({
     const { error } = await supabase
       .from('activity_logs')
       .insert([{
-        mentorado_id: mentoradoId,
         membership_id: membershipId,
         tenant_id: tenantId,
         action_type: actionType,
