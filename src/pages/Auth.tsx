@@ -222,8 +222,17 @@ const Auth = () => {
         },
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      // Handle Edge Function HTTP errors
+      if (error) {
+        console.error("[Auth] Edge function error:", error);
+        throw { message: "Erro de conexão. Tente novamente.", error_type: 'internal' };
+      }
+      
+      // Handle application-level errors with error_type
+      if (data.error) {
+        const errorType = data.error_type || 'otp_invalid';
+        throw { message: data.error, error_type: errorType };
+      }
 
       if (data.tokenHash) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
@@ -232,24 +241,53 @@ const Auth = () => {
         });
 
         if (verifyError) {
-          console.error("verifyOtp error:", verifyError);
-          throw new Error("Erro ao autenticar. Tente novamente.");
+          console.error("[Auth] verifyOtp error:", verifyError);
+          throw { message: "Erro ao estabelecer sessão. Tente novamente.", error_type: 'internal' };
         }
 
-        toast({
-          title: data.isNewUser ? "Conta criada!" : "Bem-vindo de volta!",
-          description: data.isNewUser ? "Sua conta foi criada com sucesso." : "Login realizado com sucesso.",
-        });
+        // Show warning if membership is missing but login succeeded
+        if (data.membership_missing) {
+          toast({
+            title: "Aviso",
+            description: "Sua conta foi autenticada, mas o perfil ainda está sendo configurado.",
+          });
+        } else {
+          toast({
+            title: data.isNewUser ? "Conta criada!" : "Bem-vindo de volta!",
+            description: data.isNewUser ? "Sua conta foi criada com sucesso." : "Login realizado com sucesso.",
+          });
+        }
 
         await bootstrapAfterAuth();
       }
     } catch (error: any) {
-      toast({
-        title: "Código inválido",
-        description: error.message || "Verifique o código e tente novamente",
-        variant: "destructive",
-      });
-      setErrors({ code: "Código inválido ou expirado" });
+      const errorType = error.error_type || 'otp_invalid';
+      const message = error.message || "Verifique o código e tente novamente";
+      
+      // Different UI feedback based on error type
+      if (errorType === 'otp_invalid' || errorType === 'otp_expired') {
+        setErrors({ code: message });
+        toast({
+          title: "Código inválido",
+          description: message,
+          variant: "destructive",
+        });
+      } else if (errorType === 'no_invite') {
+        setErrors({});
+        toast({
+          title: "Acesso restrito",
+          description: message,
+          variant: "destructive",
+        });
+      } else {
+        // Internal error - don't blame the code
+        setErrors({});
+        toast({
+          title: "Erro interno",
+          description: message + " Seu código pode estar correto.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
       isSubmittingRef.current = false;
