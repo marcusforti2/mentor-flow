@@ -14,6 +14,64 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_description: string | null
+          action_type: string
+          created_at: string
+          id: string
+          membership_id: string | null
+          mentorado_id: string
+          metadata: Json | null
+          points_earned: number | null
+          tenant_id: string | null
+        }
+        Insert: {
+          action_description?: string | null
+          action_type: string
+          created_at?: string
+          id?: string
+          membership_id?: string | null
+          mentorado_id: string
+          metadata?: Json | null
+          points_earned?: number | null
+          tenant_id?: string | null
+        }
+        Update: {
+          action_description?: string | null
+          action_type?: string
+          created_at?: string
+          id?: string
+          membership_id?: string | null
+          mentorado_id?: string
+          metadata?: Json | null
+          points_earned?: number | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_logs_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_tool_usage: {
         Row: {
           created_at: string | null

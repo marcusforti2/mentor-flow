@@ -6,6 +6,7 @@ import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { BadgeCard } from '@/components/gamification/BadgeCard';
 import { StreakCounter } from '@/components/gamification/StreakCounter';
 import { DailyGoalCounter } from '@/components/gamification/DailyGoalCounter';
+import { RecentActivityFeed } from '@/components/activity/RecentActivityFeed';
 import { 
   BookOpen, 
   Target, 
@@ -20,7 +21,7 @@ import {
   Star,
   Loader2,
   Gift,
-  Plus,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -386,6 +387,19 @@ export default function MemberDashboard() {
                 days={gamificationStats?.streakDays || 0} 
                 size="md"
               />
+            </div>
+          </div>
+        </BentoCard>
+
+        {/* Recent Activity */}
+        <BentoCard size="md">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Atividade Recente</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <RecentActivityFeed mentoradoId={mentoradoId || undefined} limit={5} />
             </div>
           </div>
         </BentoCard>
