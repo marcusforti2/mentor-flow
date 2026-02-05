@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/contexts/TenantContext";
+import { useTenant, MembershipRole } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,69 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
-  const { activeMembership, isLoading: tenantLoading } = useTenant();
+  const { activeMembership, isLoading: tenantLoading, refreshMembershipsAndWait } = useTenant();
+
+  // Helper to get target path by role
+  const getTargetPath = (role: MembershipRole): string => {
+    switch (role) {
+      case 'master_admin':
+        return '/master';
+      case 'admin':
+      case 'ops':
+      case 'mentor':
+        return '/mentor';
+      case 'mentee':
+        return '/mentorado';
+      default:
+        return '/mentorado';
+    }
+  };
+
+  // Bootstrap function: Wait for session and membership, then redirect
+  const bootstrapAfterAuth = async () => {
+    console.log('[Auth] Starting bootstrap after OTP verification...');
+    
+    // Wait a moment for session to propagate
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Get current session
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id });
+    
+    if (!session?.user) {
+      console.error('[Auth] No session after verification');
+      toast({
+        title: "Erro de sessão",
+        description: "Não foi possível estabelecer a sessão. Tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Refresh memberships and get the result
+    console.log('[Auth] Fetching memberships...');
+    const memberships = await refreshMembershipsAndWait();
+    console.log('[Auth] Memberships result:', { count: memberships.length, roles: memberships.map(m => m.role) });
+    
+    if (!memberships || memberships.length === 0) {
+      console.error('[Auth] No memberships found for user');
+      toast({
+        title: "Acesso não configurado",
+        description: "Sua conta ainda não foi configurada. Entre em contato com o administrador.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Get highest privilege role (first in the sorted list)
+    const primaryMembership = memberships[0];
+    const targetPath = getTargetPath(primaryMembership.role);
+    
+    console.log('[Auth] Redirecting to:', targetPath, 'for role:', primaryMembership.role);
+    
+    // Explicit navigation
+    navigate(targetPath, { replace: true });
+  };
 
   // Countdown timer for resend
   useEffect(() => {
@@ -47,17 +109,13 @@ const Auth = () => {
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
-    if (!authLoading && !tenantLoading && user && activeMembership) {
-      const role = activeMembership.role;
-       if (role === 'master_admin') {
-         navigate('/master');
-       } else if (role === 'admin' || role === 'ops' || role === 'mentor') {
-         navigate('/mentor');
-      } else if (role === 'mentee') {
-         navigate('/mentorado');
-      }
+    // Only auto-redirect if user already logged in (not during OTP flow)
+    if (!authLoading && !tenantLoading && user && activeMembership && step === 'email') {
+      console.log('[Auth] Auto-redirecting logged-in user:', activeMembership.role);
+      const targetPath = getTargetPath(activeMembership.role);
+      navigate(targetPath, { replace: true });
     }
-  }, [user, activeMembership, authLoading, tenantLoading, navigate]);
+  }, [user, activeMembership, authLoading, tenantLoading, navigate, step]);
 
   const validateEmail = () => {
     try {
@@ -154,6 +212,9 @@ const Auth = () => {
           title: data.isNewUser ? "Conta criada!" : "Bem-vindo de volta!",
           description: data.isNewUser ? "Sua conta foi criada com sucesso." : "Login realizado com sucesso.",
         });
+
+        // EXPLICIT BOOTSTRAP AND REDIRECT
+        await bootstrapAfterAuth();
       }
     } catch (error: any) {
       toast({
@@ -248,6 +309,9 @@ const Auth = () => {
           title: "Conta criada!",
           description: `Bem-vindo ao LBV TECH como ${userType === 'mentor' ? 'Mentor' : 'Mentorado'}!`,
         });
+
+        // EXPLICIT BOOTSTRAP AND REDIRECT
+        await bootstrapAfterAuth();
       }
     } catch (error: any) {
       toast({
