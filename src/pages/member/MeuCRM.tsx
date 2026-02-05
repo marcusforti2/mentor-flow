@@ -8,10 +8,10 @@ import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import { BusinessProfileForm } from "@/components/crm/BusinessProfileForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logActivity } from "@/hooks/useActivityLog";
 import type { Lead } from "@/components/crm/LeadCard";
 import {
   Loader2,
-  Plus,
   Search,
   Sparkles,
   Target,
@@ -91,6 +91,16 @@ export default function MeuCRM() {
         .eq("id", leadId);
 
       if (error) throw error;
+
+      // Log activity
+      if (mentoradoId) {
+        logActivity({
+          mentoradoId,
+          actionType: 'lead_status_changed',
+          description: `Lead movido para ${newStatus}`,
+          metadata: { leadId, newStatus },
+        });
+      }
 
       setLeads((prev) =>
         prev.map((lead) => (lead.id === leadId ? { ...lead, status: newStatus } : lead))
@@ -207,7 +217,16 @@ export default function MeuCRM() {
         <LeadUploadModal
           open={uploadModalOpen}
           onOpenChange={setUploadModalOpen}
-          onLeadCreated={loadMentoradoAndLeads}
+          onLeadCreated={() => {
+            loadMentoradoAndLeads();
+            // Log activity when lead is created
+            logActivity({
+              mentoradoId,
+              actionType: 'lead_created',
+              description: 'Novo lead cadastrado via IA',
+              pointsEarned: 10,
+            });
+          }}
           mentoradoId={mentoradoId}
         />
       )}
