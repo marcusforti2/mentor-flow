@@ -3,10 +3,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
- import { AuthProvider } from "@/hooks/useAuth";
- import { TenantProvider } from "@/contexts/TenantContext";
- import { ProtectedRoute } from "@/components/ProtectedRoute";
- import { SwitchContextPanel } from "@/components/SwitchContextPanel";
+import { AuthProvider } from "@/hooks/useAuth";
+import { TenantProvider } from "@/contexts/TenantContext";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SwitchContextPanel } from "@/components/SwitchContextPanel";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -61,8 +63,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-           <TenantProvider>
-          <Routes>
+          <TenantProvider>
+            <ImpersonationProvider>
+              <ImpersonationBanner />
+              <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -137,8 +141,9 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-           <SwitchContextPanel />
-           </TenantProvider>
+          <SwitchContextPanel />
+            </ImpersonationProvider>
+          </TenantProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

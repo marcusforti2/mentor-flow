@@ -1,17 +1,18 @@
- import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
- import { useAuth } from '@/hooks/useAuth';
- import { useTenant } from '@/contexts/TenantContext';
- import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
- import { Button } from '@/components/ui/button';
- import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings } from 'lucide-react';
- import { LBVLogo } from '@/components/LBVLogo';
- import {
-   Tooltip,
-   TooltipContent,
-   TooltipTrigger,
- } from '@/components/ui/tooltip';
- import { cn } from '@/lib/utils';
- import { FloatingDock } from '@/components/FloatingDock';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/contexts/TenantContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings } from 'lucide-react';
+import { LBVLogo } from '@/components/LBVLogo';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { FloatingDock } from '@/components/FloatingDock';
  
  const menuItems = [
    { icon: Shield, label: 'Dashboard', path: '/master' },
@@ -21,20 +22,24 @@
    { icon: Settings, label: 'Config', path: '/master/config' },
  ];
  
- export function MasterLayout() {
-   const { profile, signOut } = useAuth();
-   const { realMembership } = useTenant();
-   const location = useLocation();
-   const navigate = useNavigate();
- 
-   const isDashboard = location.pathname === '/master';
-   const currentPage = menuItems.find(item => item.path === location.pathname);
-   const pageTitle = currentPage?.label || 'Master Admin';
- 
-   return (
-     <div className="min-h-screen">
-       {/* Dark master admin background */}
-       <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 -z-10" />
+export function MasterLayout() {
+  const { profile, signOut } = useAuth();
+  const { realMembership } = useTenant();
+  const { isImpersonating } = useImpersonation();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const isDashboard = location.pathname === '/master';
+  const currentPage = menuItems.find(item => item.path === location.pathname);
+  const pageTitle = currentPage?.label || 'Master Admin';
+
+  // Add top padding when impersonation banner is active
+  const bannerOffset = isImpersonating ? 'pt-10' : '';
+
+  return (
+    <div className={cn("min-h-screen", bannerOffset)}>
+      {/* Dark master admin background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 -z-10" />
        
        {/* Floating Dock - only visible on dashboard */}
        {isDashboard && <FloatingDock items={menuItems} position="left" />}
