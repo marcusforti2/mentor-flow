@@ -1251,6 +1251,63 @@ export type Database = {
           },
         ]
       }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          created_by_membership_id: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["membership_role"]
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by_membership_id?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          revoked_at?: string | null
+          role: Database["public"]["Enums"]["membership_role"]
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by_membership_id?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["membership_role"]
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_created_by_membership_id_fkey"
+            columns: ["created_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_attendees: {
         Row: {
           attended: boolean | null
@@ -2802,6 +2859,19 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      can_receive_otp: {
+        Args: { _email: string; _tenant_hint?: string }
+        Returns: {
+          allowed: boolean
+          full_name: string
+          multiple_tenants: boolean
+          phone: string
+          reason: string
+          role: Database["public"]["Enums"]["membership_role"]
+          tenant_id: string
+          tenants: Json
+        }[]
       }
       can_view_mentee: {
         Args: { _mentee_membership_id: string; _viewer_membership_id: string }
