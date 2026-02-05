@@ -20,9 +20,10 @@ import Onboarding from "./pages/Onboarding";
  import { MentorLayout } from "@/components/layouts/MentorLayout";
  import { MentoradoLayout } from "@/components/layouts/MentoradoLayout";
  
- // Master Pages
- import MasterDashboard from "./pages/master/MasterDashboard";
- import PreviewPage from "./pages/master/PreviewPage";
+// Master Pages
+import MasterDashboard from "./pages/master/MasterDashboard";
+import PreviewPage from "./pages/master/PreviewPage";
+import TenantsPage from "./pages/master/TenantsPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -78,7 +79,7 @@ const App = () => (
             >
                <Route index element={<MasterDashboard />} />
                <Route path="preview" element={<PreviewPage />} />
-               <Route path="tenants" element={<PlaceholderPage title="Tenants" />} />
+               <Route path="tenants" element={<TenantsPage />} />
                <Route path="users" element={<PlaceholderPage title="Usuários" />} />
                <Route path="config" element={<PlaceholderPage title="Configurações" />} />
              </Route>
