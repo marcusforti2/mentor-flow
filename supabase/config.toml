@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.system-fingerprint]
 verify_jwt = false
+ 
+ [functions.parse-mentorado-spreadsheet]
+ verify_jwt = false

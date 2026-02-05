@@ -62,6 +62,9 @@ import {
 } from "lucide-react";
 import Formularios from "./Formularios";
 import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager";
+ import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
+ import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
+ import { Send } from "lucide-react";
 
 interface PendingUser {
   user_id: string;
@@ -90,6 +93,20 @@ interface Mentorado {
   } | null;
 }
 
+ interface MentoradoInvite {
+   id: string;
+   invite_token: string;
+   full_name: string;
+   email: string | null;
+   phone: string | null;
+   business_name: string | null;
+   status: string;
+   welcome_message: string;
+   created_at: string;
+   expires_at: string;
+   accepted_at: string | null;
+ }
+ 
 type JourneyFilter = 'all' | 'week' | 'month' | 'stage';
 type StageFilter = 'all' | 'onboarding' | 'aprendizado' | 'aplicacao' | 'escala' | 'maestria';
 
@@ -135,6 +152,11 @@ const Mentorados = () => {
   // Detail sheet
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   
+   // Invites state
+   const [invites, setInvites] = useState<MentoradoInvite[]>([]);
+   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+   const [mentorName, setMentorName] = useState<string>('Mentoria');
+ 
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -154,12 +176,14 @@ const Mentorados = () => {
       // Fetch existing mentorados
       const { data: mentorData } = await supabase
         .from('mentors')
-        .select('id')
+        .select('id, business_name')
         .eq('user_id', user.id)
         .single();
       
       if (mentorData) {
         setMentorId(mentorData.id);
+        setMentorName(mentorData.business_name || 'Mentoria');
+        
         const { data: mentoradosData, error: mentoradosError } = await supabase
           .from('mentorados')
           .select(`
@@ -199,6 +223,15 @@ const Mentorados = () => {
         } else {
           setMentorados([]);
         }
+        
+        // Fetch invites
+        const { data: invitesData } = await supabase
+          .from('mentorado_invites')
+          .select('*')
+          .eq('mentor_id', mentorData.id)
+          .order('created_at', { ascending: false });
+        
+        setInvites((invitesData || []) as MentoradoInvite[]);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -400,6 +433,9 @@ const Mentorados = () => {
     (u.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
+   // Filter invites
+   const pendingInvites = invites.filter(i => i.status === 'pending');
+ 
   // Stats
   const avgDays = mentorados.length > 0 
     ? Math.round(mentorados.reduce((acc, m) => acc + getJourneyDay(m.joined_at), 0) / mentorados.length)
@@ -444,6 +480,15 @@ const Mentorados = () => {
             Formulário Onboarding
           </Button>
           
+           <Button 
+             variant="outline" 
+             onClick={() => setIsUploadModalOpen(true)}
+             disabled={!mentorId}
+           >
+             <FileUp className="h-4 w-4 mr-2" />
+             Importar Planilha
+           </Button>
+           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gradient-gold text-primary-foreground">
@@ -783,6 +828,10 @@ const Mentorados = () => {
             <Clock className="w-4 h-4 mr-2" />
             Pendentes ({pendingUsers.length})
           </TabsTrigger>
+           <TabsTrigger value="invites" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+             <Send className="w-4 h-4 mr-2" />
+             Convites ({pendingInvites.length})
+           </TabsTrigger>
         </TabsList>
         
         {/* Active Mentorados Tab */}
@@ -943,6 +992,33 @@ const Mentorados = () => {
             </div>
           )}
         </TabsContent>
+         
+         {/* Invites Tab */}
+         <TabsContent value="invites" className="mt-6">
+           {pendingInvites.length === 0 ? (
+             <Card className="glass-card">
+               <CardContent className="py-12 text-center">
+                 <Send className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                 <h3 className="text-lg font-semibold text-foreground mb-2">
+                   Nenhum convite pendente
+                 </h3>
+                 <p className="text-muted-foreground mb-4">
+                   Importe uma planilha para criar convites em massa ou adicione mentorados manualmente.
+                 </p>
+                 <Button onClick={() => setIsUploadModalOpen(true)}>
+                   <FileUp className="h-4 w-4 mr-2" />
+                   Importar Planilha
+                 </Button>
+               </CardContent>
+             </Card>
+           ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {pendingInvites.map((invite) => (
+                 <WelcomeMessageCard key={invite.id} invite={invite} />
+               ))}
+             </div>
+           )}
+         </TabsContent>
       </Tabs>
 
       {/* Detail Sheet */}
@@ -1137,6 +1213,17 @@ const Mentorados = () => {
           )}
         </SheetContent>
       </Sheet>
+       
+       {/* Upload Modal */}
+       {mentorId && (
+         <MentoradoUploadModal
+           open={isUploadModalOpen}
+           onOpenChange={setIsUploadModalOpen}
+           mentorId={mentorId}
+           mentorName={mentorName}
+           onSuccess={fetchData}
+         />
+       )}
     </div>
   );
 };

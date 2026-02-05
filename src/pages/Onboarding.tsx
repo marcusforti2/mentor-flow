@@ -83,9 +83,19 @@ const Onboarding = () => {
   const { toast } = useToast();
 
   const mentorId = searchParams.get('mentor');
+   const inviteToken = searchParams.get('token');
 
   const [isLoading, setIsLoading] = useState(true);
   const [mentorInfo, setMentorInfo] = useState<{ business_name: string | null } | null>(null);
+   const [inviteData, setInviteData] = useState<{
+     id: string;
+     mentor_id: string;
+     full_name: string;
+     email: string | null;
+     phone: string | null;
+     business_name: string | null;
+   } | null>(null);
+   const [resolvedMentorId, setResolvedMentorId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [step, setStep] = useState<Step>('intro');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -109,15 +119,73 @@ const Onboarding = () => {
   };
 
   const fetchMentorAndQuestions = async () => {
-    if (!mentorId) {
+    // Determine mentor ID from direct param or from invite token
+    let targetMentorId = mentorId;
+    
+    // If we have a token, fetch the invite first
+    if (inviteToken) {
+      const { data: invite, error: inviteError } = await supabase
+        .from('mentorado_invites')
+        .select('id, mentor_id, full_name, email, phone, business_name, status, expires_at')
+        .eq('invite_token', inviteToken)
+        .single();
+      
+      if (inviteError || !invite) {
+        toast({
+          title: "Convite inválido",
+          description: "Este link de convite não é válido ou já foi utilizado.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if invite is expired or already accepted
+      if (invite.status !== 'pending') {
+        toast({
+          title: "Convite já utilizado",
+          description: "Este convite já foi aceito anteriormente.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      if (new Date(invite.expires_at) < new Date()) {
+        toast({
+          title: "Convite expirado",
+          description: "Este convite expirou. Solicite um novo convite ao seu mentor.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Set invite data and pre-fill form
+      setInviteData(invite);
+      targetMentorId = invite.mentor_id;
+      
+      // Pre-fill form with invite data
+      setFormData(prev => ({
+        ...prev,
+        full_name: invite.full_name || prev.full_name,
+        email: invite.email || prev.email,
+        phone: invite.phone || prev.phone,
+        business_name: invite.business_name || prev.business_name,
+      }));
+    }
+    
+    if (!targetMentorId) {
       toast({
         title: "Link inválido",
         description: "Este link de onboarding é inválido.",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
+    setResolvedMentorId(targetMentorId);
     setIsLoading(true);
 
     try {
@@ -125,7 +193,7 @@ const Onboarding = () => {
       const { data: mentor, error: mentorError } = await supabase
         .from('mentors')
         .select('business_name')
-        .eq('id', mentorId)
+        .eq('id', targetMentorId)
         .single();
 
       if (mentorError || !mentor) {
@@ -143,7 +211,7 @@ const Onboarding = () => {
       const { data: questionsData, error: questionsError } = await supabase
         .from('behavioral_questions')
         .select('id, question_text, question_type, options, order_index, is_required')
-        .eq('mentor_id', mentorId)
+        .eq('mentor_id', targetMentorId)
         .eq('is_active', true)
         .order('order_index', { ascending: true });
 
@@ -163,7 +231,7 @@ const Onboarding = () => {
 
   useEffect(() => {
     fetchMentorAndQuestions();
-  }, [mentorId]);
+  }, [mentorId, inviteToken]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -314,7 +382,8 @@ const Onboarding = () => {
         body: {
           email: formData.email,
           otp: otpCode,
-          mentorId,
+          mentorId: resolvedMentorId || mentorId,
+          inviteToken: inviteToken || undefined,
           fullName: formData.full_name,
           phone: formData.phone,
           businessProfile: {
@@ -376,7 +445,7 @@ const Onboarding = () => {
     );
   }
 
-  if (!mentorId || !mentorInfo) {
+  if ((!mentorId && !inviteToken) || !mentorInfo) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="animated-gradient-bg" />
