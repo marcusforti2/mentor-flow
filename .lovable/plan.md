@@ -1,96 +1,100 @@
 
-# Plano: Multi-Tenant com RBAC e Impersonation
+# Plano: Correção da Função RPC Duplicada
 
- ## ✅ Status: Sistema de 3 Áreas Implementado
+## Diagnóstico Confirmado
 
-## Resumo do que foi implementado
+O login via OTP funciona corretamente, mas o redirecionamento falha porque:
 
-### ✅ Concluído
-1. **Tabelas Multi-Tenant**: `tenants`, `memberships`, `mentor_profiles`, `mentee_profiles`, `mentor_mentee_assignments`, `impersonation_logs`
-2. **Colunas tenant_id**: Adicionadas em todas tabelas funcionais (ai_tool_usage, crm_prospections, sos_requests, trails, badges, etc.)
-3. **RLS Policies**: Isolamento por tenant implementado
-4. **TenantContext**: Gerencia membership ativo e impersonation
-5. **SwitchContextPanel**: Painel de troca de contexto para admins
-6. **Edge Functions**: `verify-otp` e `process-onboarding` atualizados para criar memberships
-7. **Auth.tsx**: Redireciona baseado em membership.role
- 8. **3 Áreas Isoladas**: `/master`, `/mentor`, `/mentorado`
- 9. **Role master_admin**: Adicionado ao enum com RLS cross-tenant
- 10. **Preview System**: Hook `useSandboxData` com 20 mentorados fake
+1. **Função `get_user_memberships` está duplicada** no banco de dados
+2. Existem duas versões:
+   - `get_user_memberships(_user_id uuid)` (PL/pgSQL)
+   - `get_user_memberships(_user_id uuid, _tenant_id uuid DEFAULT NULL)` (SQL)
+3. Quando o frontend chama a função, PostgREST retorna erro `PGRST203` (função não única)
+4. O `TenantContext.fetchMemberships()` falha silenciosamente
+5. `activeMembership` fica `null`, mostrando "Acesso não configurado"
 
-### 🔄 Em Transição (Backward Compatibility)
-- Tabelas legadas (`user_roles`, `mentors`, `mentorados`) ainda existem para compatibilidade
-- Edge functions escrevem em ambos sistemas (novo + legado)
-- Queries podem usar tanto `membership_id` quanto `mentorado_id`
+---
 
- ## Arquitetura de Rotas
- 
- | Rota | Layout | Roles Permitidos |
- |------|--------|------------------|
- | `/master` | MasterLayout | master_admin |
- | `/mentor` | MentorLayout | admin, ops, mentor |
- | `/mentorado` | MentoradoLayout | mentee (+ outros para preview) |
- 
- ## Arquitetura de Dados
+## Solução
 
-### Modelo de Dados
+### 1. Migration SQL - Remover função duplicada
+
+Dropar ambas as versões e recriar uma única função unificada que:
+- Aceita `_user_id` obrigatório
+- Aceita `_tenant_id` opcional (para filtrar por tenant específico)
+- Retorna as memberships ordenadas por privilégio
+
+```sql
+-- Drop both existing versions
+DROP FUNCTION IF EXISTS public.get_user_memberships(uuid);
+DROP FUNCTION IF EXISTS public.get_user_memberships(uuid, uuid);
+
+-- Create single unified function
+CREATE OR REPLACE FUNCTION public.get_user_memberships(
+  _user_id uuid,
+  _tenant_id uuid DEFAULT NULL
+)
+RETURNS TABLE(
+  id uuid, 
+  tenant_id uuid, 
+  tenant_name text, 
+  tenant_slug text, 
+  role membership_role, 
+  status text
+)
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 
+    m.id,
+    m.tenant_id,
+    t.name as tenant_name,
+    t.slug as tenant_slug,
+    m.role,
+    m.status
+  FROM public.memberships m
+  JOIN public.tenants t ON t.id = m.tenant_id
+  WHERE m.user_id = _user_id
+    AND m.status = 'active'
+    AND (_tenant_id IS NULL OR m.tenant_id = _tenant_id)
+  ORDER BY 
+    CASE m.role 
+      WHEN 'master_admin' THEN 1
+      WHEN 'admin' THEN 2
+      WHEN 'ops' THEN 3
+      WHEN 'mentor' THEN 4
+      WHEN 'mentee' THEN 5
+    END;
+$$;
 ```
-User (auth.users)
-    │
-Tenant (LBV) ──── Membership (user_id, tenant_id, role)
-    │                  │
-    │                  ├── MentorProfile (bio, specialties)
-    │                  └── MenteeProfile (business_name, onboarding)
-    │
-    └── MentorMenteeAssignment (mentor_membership_id, mentee_membership_id)
-```
 
-### Roles e Permissões
-| Role | Descrição | Acesso |
-|------|-----------|--------|
- | master_admin | Admin da plataforma | Cross-tenant: ver tudo, preview, impersonation |
-| admin | Super admin do tenant | Tudo: CRUD memberships, ver todos dados |
-| ops | Operações | Ver todos mentorados, editar dados |
-| mentor | Mentor | CRUD seus mentorados atribuídos |
-| mentee | Mentorado | CRUD próprios dados apenas |
+### 2. Verificação pós-correção
 
-### Visibilidade de Dados
-- **Mentee**: Só vê dados onde `membership_id = seu membership`
-- **Staff (admin/ops/mentor)**: Vê todos dados do `tenant_id`
+Após a migration, o fluxo será:
 
-## Impersonation
+1. Usuário digita código OTP
+2. `verify-otp` valida e retorna `tokenHash`
+3. Frontend verifica token com Supabase Auth
+4. `bootstrapAfterAuth()` chama `refreshMembershipsAndWait()`
+5. ✅ `get_user_memberships()` retorna memberships corretamente
+6. ✅ Redirect para `/master`, `/mentor` ou `/mentorado` baseado no role
 
- O `SwitchContextPanel` e `/master/preview` permitem alternância:
-1. Não cria usuários/memberships novos
-2. Apenas troca `activeMembershipId` no contexto
-3. Logs registrados em `impersonation_logs`
- 4. Disponível para master_admin ou admins com `can_impersonate=true`
- 
- ## Preview System
- 
- - Sandbox tenant: `b0000000-0000-0000-0000-000000000002`
- - 20 mentorados fake via `useSandboxData` hook
- - Dados interligados: progresso, pontos, ranking, streaks
- - Não cria users reais - apenas mock data para UI
+---
 
-## Próximos Passos (Sprint 4-5)
+## Arquivos Modificados
 
-### Sprint 4: Migrar Queries do Frontend
-- [ ] Atualizar hooks para usar `membership_id` em vez de `mentorado_id`
-- [ ] Componentes de listagem (trails, badges, CRM) filtrar por `tenant_id`
-- [ ] Dashboard do mentor usar `mentor_mentee_assignments`
+| Arquivo | Mudança |
+|---------|---------|
+| Migration SQL (nova) | Drop funções duplicadas, criar versão unificada |
 
-### Sprint 5: Cleanup
-- [ ] Remover tabelas legadas após validação completa
-- [ ] Remover colunas `mentorado_id`/`mentor_id` das tabelas funcionais
-- [ ] Atualizar todos edge functions para usar apenas novo sistema
+---
 
-## Validação Final
+## Resultado Esperado
 
-Após implementação completa:
-- [x] Novo usuário via Auth cria membership corretamente
-- [x] Novo mentorado via onboarding cria membership + mentee_profile
- - [x] Switch context NÃO cria usuários (apenas troca contexto)
-- [ ] Mentee só vê seus próprios dados
-- [ ] Mentor vê todos os dados do tenant
- - [x] Admin pode impersonar qualquer membership
- - [x] Impersonation logs são registrados
+Após a correção:
+- Login via OTP funciona normalmente
+- Sessão é criada e persistida
+- Memberships são carregadas corretamente
+- Usuário é redirecionado automaticamente para a área correta
+- Não aparece mais "Acesso não configurado"
