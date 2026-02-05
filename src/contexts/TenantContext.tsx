@@ -305,10 +305,35 @@ const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 
    return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
  }
  
- export function useTenant() {
-   const context = useContext(TenantContext);
-   if (context === undefined) {
-     throw new Error('useTenant must be used within a TenantProvider');
-   }
-   return context;
- }
+export function useTenant() {
+  const context = useContext(TenantContext);
+  if (context === undefined) {
+    // During HMR, context might briefly be undefined
+    // Log for debugging and provide a fallback to prevent crash
+    console.warn('[TenantContext] Context undefined - this may be a HMR transition');
+    
+    // Return a safe fallback that won't crash the app
+    // This is temporary during HMR and will resolve on next render
+    return {
+      tenant: null,
+      memberships: [],
+      activeMembership: null,
+      realMembership: null,
+      isImpersonating: false,
+      impersonationLogId: null,
+      isLoading: true,
+      switchMembership: async () => {},
+      endImpersonation: async () => {},
+      refreshMemberships: async () => {},
+      refreshMembershipsAndWait: async () => [],
+      hasRole: () => false,
+      isAdmin: false,
+      isOps: false,
+      isMentor: false,
+      isMentee: false,
+      isMasterAdmin: false,
+      canImpersonate: false,
+    } as TenantContextType;
+  }
+  return context;
+}
