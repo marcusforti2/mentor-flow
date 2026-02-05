@@ -62,3 +62,12 @@ verify_jwt = false
 
 [functions.create-membership]
 verify_jwt = false
+
+[functions.create-test-mentorados]
+verify_jwt = false
+
+[functions.seed-sandbox]
+verify_jwt = false
+
+[functions.send-test-flow]
+verify_jwt = false
