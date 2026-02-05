@@ -2647,8 +2647,9 @@ export type Database = {
           creator_membership_id: string | null
           description: string | null
           id: string
+          is_featured: boolean | null
           is_published: boolean | null
-          mentor_id: string
+          mentor_id: string | null
           order_index: number | null
           tenant_id: string | null
           thumbnail_url: string | null
@@ -2660,8 +2661,9 @@ export type Database = {
           creator_membership_id?: string | null
           description?: string | null
           id?: string
+          is_featured?: boolean | null
           is_published?: boolean | null
-          mentor_id: string
+          mentor_id?: string | null
           order_index?: number | null
           tenant_id?: string | null
           thumbnail_url?: string | null
@@ -2673,8 +2675,9 @@ export type Database = {
           creator_membership_id?: string | null
           description?: string | null
           id?: string
+          is_featured?: boolean | null
           is_published?: boolean | null
-          mentor_id?: string
+          mentor_id?: string | null
           order_index?: number | null
           tenant_id?: string | null
           thumbnail_url?: string | null

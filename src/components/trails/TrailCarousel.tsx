@@ -2,12 +2,12 @@ import { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TrailCard } from './TrailCard';
-import type { MockTrail } from '@/data/mockTrails';
+import type { Trail } from '@/types/trails';
 
 interface TrailCarouselProps {
   title: string;
-  trails: MockTrail[];
-  onTrailClick: (trail: MockTrail) => void;
+  trails: Trail[];
+  onTrailClick: (trail: Trail) => void;
   cardSize?: 'default' | 'large';
 }
 

@@ -1,9 +1,9 @@
 import { Play, Check, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getYouTubeThumbnail, type MockLesson } from '@/data/mockTrails';
+import { getYouTubeThumbnail, type TrailLesson } from '@/types/trails';
 
 interface LessonCardProps {
-  lesson: MockLesson;
+  lesson: TrailLesson;
   index: number;
   isCompleted?: boolean;
   isInProgress?: boolean;

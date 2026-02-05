@@ -8,22 +8,29 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { LessonCard } from './LessonCard';
-import { calculateTrailProgress, mockProgress, type MockTrail, type MockLesson } from '@/data/mockTrails';
+import type { Trail, TrailLesson } from '@/types/trails';
 
 interface TrailDetailSheetProps {
-  trail: MockTrail | null;
+  trail: Trail | null;
   isOpen: boolean;
   onClose: () => void;
-  onLessonClick: (lesson: MockLesson) => void;
+  onLessonClick: (lesson: TrailLesson) => void;
+  progress?: number;
+  completedLessonIds?: string[];
 }
 
-export function TrailDetailSheet({ trail, isOpen, onClose, onLessonClick }: TrailDetailSheetProps) {
+export function TrailDetailSheet({ 
+  trail, 
+  isOpen, 
+  onClose, 
+  onLessonClick,
+  progress = 0,
+  completedLessonIds = []
+}: TrailDetailSheetProps) {
   const [openModules, setOpenModules] = useState<string[]>([]);
 
   if (!trail) return null;
 
-  const progress = calculateTrailProgress(trail.id);
-  const trailProgressData = mockProgress[trail.id] || [];
   const totalHours = Math.floor(trail.total_duration / 60);
   const totalMinutes = trail.total_duration % 60;
 
@@ -35,21 +42,13 @@ export function TrailDetailSheet({ trail, isOpen, onClose, onLessonClick }: Trai
     );
   };
 
-  const getLessonStatus = (lessonId: string) => {
-    const lessonProgress = trailProgressData.find(p => p.lessonId === lessonId);
-    return {
-      isCompleted: lessonProgress?.completed || false,
-      isInProgress: lessonProgress ? !lessonProgress.completed && lessonProgress.progress > 0 : false,
-      progress: lessonProgress?.progress || 0
-    };
-  };
+  const isLessonCompleted = (lessonId: string) => completedLessonIds.includes(lessonId);
 
   // Find next lesson to continue
-  const findNextLesson = (): MockLesson | null => {
+  const findNextLesson = (): TrailLesson | null => {
     for (const module of trail.modules) {
       for (const lesson of module.lessons) {
-        const status = getLessonStatus(lesson.id);
-        if (status.isInProgress || !status.isCompleted) {
+        if (!isLessonCompleted(lesson.id)) {
           return lesson;
         }
       }
@@ -136,7 +135,7 @@ export function TrailDetailSheet({ trail, isOpen, onClose, onLessonClick }: Trai
 
               {trail.modules.map((module, moduleIndex) => {
                 const isOpen = openModules.includes(module.id);
-                const completedLessons = module.lessons.filter(l => getLessonStatus(l.id).isCompleted).length;
+                const completedLessons = module.lessons.filter(l => isLessonCompleted(l.id)).length;
                 const moduleProgress = Math.round((completedLessons / module.lessons.length) * 100);
 
                 return (
@@ -177,15 +176,15 @@ export function TrailDetailSheet({ trail, isOpen, onClose, onLessonClick }: Trai
                     <CollapsibleContent>
                       <div className="mt-2 space-y-1 pl-4">
                         {module.lessons.map((lesson, lessonIndex) => {
-                          const status = getLessonStatus(lesson.id);
+                          const completed = isLessonCompleted(lesson.id);
                           return (
                             <LessonCard
                               key={lesson.id}
                               lesson={lesson}
                               index={lessonIndex}
-                              isCompleted={status.isCompleted}
-                              isInProgress={status.isInProgress}
-                              progress={status.progress}
+                              isCompleted={completed}
+                              isInProgress={false}
+                              progress={0}
                               onClick={() => onLessonClick(lesson)}
                             />
                           );

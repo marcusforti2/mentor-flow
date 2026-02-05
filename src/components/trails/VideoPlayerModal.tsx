@@ -1,10 +1,10 @@
 import { X } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import type { MockLesson } from '@/data/mockTrails';
+import type { TrailLesson } from '@/types/trails';
 
 interface VideoPlayerModalProps {
-  lesson: MockLesson | null;
+  lesson: TrailLesson | null;
   isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;

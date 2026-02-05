@@ -23,17 +23,17 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VideoPlayerModal } from '@/components/trails/VideoPlayerModal';
-import { MockTrail, MockLesson } from '@/data/mockTrails';
+import type { Trail, TrailLesson } from '@/types/trails';
 
 interface TrailPreviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  trail: MockTrail | null;
+  trail: Trail | null;
 }
 
 export function TrailPreviewModal({ open, onOpenChange, trail }: TrailPreviewModalProps) {
   const [selectedLesson, setSelectedLesson] = useState<{
-    lesson: MockLesson;
+    lesson: TrailLesson;
     moduleTitle: string;
   } | null>(null);
 

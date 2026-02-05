@@ -1,35 +1,62 @@
 import { useState } from 'react';
-import { Plus, Edit, Eye, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, GripVertical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockTrails, MockTrail } from '@/data/mockTrails';
 import { cn } from '@/lib/utils';
 import { TrailEditorSheet } from '@/components/admin/TrailEditorSheet';
 import { TrailPreviewModal } from '@/components/admin/TrailPreviewModal';
+import { useTrails, Trail, TrailInput } from '@/hooks/useTrails';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function AdminTrilhas() {
-  const [trails, setTrails] = useState<MockTrail[]>(mockTrails);
-  const [editingTrail, setEditingTrail] = useState<MockTrail | null>(null);
-  const [previewTrail, setPreviewTrail] = useState<MockTrail | null>(null);
+  const { trails, isLoading, createTrail, updateTrail, deleteTrail } = useTrails();
+  const [editingTrail, setEditingTrail] = useState<Trail | null>(null);
+  const [previewTrail, setPreviewTrail] = useState<Trail | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleCreateNew = () => {
     setEditingTrail(null);
     setIsCreating(true);
   };
 
-  const handleEdit = (trail: MockTrail) => {
+  const handleEdit = (trail: Trail) => {
     setEditingTrail(trail);
     setIsCreating(true);
   };
 
-  const handlePreview = (trail: MockTrail) => {
+  const handlePreview = (trail: Trail) => {
     setPreviewTrail(trail);
   };
 
   const handleDelete = (trailId: string) => {
-    setTrails(trails.filter(t => t.id !== trailId));
+    setDeleteConfirm(trailId);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm) {
+      deleteTrail.mutate(deleteConfirm);
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleSave = (trailData: TrailInput) => {
+    if (editingTrail) {
+      updateTrail.mutate({ ...trailData, id: editingTrail.id });
+    } else {
+      createTrail.mutate(trailData);
+    }
+    setIsCreating(false);
   };
 
   const formatDuration = (minutes: number) => {
@@ -37,6 +64,14 @@ export default function AdminTrilhas() {
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -59,7 +94,7 @@ export default function AdminTrilhas() {
       {/* Trail List */}
       <div className="grid gap-4">
         {trails.map((trail) => (
-          <Card 
+          <Card
             key={trail.id}
             className={cn(
               "glass-card border-border/50 hover:border-primary/30 transition-all duration-300",
@@ -75,8 +110,8 @@ export default function AdminTrilhas() {
 
                 {/* Thumbnail */}
                 <div className="w-32 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                  <img 
-                    src={trail.thumbnail_url} 
+                  <img
+                    src={trail.thumbnail_url}
                     alt={trail.title}
                     className="w-full h-full object-cover"
                   />
@@ -91,6 +126,11 @@ export default function AdminTrilhas() {
                     <Badge variant={trail.is_featured ? "default" : "secondary"}>
                       {trail.is_featured ? "Destaque" : "Normal"}
                     </Badge>
+                    {!trail.is_published && (
+                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                        Rascunho
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
                     {trail.description}
@@ -154,14 +194,7 @@ export default function AdminTrilhas() {
         open={isCreating}
         onOpenChange={setIsCreating}
         trail={editingTrail}
-        onSave={(updatedTrail) => {
-          if (editingTrail) {
-            setTrails(trails.map(t => t.id === updatedTrail.id ? updatedTrail : t));
-          } else {
-            setTrails([...trails, updatedTrail]);
-          }
-          setIsCreating(false);
-        }}
+        onSave={handleSave}
       />
 
       {/* Preview Modal */}
@@ -170,6 +203,28 @@ export default function AdminTrilhas() {
         onOpenChange={(open) => !open && setPreviewTrail(null)}
         trail={previewTrail}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Trilha</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta trilha? Esta ação não pode ser desfeita.
+              Todos os módulos e aulas serão excluídos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
