@@ -1374,6 +1374,69 @@ export type Database = {
           },
         ]
       }
+      mentorado_invites: {
+        Row: {
+          accepted_at: string | null
+          business_name: string | null
+          created_at: string
+          email: string | null
+          expires_at: string
+          full_name: string
+          id: string
+          invite_token: string
+          mentor_id: string
+          mentorado_id: string | null
+          phone: string | null
+          status: string
+          welcome_message: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          business_name?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          full_name: string
+          id?: string
+          invite_token: string
+          mentor_id: string
+          mentorado_id?: string | null
+          phone?: string | null
+          status?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          business_name?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          full_name?: string
+          id?: string
+          invite_token?: string
+          mentor_id?: string
+          mentorado_id?: string | null
+          phone?: string | null
+          status?: string
+          welcome_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentorado_invites_mentor_id_fkey"
+            columns: ["mentor_id"]
+            isOneToOne: false
+            referencedRelation: "mentors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorado_invites_mentorado_id_fkey"
+            columns: ["mentorado_id"]
+            isOneToOne: false
+            referencedRelation: "mentorados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorados: {
         Row: {
           created_at: string | null
@@ -2166,6 +2229,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: {
+        Args: { p_token: string; p_user_id: string }
+        Returns: Json
+      }
       approve_mentorado: {
         Args: { _mentor_id: string; _user_id: string }
         Returns: undefined
@@ -2178,6 +2245,7 @@ export type Database = {
         Returns: undefined
       }
       cleanup_expired_otp_codes: { Args: never; Returns: undefined }
+      generate_invite_token: { Args: never; Returns: string }
       get_pending_users: {
         Args: never
         Returns: {

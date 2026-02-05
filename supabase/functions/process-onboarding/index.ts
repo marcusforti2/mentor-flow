@@ -9,6 +9,7 @@ interface OnboardingRequest {
   email: string;
   otp: string;
   mentorId: string;
+   inviteToken?: string;
   fullName: string;
   phone?: string;
   businessProfile: {
@@ -40,9 +41,39 @@ Deno.serve(async (req) => {
     );
 
     const body: OnboardingRequest = await req.json();
-    const { email, otp, mentorId, fullName, phone, businessProfile, responses } = body;
+    const { email, otp, mentorId, inviteToken, fullName, phone, businessProfile, responses } = body;
 
     console.log('Processing onboarding for:', email);
+    
+    // If inviteToken is provided, validate it first
+    let inviteRecord = null;
+    if (inviteToken) {
+      const { data: invite, error: inviteError } = await supabase
+        .from('mentorado_invites')
+        .select('*')
+        .eq('invite_token', inviteToken)
+        .eq('status', 'pending')
+        .single();
+      
+      if (inviteError || !invite) {
+        console.error('Invalid invite token:', inviteError);
+        return new Response(
+          JSON.stringify({ error: 'Convite inválido ou já utilizado' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Check expiration
+      if (new Date(invite.expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: 'Convite expirado' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      inviteRecord = invite;
+      console.log('Valid invite found:', invite.id);
+    }
 
     // 1. Verify OTP
     const { data: otpRecord, error: otpError } = await supabase
@@ -247,6 +278,24 @@ Deno.serve(async (req) => {
         onConflict: 'mentorado_id',
       });
 
+    // 11. Mark invite as accepted if applicable
+    if (inviteRecord) {
+      const { error: inviteUpdateError } = await supabase
+        .from('mentorado_invites')
+        .update({
+          status: 'accepted',
+          mentorado_id: mentoradoId,
+          accepted_at: new Date().toISOString(),
+        })
+        .eq('id', inviteRecord.id);
+      
+      if (inviteUpdateError) {
+        console.error('Error updating invite:', inviteUpdateError);
+      } else {
+        console.log('Invite marked as accepted:', inviteRecord.id);
+      }
+    }
+ 
     console.log('Onboarding completed successfully');
 
     return new Response(
