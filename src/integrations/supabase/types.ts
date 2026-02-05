@@ -1609,6 +1609,7 @@ export type Database = {
         Row: {
           assigned_at: string | null
           created_at: string | null
+          created_by_membership_id: string | null
           id: string
           mentee_membership_id: string
           mentor_membership_id: string
@@ -1618,6 +1619,7 @@ export type Database = {
         Insert: {
           assigned_at?: string | null
           created_at?: string | null
+          created_by_membership_id?: string | null
           id?: string
           mentee_membership_id: string
           mentor_membership_id: string
@@ -1627,6 +1629,7 @@ export type Database = {
         Update: {
           assigned_at?: string | null
           created_at?: string | null
+          created_by_membership_id?: string | null
           id?: string
           mentee_membership_id?: string
           mentor_membership_id?: string
@@ -1634,6 +1637,13 @@ export type Database = {
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "mentor_mentee_assignments_created_by_membership_id_fkey"
+            columns: ["created_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mentor_mentee_assignments_mentee_membership_id_fkey"
             columns: ["mentee_membership_id"]

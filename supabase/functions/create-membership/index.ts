@@ -172,7 +172,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tenant_id, email, full_name, phone, role, mentor_membership_id } = await req.json();
+    const { tenant_id, email, full_name, phone, role, mentor_membership_id, joined_at } = await req.json();
 
     // ========== VALIDATION ==========
     if (!tenant_id || !email || !role) {
@@ -196,6 +196,19 @@ serve(async (req) => {
         JSON.stringify({ error: "Role inválido. Use: mentor ou mentee" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+    
+    // Validate joined_at if provided (for bulk imports)
+    let effectiveJoinedAt = new Date().toISOString();
+    if (joined_at) {
+      const parsedDate = new Date(joined_at);
+      if (isNaN(parsedDate.getTime())) {
+        return new Response(
+          JSON.stringify({ error: "joined_at inválido. Use formato ISO 8601 (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ssZ)" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      effectiveJoinedAt = parsedDate.toISOString();
     }
 
     // ========== SUPABASE CLIENTS ==========
@@ -493,6 +506,10 @@ serve(async (req) => {
 
     // ========== CREATE MENTOR-MENTEE ASSIGNMENT (for mentees only) ==========
     if (role === 'mentee' && effectiveMentorMembershipId) {
+      // Determinar quem criou o vínculo
+      const creatorMembershipId = callerMembershipInTenant?.id || 
+        callerMemberships?.find(m => m.role === 'master_admin')?.id || null;
+      
       const { error: assignmentError } = await supabaseAdmin
         .from("mentor_mentee_assignments")
         .insert({
@@ -500,7 +517,8 @@ serve(async (req) => {
           mentee_membership_id: membership.id,
           tenant_id: tenant_id,
           status: "active",
-          assigned_at: new Date().toISOString(),
+          assigned_at: effectiveJoinedAt, // Data real de entrada (pode vir de importação)
+          created_by_membership_id: creatorMembershipId,
         });
 
       if (assignmentError) {
@@ -508,7 +526,7 @@ serve(async (req) => {
         // Don't fail the whole operation, just log the error
         // The membership was already created successfully
       } else {
-        console.log("create-membership: Created mentor-mentee assignment - mentor:", effectiveMentorMembershipId, "mentee:", membership.id);
+        console.log("create-membership: Created mentor-mentee assignment - mentor:", effectiveMentorMembershipId, "mentee:", membership.id, "created_by:", creatorMembershipId);
       }
     }
 

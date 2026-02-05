@@ -9,6 +9,7 @@ interface CreateMembershipParams {
   phone?: string;
   role: 'mentor' | 'mentee';
   mentor_membership_id?: string; // Required for mentee when created by admin/master
+  joined_at?: string; // Data real de entrada (para importações)
 }
 
 interface CreateMembershipResult {
