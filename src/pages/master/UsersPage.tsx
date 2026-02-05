@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info } from 'lucide-react';
+import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info, X, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { InviteMentorModal } from '@/components/admin/InviteMentorModal';
@@ -49,6 +49,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [tenantFilter, setTenantFilter] = useState<string>('all');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedMembership, setSelectedMembership] = useState<MembershipWithDetails | null>(null);
@@ -67,9 +68,19 @@ export default function UsersPage() {
       m.tenant?.name.toLowerCase().includes(search.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || m.role === roleFilter;
+    const matchesStatus = statusFilter === 'all' || m.status === statusFilter;
     
-    return matchesSearch && matchesRole;
+    return matchesSearch && matchesRole && matchesStatus;
   });
+
+  const hasActiveFilters = tenantFilter !== 'all' || roleFilter !== 'all' || statusFilter !== 'all' || search !== '';
+  
+  const clearFilters = () => {
+    setSearch('');
+    setTenantFilter('all');
+    setRoleFilter('all');
+    setStatusFilter('all');
+  };
 
   const handleRoleChange = (membership: MembershipWithDetails, newRole: MembershipWithDetails['role']) => {
     updateMembershipRole.mutate({ id: membership.id, role: newRole });
@@ -185,8 +196,8 @@ export default function UsersPage() {
                 Lista de todos os usuários e seus papéis
               </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative w-full sm:w-64">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-56">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   placeholder="Buscar usuário..."
@@ -196,7 +207,7 @@ export default function UsersPage() {
                 />
               </div>
               <Select value={tenantFilter} onValueChange={setTenantFilter}>
-                <SelectTrigger className="w-full sm:w-40 bg-slate-900/50 border-slate-700 text-slate-100">
+                <SelectTrigger className="w-full sm:w-36 bg-slate-900/50 border-slate-700 text-slate-100">
                   <SelectValue placeholder="Tenant" />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +220,7 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-40 bg-slate-900/50 border-slate-700 text-slate-100">
+                <SelectTrigger className="w-full sm:w-36 bg-slate-900/50 border-slate-700 text-slate-100">
                   <SelectValue placeholder="Papel" />
                 </SelectTrigger>
                 <SelectContent>
@@ -221,6 +232,30 @@ export default function UsersPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-32 bg-slate-900/50 border-slate-700 text-slate-100">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos Status</SelectItem>
+                  {Object.entries(statusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>
+                      {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-slate-400 hover:text-slate-100"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpar
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
