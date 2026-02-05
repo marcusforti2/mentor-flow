@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info, X, Filter } from 'lucide-react';
+import { Users, Search, MoreHorizontal, UserCog, Power, Eye, MessageCircle, Link, Info, X, Filter, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { InviteMentorModal } from '@/components/admin/InviteMentorModal';
@@ -53,11 +54,13 @@ export default function UsersPage() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedMembership, setSelectedMembership] = useState<MembershipWithDetails | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [membershipToDelete, setMembershipToDelete] = useState<MembershipWithDetails | null>(null);
   
   const { tenants } = useTenants();
   const { realMembership } = useTenant();
   const { startImpersonation, isImpersonating } = useImpersonation();
-  const { memberships, isLoading, updateMembershipRole, updateMembershipStatus, toggleImpersonation } = useMemberships(
+  const { memberships, isLoading, updateMembershipRole, updateMembershipStatus, toggleImpersonation, deleteMembership } = useMemberships(
     tenantFilter !== 'all' ? tenantFilter : undefined
   );
 
@@ -129,6 +132,19 @@ export default function UsersPage() {
       toast.success('Link de acesso copiado!');
     } catch {
       toast.error('Erro ao copiar link');
+    }
+  };
+
+  const handleDeleteClick = (membership: MembershipWithDetails) => {
+    setMembershipToDelete(membership);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (membershipToDelete) {
+      deleteMembership.mutate(membershipToDelete.id);
+      setDeleteDialogOpen(false);
+      setMembershipToDelete(null);
     }
   };
 
@@ -401,6 +417,15 @@ export default function UsersPage() {
                                 <Power className="mr-2 h-4 w-4" />
                                 {membership.status === 'active' ? 'Suspender' : 'Ativar'}
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-slate-700" />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick(membership)}
+                                className="text-red-400 focus:text-red-300 focus:bg-slate-700"
+                                disabled={membership.role === 'master_admin'}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -429,6 +454,30 @@ export default function UsersPage() {
         onToggleImpersonation={handleImpersonationToggle}
         onInvite={handleInviteMentor}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-100">Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Tem certeza que deseja excluir o membership de <strong className="text-slate-200">{membershipToDelete?.profile?.full_name || 'este usuário'}</strong>?
+              <br /><br />
+              Esta ação é irreversível.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 text-slate-100 border-slate-600 hover:bg-slate-600">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
