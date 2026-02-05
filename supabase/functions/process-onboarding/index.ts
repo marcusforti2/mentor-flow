@@ -2,14 +2,15 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 interface OnboardingRequest {
   email: string;
   otp: string;
   mentorId: string;
-   inviteToken?: string;
+  inviteToken?: string;
+  tenantId?: string;
   fullName: string;
   phone?: string;
   businessProfile: {
@@ -20,6 +21,27 @@ interface OnboardingRequest {
     monthly_revenue?: string;
   };
   responses: Record<string, any>;
+}
+
+// Helper to get or create the default tenant
+async function getDefaultTenant(supabase: any): Promise<string> {
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("id")
+    .eq("slug", "lbv")
+    .single();
+  
+  if (tenant) return tenant.id;
+  
+  // Create default tenant if not exists
+  const { data: newTenant, error } = await supabase
+    .from("tenants")
+    .insert({ name: "LBV Tech", slug: "lbv" })
+    .select("id")
+    .single();
+  
+  if (error) throw new Error("Failed to create default tenant");
+  return newTenant.id;
 }
 
 Deno.serve(async (req) => {
@@ -41,7 +63,7 @@ Deno.serve(async (req) => {
     );
 
     const body: OnboardingRequest = await req.json();
-    const { email, otp, mentorId, inviteToken, fullName, phone, businessProfile, responses } = body;
+    const { email, otp, mentorId, inviteToken, tenantId: providedTenantId, fullName, phone, businessProfile, responses } = body;
 
     console.log('Processing onboarding for:', email);
     
@@ -173,7 +195,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 5. Update profile
+    // 5. Get tenant ID
+    const tenantId = providedTenantId || await getDefaultTenant(supabase);
+    console.log('Using tenant:', tenantId);
+
+    // 6. Update profile
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -189,8 +215,95 @@ Deno.serve(async (req) => {
       console.error('Error updating profile:', profileError);
     }
 
-    // 6. Assign mentorado role
-    const { error: roleError } = await supabase
+    // 7. Create or get membership
+    let membershipId: string;
+    
+    // Check if membership already exists
+    const { data: existingMembership } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('tenant_id', tenantId)
+      .eq('role', 'mentee')
+      .maybeSingle();
+
+    if (existingMembership) {
+      membershipId = existingMembership.id;
+      console.log('Using existing membership:', membershipId);
+    } else {
+      const { data: newMembership, error: membershipError } = await supabase
+        .from('memberships')
+        .insert({
+          user_id: userId,
+          tenant_id: tenantId,
+          role: 'mentee',
+          status: 'active',
+        })
+        .select('id')
+        .single();
+
+      if (membershipError) {
+        console.error('Error creating membership:', membershipError);
+        return new Response(
+          JSON.stringify({ error: 'Erro ao criar vínculo com o tenant' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      membershipId = newMembership.id;
+      console.log('Created new membership:', membershipId);
+    }
+
+    // 8. Create or update mentee_profile
+    const { error: menteeProfileError } = await supabase
+      .from('mentee_profiles')
+      .upsert({
+        membership_id: membershipId,
+        business_name: businessProfile?.business_name || null,
+        onboarding_completed: true,
+        business_profile: businessProfile || {},
+      }, {
+        onConflict: 'membership_id',
+      });
+
+    if (menteeProfileError) {
+      console.error('Error creating mentee_profile:', menteeProfileError);
+    }
+
+    // 9. Create mentor_mentee_assignment
+    // Find mentor membership in tenant
+    const { data: mentorMembership } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .in('role', ['admin', 'mentor'])
+      .limit(1)
+      .single();
+
+    if (mentorMembership) {
+      // Check if assignment already exists
+      const { data: existingAssignment } = await supabase
+        .from('mentor_mentee_assignments')
+        .select('id')
+        .eq('mentor_membership_id', mentorMembership.id)
+        .eq('mentee_membership_id', membershipId)
+        .maybeSingle();
+
+      if (!existingAssignment) {
+        await supabase
+          .from('mentor_mentee_assignments')
+          .insert({
+            tenant_id: tenantId,
+            mentor_membership_id: mentorMembership.id,
+            mentee_membership_id: membershipId,
+            status: 'active',
+          });
+        console.log('Created mentor_mentee_assignment');
+      }
+    }
+
+    // BACKWARD COMPATIBILITY: Also create legacy records
+    // 10a. Assign mentorado role (legacy)
+    await supabase
       .from('user_roles')
       .upsert({
         user_id: userId,
@@ -200,11 +313,8 @@ Deno.serve(async (req) => {
         ignoreDuplicates: true,
       });
 
-    if (roleError) {
-      console.error('Error assigning role:', roleError);
-    }
-
-    // 7. Create mentorado record
+    // 10b. Create mentorado record (legacy)
+    let mentoradoId: string | null = null;
     const { data: mentoradoData, error: mentoradoError } = await supabase
       .from('mentorados')
       .upsert({
@@ -221,18 +331,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (mentoradoError) {
-      console.error('Error creating mentorado:', mentoradoError);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao vincular ao mentor' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('Error creating legacy mentorado:', mentoradoError);
+    } else {
+      mentoradoId = mentoradoData.id;
     }
 
-    const mentoradoId = mentoradoData.id;
-    console.log('Created/updated mentorado:', mentoradoId);
-
-    // 8. Create business profile
-    if (businessProfile && Object.values(businessProfile).some(v => v)) {
+    // 11. Create legacy business profile (if mentorado was created)
+    if (mentoradoId && businessProfile && Object.values(businessProfile).some(v => v)) {
       const { error: businessError } = await supabase
         .from('mentorado_business_profiles')
         .upsert({
@@ -247,12 +352,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 9. Save question responses
-    if (responses && Object.keys(responses).length > 0) {
+    // 12. Save question responses (legacy format using mentorado_id)
+    if (mentoradoId && responses && Object.keys(responses).length > 0) {
       const responseRecords = Object.entries(responses).map(([questionId, answer]) => ({
         mentorado_id: mentoradoId,
         question_id: questionId,
         selected_option: typeof answer === 'object' ? answer : { value: answer },
+        tenant_id: tenantId,
+        membership_id: membershipId,
       }));
 
       const { error: responsesError } = await supabase
@@ -266,19 +373,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 10. Create initial streak record
-    await supabase
-      .from('user_streaks')
-      .upsert({
-        mentorado_id: mentoradoId,
-        current_streak: 1,
-        longest_streak: 1,
-        last_access_date: new Date().toISOString().split('T')[0],
-      }, {
-        onConflict: 'mentorado_id',
-      });
+    // 13. Create initial streak record (if table has mentorado_id)
+    if (mentoradoId) {
+      await supabase
+        .from('user_streaks')
+        .upsert({
+          mentorado_id: mentoradoId,
+          current_streak: 1,
+          longest_streak: 1,
+          last_access_date: new Date().toISOString().split('T')[0],
+        }, {
+          onConflict: 'mentorado_id',
+        });
+    }
 
-    // 11. Mark invite as accepted if applicable
+    // 14. Mark invite as accepted if applicable
     if (inviteRecord) {
       const { error: inviteUpdateError } = await supabase
         .from('mentorado_invites')
@@ -301,7 +410,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        mentoradoId,
+        membershipId,
+        mentoradoId, // Legacy support
         session,
       }),
       { 
