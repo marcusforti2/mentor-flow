@@ -1,65 +1,80 @@
-# Plano: Corrigir Sincronização de Dados na Criação de Usuários
 
-## ✅ Status: CONCLUÍDO
+# Plano: Limpeza Total de Dados - Zerar Sistema
 
-## Problema Resolvido
-Ao criar um mentor, os dados (nome, telefone) não apareciam na lista de usuários porque:
-1. ✅ O trigger de criação de profile ignorava o `full_name` do `user_metadata`
-2. ✅ O UPDATE subsequente no Edge Function não tinha tratamento de erro
-3. ✅ Potencial condição de corrida entre trigger e UPDATE
+## Objetivo
+Apagar todos os dados de atividade para que mentores e mentorados existentes vejam dashboards vazios (zero state).
 
-## Alterações Implementadas
+## Dados Identificados para Limpeza
 
-### 1. ✅ Trigger `handle_new_user` Atualizado
-Trigger agora extrai `full_name` e `phone` do `raw_user_meta_data`:
+| Tabela | Registros | Ação |
+|--------|-----------|------|
+| `crm_prospections` | 19 | Deletar todos |
+| `mentee_profiles` | 31 | Deletar todos |
+| `mentorados` (legado) | 31 | Deletar todos |
+| `invites` | 1 | Deletar todos |
+| `audit_logs` | 3 | Deletar todos |
+
+## Dados Já Vazios (Confirmado)
+- trails, trail_modules, trail_lessons, trail_progress
+- meetings, sos_requests, ranking_entries
+- badges, user_badges
+- calendar_events, email_flows
+- community_posts, ai_tool_usage
+
+## O Que Será Preservado
+- **tenants** - LBV e LBV Sandbox permanecem
+- **memberships** - Todos os acessos de mentores/mentorados permanecem
+- **profiles** - Nomes e emails permanecem
+- **auth.users** - Logins permanecem funcionando
+
+## SQL de Limpeza
 
 ```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER 
-LANGUAGE plpgsql 
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    INSERT INTO public.profiles (user_id, email, full_name, phone)
-    VALUES (
-      NEW.id, 
-      NEW.email,
-      NEW.raw_user_meta_data->>'full_name',
-      NEW.raw_user_meta_data->>'phone'
-    );
-    RETURN NEW;
-END;
-$$;
+-- 1. Limpar prospections do CRM
+DELETE FROM crm_prospections;
+
+-- 2. Limpar mentee_profiles (novo modelo)
+DELETE FROM mentee_profiles;
+
+-- 3. Limpar mentorados (tabela legado)
+DELETE FROM mentorados;
+
+-- 4. Limpar mentors (tabela legado)
+DELETE FROM mentors;
+
+-- 5. Limpar invites pendentes
+DELETE FROM invites;
+
+-- 6. Limpar audit_logs (histórico)
+DELETE FROM audit_logs;
+
+-- 7. Limpar user_roles (legado)
+DELETE FROM user_roles WHERE role != 'master_admin';
 ```
 
-### 2. ✅ Edge Function `create-membership` Melhorada
-- Substituído UPDATE por UPSERT (`onConflict: 'user_id'`)
-- Adicionado log de erro explícito
-- Operação não bloqueia em caso de falha parcial
+## Resultado Esperado
 
-```typescript
-const { error: profileError } = await supabaseAdmin
-  .from("profiles")
-  .upsert({
-    user_id: targetUserId,
-    email: normalizedEmail,
-    full_name: full_name || null,
-    phone: phone || null,
-    updated_at: new Date().toISOString()
-  }, {
-    onConflict: 'user_id'
-  });
+Após a limpeza:
+- Mentor entra → Dashboard zerado (0 mentorados, 0 trilhas, 0 atividades)
+- Mentorado entra → Dashboard zerado (0 progresso, 0 ranking)
+- Sistema pronto para receber dados reais novamente
 
-if (profileError) {
-  console.error("create-membership: Profile upsert error:", profileError);
-}
+## Seção Técnica
+
+### Ordem de Execução
+A limpeza deve respeitar foreign keys:
+1. Primeiro: `crm_prospections` (não tem dependências)
+2. Segundo: `mentee_profiles` (depende de memberships que preservamos)
+3. Terceiro: `mentorados` (legado, pode ter referências)
+4. Quarto: `mentors` (legado)
+5. Quinto: `invites`, `audit_logs`, `user_roles`
+
+### Verificação Pós-Limpeza
+Queries para confirmar zerado:
+```sql
+SELECT 
+  (SELECT COUNT(*) FROM crm_prospections) as prospections,
+  (SELECT COUNT(*) FROM mentee_profiles) as mentee_profiles,
+  (SELECT COUNT(*) FROM mentorados) as mentorados,
+  (SELECT COUNT(*) FROM invites) as invites;
 ```
-
-### 3. ✅ Frontend já estava correto
-`useCreateMembership` invalida queries após sucesso.
-
-## Resultado
-- Nome e telefone aparecem imediatamente após criação de mentor/mentee
-- Logs de erro visíveis se houver falha
-- Sem condição de corrida (UPSERT garante dados salvos)
