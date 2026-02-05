@@ -1,17 +1,47 @@
- import { useTenant } from '@/contexts/TenantContext';
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
  import { Button } from '@/components/ui/button';
- import { Building2, Users, Eye, Settings, Shield, Activity } from 'lucide-react';
+ import { Building2, Users, Eye, Shield, Activity, UserPlus, Loader2 } from 'lucide-react';
  import { Link } from 'react-router-dom';
+ import { useMasterDashboardStats } from '@/hooks/useMasterDashboardStats';
+ import { formatDistanceToNow } from 'date-fns';
+ import { ptBR } from 'date-fns/locale';
+ import { Skeleton } from '@/components/ui/skeleton';
  
  export default function MasterDashboard() {
-   const { memberships, tenant } = useTenant();
+   const { tenantsCount, usersCount, membershipsCount, recentActivity, isLoading } = useMasterDashboardStats();
  
    const stats = [
-     { label: 'Tenants Ativos', value: '2', icon: Building2, color: 'text-blue-400' },
-     { label: 'Usuários Totais', value: '25', icon: Users, color: 'text-green-400' },
-     { label: 'Sessões Hoje', value: '12', icon: Activity, color: 'text-purple-400' },
+     { label: 'Tenants Ativos', value: tenantsCount, icon: Building2, color: 'text-blue-400' },
+     { label: 'Usuários Únicos', value: usersCount, icon: Users, color: 'text-green-400' },
+     { label: 'Memberships', value: membershipsCount, icon: Activity, color: 'text-purple-400' },
    ];
+ 
+   const getRoleIcon = (role: string) => {
+     switch (role) {
+       case 'mentor': return Shield;
+       case 'mentee': return UserPlus;
+       case 'master_admin': return Building2;
+       default: return Users;
+     }
+   };
+ 
+   const getRoleColor = (role: string) => {
+     switch (role) {
+       case 'mentor': return 'bg-blue-500/20 text-blue-400';
+       case 'mentee': return 'bg-green-500/20 text-green-400';
+       case 'master_admin': return 'bg-amber-500/20 text-amber-400';
+       default: return 'bg-slate-500/20 text-slate-400';
+     }
+   };
+ 
+   const getRoleLabel = (role: string) => {
+     switch (role) {
+       case 'mentor': return 'Mentor cadastrado';
+       case 'mentee': return 'Mentorado cadastrado';
+       case 'master_admin': return 'Admin Master cadastrado';
+       default: return 'Usuário cadastrado';
+     }
+   };
  
    return (
      <div className="space-y-8">
@@ -33,7 +63,11 @@
                <div className="flex items-center justify-between">
                  <div>
                    <p className="text-sm text-slate-400">{stat.label}</p>
-                   <p className="text-3xl font-bold text-slate-100 mt-1">{stat.value}</p>
+                     {isLoading ? (
+                       <Skeleton className="h-9 w-16 mt-1 bg-slate-700" />
+                     ) : (
+                       <p className="text-3xl font-bold text-slate-100 mt-1">{stat.value ?? 0}</p>
+                     )}
                  </div>
                  <stat.icon className={`h-10 w-10 ${stat.color}`} />
                </div>
@@ -93,26 +127,41 @@
            <CardTitle className="text-slate-100">Atividade Recente</CardTitle>
          </CardHeader>
          <CardContent>
-           <div className="space-y-4">
-             <div className="flex items-center gap-4 p-3 rounded-lg bg-slate-900/50">
-               <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                 <Users className="h-5 w-5 text-green-400" />
+             {isLoading ? (
+               <div className="space-y-4">
+                 {[1, 2, 3].map((i) => (
+                   <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-slate-900/50">
+                     <Skeleton className="h-10 w-10 rounded-full bg-slate-700" />
+                     <div className="flex-1 space-y-2">
+                       <Skeleton className="h-4 w-48 bg-slate-700" />
+                       <Skeleton className="h-3 w-32 bg-slate-700" />
+                     </div>
+                   </div>
+                 ))}
                </div>
-               <div className="flex-1">
-                 <p className="text-sm text-slate-200">Novo mentorado cadastrado</p>
-                 <p className="text-xs text-slate-500">Tenant: Atlas Sales Invest • há 2 horas</p>
+             ) : recentActivity && recentActivity.length > 0 ? (
+               <div className="space-y-4">
+                 {recentActivity.map((activity) => {
+                   const IconComponent = getRoleIcon(activity.role);
+                   const colorClass = getRoleColor(activity.role);
+                   return (
+                     <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg bg-slate-900/50">
+                       <div className={`h-10 w-10 rounded-full flex items-center justify-center ${colorClass.split(' ')[0]}`}>
+                         <IconComponent className={`h-5 w-5 ${colorClass.split(' ')[1]}`} />
+                       </div>
+                       <div className="flex-1">
+                         <p className="text-sm text-slate-200">{getRoleLabel(activity.role)}</p>
+                         <p className="text-xs text-slate-500">
+                           {activity.profiles?.full_name || activity.profiles?.email || 'Usuário'} • {activity.tenants?.name} • {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: ptBR })}
+                         </p>
+                       </div>
+                     </div>
+                   );
+                 })}
                </div>
-             </div>
-             <div className="flex items-center gap-4 p-3 rounded-lg bg-slate-900/50">
-               <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                 <Shield className="h-5 w-5 text-blue-400" />
-               </div>
-               <div className="flex-1">
-                 <p className="text-sm text-slate-200">Mentor acessou o sistema</p>
-                 <p className="text-xs text-slate-500">mariana@atlasalesinvest.com • há 3 horas</p>
-               </div>
-             </div>
-           </div>
+             ) : (
+               <p className="text-slate-500 text-center py-4">Nenhuma atividade recente</p>
+             )}
          </CardContent>
        </Card>
      </div>
