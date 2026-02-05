@@ -12,7 +12,8 @@
    UserCog,
    GraduationCap,
    Shield,
-   AlertTriangle
+   AlertTriangle,
+   Crown
  } from 'lucide-react';
  import { cn } from '@/lib/utils';
  import { Link } from 'react-router-dom';
@@ -30,6 +31,7 @@
  }
  
  const roleConfig: Record<MembershipRole, { icon: typeof User; label: string; color: string }> = {
+   master_admin: { icon: Crown, label: 'Master Admin', color: 'text-amber-500' },
    admin: { icon: Shield, label: 'Admin', color: 'text-destructive' },
    ops: { icon: UserCog, label: 'Operações', color: 'text-orange-500' },
    mentor: { icon: GraduationCap, label: 'Mentor', color: 'text-primary' },
@@ -275,9 +277,9 @@
          )}
  
          {/* DevTools Link - only for admin */}
-         {realMembership?.role === 'admin' && (
+         {(realMembership?.role === 'admin' || realMembership?.role === 'master_admin') && (
            <Link 
-             to="/admin/devtools" 
+             to={realMembership?.role === 'master_admin' ? '/master/preview' : '/mentor/devtools'}
              className="flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/30 hover:from-primary/30 hover:to-accent/30 transition-all"
            >
              <Zap className="h-4 w-4 text-primary" />

@@ -2778,17 +2778,29 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_user_memberships: {
-        Args: { _tenant_id?: string; _user_id: string }
-        Returns: {
-          id: string
-          role: Database["public"]["Enums"]["membership_role"]
-          status: string
-          tenant_id: string
-          tenant_name: string
-          tenant_slug: string
-        }[]
-      }
+      get_user_memberships:
+        | {
+            Args: { _user_id: string }
+            Returns: {
+              id: string
+              role: Database["public"]["Enums"]["membership_role"]
+              status: string
+              tenant_id: string
+              tenant_name: string
+              tenant_slug: string
+            }[]
+          }
+        | {
+            Args: { _tenant_id?: string; _user_id: string }
+            Returns: {
+              id: string
+              role: Database["public"]["Enums"]["membership_role"]
+              status: string
+              tenant_id: string
+              tenant_name: string
+              tenant_slug: string
+            }[]
+          }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2809,6 +2821,7 @@ export type Database = {
         Returns: boolean
       }
       is_first_mentor: { Args: never; Returns: boolean }
+      is_master_admin: { Args: { _user_id?: string }; Returns: boolean }
       start_impersonation: {
         Args: {
           _admin_membership_id: string
@@ -2820,7 +2833,7 @@ export type Database = {
     }
     Enums: {
       app_role: "mentor" | "mentorado" | "admin_master"
-      membership_role: "admin" | "ops" | "mentor" | "mentee"
+      membership_role: "admin" | "ops" | "mentor" | "mentee" | "master_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2949,7 +2962,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["mentor", "mentorado", "admin_master"],
-      membership_role: ["admin", "ops", "mentor", "mentee"],
+      membership_role: ["admin", "ops", "mentor", "mentee", "master_admin"],
     },
   },
 } as const

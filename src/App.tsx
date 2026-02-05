@@ -16,8 +16,13 @@ import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 
 // Layouts
-import { AdminLayout } from "@/components/layouts/AdminLayout";
-import { MemberLayout } from "@/components/layouts/MemberLayout";
+ import { MasterLayout } from "@/components/layouts/MasterLayout";
+ import { MentorLayout } from "@/components/layouts/MentorLayout";
+ import { MentoradoLayout } from "@/components/layouts/MentoradoLayout";
+ 
+ // Master Pages
+ import MasterDashboard from "./pages/master/MasterDashboard";
+ import PreviewPage from "./pages/master/PreviewPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -62,54 +67,70 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/setup" element={<Setup />} />
             
-             {/* Admin Routes (Admin + Ops + Mentor) */}
+             {/* Master Admin Routes */}
             <Route
-              path="/admin"
+               path="/master"
               element={
-                 <ProtectedRoute allowedRoles={['admin', 'ops', 'mentor']}>
-                  <AdminLayout />
+                 <ProtectedRoute allowedRoles={['master_admin']}>
+                   <MasterLayout />
                 </ProtectedRoute>
               }
             >
-            <Route index element={<AdminDashboard />} />
-              <Route path="crm" element={<PlaceholderPage title="CRM" />} />
-              <Route path="jornada-cs" element={<JornadaCS />} />
-              <Route path="mentorados" element={<Mentorados />} />
-              <Route path="trilhas" element={<AdminTrilhas />} />
-              {/* Formularios is now embedded within Mentorados page */}
-              <Route path="calendario" element={<Calendario />} />
-              <Route path="sos" element={<AdminCentroSOS />} />
-              <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
-              <Route path="emails" element={<EmailMarketing />} />
-              <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
-              <Route path="devtools" element={<DevTools />} />
-              <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
+               <Route index element={<MasterDashboard />} />
+               <Route path="preview" element={<PreviewPage />} />
+               <Route path="tenants" element={<PlaceholderPage title="Tenants" />} />
+               <Route path="users" element={<PlaceholderPage title="Usuários" />} />
+               <Route path="config" element={<PlaceholderPage title="Configurações" />} />
+             </Route>
+ 
+             {/* Mentor Routes (Admin + Ops + Mentor) */}
+             <Route
+               path="/mentor"
+               element={
+                 <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor']}>
+                   <MentorLayout />
+                 </ProtectedRoute>
+               }
+             >
+               <Route index element={<AdminDashboard />} />
+               <Route path="jornada-cs" element={<JornadaCS />} />
+               <Route path="mentorados" element={<Mentorados />} />
+               <Route path="trilhas" element={<AdminTrilhas />} />
+               <Route path="calendario" element={<Calendario />} />
+               <Route path="sos" element={<AdminCentroSOS />} />
+               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
+               <Route path="emails" element={<EmailMarketing />} />
+               <Route path="relatorios" element={<PlaceholderPage title="Relatórios" />} />
+               <Route path="devtools" element={<DevTools />} />
+               <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
             </Route>
 
-             {/* Member Routes (Mentee - all roles can access for impersonation) */}
+             {/* Mentorado Routes */}
             <Route
-              path="/app"
+               path="/mentorado"
               element={
-                 <ProtectedRoute allowedRoles={['admin', 'ops', 'mentor', 'mentee']}>
-                  <MemberLayout />
+                 <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor', 'mentee']}>
+                   <MentoradoLayout />
                 </ProtectedRoute>
               }
             >
               <Route index element={<MemberDashboard />} />
-              <Route path="trilhas" element={<Trilhas />} />
-              <Route path="meu-crm" element={<MeuCRM />} />
-              <Route path="comunidade" element={<Comunidade />} />
-              <Route path="calendario" element={<CalendarioMembro />} />
-              <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
-              <Route path="sos" element={<CentroSOS />} />
-              <Route path="perfil" element={<Perfil />} />
-              <Route path="ferramentas" element={<FerramentasIA />} />
-              <Route path="loja" element={<LojaPremios />} />
-              <Route path="meus-arquivos" element={<MeusArquivos />} />
+               <Route path="trilhas" element={<Trilhas />} />
+               <Route path="meu-crm" element={<MeuCRM />} />
+               <Route path="comunidade" element={<Comunidade />} />
+               <Route path="calendario" element={<CalendarioMembro />} />
+               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
+               <Route path="sos" element={<CentroSOS />} />
+               <Route path="perfil" element={<Perfil />} />
+               <Route path="ferramentas" element={<FerramentasIA />} />
+               <Route path="loja" element={<LojaPremios />} />
+               <Route path="meus-arquivos" element={<MeusArquivos />} />
             </Route>
 
             {/* Legacy route redirect */}
-            <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
+             <Route path="/dashboard" element={<Navigate to="/mentor" replace />} />
+             <Route path="/admin/*" element={<Navigate to="/mentor" replace />} />
+             <Route path="/app/*" element={<Navigate to="/mentorado" replace />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

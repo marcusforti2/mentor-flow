@@ -3,7 +3,7 @@
  import { supabase } from '@/integrations/supabase/client';
  import { useAuth } from '@/hooks/useAuth';
  
- export type MembershipRole = 'admin' | 'ops' | 'mentor' | 'mentee';
+ export type MembershipRole = 'master_admin' | 'admin' | 'ops' | 'mentor' | 'mentee';
  
  import type { Json } from '@/integrations/supabase/types';
  
@@ -19,7 +19,7 @@
  
  export interface Membership {
    id: string;
-   tenant_id: string;
+   tenant_id: string; // UUID as string
    tenant_name: string;
    tenant_slug: string;
    user_id: string;
@@ -55,6 +55,7 @@
    isOps: boolean;
    isMentor: boolean;
    isMentee: boolean;
+   isMasterAdmin: boolean;
    canImpersonate: boolean;
  }
  
@@ -211,7 +212,7 @@
        localStorage.setItem(IMPERSONATION_LOG_KEY, logId);
  
        // Navigate to appropriate dashboard
-       const targetPath = targetMembership.role === 'mentee' ? '/app' : '/admin';
+       const targetPath = getTargetPath(targetMembership.role);
        navigate(targetPath);
      } catch (error) {
        console.error('Error starting impersonation:', error);
@@ -238,7 +239,7 @@
        localStorage.removeItem(IMPERSONATION_LOG_KEY);
  
        // Navigate to appropriate dashboard
-       const targetPath = realMembership.role === 'mentee' ? '/app' : '/admin';
+       const targetPath = getTargetPath(realMembership.role);
        navigate(targetPath);
      } catch (error) {
        console.error('Error ending impersonation:', error);
@@ -251,6 +252,22 @@
      const roleArray = Array.isArray(roles) ? roles : [roles];
      return roleArray.includes(activeMembership.role);
    }, [activeMembership]);
+ 
+   // Helper to get correct path for role
+   const getTargetPath = (role: MembershipRole): string => {
+     switch (role) {
+       case 'master_admin':
+         return '/master';
+       case 'admin':
+       case 'ops':
+       case 'mentor':
+         return '/mentor';
+       case 'mentee':
+         return '/mentorado';
+       default:
+         return '/mentorado';
+     }
+   };
  
    const value: TenantContextType = {
      tenant,
@@ -268,6 +285,7 @@
      isOps: hasRole('ops'),
      isMentor: hasRole('mentor'),
      isMentee: hasRole('mentee'),
+     isMasterAdmin: hasRole('master_admin'),
      canImpersonate: realMembership?.role === 'admin' || realMembership?.can_impersonate || false,
    };
  
