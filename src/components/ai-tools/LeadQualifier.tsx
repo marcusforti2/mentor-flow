@@ -89,12 +89,31 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     const fetchData = async () => {
       if (!mentoradoId) return;
       try {
-        const { data: profileData } = await supabase
+      // Try membership_id first, then legacy mentorado_id
+      const { data: profileData } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
           .eq('mentorado_id', mentoradoId)
           .maybeSingle();
-        if (profileData) setBusinessProfile(profileData);
+        
+      if (profileData) {
+        setBusinessProfile(profileData);
+      } else {
+        // Try resolving legacy mentorado_id via membership
+        const { data: mentorado } = await supabase
+          .from('mentorados')
+          .select('id')
+          .eq('user_id', (await supabase.from('memberships').select('user_id').eq('id', mentoradoId).maybeSingle()).data?.user_id || '')
+          .maybeSingle();
+        if (mentorado) {
+          const { data: legacyProfile } = await supabase
+            .from('mentorado_business_profiles')
+            .select('*')
+            .eq('mentorado_id', mentorado.id)
+            .maybeSingle();
+          if (legacyProfile) setBusinessProfile(legacyProfile);
+        }
+      }
       } catch (error) {
         console.error('Error fetching business profile:', error);
       }
@@ -109,7 +128,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       const { data, error } = await supabase
         .from('crm_prospections')
         .select('id, contact_name, company, contact_email, contact_phone, notes, screenshot_urls')
-        .eq('mentorado_id', mentoradoId)
+        .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
         .order('updated_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -149,7 +168,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       const { data, error } = await supabase
         .from('crm_prospections')
         .select('id, contact_name, company, temperature, ai_insights, updated_at, profile_url')
-        .eq('mentorado_id', mentoradoId)
+        .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
         .not('ai_insights', 'is', null)
         .order('updated_at', { ascending: false })
         .limit(10);
@@ -270,7 +289,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           const { data: existingByUrl } = await supabase
             .from('crm_prospections')
             .select('id, contact_name')
-            .eq('mentorado_id', mentoradoId)
+            .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
             .eq('profile_url', profileUrl)
             .maybeSingle();
           
@@ -290,6 +309,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           .from('crm_prospections')
           .insert([{
             mentorado_id: mentoradoId,
+            membership_id: mentoradoId,
             contact_name: leadName,
             company: extractedData?.company || null,
             temperature,

@@ -36,7 +36,7 @@ export function useLeadsWithQualification(mentoradoId: string | null) {
           supabase
             .from('crm_prospections')
             .select('id, contact_name, company, contact_email, contact_phone, temperature, status, notes, ai_insights, updated_at')
-            .eq('mentorado_id', mentoradoId)
+            .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
             .order('updated_at', { ascending: false })
             .limit(50)
         ]);
