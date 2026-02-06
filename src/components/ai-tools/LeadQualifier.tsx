@@ -204,7 +204,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
         .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
         .not('ai_insights', 'is', null)
         .order('updated_at', { ascending: false })
-        .limit(10);
+        .limit(50);
       if (error) throw error;
       const validHistory = (data || []).filter(item => {
         const insights = item.ai_insights;
@@ -301,26 +301,50 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       let effectiveMentoradoId: string | null = resolvedLegacyId;
       let effectiveTenantId: string | null = resolvedTenantId;
       
-      // If not yet resolved, resolve now
+      // Always resolve inline if not yet cached (critical for impersonation)
       if (!effectiveMentoradoId || !effectiveTenantId) {
-        const { data: membership } = await supabase
+        console.log('[LeadQualifier] Resolving IDs inline for mentoradoId:', mentoradoId);
+        const { data: membership, error: membershipError } = await supabase
           .from('memberships')
           .select('user_id, tenant_id')
           .eq('id', mentoradoId)
           .maybeSingle();
         
+        if (membershipError) {
+          console.error('[LeadQualifier] Failed to resolve membership:', membershipError);
+        }
+        
         if (membership) {
           effectiveTenantId = membership.tenant_id;
-          const { data: mentorado } = await supabase
+          const { data: mentorado, error: mentoradoError } = await supabase
             .from('mentorados')
             .select('id')
             .eq('user_id', membership.user_id)
             .maybeSingle();
+          
+          if (mentoradoError) {
+            console.warn('[LeadQualifier] Failed to resolve legacy mentorado_id (RLS?):', mentoradoError);
+          }
+          
           effectiveMentoradoId = mentorado?.id || null;
           // Cache for future calls
           if (mentorado) setResolvedLegacyId(mentorado.id);
           setResolvedTenantId(membership.tenant_id);
         }
+      }
+      
+      console.log('[LeadQualifier] Save context:', {
+        mentoradoId,
+        effectiveMentoradoId,
+        effectiveTenantId,
+        selectedLeadId: selectedLeadId || 'none'
+      });
+      
+      // Final safety check: tenant_id is required for RLS
+      if (!effectiveTenantId) {
+        console.error('[LeadQualifier] Cannot save: tenant_id could not be resolved');
+        toast.error('Erro: não foi possível resolver o tenant. Tente recarregar a página.');
+        return;
       }
       
       // Check if URL is a valid profile URL to save
