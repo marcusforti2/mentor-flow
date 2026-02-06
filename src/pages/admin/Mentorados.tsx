@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateMembership } from "@/hooks/useCreateMembership";
 import { differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns";
 import { 
   Users, 
@@ -62,20 +64,13 @@ import {
 } from "lucide-react";
 import Formularios from "./Formularios";
 import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager";
- import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
- import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
- import { Send } from "lucide-react";
-
-interface PendingUser {
-  user_id: string;
-  email: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  created_at: string | null;
-}
+import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
+import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
+import { Send } from "lucide-react";
 
 interface Mentorado {
   id: string;
+  membership_id: string;
   user_id: string;
   status: string | null;
   joined_at: string | null;
@@ -93,20 +88,6 @@ interface Mentorado {
   } | null;
 }
 
- interface MentoradoInvite {
-   id: string;
-   invite_token: string;
-   full_name: string;
-   email: string | null;
-   phone: string | null;
-   business_name: string | null;
-   status: string;
-   welcome_message: string;
-   created_at: string;
-   expires_at: string;
-   accepted_at: string | null;
- }
- 
 type JourneyFilter = 'all' | 'week' | 'month' | 'stage';
 type StageFilter = 'all' | 'onboarding' | 'aprendizado' | 'aplicacao' | 'escala' | 'maestria';
 
@@ -119,10 +100,8 @@ const JOURNEY_STAGES = [
 ];
 
 const Mentorados = () => {
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [mentorados, setMentorados] = useState<Mentorado[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [journeyFilter, setJourneyFilter] = useState<JourneyFilter>('all');
   const [stageFilter, setStageFilter] = useState<StageFilter>('all');
@@ -146,98 +125,83 @@ const Mentorados = () => {
     maturity_level: '',
     notes: ''
   });
-  const [isAddingManual, setIsAddingManual] = useState(false);
-  const [mentorId, setMentorId] = useState<string | null>(null);
   
   // Detail sheet
   const [selectedMentorado, setSelectedMentorado] = useState<Mentorado | null>(null);
   
-   // Invites state
-   const [invites, setInvites] = useState<MentoradoInvite[]>([]);
-   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-   const [mentorName, setMentorName] = useState<string>('Mentoria');
- 
+  // Upload modal
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
   const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const { toast } = useToast();
+  const createMembership = useCreateMembership();
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!user || !activeMembership) return;
     
     setIsLoading(true);
     
     try {
-      // Fetch pending users (profiles without roles)
-      const { data: pending, error: pendingError } = await supabase
-        .rpc('get_pending_users');
+      const tenantId = activeMembership.tenant_id;
       
-      if (pendingError) throw pendingError;
-      setPendingUsers(pending || []);
+      // Fetch mentee memberships for this tenant
+      const { data: menteeMemberships, error: membershipsError } = await supabase
+        .from('memberships')
+        .select('id, user_id, status, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('role', 'mentee');
       
-      // Fetch existing mentorados
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id, business_name')
-        .eq('user_id', user.id)
-        .single();
+      if (membershipsError) throw membershipsError;
       
-      if (mentorData) {
-        setMentorId(mentorData.id);
-        setMentorName(mentorData.business_name || 'Mentoria');
-        
-        const { data: mentoradosData, error: mentoradosError } = await supabase
-          .from('mentorados')
-          .select(`
-            id,
-            user_id,
-            status,
-            joined_at,
-            onboarding_completed
-          `)
-          .eq('mentor_id', mentorData.id);
-        
-        if (mentoradosError) throw mentoradosError;
-        
-        // Fetch profiles and business profiles for mentorados
-        if (mentoradosData && mentoradosData.length > 0) {
-          const userIds = mentoradosData.map(m => m.user_id);
-          const mentoradoIds = mentoradosData.map(m => m.id);
-          
-          const [profilesResult, businessResult] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('user_id, full_name, email, avatar_url, phone')
-              .in('user_id', userIds),
-            supabase
-              .from('mentorado_business_profiles')
-              .select('mentorado_id, business_name, business_type, maturity_level')
-              .in('mentorado_id', mentoradoIds)
-          ]);
-          
-          const mentoradosWithData = mentoradosData.map(m => ({
-            ...m,
-            profile: profilesResult.data?.find(p => p.user_id === m.user_id) || null,
-            business_profile: businessResult.data?.find(b => b.mentorado_id === m.id) || null
-          }));
-          
-          setMentorados(mentoradosWithData);
-        } else {
-          setMentorados([]);
-        }
-        
-        // Fetch invites
-        const { data: invitesData } = await supabase
-          .from('mentorado_invites')
-          .select('*')
-          .eq('mentor_id', mentorData.id)
-          .order('created_at', { ascending: false });
-        
-        setInvites((invitesData || []) as MentoradoInvite[]);
+      if (!menteeMemberships || menteeMemberships.length === 0) {
+        setMentorados([]);
+        setIsLoading(false);
+        return;
       }
+      
+      const userIds = menteeMemberships.map(m => m.user_id);
+      const membershipIds = menteeMemberships.map(m => m.id);
+      
+      // Fetch profiles and mentee_profiles in parallel
+      const [profilesResult, menteeProfilesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('user_id, full_name, email, avatar_url, phone')
+          .in('user_id', userIds),
+        supabase
+          .from('mentee_profiles')
+          .select('membership_id, onboarding_completed, joined_at, business_profile')
+          .in('membership_id', membershipIds)
+      ]);
+      
+      const mentoradosWithData: Mentorado[] = menteeMemberships.map(m => {
+        const profile = profilesResult.data?.find(p => p.user_id === m.user_id) || null;
+        const menteeProfile = menteeProfilesResult.data?.find(mp => mp.membership_id === m.id);
+        const bp = menteeProfile?.business_profile as Record<string, unknown> | null;
+        
+        return {
+          id: m.id,
+          membership_id: m.id,
+          user_id: m.user_id,
+          status: m.status,
+          joined_at: menteeProfile?.joined_at || m.created_at,
+          onboarding_completed: menteeProfile?.onboarding_completed || false,
+          profile,
+          business_profile: bp ? {
+            business_name: (bp.business_name as string) || null,
+            business_type: (bp.business_type as string) || null,
+            maturity_level: (bp.maturity_level as string) || null,
+          } : null,
+        };
+      });
+      
+      setMentorados(mentoradosWithData);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
         title: "Erro ao carregar dados",
-        description: "Não foi possível carregar a lista de usuários.",
+        description: "Não foi possível carregar a lista de mentorados.",
         variant: "destructive",
       });
     } finally {
@@ -247,7 +211,7 @@ const Mentorados = () => {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, activeMembership]);
 
   const getJourneyDay = (joinedAt: string | null) => {
     if (!joinedAt) return 0;
@@ -269,49 +233,8 @@ const Mentorados = () => {
     return JOURNEY_STAGES.find(s => days >= s.minDay && days <= s.maxDay) || JOURNEY_STAGES[4];
   };
 
-  const handleApprove = async (userId: string) => {
-    if (!user) return;
-    
-    setApprovingId(userId);
-    
-    try {
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (!mentorData) {
-        throw new Error('Mentor não encontrado');
-      }
-      
-      const { error } = await supabase.rpc('approve_mentorado', {
-        _user_id: userId,
-        _mentor_id: mentorData.id
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Mentorado aprovado!",
-        description: "O usuário agora pode acessar a plataforma.",
-      });
-      
-      await fetchData();
-    } catch (error: any) {
-      console.error('Error approving user:', error);
-      toast({
-        title: "Erro ao aprovar",
-        description: error.message || "Não foi possível aprovar o usuário.",
-        variant: "destructive",
-      });
-    } finally {
-      setApprovingId(null);
-    }
-  };
-
   const handleManualAdd = async () => {
-    if (!user || !manualForm.full_name || !manualForm.email) {
+    if (!user || !activeMembership || !manualForm.full_name || !manualForm.email) {
       toast({
         title: "Campos obrigatórios",
         description: "Nome e email são obrigatórios.",
@@ -320,46 +243,14 @@ const Mentorados = () => {
       return;
     }
     
-    setIsAddingManual(true);
-    
     try {
-      // Get mentor ID
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (!mentorData) throw new Error('Mentor não encontrado');
-      
-      // Create a placeholder user_id for manual entry
-      const placeholderUserId = crypto.randomUUID();
-      
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: placeholderUserId,
-          full_name: manualForm.full_name,
-          email: manualForm.email,
-          phone: manualForm.phone || null
-        });
-      
-      // Note: This will fail due to FK constraint, but we can show a message
-      if (profileError) {
-        // For now, show info that manual add requires a real user
-        toast({
-          title: "Atenção",
-          description: "Para adicionar um mentorado manualmente, envie o link de cadastro para que ele crie uma conta primeiro.",
-          variant: "default",
-        });
-        setIsAddDialogOpen(false);
-        return;
-      }
-      
-      toast({
-        title: "Mentorado adicionado!",
-        description: "O mentorado foi adicionado com sucesso.",
+      await createMembership.mutateAsync({
+        tenant_id: activeMembership.tenant_id,
+        email: manualForm.email,
+        full_name: manualForm.full_name,
+        phone: manualForm.phone || undefined,
+        role: 'mentee',
+        mentor_membership_id: activeMembership.id,
       });
       
       setIsAddDialogOpen(false);
@@ -375,13 +266,6 @@ const Mentorados = () => {
       await fetchData();
     } catch (error: any) {
       console.error('Error adding mentorado:', error);
-      toast({
-        title: "Erro ao adicionar",
-        description: error.message || "Não foi possível adicionar o mentorado.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAddingManual(false);
     }
   };
 
@@ -401,7 +285,6 @@ const Mentorados = () => {
 
   // Apply all filters
   const filteredMentorados = mentorados.filter(m => {
-    // Search filter
     const matchesSearch = 
       (m.profile?.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (m.profile?.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -409,7 +292,6 @@ const Mentorados = () => {
     
     if (!matchesSearch) return false;
     
-    // Journey filters
     if (journeyFilter === 'week' && weekFilter !== 'all') {
       const week = getJourneyWeek(m.joined_at);
       if (week !== parseInt(weekFilter)) return false;
@@ -428,14 +310,6 @@ const Mentorados = () => {
     return true;
   });
 
-  const filteredPending = pendingUsers.filter(u => 
-    (u.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (u.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-  );
-
-   // Filter invites
-   const pendingInvites = invites.filter(i => i.status === 'pending');
- 
   // Stats
   const avgDays = mentorados.length > 0 
     ? Math.round(mentorados.reduce((acc, m) => acc + getJourneyDay(m.joined_at), 0) / mentorados.length)
@@ -450,11 +324,11 @@ const Mentorados = () => {
   }
 
   // Show form editor view
-  if (showFormEditor && mentorId) {
+  if (showFormEditor && activeMembership) {
     return (
       <div className="max-w-[1200px] mx-auto">
         <Formularios 
-          mentorId={mentorId} 
+          mentorId={activeMembership.id} 
           onBack={() => setShowFormEditor(false)} 
         />
       </div>
@@ -474,20 +348,20 @@ const Mentorados = () => {
           <Button 
             variant="outline" 
             onClick={() => setShowFormEditor(true)}
-            disabled={!mentorId}
+            disabled={!activeMembership}
           >
             <ClipboardList className="h-4 w-4 mr-2" />
             Formulário Onboarding
           </Button>
           
-           <Button 
-             variant="outline" 
-             onClick={() => setIsUploadModalOpen(true)}
-             disabled={!mentorId}
-           >
-             <FileUp className="h-4 w-4 mr-2" />
-             Importar Planilha
-           </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsUploadModalOpen(true)}
+            disabled={!activeMembership}
+          >
+            <FileUp className="h-4 w-4 mr-2" />
+            Importar Planilha
+          </Button>
            
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -543,31 +417,19 @@ const Mentorados = () => {
                   <div className="flex gap-2">
                     <Input
                       readOnly
-                      value={`${window.location.origin}/onboarding?mentor=${mentorId || ''}`}
+                      value={`${window.location.origin}/onboarding?mentor=${activeMembership?.id || ''}`}
                       className="bg-background"
                     />
                     <Button
                       variant="secondary"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/onboarding?mentor=${mentorId}`);
+                        navigator.clipboard.writeText(`${window.location.origin}/onboarding?mentor=${activeMembership?.id}`);
                         toast({ title: "Link copiado!" });
                       }}
                     >
                       Copiar
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    <button 
-                      onClick={() => {
-                        setIsAddDialogOpen(false);
-                        setAddMethod(null);
-                        setShowFormEditor(true);
-                      }}
-                      className="text-primary underline"
-                    >
-                      Editar perguntas do formulário
-                    </button>
-                  </p>
                 </div>
                 <Button variant="ghost" onClick={() => setAddMethod(null)} className="w-full">
                   Voltar
@@ -618,65 +480,16 @@ const Mentorados = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="business_type">Tipo de Negócio</Label>
-                    <Select
-                      value={manualForm.business_type}
-                      onValueChange={(value) => setManualForm({...manualForm, business_type: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="servicos">Serviços</SelectItem>
-                        <SelectItem value="produtos">Produtos</SelectItem>
-                        <SelectItem value="saas">SaaS</SelectItem>
-                        <SelectItem value="consultoria">Consultoria</SelectItem>
-                        <SelectItem value="outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maturity_level">Nível de Maturidade</Label>
-                    <Select
-                      value={manualForm.maturity_level}
-                      onValueChange={(value) => setManualForm({...manualForm, maturity_level: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="iniciante">Iniciante</SelectItem>
-                        <SelectItem value="crescimento">Crescimento</SelectItem>
-                        <SelectItem value="estabelecido">Estabelecido</SelectItem>
-                        <SelectItem value="escala">Em Escala</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={manualForm.notes}
-                    onChange={(e) => setManualForm({...manualForm, notes: e.target.value})}
-                    placeholder="Anotações sobre o mentorado..."
-                    rows={3}
-                  />
-                </div>
-                
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => setAddMethod(null)} className="flex-1">
                     Voltar
                   </Button>
                   <Button 
                     onClick={handleManualAdd} 
-                    disabled={isAddingManual}
+                    disabled={createMembership.isPending}
                     className="flex-1 gradient-gold text-primary-foreground"
                   >
-                    {isAddingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                    {createMembership.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
                   </Button>
                 </div>
               </div>
@@ -688,20 +501,6 @@ const Mentorados = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-yellow-500/10">
-                <Clock className="h-6 w-6 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{pendingUsers.length}</p>
-                <p className="text-sm text-muted-foreground">Pendentes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
         <Card className="glass-card">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -741,6 +540,22 @@ const Mentorados = () => {
               <div>
                 <p className="text-2xl font-bold text-foreground">{avgDays}</p>
                 <p className="text-sm text-muted-foreground">Média dias</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-yellow-500/10">
+                <CheckCircle className="h-6 w-6 text-yellow-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {mentorados.filter(m => m.onboarding_completed).length}
+                </p>
+                <p className="text-sm text-muted-foreground">Onboarding OK</p>
               </div>
             </div>
           </CardContent>
@@ -817,413 +632,180 @@ const Mentorados = () => {
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="active" className="w-full">
-        <TabsList className="bg-secondary/50">
-          <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <UserCheck className="w-4 h-4 mr-2" />
-            Ativos ({mentorados.length})
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Clock className="w-4 h-4 mr-2" />
-            Pendentes ({pendingUsers.length})
-          </TabsTrigger>
-           <TabsTrigger value="invites" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-             <Send className="w-4 h-4 mr-2" />
-             Convites ({pendingInvites.length})
-           </TabsTrigger>
-        </TabsList>
-        
-        {/* Active Mentorados Tab */}
-        <TabsContent value="active" className="mt-6">
-          {filteredMentorados.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="py-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {searchTerm || journeyFilter !== 'all' ? "Nenhum resultado encontrado" : "Nenhum mentorado ainda"}
-                </h3>
-                <p className="text-muted-foreground">
-                  {searchTerm || journeyFilter !== 'all' 
-                    ? "Tente ajustar os filtros de busca."
-                    : "Adicione mentorados ou aprove usuários pendentes."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMentorados.map((mentorado) => {
-                const journeyDay = getJourneyDay(mentorado.joined_at);
-                const stage = getJourneyStage(mentorado.joined_at);
-                
-                return (
-                  <Card 
-                    key={mentorado.id} 
-                    className="glass-card hover:border-primary/30 transition-all cursor-pointer group"
-                    onClick={() => setSelectedMentorado(mentorado)}
-                  >
-                    <CardContent className="pt-6">
-                      <div className="flex items-start gap-4">
-                        <div className="relative">
-                          <Avatar className="h-12 w-12 border-2 border-primary/20">
-                            <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {getInitials(mentorado.profile?.full_name || null)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${stage.color} border-2 border-card`} />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-foreground truncate">
-                              {mentorado.profile?.full_name || "Sem nome"}
-                            </h3>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Mail className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{mentorado.profile?.email}</span>
-                          </div>
-                          
-                          {mentorado.business_profile?.business_name && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-                              <Building2 className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{mentorado.business_profile.business_name}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className={`${stage.color}/10 text-foreground border-${stage.color.replace('bg-', '')}/30`}
-                          >
-                            {stage.name}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Dia {journeyDay}
-                          </span>
-                        </div>
-                        
-                        {mentorado.onboarding_completed ? (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">
-                            Onboarding ✓
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/30 text-xs">
-                            Pendente
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-        
-        {/* Pending Users Tab */}
-        <TabsContent value="pending" className="mt-6">
-          {filteredPending.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="py-12 text-center">
-                <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Nenhum usuário pendente
-                </h3>
-                <p className="text-muted-foreground">
-                  Novos usuários que se cadastrarem aparecerão aqui para aprovação.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPending.map((pendingUser) => (
-                <Card key={pendingUser.user_id} className="glass-card hover:border-primary/30 transition-colors">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-12 w-12 border-2 border-yellow-500/30">
-                        <AvatarImage src={pendingUser.avatar_url || undefined} />
-                        <AvatarFallback className="bg-yellow-500/10 text-yellow-500">
-                          {getInitials(pendingUser.full_name)}
+      {/* Mentorados Grid */}
+      {filteredMentorados.length === 0 ? (
+        <Card className="glass-card">
+          <CardContent className="py-12 text-center">
+            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {searchTerm || journeyFilter !== 'all' ? "Nenhum resultado encontrado" : "Nenhum mentorado ainda"}
+            </h3>
+            <p className="text-muted-foreground">
+              {searchTerm || journeyFilter !== 'all' 
+                ? "Tente ajustar os filtros de busca."
+                : "Adicione mentorados usando o botão acima."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredMentorados.map((mentorado) => {
+            const journeyDay = getJourneyDay(mentorado.joined_at);
+            const stage = getJourneyStage(mentorado.joined_at);
+            
+            return (
+              <Card 
+                key={mentorado.id} 
+                className="glass-card hover:border-primary/30 transition-all cursor-pointer group"
+                onClick={() => setSelectedMentorado(mentorado)}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 border-2 border-primary/20">
+                        <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {getInitials(mentorado.profile?.full_name || null)}
                         </AvatarFallback>
                       </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground truncate">
-                          {pendingUser.full_name || "Sem nome"}
-                        </h3>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Mail className="h-3 w-3" />
-                          <span className="truncate">{pendingUser.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Cadastro: {formatDate(pendingUser.created_at)}</span>
-                        </div>
-                      </div>
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${stage.color} border-2 border-card`} />
                     </div>
                     
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        onClick={() => handleApprove(pendingUser.user_id)}
-                        disabled={approvingId === pendingUser.user_id}
-                        className="flex-1 gradient-gold text-primary-foreground"
-                        size="sm"
-                      >
-                        {approvingId === pendingUser.user_id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Aprovar
-                          </>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-foreground truncate">
+                          {mentorado.profile?.full_name || "Sem nome"}
+                        </h3>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{mentorado.profile?.email}</span>
+                      </div>
+                      
+                      {mentorado.business_profile?.business_name && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                          <Building2 className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{mentorado.business_profile.business_name}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          Dia {journeyDay}
+                        </Badge>
+                        <Badge className={`text-xs text-white border-0 ${stage.color}`}>
+                          {stage.name}
+                        </Badge>
+                        {mentorado.onboarding_completed && (
+                          <CheckCircle className="h-3 w-3 text-green-500" />
                         )}
-                      </Button>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-         
-         {/* Invites Tab */}
-         <TabsContent value="invites" className="mt-6">
-           {pendingInvites.length === 0 ? (
-             <Card className="glass-card">
-               <CardContent className="py-12 text-center">
-                 <Send className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                 <h3 className="text-lg font-semibold text-foreground mb-2">
-                   Nenhum convite pendente
-                 </h3>
-                 <p className="text-muted-foreground mb-4">
-                   Importe uma planilha para criar convites em massa ou adicione mentorados manualmente.
-                 </p>
-                 <Button onClick={() => setIsUploadModalOpen(true)}>
-                   <FileUp className="h-4 w-4 mr-2" />
-                   Importar Planilha
-                 </Button>
-               </CardContent>
-             </Card>
-           ) : (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {pendingInvites.map((invite) => (
-                 <WelcomeMessageCard key={invite.id} invite={invite} />
-               ))}
-             </div>
-           )}
-         </TabsContent>
-      </Tabs>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Detail Sheet */}
       <Sheet open={!!selectedMentorado} onOpenChange={() => setSelectedMentorado(null)}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
           {selectedMentorado && (
             <>
               <SheetHeader>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 border-2 border-primary/30">
+                <SheetTitle className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
                     <AvatarImage src={selectedMentorado.profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                    <AvatarFallback className="bg-primary/10 text-primary">
                       {getInitials(selectedMentorado.profile?.full_name || null)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <SheetTitle className="text-left">
-                      {selectedMentorado.profile?.full_name || "Sem nome"}
-                    </SheetTitle>
-                    <SheetDescription className="text-left">
-                      {selectedMentorado.profile?.email}
-                    </SheetDescription>
+                    <p className="font-semibold">{selectedMentorado.profile?.full_name || "Sem nome"}</p>
+                    <p className="text-sm text-muted-foreground font-normal">{selectedMentorado.profile?.email}</p>
                   </div>
-                </div>
+                </SheetTitle>
+                <SheetDescription>
+                  Detalhes do mentorado
+                </SheetDescription>
               </SheetHeader>
               
-              <div className="space-y-6 mt-6">
-                {/* Journey Info */}
-                <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
-                  <h4 className="font-semibold text-sm text-foreground">Jornada</h4>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-2xl font-bold text-primary">
-                        {getJourneyDay(selectedMentorado.joined_at)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Dias</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-primary">
-                        {getJourneyWeek(selectedMentorado.joined_at)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Semana</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-primary">
-                        {getJourneyMonth(selectedMentorado.joined_at)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Mês</p>
-                    </div>
-                  </div>
-                  <div className="flex justify-center">
-                    <Badge className={`${getJourneyStage(selectedMentorado.joined_at).color} text-white`}>
-                      {getJourneyStage(selectedMentorado.joined_at).name}
-                    </Badge>
-                  </div>
+              <div className="mt-6 space-y-6">
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <p className="text-sm text-muted-foreground">Dia na Jornada</p>
+                      <p className="text-2xl font-bold">{getJourneyDay(selectedMentorado.joined_at)}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <p className="text-sm text-muted-foreground">Etapa</p>
+                      <Badge className={`mt-1 text-white border-0 ${getJourneyStage(selectedMentorado.joined_at).color}`}>
+                        {getJourneyStage(selectedMentorado.joined_at).name}
+                      </Badge>
+                    </CardContent>
+                  </Card>
                 </div>
                 
                 {/* Contact Info */}
                 <div className="space-y-3">
-                  <h4 className="font-semibold text-sm text-foreground">Contato</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-sm">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedMentorado.profile?.email || "Não informado"}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
+                  <h4 className="text-sm font-medium text-muted-foreground">Contato</h4>
+                  {selectedMentorado.profile?.phone && (
+                    <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedMentorado.profile?.phone || "Não informado"}</span>
+                      <span>{selectedMentorado.profile.phone}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>Desde {formatDate(selectedMentorado.joined_at)}</span>
-                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>{selectedMentorado.profile?.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>Entrou em {formatDate(selectedMentorado.joined_at)}</span>
                   </div>
                 </div>
                 
                 {/* Business Info */}
                 {selectedMentorado.business_profile && (
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-sm text-foreground">Negócio</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-sm">
+                    <h4 className="text-sm font-medium text-muted-foreground">Negócio</h4>
+                    {selectedMentorado.business_profile.business_name && (
+                      <div className="flex items-center gap-2 text-sm">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedMentorado.business_profile.business_name || "Não informado"}</span>
+                        <span>{selectedMentorado.business_profile.business_name}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-sm">
-                        <Target className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedMentorado.business_profile.business_type || "Não informado"}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-sm">
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        <span>Maturidade: {selectedMentorado.business_profile.maturity_level || "Não informado"}</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
-                
-                {/* Files Section */}
-                {mentorId && (
-                  <div className="pt-4 border-t border-border">
-                    <MentoradoFilesManager
-                      mentoradoId={selectedMentorado.id}
-                      mentorId={mentorId}
-                      mentoradoName={selectedMentorado.profile?.full_name || "Mentorado"}
-                    />
-                  </div>
-                )}
-                
-                {/* Quick Actions */}
-                <div className="space-y-3 pt-4 border-t border-border">
-                  <h4 className="font-semibold text-sm text-foreground">Ações Rápidas</h4>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* WhatsApp */}
-                    <Button 
-                      variant="outline" 
-                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-green-500/10 hover:border-green-500/30"
-                      onClick={() => {
-                        const phone = selectedMentorado.profile?.phone?.replace(/\D/g, '');
-                        if (phone) {
-                          window.open(`https://wa.me/55${phone}`, '_blank');
-                        } else {
-                          toast({
-                            title: "Telefone não cadastrado",
-                            description: "Este mentorado não possui telefone cadastrado.",
-                            variant: "destructive"
-                          });
-                        }
-                      }}
-                    >
-                      <MessageCircle className="h-5 w-5 text-green-500" />
-                      <span className="text-xs">WhatsApp</span>
-                    </Button>
-                    
-                    {/* Email */}
-                    <Button 
-                      variant="outline" 
-                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-blue-500/10 hover:border-blue-500/30"
-                      onClick={() => {
-                        const email = selectedMentorado.profile?.email;
-                        if (email) {
-                          window.open(`mailto:${email}`, '_blank');
-                        }
-                      }}
-                    >
-                      <Mail className="h-5 w-5 text-blue-500" />
-                      <span className="text-xs">Email</span>
-                    </Button>
-                    
-                    {/* Schedule Meeting */}
-                    <Button 
-                      variant="outline" 
-                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-purple-500/10 hover:border-purple-500/30"
-                      onClick={() => {
-                        toast({
-                          title: "Agendar Reunião",
-                          description: "Funcionalidade em desenvolvimento. Em breve você poderá agendar reuniões diretamente.",
-                        });
-                        // TODO: Open calendar/meeting modal
-                      }}
-                    >
-                      <Video className="h-5 w-5 text-purple-500" />
-                      <span className="text-xs">Agendar</span>
-                    </Button>
-                    
-                    {/* Interaction History */}
-                    <Button 
-                      variant="outline" 
-                      className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-amber-500/10 hover:border-amber-500/30"
-                      onClick={() => {
-                        toast({
-                          title: "Histórico",
-                          description: "Funcionalidade em desenvolvimento. Em breve você verá todo o histórico de interações.",
-                        });
-                        // TODO: Open history modal
-                      }}
-                    >
-                      <History className="h-5 w-5 text-amber-500" />
-                      <span className="text-xs">Histórico</span>
-                    </Button>
-                  </div>
-                  
-                  {/* Full Profile Button */}
-                  <Button variant="outline" className="w-full mt-2">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver Perfil Completo
-                    <ExternalLink className="h-3 w-3 ml-auto" />
-                  </Button>
-                </div>
+
+                {/* Files Manager */}
+                <MentoradoFilesManager
+                  mentoradoId={selectedMentorado.id}
+                  mentorId={activeMembership?.id || ''}
+                  mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                />
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
-       
-       {/* Upload Modal */}
-       {mentorId && (
-         <MentoradoUploadModal
-           open={isUploadModalOpen}
-           onOpenChange={setIsUploadModalOpen}
-           mentorId={mentorId}
-           mentorName={mentorName}
-           onSuccess={fetchData}
-         />
-       )}
+
+      {/* Upload Modal */}
+      {activeMembership && (
+        <MentoradoUploadModal
+          open={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          mentorId={activeMembership.id}
+          onSuccess={fetchData}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface Badge {
   id: string;
@@ -51,6 +52,7 @@ interface RewardRedemption {
 
 export function useGamification() {
   const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
@@ -59,46 +61,41 @@ export function useGamification() {
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Get mentorado ID (with user.id fallback)
+  // Use membership ID as primary identifier, fallback to legacy mentorado
   useEffect(() => {
-    const getMentoradoId = async () => {
+    const resolveId = async () => {
       if (!user) return;
 
+      // Prefer membership ID
+      if (activeMembership?.id && activeMembership.role === 'mentee') {
+        setMentoradoId(activeMembership.id);
+        return;
+      }
+
+      // Fallback: try legacy mentorados table
       const { data } = await supabase
         .from("mentorados")
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      // Use mentorado_id if exists, otherwise use user.id as fallback
       setMentoradoId(data?.id || user.id);
     };
 
-    getMentoradoId();
-  }, [user]);
+    resolveId();
+  }, [user, activeMembership]);
 
-  // Fetch all data - works for any authenticated user
+  // Fetch all data
   useEffect(() => {
     const fetchData = async () => {
       if (!mentoradoId || !user) {
-        // Still load badges and rewards catalog for display
         if (user) {
           try {
-            const { data: allBadges } = await supabase
-              .from("badges")
-              .select("*")
-              .order("points_required", { ascending: true });
+            const { data: allBadges } = await supabase.from("badges").select("*").order("points_required", { ascending: true });
             if (allBadges) setBadges(allBadges);
-
-            const { data: rewardsData } = await supabase
-              .from("reward_catalog")
-              .select("*")
-              .eq("is_active", true)
-              .order("points_cost", { ascending: true });
+            const { data: rewardsData } = await supabase.from("reward_catalog").select("*").eq("is_active", true).order("points_cost", { ascending: true });
             if (rewardsData) setRewards(rewardsData);
-          } catch (error) {
-            console.error("Error fetching catalog data:", error);
-          }
+          } catch (error) { console.error("Error fetching catalog data:", error); }
         }
         setIsLoading(false);
         return;
@@ -107,118 +104,57 @@ export function useGamification() {
       setIsLoading(true);
 
       try {
-        // Fetch all badges
-        const { data: allBadges } = await supabase
-          .from("badges")
-          .select("*")
-          .order("points_required", { ascending: true });
+        const { data: allBadges } = await supabase.from("badges").select("*").order("points_required", { ascending: true });
+        if (allBadges) setBadges(allBadges);
 
-        if (allBadges) {
-          setBadges(allBadges);
-        }
-
-        // Fetch user's unlocked badges
+        // Fetch user's unlocked badges (check both mentorado_id values)
         const { data: unlockedBadges } = await supabase
           .from("user_badges")
-          .select(`
-            id,
-            badge_id,
-            unlocked_at,
-            badge:badges(*)
-          `)
+          .select(`id, badge_id, unlocked_at, badge:badges(*)`)
           .eq("mentorado_id", mentoradoId);
 
-        if (unlockedBadges) {
-          setUserBadges(unlockedBadges as unknown as UserBadge[]);
-        }
+        if (unlockedBadges) setUserBadges(unlockedBadges as unknown as UserBadge[]);
 
-        // Fetch user stats
-        const [
-          prospectionsRes,
-          progressRes,
-          streakRes,
-          aiUsageRes,
-          rankingRes,
-        ] = await Promise.all([
-          supabase
-            .from("crm_prospections")
-            .select("id", { count: "exact" })
-            .eq("mentorado_id", mentoradoId),
-          supabase
-            .from("trail_progress")
-            .select("id, completed")
-            .eq("mentorado_id", mentoradoId)
+        // Fetch user stats - check both membership_id and mentorado_id columns
+        const [prospectionsRes, progressRes, streakRes, aiUsageRes, rankingRes] = await Promise.all([
+          supabase.from("crm_prospections").select("id", { count: "exact" })
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`),
+          supabase.from("trail_progress").select("id, completed")
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
             .eq("completed", true),
-          supabase
-            .from("user_streaks")
-            .select("current_streak, longest_streak")
-            .eq("mentorado_id", mentoradoId)
-            .maybeSingle(),
-          supabase
-            .from("ai_tool_usage")
-            .select("tool_type")
-            .eq("mentorado_id", mentoradoId),
-          supabase
-            .from("ranking_entries")
-            .select("points")
-            .eq("mentorado_id", mentoradoId)
+          supabase.from("user_streaks").select("current_streak, longest_streak")
+            .eq("mentorado_id", mentoradoId).maybeSingle(),
+          supabase.from("ai_tool_usage").select("tool_type")
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`),
+          supabase.from("ranking_entries").select("points")
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
             .eq("period_type", "weekly")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+            .order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
 
-        // Calculate unique AI tools used
-        const uniqueAiTools = new Set(
-          aiUsageRes.data?.map((u) => u.tool_type) || []
-        );
+        const uniqueAiTools = new Set(aiUsageRes.data?.map((u) => u.tool_type) || []);
 
-        // Calculate total points from unlocked badges
-        const totalPoints =
-          unlockedBadges?.reduce(
-            (sum, ub) => sum + ((ub.badge as unknown as Badge)?.points_required || 0),
-            0
-          ) || 0;
+        const totalPoints = unlockedBadges?.reduce(
+          (sum, ub) => sum + ((ub.badge as unknown as Badge)?.points_required || 0), 0
+        ) || 0;
 
         setStats({
           prospectionCount: prospectionsRes.count || 0,
           lessonsCompleted: progressRes.data?.length || 0,
-          modulesCompleted: 0, // Would need more complex query
-          trailsCompleted: 0, // Would need more complex query
-          weeklyRank: 0, // Would need ranking calculation
+          modulesCompleted: 0, trailsCompleted: 0, weeklyRank: 0,
           streakDays: streakRes.data?.current_streak || 0,
-          aiToolsUsed: uniqueAiTools.size,
-          totalPoints,
+          aiToolsUsed: uniqueAiTools.size, totalPoints,
         });
 
-        // Fetch rewards catalog
-        const { data: rewardsData } = await supabase
-          .from("reward_catalog")
-          .select("*")
-          .eq("is_active", true)
-          .order("points_cost", { ascending: true });
+        const { data: rewardsData } = await supabase.from("reward_catalog").select("*").eq("is_active", true).order("points_cost", { ascending: true });
+        if (rewardsData) setRewards(rewardsData);
 
-        if (rewardsData) {
-          setRewards(rewardsData);
-        }
-
-        // Fetch user's redemptions
         const { data: redemptionsData } = await supabase
           .from("reward_redemptions")
-          .select(`
-            id,
-            reward_id,
-            points_spent,
-            status,
-            redeemed_at,
-            reward:reward_catalog(*)
-          `)
+          .select(`id, reward_id, points_spent, status, redeemed_at, reward:reward_catalog(*)`)
           .eq("mentorado_id", mentoradoId)
           .order("redeemed_at", { ascending: false });
-
-        if (redemptionsData) {
-          setRedemptions(redemptionsData as unknown as RewardRedemption[]);
-        }
+        if (redemptionsData) setRedemptions(redemptionsData as unknown as RewardRedemption[]);
       } catch (error) {
         console.error("Error fetching gamification data:", error);
       } finally {
@@ -229,173 +165,76 @@ export function useGamification() {
     fetchData();
   }, [mentoradoId]);
 
-  // Update streak on access
   const updateStreak = useCallback(async () => {
     if (!mentoradoId) return;
-
     const today = new Date().toISOString().split("T")[0];
 
     const { data: existingStreak } = await supabase
-      .from("user_streaks")
-      .select("*")
-      .eq("mentorado_id", mentoradoId)
-      .maybeSingle();
+      .from("user_streaks").select("*").eq("mentorado_id", mentoradoId).maybeSingle();
 
     if (existingStreak) {
       const lastAccess = existingStreak.last_access_date;
+      if (lastAccess === today) return;
+
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-      if (lastAccess === today) {
-        // Already updated today
-        return;
-      }
-
       let newStreak = 1;
-      if (lastAccess === yesterdayStr) {
-        // Consecutive day
-        newStreak = (existingStreak.current_streak || 0) + 1;
-      }
+      if (lastAccess === yesterdayStr) newStreak = (existingStreak.current_streak || 0) + 1;
 
-      const longestStreak = Math.max(
-        newStreak,
-        existingStreak.longest_streak || 0
-      );
+      const longestStreak = Math.max(newStreak, existingStreak.longest_streak || 0);
 
-      await supabase
-        .from("user_streaks")
-        .update({
-          current_streak: newStreak,
-          longest_streak: longestStreak,
-          last_access_date: today,
-          updated_at: new Date().toISOString(),
-        })
+      await supabase.from("user_streaks")
+        .update({ current_streak: newStreak, longest_streak: longestStreak, last_access_date: today, updated_at: new Date().toISOString() })
         .eq("mentorado_id", mentoradoId);
 
-      setStats((prev) =>
-        prev ? { ...prev, streakDays: newStreak } : null
-      );
+      setStats((prev) => prev ? { ...prev, streakDays: newStreak } : null);
     } else {
-      // Create new streak record
       await supabase.from("user_streaks").insert({
-        mentorado_id: mentoradoId,
-        current_streak: 1,
-        longest_streak: 1,
-        last_access_date: today,
+        mentorado_id: mentoradoId, current_streak: 1, longest_streak: 1, last_access_date: today,
       });
-
       setStats((prev) => (prev ? { ...prev, streakDays: 1 } : null));
     }
   }, [mentoradoId]);
 
-  // Track AI tool usage
-  const trackAiToolUsage = useCallback(
-    async (toolType: string) => {
-      if (!mentoradoId) return;
+  const trackAiToolUsage = useCallback(async (toolType: string) => {
+    if (!mentoradoId) return;
+    await supabase.from("ai_tool_usage").insert({ mentorado_id: mentoradoId, tool_type: toolType });
+    const { data: aiUsage } = await supabase.from("ai_tool_usage").select("tool_type")
+      .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`);
+    const uniqueTools = new Set(aiUsage?.map((u) => u.tool_type) || []);
+    setStats((prev) => prev ? { ...prev, aiToolsUsed: uniqueTools.size } : null);
+  }, [mentoradoId]);
 
-      await supabase.from("ai_tool_usage").insert({
-        mentorado_id: mentoradoId,
-        tool_type: toolType,
-      });
+  const redeemReward = useCallback(async (rewardId: string, shippingAddress?: string) => {
+    if (!mentoradoId || !stats) return { success: false, error: "Não autorizado" };
+    const reward = rewards.find((r) => r.id === rewardId);
+    if (!reward) return { success: false, error: "Prêmio não encontrado" };
+    if (stats.totalPoints < reward.points_cost) return { success: false, error: "Pontos insuficientes" };
+    if (reward.stock !== null && reward.stock <= 0) return { success: false, error: "Prêmio esgotado" };
 
-      // Refresh stats
-      const { data: aiUsage } = await supabase
-        .from("ai_tool_usage")
-        .select("tool_type")
-        .eq("mentorado_id", mentoradoId);
+    const { data, error } = await supabase.from("reward_redemptions")
+      .insert({ mentorado_id: mentoradoId, reward_id: rewardId, points_spent: reward.points_cost, shipping_address: shippingAddress, status: "pending" })
+      .select().single();
 
-      const uniqueTools = new Set(aiUsage?.map((u) => u.tool_type) || []);
-      setStats((prev) =>
-        prev ? { ...prev, aiToolsUsed: uniqueTools.size } : null
-      );
-    },
-    [mentoradoId]
-  );
+    if (error) return { success: false, error: error.message };
 
-  // Redeem reward
-  const redeemReward = useCallback(
-    async (rewardId: string, shippingAddress?: string) => {
-      if (!mentoradoId || !stats) return { success: false, error: "Não autorizado" };
+    const newRedemption: RewardRedemption = {
+      id: data.id, reward_id: data.reward_id, points_spent: data.points_spent,
+      status: data.status, redeemed_at: data.redeemed_at, reward,
+    };
 
-      const reward = rewards.find((r) => r.id === rewardId);
-      if (!reward) return { success: false, error: "Prêmio não encontrado" };
+    setRedemptions((prev) => [newRedemption, ...prev]);
+    setStats((prev) => prev ? { ...prev, totalPoints: prev.totalPoints - reward.points_cost } : null);
+    return { success: true, data: newRedemption };
+  }, [mentoradoId, stats, rewards]);
 
-      if (stats.totalPoints < reward.points_cost) {
-        return { success: false, error: "Pontos insuficientes" };
-      }
-
-      if (reward.stock !== null && reward.stock <= 0) {
-        return { success: false, error: "Prêmio esgotado" };
-      }
-
-      const { data, error } = await supabase
-        .from("reward_redemptions")
-        .insert({
-          mentorado_id: mentoradoId,
-          reward_id: rewardId,
-          points_spent: reward.points_cost,
-          shipping_address: shippingAddress,
-          status: "pending",
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      // Update local state
-      const newRedemption: RewardRedemption = {
-        id: data.id,
-        reward_id: data.reward_id,
-        points_spent: data.points_spent,
-        status: data.status,
-        redeemed_at: data.redeemed_at,
-        reward,
-      };
-
-      setRedemptions((prev) => [newRedemption, ...prev]);
-      setStats((prev) =>
-        prev
-          ? { ...prev, totalPoints: prev.totalPoints - reward.points_cost }
-          : null
-      );
-
-      return { success: true, data: newRedemption };
-    },
-    [mentoradoId, stats, rewards]
-  );
-
-  // Check if badge is unlocked
-  const isBadgeUnlocked = useCallback(
-    (badgeId: string) => {
-      return userBadges.some((ub) => ub.badge_id === badgeId);
-    },
-    [userBadges]
-  );
-
-  // Get badge unlock date
-  const getBadgeUnlockDate = useCallback(
-    (badgeId: string) => {
-      const userBadge = userBadges.find((ub) => ub.badge_id === badgeId);
-      return userBadge?.unlocked_at;
-    },
-    [userBadges]
-  );
+  const isBadgeUnlocked = useCallback((badgeId: string) => userBadges.some((ub) => ub.badge_id === badgeId), [userBadges]);
+  const getBadgeUnlockDate = useCallback((badgeId: string) => userBadges.find((ub) => ub.badge_id === badgeId)?.unlocked_at, [userBadges]);
 
   return {
-    badges,
-    userBadges,
-    stats,
-    rewards,
-    redemptions,
-    isLoading,
-    mentoradoId,
-    updateStreak,
-    trackAiToolUsage,
-    redeemReward,
-    isBadgeUnlocked,
-    getBadgeUnlockDate,
+    badges, userBadges, stats, rewards, redemptions, isLoading, mentoradoId,
+    updateStreak, trackAiToolUsage, redeemReward, isBadgeUnlocked, getBadgeUnlockDate,
   };
 }
