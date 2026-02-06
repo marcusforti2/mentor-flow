@@ -71,9 +71,9 @@ export default function PreviewPage() {
       const userIds = [...new Set(membData.map(m => m.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
-        .in('id', userIds);
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        .select('user_id, full_name, email')
+        .in('user_id', userIds);
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
       // Build member list
       const members: SandboxMember[] = membData.map(m => {
