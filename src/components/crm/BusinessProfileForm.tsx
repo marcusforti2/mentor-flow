@@ -415,37 +415,43 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
   };
 
   // Calculate completion by section
-  const diagnosticFields = [
-    profile.monthly_revenue,
-    profile.team_size,
-    profile.time_in_market,
-    profile.maturity_level,
-    profile.main_chaos_points.length > 0,
-    profile.owner_dependency_level,
-  ].filter(Boolean).length;
+  const diagnosticChecks = {
+    'Faturamento Mensal': !!profile.monthly_revenue,
+    'Tamanho do Time': !!profile.team_size,
+    'Tempo de Mercado': !!profile.time_in_market,
+    'Nível de Maturidade': !!profile.maturity_level,
+    'Pontos de Caos': profile.main_chaos_points.length > 0,
+    'Dependência do Dono': !!profile.owner_dependency_level,
+  };
 
-  const salesFields = [
-    profile.has_commercial_process !== undefined,
-    profile.sales_predictability,
-    profile.main_bottleneck,
-    profile.current_sales_channels.length > 0,
-    profile.average_ticket,
-    profile.monthly_leads_volume,
-    profile.conversion_rate,
-  ].filter(Boolean).length;
+  const salesChecks = {
+    'Previsibilidade': !!profile.sales_predictability,
+    'Gargalo de Vendas': !!profile.main_bottleneck,
+    'Canais de Aquisição': profile.current_sales_channels.length > 0,
+    'Ticket Médio': !!profile.average_ticket,
+    'Volume de Leads': !!profile.monthly_leads_volume,
+    'Taxa de Conversão': !!profile.conversion_rate,
+  };
 
-  const identityFields = [
-    profile.business_name,
-    profile.business_type,
-    profile.target_audience,
-    profile.main_offer,
-    profile.unique_value_proposition,
-    profile.ideal_client_profile,
-  ].filter(Boolean).length;
+  const identityChecks = {
+    'Nome do Negócio': !!profile.business_name,
+    'Tipo de Negócio': !!profile.business_type,
+    'Público-Alvo': !!profile.target_audience,
+    'Oferta Principal': !!profile.main_offer,
+    'Proposta de Valor': !!profile.unique_value_proposition,
+    'Cliente Ideal': !!profile.ideal_client_profile,
+  };
+
+  const diagnosticFields = Object.values(diagnosticChecks).filter(Boolean).length;
+  const salesFields = Object.values(salesChecks).filter(Boolean).length;
+  const identityFields = Object.values(identityChecks).filter(Boolean).length;
 
   const totalFields = diagnosticFields + salesFields + identityFields;
-  const maxFields = 19;
+  const maxFields = 18;
   const completionPercent = Math.round((totalFields / maxFields) * 100);
+
+  const getMissingFields = (checks: Record<string, boolean>) => 
+    Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
 
   if (isLoading) {
     return (
@@ -478,10 +484,25 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
               <span className="text-sm font-mono font-semibold">{completionPercent}%</span>
             </div>
             <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-              <span>Diagnóstico: {diagnosticFields}/6</span>
-              <span>Vendas: {salesFields}/7</span>
-              <span>Identidade: {identityFields}/6</span>
+              <span className={diagnosticFields < 6 ? 'text-yellow-500' : 'text-green-500'}>
+                Diagnóstico: {diagnosticFields}/6
+              </span>
+              <span className={salesFields < 6 ? 'text-yellow-500' : 'text-green-500'}>
+                Vendas: {salesFields}/6
+              </span>
+              <span className={identityFields < 6 ? 'text-yellow-500' : 'text-green-500'}>
+                Identidade: {identityFields}/6
+              </span>
             </div>
+            {completionPercent < 100 && (
+              <div className="mt-2 text-xs text-yellow-500/80">
+                Faltam: {[
+                  ...getMissingFields(diagnosticChecks),
+                  ...getMissingFields(salesChecks),
+                  ...getMissingFields(identityChecks),
+                ].join(', ')}
+              </div>
+            )}
           </div>
         </CardDescription>
       </CardHeader>
