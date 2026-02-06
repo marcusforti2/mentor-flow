@@ -61,29 +61,39 @@ export function useGamification() {
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use membership ID as primary identifier, fallback to legacy mentorado
+  const [legacyMentoradoId, setLegacyMentoradoId] = useState<string | null>(null);
+
+  // Resolve both membership ID and legacy mentorado ID
   useEffect(() => {
-    const resolveId = async () => {
+    const resolveIds = async () => {
       if (!user) return;
 
-      // Prefer membership ID
+      // Prefer membership ID as primary
       if (activeMembership?.id && activeMembership.role === 'mentee') {
         setMentoradoId(activeMembership.id);
-        return;
       }
 
-      // Fallback: try legacy mentorados table
+      // Always resolve legacy mentorado ID for tables that FK to mentorados
       const { data } = await supabase
         .from("mentorados")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", activeMembership?.user_id || user.id)
         .maybeSingle();
 
-      setMentoradoId(data?.id || user.id);
+      const legacyId = data?.id || null;
+      setLegacyMentoradoId(legacyId);
+
+      // If no membership, use legacy ID
+      if (!activeMembership?.id || activeMembership.role !== 'mentee') {
+        setMentoradoId(legacyId || user.id);
+      }
     };
 
-    resolveId();
+    resolveIds();
   }, [user, activeMembership]);
+
+  // The ID to use for legacy tables (user_badges, user_streaks, mentorado_business_profiles)
+  const legacyId = legacyMentoradoId || mentoradoId;
 
   // Fetch all data
   useEffect(() => {
@@ -107,27 +117,40 @@ export function useGamification() {
         const { data: allBadges } = await supabase.from("badges").select("*").order("points_required", { ascending: true });
         if (allBadges) setBadges(allBadges);
 
-        // Fetch user's unlocked badges (check both mentorado_id values)
+        // Fetch user's unlocked badges - use legacy ID (FK to mentorados) + membership_id
+        const badgeIdFilter = legacyId && legacyId !== mentoradoId
+          ? `mentorado_id.eq.${legacyId},mentorado_id.eq.${mentoradoId}`
+          : `mentorado_id.eq.${mentoradoId}`;
         const { data: unlockedBadges } = await supabase
           .from("user_badges")
           .select(`id, badge_id, unlocked_at, badge:badges(*)`)
-          .eq("mentorado_id", mentoradoId);
+          .or(badgeIdFilter);
 
         if (unlockedBadges) setUserBadges(unlockedBadges as unknown as UserBadge[]);
 
-        // Fetch user stats - check both membership_id and mentorado_id columns
+        // Build OR filter for tables that support both IDs
+        const idFilter = legacyId && legacyId !== mentoradoId
+          ? `membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId},mentorado_id.eq.${legacyId}`
+          : `membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`;
+
+        // Build OR filter for legacy-only tables (user_streaks)
+        const legacyFilter = legacyId && legacyId !== mentoradoId
+          ? `mentorado_id.eq.${legacyId},mentorado_id.eq.${mentoradoId}`
+          : `mentorado_id.eq.${mentoradoId}`;
+
+        // Fetch user stats
         const [prospectionsRes, progressRes, streakRes, aiUsageRes, rankingRes] = await Promise.all([
           supabase.from("crm_prospections").select("id", { count: "exact" })
-            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`),
+            .or(idFilter),
           supabase.from("trail_progress").select("id, completed")
-            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+            .or(idFilter)
             .eq("completed", true),
           supabase.from("user_streaks").select("current_streak, longest_streak")
-            .eq("mentorado_id", mentoradoId).maybeSingle(),
+            .or(legacyFilter).maybeSingle(),
           supabase.from("ai_tool_usage").select("tool_type")
-            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`),
+            .or(idFilter),
           supabase.from("ranking_entries").select("points")
-            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+            .or(idFilter)
             .eq("period_type", "weekly")
             .order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
@@ -149,10 +172,13 @@ export function useGamification() {
         const { data: rewardsData } = await supabase.from("reward_catalog").select("*").eq("is_active", true).order("points_cost", { ascending: true });
         if (rewardsData) setRewards(rewardsData);
 
+        const redemptionFilter = legacyId && legacyId !== mentoradoId
+          ? `mentorado_id.eq.${legacyId},mentorado_id.eq.${mentoradoId}`
+          : `mentorado_id.eq.${mentoradoId}`;
         const { data: redemptionsData } = await supabase
           .from("reward_redemptions")
           .select(`id, reward_id, points_spent, status, redeemed_at, reward:reward_catalog(*)`)
-          .eq("mentorado_id", mentoradoId)
+          .or(redemptionFilter)
           .order("redeemed_at", { ascending: false });
         if (redemptionsData) setRedemptions(redemptionsData as unknown as RewardRedemption[]);
       } catch (error) {
@@ -163,14 +189,19 @@ export function useGamification() {
     };
 
     fetchData();
-  }, [mentoradoId]);
+  }, [mentoradoId, legacyId]);
 
   const updateStreak = useCallback(async () => {
-    if (!mentoradoId) return;
+    const streakId = legacyId || mentoradoId;
+    if (!streakId) return;
     const today = new Date().toISOString().split("T")[0];
 
     const { data: existingStreak } = await supabase
-      .from("user_streaks").select("*").eq("mentorado_id", mentoradoId).maybeSingle();
+      .from("user_streaks").select("*")
+      .or(legacyId && legacyId !== mentoradoId
+        ? `mentorado_id.eq.${legacyId},mentorado_id.eq.${mentoradoId}`
+        : `mentorado_id.eq.${streakId}`)
+      .maybeSingle();
 
     if (existingStreak) {
       const lastAccess = existingStreak.last_access_date;
@@ -187,16 +218,19 @@ export function useGamification() {
 
       await supabase.from("user_streaks")
         .update({ current_streak: newStreak, longest_streak: longestStreak, last_access_date: today, updated_at: new Date().toISOString() })
-        .eq("mentorado_id", mentoradoId);
+        .eq("mentorado_id", existingStreak.mentorado_id);
 
       setStats((prev) => prev ? { ...prev, streakDays: newStreak } : null);
     } else {
-      await supabase.from("user_streaks").insert({
-        mentorado_id: mentoradoId, current_streak: 1, longest_streak: 1, last_access_date: today,
-      });
+      // Only insert if we have a valid legacy mentorado ID (FK constraint)
+      if (legacyId) {
+        await supabase.from("user_streaks").insert({
+          mentorado_id: legacyId, current_streak: 1, longest_streak: 1, last_access_date: today,
+        });
+      }
       setStats((prev) => (prev ? { ...prev, streakDays: 1 } : null));
     }
-  }, [mentoradoId]);
+  }, [mentoradoId, legacyId]);
 
   const trackAiToolUsage = useCallback(async (toolType: string) => {
     if (!mentoradoId) return;
@@ -234,7 +268,7 @@ export function useGamification() {
   const getBadgeUnlockDate = useCallback((badgeId: string) => userBadges.find((ub) => ub.badge_id === badgeId)?.unlocked_at, [userBadges]);
 
   return {
-    badges, userBadges, stats, rewards, redemptions, isLoading, mentoradoId,
+    badges, userBadges, stats, rewards, redemptions, isLoading, mentoradoId, legacyMentoradoId,
     updateStreak, trackAiToolUsage, redeemReward, isBadgeUnlocked, getBadgeUnlockDate,
   };
 }
