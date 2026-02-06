@@ -49,23 +49,38 @@
      }
    });
  
-   // Query 4: Recent activity (últimos memberships criados)
-   const { data: recentActivity, isLoading: activityLoading } = useQuery({
-     queryKey: ['master-recent-activity'],
-     queryFn: async () => {
-       const { data, error } = await supabase
-         .from('memberships')
-         .select(`
-           id, role, created_at,
-           tenants!inner(name),
-           profiles!inner(full_name, email)
-         `)
-         .order('created_at', { ascending: false })
-         .limit(5);
-       if (error) throw error;
-       return (data as unknown as RecentActivity[]) || [];
-     }
-   });
+    // Query 4: Recent activity (últimos memberships criados)
+    const { data: recentActivity, isLoading: activityLoading } = useQuery({
+      queryKey: ['master-recent-activity'],
+      queryFn: async () => {
+        // Fetch memberships with tenant info
+        const { data: memberships, error } = await supabase
+          .from('memberships')
+          .select('id, role, created_at, user_id, tenant_id, tenants!inner(name)')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (error) throw error;
+        if (!memberships || memberships.length === 0) return [];
+        
+        // Fetch profiles separately (no FK between memberships and profiles)
+        const userIds = memberships.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email')
+          .in('user_id', userIds);
+        
+        return memberships.map(m => {
+          const profile = profiles?.find(p => p.user_id === m.user_id);
+          return {
+            id: m.id,
+            role: m.role,
+            created_at: m.created_at,
+            tenants: (m as any).tenants || { name: 'N/A' },
+            profiles: { full_name: profile?.full_name || null, email: profile?.email || null },
+          };
+        }) as RecentActivity[];
+      }
+    });
  
    const isLoading = tenantsLoading || membershipsLoading || usersLoading || activityLoading;
  
