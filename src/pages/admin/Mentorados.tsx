@@ -244,13 +244,17 @@ const Mentorados = () => {
     }
     
     try {
+      // Only pass mentor_membership_id when the active role is actually 'mentor'
+      // For master_admin/admin, the backend will auto-find a mentor in the tenant
+      const mentorId = activeMembership.role === 'mentor' ? activeMembership.id : undefined;
+      
       await createMembership.mutateAsync({
         tenant_id: activeMembership.tenant_id,
         email: manualForm.email,
         full_name: manualForm.full_name,
         phone: manualForm.phone || undefined,
         role: 'mentee',
-        mentor_membership_id: activeMembership.id,
+        mentor_membership_id: mentorId,
       });
       
       setIsAddDialogOpen(false);

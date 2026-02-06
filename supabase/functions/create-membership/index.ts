@@ -277,33 +277,53 @@ serve(async (req) => {
         effectiveMentorMembershipId = callerMembershipInTenant.id;
         console.log("create-membership: Mentor auto-assigning mentee to self:", effectiveMentorMembershipId);
       } else if (isMasterAdmin || isTenantAdmin) {
-        // Master Admin or Admin creating mentee → must specify mentor
-        if (!mentor_membership_id) {
-          console.log("create-membership: Admin must specify mentor_membership_id for mentee");
-          return new Response(
-            JSON.stringify({ error: "Para criar mentorado, é obrigatório especificar o mentor responsável (mentor_membership_id)" }),
-            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
-        }
-        // Validate that mentor_membership_id is a valid mentor in this tenant
-        const { data: mentorMembership, error: mentorCheckError } = await supabaseAdmin
-          .from("memberships")
-          .select("id, role, tenant_id")
-          .eq("id", mentor_membership_id)
-          .eq("tenant_id", tenant_id)
-          .eq("role", "mentor")
-          .eq("status", "active")
-          .single();
+        // Master Admin or Admin creating mentee
+        let resolvedMentorId: string | null = null;
         
-        if (mentorCheckError || !mentorMembership) {
-          console.log("create-membership: Invalid mentor_membership_id:", mentor_membership_id);
-          return new Response(
-            JSON.stringify({ error: "mentor_membership_id inválido. O mentor deve existir e estar ativo neste tenant." }),
-            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
+        if (mentor_membership_id) {
+          // Validate provided mentor_membership_id
+          const { data: mentorMembership } = await supabaseAdmin
+            .from("memberships")
+            .select("id, role, tenant_id")
+            .eq("id", mentor_membership_id)
+            .eq("tenant_id", tenant_id)
+            .eq("role", "mentor")
+            .eq("status", "active")
+            .single();
+          
+          if (mentorMembership) {
+            resolvedMentorId = mentorMembership.id;
+            console.log("create-membership: Admin specified valid mentor:", resolvedMentorId);
+          } else {
+            console.log("create-membership: Provided mentor_membership_id invalid, will auto-find:", mentor_membership_id);
+          }
         }
-        effectiveMentorMembershipId = mentor_membership_id;
-        console.log("create-membership: Admin specified mentor:", effectiveMentorMembershipId);
+        
+        // If no valid mentor provided, auto-find first active mentor in the tenant
+        if (!resolvedMentorId) {
+          const { data: firstMentor } = await supabaseAdmin
+            .from("memberships")
+            .select("id")
+            .eq("tenant_id", tenant_id)
+            .eq("role", "mentor")
+            .eq("status", "active")
+            .limit(1)
+            .single();
+          
+          if (firstMentor) {
+            resolvedMentorId = firstMentor.id;
+            console.log("create-membership: Auto-assigned first tenant mentor:", resolvedMentorId);
+          } else {
+            console.log("create-membership: No mentor found in tenant");
+            return new Response(
+              JSON.stringify({ error: "Nenhum mentor ativo encontrado neste tenant. Crie um mentor primeiro." }),
+              { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+            );
+          }
+        }
+        
+        effectiveMentorMembershipId = resolvedMentorId;
+        console.log("create-membership: Final mentor for mentee:", effectiveMentorMembershipId);
       } else {
         console.log("create-membership: Permission denied - caller not authorized for mentee creation");
         return new Response(
