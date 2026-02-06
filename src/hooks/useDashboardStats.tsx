@@ -149,9 +149,19 @@ export function useMentorDashboardStats() {
       }
 
       // Recent activity
+      // Map activity types from action_type
+      const mapActivityType = (actionType: string): ActivityItem['type'] => {
+        if (actionType.includes('closed_won') || actionType.includes('trail_completed')) return 'trail_completed';
+        if (actionType.includes('lead') || actionType.includes('prospection')) return 'prospection';
+        if (actionType.includes('ranking')) return 'ranking_up';
+        if (actionType.includes('trail_started')) return 'trail_started';
+        if (actionType.includes('meeting')) return 'meeting';
+        return 'prospection';
+      };
+
       const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => ({
         id: a.id,
-        type: 'prospection' as const,
+        type: mapActivityType(a.action_type),
         title: a.action_description || a.action_type,
         timestamp: a.created_at,
       }));
@@ -159,9 +169,38 @@ export function useMentorDashboardStats() {
       const engagementRate = mentoradosCount > 0 
         ? Math.round((activeMentoradosCount / mentoradosCount) * 100) : 0;
 
-      const trailProgress: TrailProgressItem[] = (trailsRes.data || []).slice(0, 3).map(t => ({
-        id: t.id, name: t.title, progress: 0,
-      }));
+      // Calculate real trail progress from trail_progress table
+      let trailProgress: TrailProgressItem[] = [];
+      if (trailsRes.data && trailsRes.data.length > 0) {
+        const trailIds = trailsRes.data.map(t => t.id);
+        const { data: allModules } = await supabase
+          .from('trail_modules').select('id, trail_id').in('trail_id', trailIds);
+        
+        if (allModules && allModules.length > 0) {
+          const moduleIds = allModules.map(m => m.id);
+          const { data: allLessons } = await supabase
+            .from('trail_lessons').select('id, module_id').in('module_id', moduleIds);
+          
+          const { data: allProgress } = await supabase
+            .from('trail_progress').select('lesson_id, completed')
+            .eq('tenant_id', tenantId);
+          
+          const completedSet = new Set(
+            (allProgress || []).filter(p => p.completed).map(p => p.lesson_id)
+          );
+
+          trailProgress = trailsRes.data.slice(0, 3).map(trail => {
+            const trailModuleIds = (allModules || []).filter(m => m.trail_id === trail.id).map(m => m.id);
+            const trailLessons = (allLessons || []).filter(l => trailModuleIds.includes(l.module_id));
+            const totalLessons = trailLessons.length;
+            const completedLessons = trailLessons.filter(l => completedSet.has(l.id)).length;
+            const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+            return { id: trail.id, name: trail.title, progress };
+          });
+        } else {
+          trailProgress = trailsRes.data.slice(0, 3).map(t => ({ id: t.id, name: t.title, progress: 0 }));
+        }
+      }
 
       setStats({
         mentoradosCount, activeMentoradosCount, atRiskCount: 0,
@@ -268,11 +307,11 @@ export function useMenteeDashboardStats() {
         meetingUrl: nextMeetingData.meeting_url || undefined,
       } : null;
 
-      // Trail progress
+      // Trail progress - calculate real percentages
       let trailProgress: TrailProgressItem[] = [];
       const { data: progressData } = await supabase
         .from('trail_progress')
-        .select('id, lesson_id, progress_percent')
+        .select('id, lesson_id, completed')
         .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`);
 
       if (progressData && progressData.length > 0) {
@@ -284,8 +323,25 @@ export function useMenteeDashboardStats() {
           if (modulesData && modulesData.length > 0) {
             const trailIds = [...new Set(modulesData.map(m => m.trail_id))];
             const { data: trailsData } = await supabase.from('trails').select('id, title').in('id', trailIds).eq('tenant_id', tenantId);
+            
+            // Get ALL lessons for these trails to calculate real progress
+            const { data: allTrailLessons } = await supabase
+              .from('trail_lessons').select('id, module_id')
+              .in('module_id', moduleIds);
+
+            const completedSet = new Set(
+              progressData.filter(p => p.completed).map(p => p.lesson_id)
+            );
+
             if (trailsData) {
-              trailProgress = trailsData.map(trail => ({ id: trail.id, name: trail.title, progress: 0 }));
+              trailProgress = trailsData.map(trail => {
+                const trailModuleIds = (modulesData || []).filter(m => m.trail_id === trail.id).map(m => m.id);
+                const trailLessons = (allTrailLessons || []).filter(l => trailModuleIds.includes(l.module_id));
+                const totalLessons = trailLessons.length;
+                const completedLessons = trailLessons.filter(l => completedSet.has(l.id)).length;
+                const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+                return { id: trail.id, name: trail.title, progress };
+              });
             }
           }
         }
