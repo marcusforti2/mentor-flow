@@ -326,9 +326,14 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
       loadProfile(resolvedMentoradoId);
     } catch (error) {
       console.error("Error saving profile:", error);
+      const errorMsg = error instanceof Error
+        ? error.message
+        : (typeof error === 'object' && error !== null && 'message' in error)
+          ? String((error as any).message)
+          : "Erro desconhecido";
       toast({
         title: "Erro ao salvar",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
