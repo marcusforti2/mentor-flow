@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, X, Shield, TrendingUp, Users, Crosshair, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { AIBusinessProfileParser } from "./AIBusinessProfileParser";
 
 interface BusinessProfile {
   id?: string;
@@ -298,6 +299,29 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
     }
   };
 
+  const handleAIProfileParsed = (parsed: Partial<BusinessProfile>) => {
+    setProfile(prev => {
+      const updated = { ...prev };
+      for (const [key, value] of Object.entries(parsed)) {
+        if (value === null || value === undefined) continue;
+        if (Array.isArray(value)) {
+          // Merge arrays without duplicates
+          const existing = (prev as any)[key] || [];
+          (updated as any)[key] = [...new Set([...existing, ...value])];
+        } else if (typeof value === "string" && value.trim() === "") {
+          continue;
+        } else {
+          // Only overwrite if the existing field is empty
+          const existingVal = (prev as any)[key];
+          if (!existingVal || existingVal === "" || existingVal === 0) {
+            (updated as any)[key] = value;
+          }
+        }
+      }
+      return updated;
+    });
+  };
+
   const addPainPoint = () => {
     if (painPointInput.trim() && !profile.pain_points_solved.includes(painPointInput.trim())) {
       setProfile({
@@ -387,10 +411,13 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-xl">
-          <Shield className="w-5 h-5 text-primary" />
-          Governo do Negócio
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Shield className="w-5 h-5 text-primary" />
+            Governo do Negócio
+          </CardTitle>
+          <AIBusinessProfileParser onProfileParsed={handleAIProfileParsed} />
+        </div>
         <CardDescription className="text-muted-foreground">
           Diagnóstico estratégico para clareza, controle e previsibilidade de vendas.
           <div className="mt-3">

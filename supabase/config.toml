@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.cleanup-system]
 verify_jwt = false
+
+[functions.parse-business-profile]
+verify_jwt = false
