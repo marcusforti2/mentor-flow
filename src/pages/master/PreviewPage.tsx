@@ -1,45 +1,53 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Eye, Users, User, ExternalLink, AlertTriangle, Loader2, Rocket, RefreshCw, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { 
+  Eye, Users, User, Loader2, Rocket, RefreshCw, CheckCircle, 
+  ArrowRight, Briefcase, TrendingUp, BarChart3, Flame, Snowflake, Sun
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface MembershipOption {
+interface SandboxMember {
   id: string;
   role: string;
   tenant_id: string;
-  tenant_name: string;
+  user_id: string;
   user_name: string | null;
   user_email: string | null;
+  // Mentorado-specific enrichment
+  leads_count?: number;
+  activity_level?: 'alta' | 'media' | 'baixa' | 'inativa';
+  points?: number;
+  temperature?: string;
+}
+
+interface SandboxStats {
+  trails: number;
+  leads: number;
+  meetings: number;
+  mentorados: number;
 }
 
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
 
 export default function PreviewPage() {
-  const { switchMembership, memberships } = useTenant();
-  const navigate = useNavigate();
-  const [selectedMentee, setSelectedMentee] = useState<string>('');
-  const [menteeOptions, setMenteeOptions] = useState<MembershipOption[]>([]);
-  const [mentorOptions, setMentorOptions] = useState<MembershipOption[]>([]);
+  const { switchMembership } = useTenant();
+  const [mentees, setMentees] = useState<SandboxMember[]>([]);
+  const [mentor, setMentor] = useState<SandboxMember | null>(null);
+  const [stats, setStats] = useState<SandboxStats>({ trails: 0, leads: 0, meetings: 0, mentorados: 0 });
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
-  const [seeded, setSeeded] = useState(false);
+  const [entering, setEntering] = useState<string | null>(null);
+  const autoSeeded = useRef(false);
 
-  const fetchSandboxMemberships = async () => {
+  const fetchSandboxData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch sandbox memberships
+      const { data: membData, error } = await supabase
         .from('memberships')
         .select('id, role, status, tenant_id, user_id, tenants(name)')
         .eq('tenant_id', SANDBOX_TENANT_ID)
@@ -48,40 +56,130 @@ export default function PreviewPage() {
 
       if (error) {
         console.error('[PreviewPage] Error:', error);
+        setLoading(false);
         return;
       }
 
-      if (!data || data.length === 0) {
-        setMenteeOptions([]);
-        setMentorOptions([]);
+      if (!membData || membData.length === 0) {
+        setMentees([]);
+        setMentor(null);
+        setLoading(false);
         return;
       }
 
-      const userIds = [...new Set(data.map(m => m.user_id))];
+      // Fetch profiles for all users
+      const userIds = [...new Set(membData.map(m => m.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email')
         .in('id', userIds);
-
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      const options: MembershipOption[] = data.map(m => {
+      // Build member list
+      const members: SandboxMember[] = membData.map(m => {
         const profile = profileMap.get(m.user_id);
-        const tenantData = m.tenants as any;
         return {
           id: m.id,
           role: m.role,
           tenant_id: m.tenant_id,
-          tenant_name: tenantData?.name || 'Sandbox',
+          user_id: m.user_id,
           user_name: profile?.full_name || null,
           user_email: profile?.email || null,
         };
       });
 
-      setMenteeOptions(options.filter(o => o.role === 'mentee'));
-      setMentorOptions(options.filter(o => o.role === 'mentor'));
+      const mentorMember = members.find(m => m.role === 'mentor') || null;
+      const menteeMemberships = members.filter(m => m.role === 'mentee');
       
-      if (options.length > 0) setSeeded(true);
+      // Enrich mentees with CRM data
+      if (menteeMemberships.length > 0) {
+        const menteeUserIds = menteeMemberships.map(m => m.user_id);
+        
+        // Get mentorado records for these users
+        const { data: mentorados } = await supabase
+          .from('mentorados')
+          .select('id, user_id, status')
+          .in('user_id', menteeUserIds);
+        
+        if (mentorados && mentorados.length > 0) {
+          const mentoradoIds = mentorados.map(m => m.id);
+          
+          // Get leads count per mentorado
+          const { data: prospections } = await supabase
+            .from('crm_prospections')
+            .select('mentorado_id, temperature')
+            .in('mentorado_id', mentoradoIds);
+          
+          // Get activity logs count
+          const { data: activities } = await supabase
+            .from('activity_logs')
+            .select('mentorado_id')
+            .in('mentorado_id', mentoradoIds);
+          
+          // Get gamification points
+          const { data: pointsData } = await supabase
+            .from('activity_logs')
+            .select('mentorado_id, points_earned')
+            .in('mentorado_id', mentoradoIds);
+          
+          const mentoradoByUser = new Map(mentorados.map(m => [m.user_id, m.id]));
+          
+          // Count leads per mentorado
+          const leadsPerMentorado = new Map<string, number>();
+          const tempPerMentorado = new Map<string, string>();
+          prospections?.forEach(p => {
+            if (p.mentorado_id) {
+              leadsPerMentorado.set(p.mentorado_id, (leadsPerMentorado.get(p.mentorado_id) || 0) + 1);
+              if (p.temperature) tempPerMentorado.set(p.mentorado_id, p.temperature);
+            }
+          });
+          
+          // Count activities per mentorado
+          const actPerMentorado = new Map<string, number>();
+          activities?.forEach(a => {
+            if (a.mentorado_id) {
+              actPerMentorado.set(a.mentorado_id, (actPerMentorado.get(a.mentorado_id) || 0) + 1);
+            }
+          });
+          
+          // Sum points per mentorado
+          const ptsPerMentorado = new Map<string, number>();
+          pointsData?.forEach(p => {
+            if (p.mentorado_id && p.points_earned) {
+              ptsPerMentorado.set(p.mentorado_id, (ptsPerMentorado.get(p.mentorado_id) || 0) + p.points_earned);
+            }
+          });
+          
+          // Enrich mentee data
+          menteeMemberships.forEach(m => {
+            const mentoradoId = mentoradoByUser.get(m.user_id);
+            if (mentoradoId) {
+              m.leads_count = leadsPerMentorado.get(mentoradoId) || 0;
+              m.temperature = tempPerMentorado.get(mentoradoId);
+              m.points = ptsPerMentorado.get(mentoradoId) || 0;
+              const actCount = actPerMentorado.get(mentoradoId) || 0;
+              m.activity_level = actCount > 15 ? 'alta' : actCount > 5 ? 'media' : actCount > 0 ? 'baixa' : 'inativa';
+            }
+          });
+        }
+      }
+
+      setMentor(mentorMember);
+      setMentees(menteeMemberships);
+
+      // Fetch stats
+      const [trailsRes, leadsRes, meetingsRes] = await Promise.all([
+        supabase.from('trails').select('id', { count: 'exact', head: true }).eq('tenant_id', SANDBOX_TENANT_ID),
+        supabase.from('crm_prospections').select('id', { count: 'exact', head: true }).eq('tenant_id', SANDBOX_TENANT_ID),
+        supabase.from('meetings').select('id', { count: 'exact', head: true }).eq('tenant_id', SANDBOX_TENANT_ID),
+      ]);
+
+      setStats({
+        trails: trailsRes.count || 0,
+        leads: leadsRes.count || 0,
+        meetings: meetingsRes.count || 0,
+        mentorados: menteeMemberships.length,
+      });
     } catch (err) {
       console.error('[PreviewPage] Error:', err);
     } finally {
@@ -90,17 +188,23 @@ export default function PreviewPage() {
   };
 
   useEffect(() => {
-    fetchSandboxMemberships();
+    fetchSandboxData();
   }, []);
+
+  // Auto-seed if sandbox is empty
+  useEffect(() => {
+    if (!loading && !mentor && mentees.length === 0 && !seeding && !autoSeeded.current) {
+      autoSeeded.current = true;
+      handleSeedSandbox();
+    }
+  }, [loading, mentor, mentees.length, seeding]);
 
   const handleSeedSandbox = async () => {
     setSeeding(true);
     try {
       toast.info('Preparando ambiente de preview... Isso pode levar até 30 segundos.');
       
-      const { data, error } = await supabase.functions.invoke('seed-sandbox', {
-        body: {},
-      });
+      const { data, error } = await supabase.functions.invoke('seed-sandbox', { body: {} });
 
       if (error) {
         console.error('[PreviewPage] Seed error:', error);
@@ -113,11 +217,8 @@ export default function PreviewPage() {
         return;
       }
 
-      toast.success(`Preview preparado! ${data.mentees_created} mentorados, ${data.trails_created} trilhas e ${data.meetings_created} eventos criados.`);
-      setSeeded(true);
-      
-      // Refresh the memberships list
-      await fetchSandboxMemberships();
+      toast.success(`Preview preparado! ${data.mentees_created || 0} mentorados criados.`);
+      await fetchSandboxData();
     } catch (err: any) {
       console.error('[PreviewPage] Seed error:', err);
       toast.error('Erro ao preparar o preview');
@@ -126,269 +227,238 @@ export default function PreviewPage() {
     }
   };
 
-  const handleMentorPreview = async () => {
-    const mentor = mentorOptions[0];
-    if (mentor) {
-      await switchMembership(mentor.id);
-      navigate('/admin');
+  const handleEnterAs = async (membershipId: string) => {
+    setEntering(membershipId);
+    try {
+      await switchMembership(membershipId);
+    } catch (e) {
+      console.error('[PreviewPage] Enter error:', e);
+      toast.error('Erro ao entrar no preview');
+    } finally {
+      setEntering(null);
     }
   };
 
-  const handleMenteePreview = async () => {
-    if (selectedMentee) {
-      await switchMembership(selectedMentee);
-      navigate('/app');
+  const getActivityColor = (level?: string) => {
+    switch (level) {
+      case 'alta': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
+      case 'media': return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
+      case 'baixa': return 'text-amber-400 bg-amber-400/10 border-amber-400/30';
+      default: return 'text-slate-500 bg-slate-500/10 border-slate-500/30';
     }
   };
 
-  const getMenteeLabel = (m: MembershipOption) => {
-    return m.user_name || m.user_email || `Mentorado ${m.id.slice(0, 8)}`;
+  const getActivityLabel = (level?: string) => {
+    switch (level) {
+      case 'alta': return 'Alta';
+      case 'media': return 'Média';
+      case 'baixa': return 'Baixa';
+      default: return 'Inativa';
+    }
   };
 
-  const hasSandboxData = menteeOptions.length > 0 || mentorOptions.length > 0;
+  const getTemperatureIcon = (temp?: string) => {
+    switch (temp) {
+      case 'hot': return <Flame className="h-3 w-3 text-red-400" />;
+      case 'warm': return <Sun className="h-3 w-3 text-amber-400" />;
+      case 'cold': return <Snowflake className="h-3 w-3 text-blue-400" />;
+      default: return null;
+    }
+  };
+
+  const hasSandboxData = mentor || mentees.length > 0;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-slate-400">Carregando ambiente de preview...</p>
+      </div>
+    );
+  }
+
+  // Seeding state
+  if (seeding) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <div className="relative">
+          <Rocket className="h-12 w-12 text-primary animate-bounce" />
+        </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-slate-100">Preparando demonstração...</h2>
+          <p className="text-sm text-slate-400 mt-2 max-w-md">
+            Criando mentor, 10 mentorados, trilhas, leads de CRM, reuniões e dados de atividade.
+            Isso leva cerca de 30 segundos.
+          </p>
+        </div>
+        <Loader2 className="h-6 w-6 animate-spin text-primary mt-4" />
+      </div>
+    );
+  }
+
+  // Empty state (shouldn't normally show since auto-seed triggers)
+  if (!hasSandboxData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-6">
+        <Rocket className="h-16 w-16 text-primary/50" />
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-slate-100">Ambiente de Preview</h2>
+          <p className="text-sm text-slate-400 mt-2">Nenhum dado encontrado no sandbox.</p>
+        </div>
+        <Button onClick={handleSeedSandbox} size="lg" className="px-8">
+          <Rocket className="mr-2 h-5 w-5" />
+          Preparar Preview
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-display font-bold text-slate-100">
-          Preview do Sistema
-        </h1>
-        <p className="text-slate-400 mt-1">
-          Explore as áreas de Mentor e Mentorado com dados de demonstração
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-slate-100">
+            Preview do Sistema
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Escolha um perfil para explorar a plataforma com dados reais
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSeedSandbox}
+          disabled={seeding}
+          className="border-slate-700 text-slate-300 hover:bg-slate-800"
+        >
+          {seeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          Recriar dados
+        </Button>
       </div>
 
-      {/* Seed Section */}
-      {!hasSandboxData && !loading && (
-        <Card className="bg-gradient-to-br from-primary/20 to-accent/10 border-primary/30">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <Rocket className="h-12 w-12 text-primary" />
-              <div>
-                <h2 className="text-xl font-bold text-slate-100">Preparar Ambiente de Preview</h2>
-                <p className="text-slate-400 mt-2 max-w-lg">
-                  Clique abaixo para criar automaticamente dados de demonstração: 
-                  1 mentor, 10 mentorados, 2 trilhas completas, calendário com eventos, 
-                  CRM com leads e muito mais.
-                </p>
+      {/* Stats Banner */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: 'Mentorados', value: stats.mentorados, icon: Users },
+          { label: 'Trilhas', value: stats.trails, icon: BarChart3 },
+          { label: 'Leads CRM', value: stats.leads, icon: TrendingUp },
+          { label: 'Reuniões', value: stats.meetings, icon: Briefcase },
+        ].map(({ label, value, icon: Icon }) => (
+          <Card key={label} className="bg-slate-800/30 border-slate-700/30">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Icon className="h-4 w-4 text-primary" />
               </div>
-              <Button
-                onClick={handleSeedSandbox}
-                disabled={seeding}
-                size="lg"
-                className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg"
-              >
-                {seeding ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Criando dados de demo...
-                  </>
+              <div>
+                <p className="text-2xl font-bold text-slate-100">{value}</p>
+                <p className="text-xs text-slate-500">{label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Mentor Card */}
+      {mentor && (
+        <Card 
+          className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 border-primary/20 hover:border-primary/40 transition-all cursor-pointer group"
+          onClick={() => handleEnterAs(mentor.id)}
+        >
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xl border-2 border-primary/30">
+                  {(mentor.user_name || 'M')[0]}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-slate-100">
+                      {mentor.user_name || 'Mentor Demo'}
+                    </h2>
+                    <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">
+                      MENTOR
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-0.5">
+                    Dashboard completo • {stats.mentorados} mentorados • CRM • Trilhas • Calendário
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {entering === mentor.id ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 ) : (
-                  <>
-                    <Rocket className="mr-2 h-5 w-5" />
-                    Preparar Preview
-                  </>
+                  <div className="flex items-center gap-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-sm font-medium">Entrar</span>
+                    <ArrowRight className="h-5 w-5" />
+                  </div>
                 )}
-              </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      {/* Mentorados Section */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <User className="h-5 w-5 text-accent" />
+          <h2 className="text-lg font-semibold text-slate-100">Mentorados</h2>
+          <span className="text-sm text-slate-500">— clique para entrar como qualquer um</span>
         </div>
-      )}
 
-      {/* Preview Cards */}
-      {hasSandboxData && (
-        <>
-          {/* Status Banner */}
-          <Card className="bg-emerald-500/10 border-emerald-500/30">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-emerald-400" />
-                <div>
-                  <p className="text-sm text-emerald-200 font-medium">
-                    Preview pronto — {mentorOptions.length} mentor(es) e {menteeOptions.length} mentorado(s) disponíveis
-                  </p>
-                  <p className="text-xs text-emerald-300/70 mt-0.5">
-                    O preview troca o contexto ativo. Use o botão de retorno no topo para voltar ao Master.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSeedSandbox}
-                disabled={seeding}
-                className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
-              >
-                {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                <span className="ml-2">Recriar</span>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Mentor Preview */}
-            <Card className="bg-slate-800/50 border-slate-700/50">
-              <CardHeader>
-                <CardTitle className="text-slate-100 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Área do Mentor
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Painel completo com dashboard, mentorados, trilhas, calendário e CRM
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {mentorOptions.length > 0 && (
-                  <div className="p-3 rounded-lg bg-slate-900/50 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                      {(mentorOptions[0].user_name || 'M')[0]}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {mentees.map((m) => (
+            <Card 
+              key={m.id}
+              className="bg-slate-800/40 border-slate-700/30 hover:border-accent/30 transition-all cursor-pointer group"
+              onClick={() => handleEnterAs(m.id)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-semibold text-sm border border-accent/20">
+                      {(m.user_name || '?')[0]}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-200">{mentorOptions[0].user_name || 'Mentor Demo'}</p>
-                      <p className="text-xs text-slate-400">{menteeOptions.length} mentorados vinculados</p>
+                      <p className="text-sm font-medium text-slate-200">
+                        {m.user_name || m.user_email || 'Mentorado'}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${getActivityColor(m.activity_level)}`}>
+                          {getActivityLabel(m.activity_level)}
+                        </Badge>
+                        {m.leads_count !== undefined && m.leads_count > 0 && (
+                          <span className="text-[10px] text-slate-500">{m.leads_count} leads</span>
+                        )}
+                        {getTemperatureIcon(m.temperature)}
+                        {m.points !== undefined && m.points > 0 && (
+                          <span className="text-[10px] text-amber-400/70">★ {m.points}pts</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
-
-                <div className="p-4 rounded-lg bg-slate-900/50 space-y-2">
-                  <p className="text-sm text-slate-300">O que você verá:</p>
-                  <ul className="text-xs text-slate-400 space-y-1">
-                    <li>• Dashboard com métricas de {menteeOptions.length} mentorados</li>
-                    <li>• 2 trilhas completas com aulas</li>
-                    <li>• Calendário com reuniões agendadas</li>
-                    <li>• CRM com leads de todos os mentorados</li>
-                    <li>• Ranking e engajamento</li>
-                  </ul>
+                  <div className="flex items-center">
+                    {entering === m.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                    ) : (
+                      <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-accent transition-colors" />
+                    )}
+                  </div>
                 </div>
-
-                <Button
-                  onClick={handleMentorPreview}
-                  disabled={mentorOptions.length === 0}
-                  className="w-full bg-primary hover:bg-primary/90"
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Entrar como Mentor
-                  <ExternalLink className="ml-2 h-3 w-3" />
-                </Button>
               </CardContent>
             </Card>
+          ))}
+        </div>
+      </div>
 
-            {/* Mentee Preview */}
-            <Card className="bg-slate-800/50 border-slate-700/50">
-              <CardHeader>
-                <CardTitle className="text-slate-100 flex items-center gap-2">
-                  <User className="h-5 w-5 text-accent" />
-                  Área do Mentorado
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Experiência individual com dashboard, trilhas, CRM e ferramentas IA
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-300">Selecione um mentorado:</label>
-                  <Select value={selectedMentee} onValueChange={setSelectedMentee}>
-                    <SelectTrigger className="bg-slate-900/50 border-slate-700">
-                      <SelectValue placeholder="Escolha um mentorado..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {menteeOptions.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {getMenteeLabel(m)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="p-4 rounded-lg bg-slate-900/50 space-y-2">
-                  <p className="text-sm text-slate-300">O que você verá:</p>
-                  <ul className="text-xs text-slate-400 space-y-1">
-                    <li>• Dashboard pessoal com métricas</li>
-                    <li>• Trilhas e progresso individual</li>
-                    <li>• CRM com leads do mentorado</li>
-                    <li>• Ferramentas de IA</li>
-                    <li>• Ranking (posição anônima)</li>
-                  </ul>
-                </div>
-
-                <Button
-                  onClick={handleMenteePreview}
-                  disabled={!selectedMentee}
-                  className="w-full bg-accent hover:bg-accent/90"
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Entrar como Mentorado
-                  <ExternalLink className="ml-2 h-3 w-3" />
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-
-      {/* Impersonation Section */}
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardHeader>
-          <CardTitle className="text-slate-100 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-400" />
-            Impersonation (Dev)
-            <Badge variant="outline" className="ml-2 text-amber-400 border-amber-400/50">
-              Debug Only
-            </Badge>
-          </CardTitle>
-          <CardDescription className="text-slate-400">
-            Troque o contexto para qualquer membership existente. Logs são registrados.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 mb-4">
-            <p className="text-sm text-red-300">
-              ⚠️ Impersonation troca o contexto ativo. Use apenas para debug.
-              <br />
-              <span className="text-xs text-red-400">
-                Todos os acessos são registrados na tabela impersonation_logs.
-              </span>
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm text-slate-300">Memberships do seu usuário:</label>
-            <div className="grid gap-2">
-              {memberships.map((m) => (
-                <Button
-                  key={m.id}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start text-left border-slate-700 hover:bg-slate-700"
-                  onClick={() => switchMembership(m.id)}
-                >
-                  <Badge 
-                    variant="outline" 
-                    className={`mr-2 ${
-                      m.role === 'master_admin' ? 'text-amber-400 border-amber-400/50' :
-                      m.role === 'mentor' ? 'text-primary border-primary/50' :
-                      'text-accent border-accent/50'
-                    }`}
-                  >
-                    {m.role}
-                  </Badge>
-                  <span className="text-slate-300">{m.tenant_name}</span>
-                  <span className="text-slate-500 text-xs ml-auto">{m.id.slice(0, 8)}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Footer note */}
+      <div className="flex items-center gap-2 text-xs text-slate-600 pt-4 border-t border-slate-800">
+        <CheckCircle className="h-3 w-3" />
+        <span>Preview usa impersonation auditada. Use o banner âmbar no topo para retornar ao Master.</span>
+      </div>
     </div>
   );
 }
