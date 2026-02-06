@@ -53,6 +53,7 @@
 
     const isMasterViewing = realMembership?.role === 'master_admin';
     const showReturnBanner = isImpersonating || isMasterViewing;
+    const showReturnButton = showReturnBanner;
 
     const handleReturnToMaster = () => {
       if (isImpersonating) {
@@ -67,19 +68,20 @@
         {/* Animated gradient background */}
         <div className="animated-gradient-bg" />
         
-        {/* Return to Master / Impersonation Banner */}
+        {/* Return to Master - discrete icon */}
         {showReturnBanner && (
-          <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-black px-4 py-2 flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {isImpersonating 
-                ? `⚠️ Visualizando como: ${activeMembership?.role} (${activeMembership?.tenant_name})`
-                : '⚠️ Visualizando área do Mentorado como Master Admin'
-              }
-            </span>
-            <Button size="sm" variant="outline" onClick={handleReturnToMaster} className="h-7 text-xs">
-              Voltar ao Master
-            </Button>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                onClick={handleReturnToMaster}
+                className="fixed top-3 right-3 z-50 h-7 w-7 rounded-full bg-amber-500/80 hover:bg-amber-500 text-black shadow-md backdrop-blur-sm"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Voltar ao Master</TooltipContent>
+          </Tooltip>
         )}
        
        {/* Floating Dock - only visible on dashboard */}
@@ -87,10 +89,7 @@
  
        {/* Back Header - visible on sub-pages */}
        {!isDashboard && (
-          <header className={cn(
-            "fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50",
-            showReturnBanner ? "top-10" : "top-0"
-          )}>
+          <header className="fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
            <div className="flex items-center gap-3">
              <Button
                variant="ghost"
@@ -131,10 +130,7 @@
  
        {/* Top bar with logo and user - only on dashboard */}
        {isDashboard && (
-          <header className={cn(
-            "fixed left-0 right-0 z-40 p-4 flex items-center justify-between",
-            showReturnBanner ? "top-10" : "top-0"
-          )}>
+          <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0">
            <Link to="/mentorado" className="ml-28">
              <LBVLogo variant="full" size="sm" />
            </Link>
@@ -166,13 +162,12 @@
          </header>
        )}
  
-       <main className={cn(
-         "min-h-screen transition-all duration-300",
-         isDashboard 
-           ? "ml-28 pt-20 px-6 pb-6" 
-           : "pt-16 pb-6",
-         showReturnBanner && "pt-26"
-       )}>
+        <main className={cn(
+          "min-h-screen transition-all duration-300",
+          isDashboard 
+            ? "ml-28 pt-20 px-6 pb-6" 
+            : "pt-16 pb-6"
+        )}>
          <Outlet />
        </main>
  
