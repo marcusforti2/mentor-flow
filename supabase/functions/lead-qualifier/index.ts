@@ -297,6 +297,7 @@ ${businessProfile ? `
 - Faixa de Preço: ${businessProfile.price_range || 'Não informado'}
 - Ticket Médio: ${businessProfile.average_ticket || 'Não informado'}
 - Canais de Venda: ${businessProfile.current_sales_channels?.join(', ') || 'Não informado'}
+${businessProfile.pitch_context ? `\n## PITCH / CONTEXTO DETALHADO DO PRODUTO:\n${businessProfile.pitch_context}` : ''}
 ` : 'Não configurado - fazer análise genérica'}
 
 ## DADOS DO LEAD A SER ANALISADO:
