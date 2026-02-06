@@ -3,7 +3,7 @@ import {
   Target, Play, Users, Gift, Shield,
   TrendingUp, ArrowRight, Zap,
   Eye, Trophy, Sparkles, CheckCircle2, Monitor, Clock,
-  XCircle, Flame, LineChart, Award
+  XCircle, Flame, LineChart, Award, Rocket, Crown, Lock, Heart
 } from 'lucide-react';
 import { LBVLogo } from '@/components/LBVLogo';
 
@@ -18,8 +18,8 @@ export function SlideRenderer({ slideIndex }: SlideRendererProps) {
     case 2: return <SlideArsenalIA />;
     case 3: return <SlideCRMVision />;
     case 4: return <SlideTrilhasGamificacao />;
-    case 5: return <SlideSuporte247 />;
-    case 6: return <SlideMentorPainel />;
+    case 5: return <SlideMentorVirtual />;
+    case 6: return <SlideTransformacao />;
     case 7: return <SlideEncerramento />;
     default: return null;
   }
@@ -103,7 +103,7 @@ function IconCircle({ icon: Icon }: { icon: React.ComponentType<{ className?: st
 
 /* ═══════════════════════════════════════════
    SLIDE 0 — CAPA
-   Hero emocional, frase que provoca
+   Fala direto com o mentorado: "isso é PRA VOCÊ"
    ═══════════════════════════════════════════ */
 
 function SlideCapa() {
@@ -118,20 +118,21 @@ function SlideCapa() {
 
       <div className="space-y-8 max-w-4xl relative z-10">
         <Headline className="text-[clamp(2.2rem,5.5vw,4.5rem)]">
-          Pare de vender <Gold>no escuro.</Gold>
+          Você acabou de ganhar<br />
+          um <Gold>arsenal de vendas.</Gold>
         </Headline>
 
         <Sub className="text-lg md:text-xl mx-auto max-w-xl">
-          A plataforma que dá ao seu mentorado tudo que ele precisa para
-          prospectar com inteligência, fechar com confiança e escalar com método.
+          Tudo que você precisa pra prospectar melhor, fechar mais rápido 
+          e parar de depender de sorte. Construímos isso <span className="text-white font-medium">pra você crescer</span>.
         </Sub>
 
         <div className="flex flex-wrap gap-3 justify-center pt-2">
           {[
-            '8 IAs de Vendas',
-            'CRM com Vision AI',
-            'Gamificação Completa',
-            'Suporte 24/7',
+            '8 IAs treinadas pra você',
+            'Seu CRM pessoal',
+            'Trilhas + Gamificação',
+            'Suporte 24/7 com IA',
           ].map(tag => (
             <Pill key={tag}>{tag}</Pill>
           ))}
@@ -142,100 +143,75 @@ function SlideCapa() {
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 1 — O PROBLEMA (Antes/Depois)
+   SLIDE 1 — O PROBLEMA (a dor DELES)
    ═══════════════════════════════════════════ */
 
 function SlideProblema() {
-  const sem = [
-    'Prospecta sem método — manda mensagens genéricas',
-    'Não sabe qualificar lead — perde tempo com quem não compra',
-    'Esquece follow-up — oportunidades morrem no silêncio',
-    'Depende 100% do mentor pra cada dúvida',
-    'Não tem CRM — pipeline na cabeça ou no bloco de notas',
-    'Conteúdo disperso — WhatsApp, Google Drive, YouTube',
-  ];
-
-  const com = [
-    'IA gera scripts personalizados pra cada lead',
-    'Score DISC + estratégia de abordagem em segundos',
-    'Coach de Follow-up sugere o que mandar e quando',
-    'Mentor Virtual 24/7 responde na hora',
-    'CRM Kanban visual com pipeline organizado',
-    'Trilhas Netflix com tracking de progresso por aula',
+  const dores = [
+    { icon: XCircle, text: 'Você prospecta sem método — manda mensagem genérica e torce pra responderem' },
+    { icon: XCircle, text: 'Não sabe se o lead tá quente ou frio — perde tempo com quem não vai comprar' },
+    { icon: XCircle, text: 'Esquece de fazer follow-up — oportunidades morrem no silêncio' },
+    { icon: XCircle, text: 'Na hora da objeção, trava — não sabe o que responder' },
+    { icon: XCircle, text: 'Seus leads ficam na cabeça, no bloco de notas ou perdidos no WhatsApp' },
+    { icon: XCircle, text: 'Consome conteúdo mas não aplica — falta processo e organização' },
   ];
 
   return (
     <div className="space-y-8">
       <div className="space-y-4 text-center">
-        <Pill>O Problema</Pill>
+        <Pill>Seja honesto</Pill>
         <Headline>
-          Seu mentorado <Gold>sem a plataforma</Gold><br />
-          vs. com ela.
+          Quantas vendas <Gold>você já perdeu</Gold><br />
+          por falta de processo?
         </Headline>
+        <Sub className="mx-auto text-center">
+          Se você se identifica com pelo menos 3 dessas situações, a plataforma que vamos te apresentar vai mudar seu jogo.
+        </Sub>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* SEM */}
-        <Card className="space-y-4" style={{ borderColor: 'hsl(0 60% 30% / 0.3)' }}>
-          <div className="flex items-center gap-2 pb-2 border-b border-white/[0.05]">
-            <XCircle className="w-5 h-5 text-red-400" />
-            <span className="text-red-400 font-display font-bold text-sm uppercase tracking-wider">Sem a plataforma</span>
-          </div>
-          <div className="space-y-3">
-            {sem.map((s, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500/50 mt-2 shrink-0" />
-                <span className="text-slate-400 text-sm leading-relaxed">{s}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-4xl mx-auto">
+        {dores.map((d, i) => (
+          <Card key={i} className="flex items-start gap-3 p-4" style={{ borderColor: 'hsl(0 60% 30% / 0.15)' }}>
+            <d.icon className="w-5 h-5 text-red-400/70 shrink-0 mt-0.5" />
+            <span className="text-slate-300 text-sm leading-relaxed">{d.text}</span>
+          </Card>
+        ))}
+      </div>
 
-        {/* COM */}
-        <Card className="space-y-4" style={{ borderColor: 'hsl(150 60% 30% / 0.3)' }}>
-          <div className="flex items-center gap-2 pb-2 border-b border-white/[0.05]">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            <span className="text-emerald-400 font-display font-bold text-sm uppercase tracking-wider">Com a plataforma</span>
-          </div>
-          <div className="space-y-3">
-            {com.map((c, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500/70 mt-0.5 shrink-0" />
-                <span className="text-slate-300 text-sm leading-relaxed">{c}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+      <div className="text-center pt-2">
+        <p className="text-slate-500 text-sm">
+          Se isso te incomoda, <span className="text-white font-medium">bom sinal</span>. Significa que você quer mais. E a gente construiu exatamente o que você precisa.
+        </p>
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 2 — ARSENAL DE IA
+   SLIDE 2 — ARSENAL DE IA (as armas DELES)
    ═══════════════════════════════════════════ */
 
 function SlideArsenalIA() {
   const tools = [
-    { icon: Target, name: 'Qualificador de Leads', hook: 'Cola o perfil → recebe score, DISC, script pronto.' },
-    { icon: MessageSquare, name: 'Hub de Comunicação', hook: 'Scripts pro WhatsApp, Instagram, LinkedIn e Email.' },
-    { icon: Swords, name: 'Simulador de Objeções', hook: 'Role-play com IA antes de cada reunião real.' },
-    { icon: FileText, name: 'Criador de Propostas', hook: 'Proposta profissional com ancoragem de valor.' },
-    { icon: BarChart3, name: 'Análise de Performance', hook: 'Envia a call, recebe diagnóstico completo.' },
-    { icon: User, name: 'Gerador de Bio', hook: 'Bio otimizada pro posicionamento certo.' },
-    { icon: PenTool, name: 'Gerador de Conteúdo', hook: 'Posts que atraem o público certo.' },
-    { icon: Bot, name: 'Mentor Virtual 24/7', hook: 'Tira dúvida de vendas a qualquer hora.' },
+    { icon: Target, name: 'Qualificador de Leads', hook: 'Cola o perfil do lead → recebe score, perfil DISC e script de abordagem pronto.' },
+    { icon: MessageSquare, name: 'Hub de Comunicação', hook: 'Scripts personalizados pro WhatsApp, Instagram, LinkedIn e Email. Sem mais "oi, tudo bem?"' },
+    { icon: Swords, name: 'Simulador de Objeções', hook: 'Treina com a IA antes da reunião real. Ela te desafia como um cliente difícil.' },
+    { icon: FileText, name: 'Criador de Propostas', hook: 'Proposta profissional com ancoragem de valor em minutos.' },
+    { icon: BarChart3, name: 'Análise de Calls', hook: 'Grava a call, envia pra IA. Ela te dá diagnóstico completo do que melhorar.' },
+    { icon: User, name: 'Gerador de Bio', hook: 'Bio otimizada pro seu posicionamento. Atrai o cliente certo.' },
+    { icon: PenTool, name: 'Gerador de Conteúdo', hook: 'Posts prontos pra LinkedIn, Instagram e Stories que atraem leads.' },
+    { icon: Bot, name: 'Mentor Virtual 24/7', hook: 'Travou numa negociação às 23h? Pergunta pra IA. Ela responde na hora.' },
   ];
 
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <Pill>Arsenal de Vendas</Pill>
+        <Pill>Seu Arsenal</Pill>
         <Headline>
-          <GradientText>8 IAs</GradientText> treinadas<br />
-          no seu negócio.
+          <GradientText>8 inteligências artificiais</GradientText><br />
+          trabalhando pra <Gold>você.</Gold>
         </Headline>
-        <Sub>Não é IA genérica. Cada ferramenta sabe o que você vende, pra quem e como. Personalizadas com seu Contexto de Pitch.</Sub>
+        <Sub>Não é ChatGPT genérico. Cada IA sabe o que você vende, pra quem e como. Elas usam o contexto do <span className="text-white font-medium">seu negócio</span>.</Sub>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -254,8 +230,7 @@ function SlideArsenalIA() {
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 3 — CRM COM VISION AI
-   Feature showcase com mockup grande
+   SLIDE 3 — CRM COM VISION AI (organização DELES)
    ═══════════════════════════════════════════ */
 
 function SlideCRMVision() {
@@ -264,22 +239,22 @@ function SlideCRMVision() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         {/* Copy */}
         <div className="space-y-6">
-          <Pill>CRM Inteligente</Pill>
+          <Pill>Seu CRM Pessoal</Pill>
           <Headline>
-            Manda o <Gold>print.</Gold><br />
-            A IA faz o resto.
+            Chega de lead<br />
+            <Gold>perdido no WhatsApp.</Gold>
           </Headline>
           <Sub>
-            Tirou print de uma conversa no WhatsApp ou Instagram?
-            A IA extrai nome, empresa, temperatura, objeções e monta a ficha do lead automaticamente.
+            Agora você tem um pipeline visual pra organizar cada oportunidade.
+            E o melhor: manda o <span className="text-white font-medium">print da conversa</span> e a IA cadastra o lead pra você automaticamente.
           </Sub>
 
           <div className="space-y-3 pt-2">
             {[
-              { icon: Monitor, text: 'Pipeline Kanban com 6 estágios visuais' },
-              { icon: Eye, text: 'Upload de até 10 prints — IA analisa tudo' },
-              { icon: Target, text: 'Score e temperatura do lead calculados automaticamente' },
-              { icon: Zap, text: 'Lead cai direto no funil, pronto pra abordagem' },
+              { icon: Monitor, text: 'Pipeline Kanban com etapas visuais — você vê tudo' },
+              { icon: Eye, text: 'Upload de prints — a IA extrai nome, empresa e temperatura' },
+              { icon: Target, text: 'Score automático — saiba quem priorizar' },
+              { icon: Zap, text: 'Integrado com as IAs — gere scripts direto do lead' },
             ].map((f, i) => (
               <div key={i} className="flex items-center gap-3">
                 <f.icon className="w-4 h-4 shrink-0" style={{ color: gold }} />
@@ -289,11 +264,11 @@ function SlideCRMVision() {
           </div>
         </div>
 
-        {/* Kanban Mockup — Grande */}
+        {/* Kanban Mockup */}
         <Card glow className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-white text-sm font-semibold">Meu Pipeline</span>
-            <span className="text-[10px] uppercase tracking-wider" style={{ color: gold }}>12 leads ativos</span>
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: gold }}>Seus leads organizados</span>
           </div>
           <div className="flex gap-2">
             {[
@@ -301,14 +276,14 @@ function SlideCRMVision() {
               { name: 'Contato', count: 3, color: 'bg-amber-500/20' },
               { name: 'Reunião', count: 2, color: 'bg-purple-500/20' },
               { name: 'Proposta', count: 2, color: 'bg-orange-500/20' },
-              { name: 'Fechados', count: 1, color: 'bg-emerald-500/20' },
+              { name: 'Fechado ✓', count: 1, color: 'bg-emerald-500/20' },
             ].map((col, i) => (
               <div key={i} className="flex-1 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-slate-500 font-medium">{col.name}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${col.color} text-slate-300`}>{col.count}</span>
                 </div>
-                {Array.from({ length: col.count }).map((_, j) => (
+                {Array.from({ length: Math.min(col.count, 3) }).map((_, j) => (
                   <div key={j} className="rounded-lg bg-white/[0.04] border border-white/[0.06] p-2 space-y-1.5">
                     <div className="w-full h-2 rounded bg-slate-700/40" />
                     <div className="w-2/3 h-1.5 rounded bg-slate-800/40" />
@@ -328,18 +303,21 @@ function SlideCRMVision() {
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 4 — TRILHAS + GAMIFICAÇÃO
+   SLIDE 4 — TRILHAS + GAMIFICAÇÃO (crescimento DELES)
    ═══════════════════════════════════════════ */
 
 function SlideTrilhasGamificacao() {
   return (
     <div className="space-y-8">
       <div className="space-y-4 text-center">
-        <Pill>Aprendizado & Engajamento</Pill>
+        <Pill>Seu Crescimento</Pill>
         <Headline>
-          Aprende como na <Gold>Netflix.</Gold><br />
-          Compete como num <Gold>game.</Gold>
+          Aprende no seu ritmo.<br />
+          Compete pra <Gold>ser o melhor.</Gold>
         </Headline>
+        <Sub className="mx-auto text-center">
+          Conteúdo organizado em trilhas como na Netflix. E cada ação sua gera pontos. Quanto mais você executa, mais você sobe no ranking.
+        </Sub>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -349,7 +327,7 @@ function SlideTrilhasGamificacao() {
             <IconCircle icon={Play} />
             <div>
               <h3 className="text-white font-semibold">Trilhas de Conteúdo</h3>
-              <p className="text-slate-500 text-xs">Carrosséis com tracking por aula</p>
+              <p className="text-slate-500 text-xs">Tudo organizado, na ordem certa</p>
             </div>
           </div>
 
@@ -357,18 +335,18 @@ function SlideTrilhasGamificacao() {
           <div className="rounded-xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg, hsl(220 50% 15%), hsl(35 80% 20%))' }}>
             <div className="p-4 space-y-2">
-              <div className="text-[10px] text-white/50 uppercase tracking-wider">Em destaque</div>
+              <div className="text-[10px] text-white/50 uppercase tracking-wider">Sua próxima trilha</div>
               <div className="text-lg text-white font-display font-bold">Prospecção B2B Avançada</div>
-              <p className="text-white/40 text-xs">11 aulas · 4h30 de conteúdo</p>
+              <p className="text-white/40 text-xs">11 aulas · 4h30 de conteúdo prático</p>
               <div className="w-full bg-white/10 rounded-full h-1.5 mt-3">
-                <div className="h-1.5 rounded-full" style={{ width: '72%', background: gold }} />
+                <div className="h-1.5 rounded-full" style={{ width: '35%', background: gold }} />
               </div>
-              <div className="text-[10px] text-white/50">72% concluído</div>
+              <div className="text-[10px] text-white/50">35% concluído — continue de onde parou</div>
             </div>
           </div>
 
           <div className="flex gap-2">
-            {['Negociação', 'CRM Pipeline', 'Fechamento'].map((t, i) => (
+            {['Negociação', 'Fechamento', 'Pós-venda'].map((t, i) => (
               <div key={i} className="flex-1 rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
                 <div className="text-xs text-white font-medium">{t}</div>
                 <div className="text-[10px] text-slate-500 mt-1">{9 - i * 2} aulas</div>
@@ -383,8 +361,8 @@ function SlideTrilhasGamificacao() {
             <div className="flex items-center gap-3">
               <IconCircle icon={Trophy} />
               <div>
-                <h3 className="text-white font-semibold">Sistema de Gamificação</h3>
-                <p className="text-slate-500 text-xs">Competição que gera resultado</p>
+                <h3 className="text-white font-semibold">Ranking & Conquistas</h3>
+                <p className="text-slate-500 text-xs">Cada ação sua gera pontos</p>
               </div>
             </div>
 
@@ -400,11 +378,15 @@ function SlideTrilhasGamificacao() {
                 <div className="text-[10px] text-slate-500">Badges</div>
               </div>
               <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center space-y-1">
-                <TrendingUp className="w-6 h-6 mx-auto text-emerald-400" />
+                <Crown className="w-6 h-6 mx-auto" style={{ color: gold }} />
                 <div className="text-white text-lg font-bold">#3</div>
                 <div className="text-[10px] text-slate-500">No Ranking</div>
               </div>
             </div>
+
+            <p className="text-slate-500 text-xs text-center">
+              Prospectou? <span className="text-white">+10pts</span> · Fechou venda? <span className="text-white">+50pts</span> · Completou trilha? <span className="text-white">+30pts</span>
+            </p>
           </Card>
 
           <Card glow className="space-y-3">
@@ -412,12 +394,12 @@ function SlideTrilhasGamificacao() {
               <IconCircle icon={Gift} />
               <div>
                 <h3 className="text-white font-semibold">Loja de Prêmios</h3>
-                <p className="text-slate-500 text-xs">Converte pontos em recompensas reais</p>
+                <p className="text-slate-500 text-xs">Seus pontos viram recompensas reais</p>
               </div>
             </div>
             <p className="text-slate-400 text-sm">
-              Cada prospecção, cada aula concluída, cada lead fechado gera pontos. 
-              O mentorado <span className="text-white font-medium">resgata prêmios reais</span> com a pontuação acumulada.
+              Cada prospecção, cada aula, cada lead fechado gera pontos. 
+              Você <span className="text-white font-medium">troca por prêmios reais</span> — mentorias extras, materiais exclusivos e mais.
             </p>
           </Card>
 
@@ -425,13 +407,12 @@ function SlideTrilhasGamificacao() {
             <div className="flex items-center gap-3">
               <IconCircle icon={Users} />
               <div>
-                <h3 className="text-white font-semibold">Comunidade Exclusiva</h3>
-                <p className="text-slate-500 text-xs">Feed + chat em tempo real</p>
+                <h3 className="text-white font-semibold">Comunidade</h3>
+                <p className="text-slate-500 text-xs">Você não tá sozinho nisso</p>
               </div>
             </div>
             <p className="text-slate-400 text-sm">
-              Os mentorados trocam experiências, celebram vitórias e se ajudam mutuamente.
-              A <span className="text-white font-medium">energia do grupo multiplica os resultados</span>.
+              Feed exclusivo + chat com o grupo. Compartilhe vitórias, tire dúvidas e troque experiências com quem tá no <span className="text-white font-medium">mesmo jogo que você</span>.
             </p>
           </Card>
         </div>
@@ -441,23 +422,37 @@ function SlideTrilhasGamificacao() {
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 5 — SUPORTE 24/7
+   SLIDE 5 — MENTOR VIRTUAL 24/7 (suporte DELES)
    ═══════════════════════════════════════════ */
 
-function SlideSuporte247() {
+function SlideMentorVirtual() {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         <div className="space-y-6">
-          <Pill>Suporte Inteligente</Pill>
+          <Pill>Nunca Mais Sozinho</Pill>
           <Headline>
-            Travou numa venda?<br />
-            <Gold>Resposta em segundos.</Gold>
+            Travou na venda?<br />
+            <Gold>Pergunta pra IA.</Gold>
           </Headline>
           <Sub>
-            O Centro SOS usa IA treinada no seu contexto de negócio pra resolver a dúvida na hora.
-            Só escala pro mentor quando realmente precisa.
+            Às 23h, sábado, feriado — não importa. O Mentor Virtual entende seu negócio, 
+            conhece seu pitch e te dá a resposta que você precisa <span className="text-white font-medium">na hora</span>.
           </Sub>
+
+          <div className="space-y-3 pt-2">
+            {[
+              { icon: Clock, text: 'Disponível 24/7 — sem esperar até a próxima reunião' },
+              { icon: Brain, text: 'Treinada no contexto do seu negócio e produtos' },
+              { icon: Shield, text: 'Centro SOS — pedidos urgentes vão direto pro mentor' },
+              { icon: Zap, text: 'Respostas práticas, com script pronto pra usar' },
+            ].map((f, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <f.icon className="w-4 h-4 shrink-0" style={{ color: gold }} />
+                <span className="text-slate-300 text-sm">{f.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Chat mockup */}
@@ -469,47 +464,43 @@ function SlideSuporte247() {
             <div>
               <div className="text-white text-sm font-semibold">Mentor Virtual</div>
               <div className="text-[10px] text-emerald-400 flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Online 24/7
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Online agora
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            {/* User msg */}
             <div className="flex justify-end">
               <div className="rounded-2xl rounded-br-sm bg-blue-600/20 border border-blue-500/20 px-4 py-2.5 max-w-[80%]">
-                <p className="text-slate-300 text-sm">O lead disse que tá caro. Como contornar?</p>
+                <p className="text-slate-300 text-sm">O lead disse que tá caro. Como respondo?</p>
               </div>
             </div>
-            {/* Bot response */}
             <div className="flex justify-start">
               <div className="rounded-2xl rounded-bl-sm bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 max-w-[85%] space-y-2">
                 <p className="text-slate-300 text-sm">
-                  Boa pergunta! Baseado no seu ticket de <span className="text-white font-medium">R$ 15.000</span> e no perfil desse lead, use a técnica de <span style={{ color: gold }}>ancoragem de valor</span>:
+                  Baseado no seu ticket de <span className="text-white font-medium">R$ 15.000</span>, use <span style={{ color: gold }}>ancoragem de valor</span>:
                 </p>
                 <p className="text-slate-400 text-xs italic">
                   "Quanto você perde por mês sem resolver [dor principal]? Se são R$ 10k/mês, em 2 meses o investimento já se pagou..."
                 </p>
               </div>
             </div>
-            {/* User msg */}
             <div className="flex justify-end">
               <div className="rounded-2xl rounded-br-sm bg-blue-600/20 border border-blue-500/20 px-4 py-2.5 max-w-[80%]">
-                <p className="text-slate-300 text-sm">E se ele pedir desconto?</p>
+                <p className="text-slate-300 text-sm">E se pedir desconto?</p>
               </div>
             </div>
-            {/* Bot */}
             <div className="flex justify-start">
               <div className="rounded-2xl rounded-bl-sm bg-white/[0.04] border border-white/[0.06] px-4 py-2.5 max-w-[85%]">
                 <p className="text-slate-300 text-sm">
-                  Nunca desconto. <span className="text-white font-medium">Adicione valor</span>. Ofereça uma sessão extra ou acesso antecipado a um módulo exclusivo. O preço se mantém, a percepção de valor aumenta. 💪
+                  Nunca desconto. <span className="text-white font-medium">Adicione valor</span>. Ofereça uma sessão extra ou acesso antecipado. O preço se mantém, a percepção de valor sobe. 💪
                 </p>
               </div>
             </div>
           </div>
 
           <div className="text-center pt-2">
-            <span className="text-[10px] text-slate-600">Respostas personalizadas com base no Contexto de Pitch do aluno</span>
+            <span className="text-[10px] text-slate-600">Respostas personalizadas com base no seu Contexto de Pitch</span>
           </div>
         </Card>
       </div>
@@ -518,48 +509,83 @@ function SlideSuporte247() {
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 6 — PAINEL DO MENTOR (visão rápida)
+   SLIDE 6 — TRANSFORMAÇÃO (o antes/depois DELES)
    ═══════════════════════════════════════════ */
 
-function SlideMentorPainel() {
+function SlideTransformacao() {
+  const antes = [
+    'Prospecta no escuro, sem dados',
+    'Perde lead por falta de follow-up',
+    'Depende 100% de reunião com mentor',
+    'Pipeline na cabeça ou no bloco de notas',
+    'Manda mensagem genérica pra todo mundo',
+    'Consome conteúdo mas não aplica',
+  ];
+
+  const depois = [
+    'IA te diz quem priorizar e como abordar',
+    'Coach de Follow-up lembra o que mandar',
+    'Mentor Virtual 24/7 resolve na hora',
+    'CRM visual com todo seu pipeline organizado',
+    'Scripts personalizados pra cada lead',
+    'Trilhas com tracking — aprende e aplica',
+  ];
+
   return (
     <div className="space-y-8">
-      <div className="space-y-4">
-        <Pill>Painel do Mentor</Pill>
+      <div className="space-y-4 text-center">
+        <Pill>Sua Transformação</Pill>
         <Headline>
-          Você no <Gold>comando.</Gold><br />
-          Visão total. Zero achismo.
+          O que muda <Gold>pra você</Gold><br />
+          a partir de agora.
         </Headline>
-        <Sub>Dashboard em tempo real, CRM unificado de todos os alunos, alertas inteligentes e relatórios prontos pra cada reunião.</Sub>
       </div>
 
-      {/* Big Stats */}
-      <div className="flex flex-wrap justify-center gap-8 md:gap-12 py-4">
-        <BigStat value="24" label="Mentorados Ativos" />
-        <BigStat value="312" label="Leads no Pipeline" accent />
-        <BigStat value="87%" label="Taxa de Engajamento" />
-        <BigStat value="R$ 2.4M" label="Valor no Funil" accent />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl mx-auto">
+        {/* ANTES */}
+        <Card className="space-y-4" style={{ borderColor: 'hsl(0 60% 30% / 0.3)' }}>
+          <div className="flex items-center gap-2 pb-2 border-b border-white/[0.05]">
+            <XCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-400 font-display font-bold text-sm uppercase tracking-wider">Antes</span>
+          </div>
+          <div className="space-y-3">
+            {antes.map((s, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500/50 mt-2 shrink-0" />
+                <span className="text-slate-400 text-sm leading-relaxed">{s}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* DEPOIS */}
+        <Card className="space-y-4" style={{ borderColor: `hsl(45 100% 51% / 0.25)` }}>
+          <div className="flex items-center gap-2 pb-2 border-b border-white/[0.05]">
+            <Rocket className="w-5 h-5" style={{ color: gold }} />
+            <span className="font-display font-bold text-sm uppercase tracking-wider" style={{ color: gold }}>Agora com a plataforma</span>
+          </div>
+          <div className="space-y-3">
+            {depois.map((c, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: gold }} />
+                <span className="text-slate-200 text-sm leading-relaxed">{c}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { icon: LineChart, title: 'Relatórios Avançados', desc: 'KPIs consolidados, gráficos de atividade, ranking Top 5 e taxa de conversão do grupo.' },
-          { icon: Shield, title: 'CRM Unificado', desc: 'Visão de TODOS os leads de TODOS os alunos. Filtre por mentorado, temperatura ou status.' },
-          { icon: Zap, title: 'Alertas Inteligentes', desc: 'SOS urgente, mentorado em risco (inatividade), conquistas recentes e analytics de uso da IA.' },
-        ].map((f, i) => (
-          <Card key={i} glow className="space-y-3">
-            <IconCircle icon={f.icon} />
-            <h4 className="text-white font-semibold">{f.title}</h4>
-            <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
-          </Card>
-        ))}
+      <div className="text-center pt-4">
+        <p className="text-slate-400 text-sm max-w-lg mx-auto">
+          Não é sobre ter mais ferramentas. É sobre <span className="text-white font-medium">parar de perder venda</span> por falta de processo, dados e agilidade.
+        </p>
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════
-   SLIDE 7 — ENCERRAMENTO (CTA emocional)
+   SLIDE 7 — ENCERRAMENTO (empoderamento)
    ═══════════════════════════════════════════ */
 
 function SlideEncerramento() {
@@ -573,24 +599,24 @@ function SlideEncerramento() {
 
       <div className="space-y-8 max-w-3xl relative z-10">
         <Headline className="text-[clamp(2rem,5vw,4rem)]">
-          Seus mentorados <Gold>merecem</Gold><br />
-          a melhor ferramenta do mercado.
+          Construímos isso<br />
+          <Gold>pra você crescer.</Gold>
         </Headline>
 
         <Sub className="mx-auto text-center max-w-xl">
-          Enquanto outros mentorados prospectam no escuro, os seus vão ter
-          IA, CRM, gamificação e suporte 24/7 — tudo num só lugar.
+          Enquanto outros prospectam no escuro, você vai ter IA, CRM, 
+          gamificação e suporte 24/7 — tudo personalizado pro <span className="text-white font-medium">seu negócio</span>.
         </Sub>
 
         {/* Final impact stats */}
         <div className="flex flex-wrap justify-center gap-8 pt-4">
           <div className="text-center">
             <div className="text-3xl md:text-4xl font-display font-bold" style={{ color: gold }}>8</div>
-            <div className="text-xs text-slate-500 mt-1">IAs de Vendas</div>
+            <div className="text-xs text-slate-500 mt-1">IAs ao seu lado</div>
           </div>
           <div className="text-center">
             <div className="text-3xl md:text-4xl font-display font-bold text-white">24/7</div>
-            <div className="text-xs text-slate-500 mt-1">Suporte Virtual</div>
+            <div className="text-xs text-slate-500 mt-1">Suporte IA</div>
           </div>
           <div className="text-center">
             <div className="text-3xl md:text-4xl font-display font-bold" style={{ color: gold }}>100%</div>
@@ -598,8 +624,16 @@ function SlideEncerramento() {
           </div>
           <div className="text-center">
             <div className="text-3xl md:text-4xl font-display font-bold text-white">∞</div>
-            <div className="text-xs text-slate-500 mt-1">Escalabilidade</div>
+            <div className="text-xs text-slate-500 mt-1">Potencial</div>
           </div>
+        </div>
+
+        <div className="pt-4">
+          <Card glow className="inline-flex items-center gap-3 px-8 py-4">
+            <Rocket className="w-5 h-5" style={{ color: gold }} />
+            <span className="text-white font-display font-bold text-lg">Bora vender mais?</span>
+            <ArrowRight className="w-5 h-5" style={{ color: gold }} />
+          </Card>
         </div>
       </div>
 
