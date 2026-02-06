@@ -32,8 +32,8 @@ export default function ApresentacaoPage() {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+      if (['ArrowRight', ' ', 'ArrowDown', 'PageDown'].includes(e.key)) { e.preventDefault(); next(); }
+      if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); prev(); }
       if (e.key === 'Escape' && isFullscreen) document.exitFullscreen?.();
       if (e.key === 'f' || e.key === 'F') toggleFullscreen();
     };
