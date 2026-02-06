@@ -41,42 +41,56 @@
    { icon: User, label: 'Meu Perfil', path: '/mentorado/perfil' },
  ];
  
- export function MentoradoLayout() {
-   const { profile, signOut } = useAuth();
-   const { activeMembership, isImpersonating, endImpersonation } = useTenant();
-   const location = useLocation();
-   const navigate = useNavigate();
- 
-   const isDashboard = location.pathname === '/mentorado';
-   const currentPage = menuItems.find(item => item.path === location.pathname);
-   const pageTitle = currentPage?.label || 'Página';
- 
-   return (
-     <div className="min-h-screen">
-       {/* Animated gradient background */}
-       <div className="animated-gradient-bg" />
-       
-       {/* Impersonation Banner */}
-       {isImpersonating && (
-         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-black px-4 py-2 flex items-center justify-between">
-           <span className="text-sm font-medium">
-             ⚠️ Visualizando como: {activeMembership?.role} ({activeMembership?.tenant_name})
-           </span>
-           <Button size="sm" variant="outline" onClick={endImpersonation} className="h-7 text-xs">
-             Encerrar Preview
-           </Button>
-         </div>
-       )}
+  export function MentoradoLayout() {
+    const { profile, signOut } = useAuth();
+    const { activeMembership, realMembership, isImpersonating, endImpersonation } = useTenant();
+    const location = useLocation();
+    const navigate = useNavigate();
+  
+    const isDashboard = location.pathname === '/mentorado';
+    const currentPage = menuItems.find(item => item.path === location.pathname);
+    const pageTitle = currentPage?.label || 'Página';
+
+    const isMasterViewing = realMembership?.role === 'master_admin';
+    const showReturnBanner = isImpersonating || isMasterViewing;
+
+    const handleReturnToMaster = () => {
+      if (isImpersonating) {
+        endImpersonation();
+      } else {
+        navigate('/master');
+      }
+    };
+  
+    return (
+      <div className="min-h-screen">
+        {/* Animated gradient background */}
+        <div className="animated-gradient-bg" />
+        
+        {/* Return to Master / Impersonation Banner */}
+        {showReturnBanner && (
+          <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-black px-4 py-2 flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {isImpersonating 
+                ? `⚠️ Visualizando como: ${activeMembership?.role} (${activeMembership?.tenant_name})`
+                : '⚠️ Visualizando área do Mentorado como Master Admin'
+              }
+            </span>
+            <Button size="sm" variant="outline" onClick={handleReturnToMaster} className="h-7 text-xs">
+              Voltar ao Master
+            </Button>
+          </div>
+        )}
        
        {/* Floating Dock - only visible on dashboard */}
        {isDashboard && <FloatingDock items={menuItems} position="left" />}
  
        {/* Back Header - visible on sub-pages */}
        {!isDashboard && (
-         <header className={cn(
-           "fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50",
-           isImpersonating ? "top-10" : "top-0"
-         )}>
+          <header className={cn(
+            "fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50",
+            showReturnBanner ? "top-10" : "top-0"
+          )}>
            <div className="flex items-center gap-3">
              <Button
                variant="ghost"
@@ -117,10 +131,10 @@
  
        {/* Top bar with logo and user - only on dashboard */}
        {isDashboard && (
-         <header className={cn(
-           "fixed left-0 right-0 z-40 p-4 flex items-center justify-between",
-           isImpersonating ? "top-10" : "top-0"
-         )}>
+          <header className={cn(
+            "fixed left-0 right-0 z-40 p-4 flex items-center justify-between",
+            showReturnBanner ? "top-10" : "top-0"
+          )}>
            <Link to="/mentorado" className="ml-28">
              <LBVLogo variant="full" size="sm" />
            </Link>
@@ -157,7 +171,7 @@
          isDashboard 
            ? "ml-28 pt-20 px-6 pb-6" 
            : "pt-16 pb-6",
-         isImpersonating && "pt-26"
+         showReturnBanner && "pt-26"
        )}>
          <Outlet />
        </main>
