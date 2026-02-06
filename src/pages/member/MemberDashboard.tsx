@@ -1,5 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/contexts/TenantContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { useMenteeDashboardStats } from '@/hooks/useDashboardStats';
 import { useGamification } from '@/hooks/useGamification';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
@@ -21,7 +23,26 @@ import { ptBR } from 'date-fns/locale';
 
 export default function MemberDashboard() {
   const { profile, user } = useAuth();
-  const { activeMembership } = useTenant();
+  const { activeMembership, isImpersonating } = useTenant();
+
+  // Fetch impersonated user's profile
+  const { data: impersonatedProfile } = useQuery({
+    queryKey: ['impersonated-dashboard-profile', activeMembership?.user_id],
+    queryFn: async () => {
+      if (!activeMembership?.user_id) return null;
+      const { data } = await supabaseClient
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('user_id', activeMembership.user_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: isImpersonating && !!activeMembership?.user_id,
+  });
+
+  const displayName = isImpersonating && impersonatedProfile?.full_name
+    ? impersonatedProfile.full_name
+    : profile?.full_name;
   const { stats: dashboardStats, isLoading: isLoadingDashboard } = useMenteeDashboardStats();
   const { badges, stats: gamificationStats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
@@ -93,8 +114,8 @@ export default function MemberDashboard() {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-muted-foreground text-lg">Bem-vindo de volta,</p>
-          <h1 className="text-4xl font-display font-bold text-foreground mt-1">
-            {profile?.full_name?.split(' ')[0] || 'Mentorado'} <span className="text-gradient-gold">🚀</span>
+           <h1 className="text-4xl font-display font-bold text-foreground mt-1">
+            {displayName?.split(' ')[0] || 'Mentorado'} <span className="text-gradient-gold">🚀</span>
           </h1>
         </div>
         <Link to="/app/trilhas">
