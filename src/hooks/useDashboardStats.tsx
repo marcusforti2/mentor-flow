@@ -412,11 +412,11 @@ export function useMenteeDashboardStats() {
         }
       }
 
-      // Fetch prospections
+      // Fetch prospections (check both membership_id and mentorado_id)
       const { count: totalProspections } = await supabase
         .from('crm_prospections')
         .select('*', { count: 'exact', head: true })
-        .eq('membership_id', membershipId);
+        .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`);
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -425,7 +425,7 @@ export function useMenteeDashboardStats() {
       const { count: monthlyProspections } = await supabase
         .from('crm_prospections')
         .select('*', { count: 'exact', head: true })
-        .eq('membership_id', membershipId)
+        .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
         .gte('created_at', startOfMonth.toISOString());
 
       // Fetch next meeting

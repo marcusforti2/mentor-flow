@@ -6,10 +6,11 @@ import confetti from "canvas-confetti";
 
 interface DailyGoalCounterProps {
   mentoradoId: string;
+  legacyMentoradoId?: string | null;
   className?: string;
 }
 
-export function DailyGoalCounter({ mentoradoId, className }: DailyGoalCounterProps) {
+export function DailyGoalCounter({ mentoradoId, legacyMentoradoId, className }: DailyGoalCounterProps) {
   const [todayCount, setTodayCount] = useState(0);
   const [goal, setGoal] = useState(10);
   const [hasTriggeredConfetti, setHasTriggeredConfetti] = useState(false);
@@ -80,11 +81,14 @@ export function DailyGoalCounter({ mentoradoId, className }: DailyGoalCounterPro
 
         setTodayCount(count || 0);
 
-        // Fetch daily goal from business profile (try membership_id first, then mentorado_id)
+        // Fetch daily goal from business profile (try legacy mentorado_id which has FK)
+        const businessProfileFilter = legacyMentoradoId && legacyMentoradoId !== mentoradoId
+          ? `mentorado_id.eq.${legacyMentoradoId},mentorado_id.eq.${mentoradoId}`
+          : `mentorado_id.eq.${mentoradoId}`;
         const { data: profile } = await supabase
           .from("mentorado_business_profiles")
           .select("daily_prospection_goal")
-          .or(`mentorado_id.eq.${mentoradoId}`)
+          .or(businessProfileFilter)
           .maybeSingle();
 
         if (profile?.daily_prospection_goal) {
@@ -103,7 +107,7 @@ export function DailyGoalCounter({ mentoradoId, className }: DailyGoalCounterPro
     };
 
     fetchData();
-  }, [mentoradoId]);
+  }, [mentoradoId, legacyMentoradoId]);
 
   // Trigger confetti when goal is met
   useEffect(() => {

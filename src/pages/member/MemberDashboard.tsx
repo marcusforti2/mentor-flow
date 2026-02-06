@@ -44,7 +44,7 @@ export default function MemberDashboard() {
     ? impersonatedProfile.full_name
     : profile?.full_name;
   const { stats: dashboardStats, isLoading: isLoadingDashboard } = useMenteeDashboardStats();
-  const { badges, stats: gamificationStats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
+  const { badges, stats: gamificationStats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId, legacyMentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -128,7 +128,7 @@ export default function MemberDashboard() {
 
       {/* Daily Goal Counter */}
       {(mentoradoId || activeMembership?.id) && (
-        <DailyGoalCounter mentoradoId={mentoradoId || activeMembership?.id || ""} />
+        <DailyGoalCounter mentoradoId={mentoradoId || activeMembership?.id || ""} legacyMentoradoId={legacyMentoradoId} />
       )}
 
       {/* Bento Grid */}
