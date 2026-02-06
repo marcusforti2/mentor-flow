@@ -11,166 +11,151 @@ export default function ApresentacaoPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [direction, setDirection] = useState<'left' | 'right'>('right');
   const [isAnimating, setIsAnimating] = useState(false);
+  const [slideKey, setSlideKey] = useState(0);
 
-  const nextSlide = useCallback(() => {
-    if (currentSlide < TOTAL_SLIDES - 1 && !isAnimating) {
-      setDirection('right');
-      setIsAnimating(true);
-      setCurrentSlide(prev => prev + 1);
-      setTimeout(() => setIsAnimating(false), 350);
-    }
+  const goTo = useCallback((index: number) => {
+    if (index === currentSlide || isAnimating || index < 0 || index >= TOTAL_SLIDES) return;
+    setIsAnimating(true);
+    setCurrentSlide(index);
+    setSlideKey(prev => prev + 1);
+    setTimeout(() => setIsAnimating(false), 500);
   }, [currentSlide, isAnimating]);
 
-  const prevSlide = useCallback(() => {
-    if (currentSlide > 0 && !isAnimating) {
-      setDirection('left');
-      setIsAnimating(true);
-      setCurrentSlide(prev => prev - 1);
-      setTimeout(() => setIsAnimating(false), 350);
-    }
-  }, [currentSlide, isAnimating]);
-
-  const goToSlide = useCallback((index: number) => {
-    if (index !== currentSlide && !isAnimating) {
-      setDirection(index > currentSlide ? 'right' : 'left');
-      setIsAnimating(true);
-      setCurrentSlide(index);
-      setTimeout(() => setIsAnimating(false), 350);
-    }
-  }, [currentSlide, isAnimating]);
-
-  const enterFullscreen = useCallback(() => {
-    containerRef.current?.requestFullscreen?.();
-  }, []);
-
-  const exitFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.();
-    }
-  }, []);
+  const next = useCallback(() => goTo(currentSlide + 1), [goTo, currentSlide]);
+  const prev = useCallback(() => goTo(currentSlide - 1), [goTo, currentSlide]);
 
   const toggleFullscreen = useCallback(() => {
-    if (isFullscreen) exitFullscreen();
-    else enterFullscreen();
-  }, [isFullscreen, enterFullscreen, exitFullscreen]);
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else containerRef.current?.requestFullscreen?.();
+  }, []);
 
-  // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') {
-        e.preventDefault();
-        nextSlide();
-      }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        prevSlide();
-      }
-      if (e.key === 'Escape' && isFullscreen) {
-        exitFullscreen();
-      }
-      if (e.key === 'f' || e.key === 'F') {
-        toggleFullscreen();
-      }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+      if (e.key === 'Escape' && isFullscreen) document.exitFullscreen?.();
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nextSlide, prevSlide, isFullscreen, exitFullscreen, toggleFullscreen]);
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [next, prev, isFullscreen, toggleFullscreen]);
 
-  // Track fullscreen state
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  const progress = ((currentSlide + 1) / TOTAL_SLIDES) * 100;
+
   return (
     <div
       ref={containerRef}
       className={cn(
-        'relative flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden select-none',
-        isFullscreen ? 'w-screen h-screen' : 'w-full rounded-2xl border border-slate-700/50'
+        'relative flex flex-col overflow-hidden select-none',
+        isFullscreen ? 'w-screen h-screen' : 'w-full rounded-2xl border border-slate-700/30'
       )}
-      style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 7rem)' }}
+      style={{
+        height: isFullscreen ? '100vh' : 'calc(100vh - 7rem)',
+        background: 'linear-gradient(145deg, hsl(222 47% 6%) 0%, hsl(222 47% 8%) 40%, hsl(222 47% 5%) 100%)',
+      }}
     >
+      {/* Ambient glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full opacity-[0.04] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, hsl(45 100% 51%), transparent 70%)' }} />
+
       {/* ── Header ── */}
-      <header className="flex items-center justify-between px-4 md:px-6 py-3 shrink-0 z-10">
-        <LBVLogo variant="full" size="sm" />
-        <div className="flex items-center gap-3">
-          <span className="text-slate-500 text-xs font-mono">
-            {currentSlide + 1} / {TOTAL_SLIDES}
+      <header className="relative flex items-center justify-between px-6 md:px-10 py-4 shrink-0 z-10">
+        <LBVLogo variant="full" size="sm" className="opacity-70" />
+        <div className="flex items-center gap-4">
+          <span className="text-slate-600 text-[11px] font-mono tracking-wider">
+            {String(currentSlide + 1).padStart(2, '0')} / {String(TOTAL_SLIDES).padStart(2, '0')}
           </span>
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleFullscreen}
-            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+            className="h-8 w-8 text-slate-500 hover:text-white hover:bg-white/5"
           >
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
           </Button>
         </div>
       </header>
 
+      {/* ── Progress bar ── */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] z-20">
+        <div
+          className="h-full transition-all duration-500 ease-out"
+          style={{ width: `${progress}%`, background: 'hsl(45 100% 51%)' }}
+        />
+      </div>
+
       {/* ── Slide Area ── */}
       <div className="flex-1 relative overflow-hidden">
-        {/* Navigation arrows */}
+        {/* Nav arrows — larger, more subtle */}
         {currentSlide > 0 && (
           <button
-            onClick={prevSlide}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all"
+            onClick={prev}
+            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/[0.08] transition-all duration-300"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
         )}
         {currentSlide < TOTAL_SLIDES - 1 && (
           <button
-            onClick={nextSlide}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700/60 transition-all"
+            onClick={next}
+            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] flex items-center justify-center text-slate-500 hover:text-white hover:bg-white/[0.08] transition-all duration-300"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         )}
 
-        {/* Slide content with transition */}
+        {/* Slide content */}
         <div
-          className="absolute inset-0 px-6 md:px-12 py-4 transition-all duration-300 ease-out"
+          key={slideKey}
+          className="absolute inset-0 px-8 md:px-20 lg:px-28 py-4 flex items-center"
           style={{
-            opacity: isAnimating ? 0 : 1,
-            transform: isAnimating
-              ? `translateX(${direction === 'right' ? '30px' : '-30px'})`
-              : 'translateX(0)',
+            animation: 'slideIn 0.5s ease-out forwards',
           }}
         >
-          <SlideRenderer slideIndex={currentSlide} />
+          <div className="w-full max-w-6xl mx-auto">
+            <SlideRenderer slideIndex={currentSlide} />
+          </div>
         </div>
       </div>
 
-      {/* ── Footer: Dots + Hint ── */}
-      <footer className="flex flex-col items-center gap-2 pb-4 pt-2 shrink-0 z-10">
-        <div className="flex gap-1.5">
+      {/* ── Footer ── */}
+      <footer className="flex flex-col items-center gap-3 pb-5 pt-2 shrink-0 z-10">
+        <div className="flex gap-2">
           {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
             <button
               key={i}
-              onClick={() => goToSlide(i)}
+              onClick={() => goTo(i)}
               className={cn(
-                'rounded-full transition-all duration-300',
-                i === currentSlide
-                  ? 'w-6 h-2'
-                  : 'w-2 h-2 hover:opacity-80'
+                'rounded-full transition-all duration-500',
+                i === currentSlide ? 'w-8 h-1.5' : 'w-1.5 h-1.5 hover:w-3'
               )}
               style={{
-                background: i === currentSlide ? 'hsl(45 100% 51%)' : 'hsl(215 20% 35%)',
+                background: i === currentSlide ? 'hsl(45 100% 51%)' : 'hsl(220 15% 25%)',
               }}
             />
           ))}
         </div>
         {currentSlide === 0 && (
-          <p className="text-slate-600 text-[10px]">
-            ← → Navegar • F Fullscreen • ESC Sair
+          <p className="text-slate-700 text-[10px] tracking-widest uppercase">
+            ← → Navegar · F Fullscreen · ESC Sair
           </p>
         )}
       </footer>
+
+      {/* Keyframe animation */}
+      <style>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
