@@ -6,7 +6,10 @@ const corsHeaders = {
 };
 
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-const PILOTERR_API_KEY = Deno.env.get('PILOTERR_API_KEY');
+const PILOTERR_API_KEYS = [
+  Deno.env.get('PILOTERR_API_KEY'),
+  Deno.env.get('PILOTERR_API_KEY_2'),
+].filter(Boolean) as string[];
 
 function detectPlatform(url: string): string | null {
   const urlLower = url.toLowerCase();
@@ -35,48 +38,70 @@ function extractUsername(url: string, platform: string): string | null {
 // ============= PILOTERR - Instagram Scraping =============
 
 async function scrapeInstagramWithPiloterr(username: string): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!PILOTERR_API_KEY) {
-    return { success: false, error: 'Piloterr API key não configurada' };
+  if (PILOTERR_API_KEYS.length === 0) {
+    return { success: false, error: 'Nenhuma Piloterr API key configurada' };
   }
 
   const cleanUsername = username.replace('@', '').trim();
-  console.log(`Piloterr scraping Instagram: ${cleanUsername}`);
+  console.log(`Piloterr scraping Instagram: ${cleanUsername} (${PILOTERR_API_KEYS.length} keys disponíveis)`);
 
-  try {
-    const apiUrl = `https://piloterr.com/api/v2/instagram/user/info?query=${encodeURIComponent(cleanUsername)}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: { 
-        'x-api-key': PILOTERR_API_KEY,
-        'Content-Type': 'application/json'
+  for (let i = 0; i < PILOTERR_API_KEYS.length; i++) {
+    const apiKey = PILOTERR_API_KEYS[i];
+    console.log(`Tentando Piloterr key ${i + 1}/${PILOTERR_API_KEYS.length}...`);
+
+    try {
+      const apiUrl = `https://piloterr.com/api/v2/instagram/user/info?query=${encodeURIComponent(cleanUsername)}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Se crédito acabou (402/403/429), tenta próxima key
+      if (response.status === 402 || response.status === 403 || response.status === 429) {
+        const errorText = await response.text();
+        console.warn(`Piloterr key ${i + 1} sem crédito (${response.status}): ${errorText}`);
+        if (i < PILOTERR_API_KEYS.length - 1) {
+          console.log('Tentando próxima key...');
+          continue;
+        }
+        return { success: false, error: `Todas as API keys do Piloterr sem crédito` };
       }
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Piloterr Instagram HTTP error:', response.status, errorText);
-      return { success: false, error: `Piloterr error: ${response.status}` };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Piloterr Instagram HTTP error:', response.status, errorText);
+        return { success: false, error: `Piloterr error: ${response.status}` };
+      }
+
+      const data = await response.json();
+      console.log(`Piloterr Instagram success (key ${i + 1}), response keys:`, Object.keys(data || {}));
+
+      if (!data || data.error) {
+        return { success: false, error: data?.error || 'Dados não encontrados no Piloterr' };
+      }
+
+      const markdown = formatInstagramProfile(data);
+      
+      if (!markdown || markdown.length < 50) {
+        return { success: false, error: 'Dados insuficientes do Piloterr' };
+      }
+
+      return { success: true, data: markdown };
+    } catch (error) {
+      console.error(`Piloterr Instagram error (key ${i + 1}):`, error);
+      if (i < PILOTERR_API_KEYS.length - 1) {
+        console.log('Tentando próxima key após erro...');
+        continue;
+      }
+      return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr' };
     }
-
-    const data = await response.json();
-    console.log('Piloterr Instagram response keys:', Object.keys(data || {}));
-
-    if (!data || data.error) {
-      return { success: false, error: data?.error || 'Dados não encontrados no Piloterr' };
-    }
-
-    const markdown = formatInstagramProfile(data);
-    
-    if (!markdown || markdown.length < 50) {
-      return { success: false, error: 'Dados insuficientes do Piloterr' };
-    }
-
-    return { success: true, data: markdown };
-  } catch (error) {
-    console.error('Piloterr Instagram error:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr' };
   }
+
+  return { success: false, error: 'Falha em todas as tentativas do Piloterr' };
 }
 
 function formatInstagramProfile(data: any): string {
@@ -115,47 +140,69 @@ function formatInstagramProfile(data: any): string {
 // ============= PILOTERR - LinkedIn Scraping =============
 
 async function scrapeLinkedInWithPiloterr(profileUrl: string): Promise<{ success: boolean; data?: string; error?: string }> {
-  if (!PILOTERR_API_KEY) {
-    return { success: false, error: 'Piloterr API key não configurada' };
+  if (PILOTERR_API_KEYS.length === 0) {
+    return { success: false, error: 'Nenhuma Piloterr API key configurada' };
   }
 
-  console.log(`Piloterr scraping LinkedIn: ${profileUrl}`);
+  console.log(`Piloterr scraping LinkedIn: ${profileUrl} (${PILOTERR_API_KEYS.length} keys disponíveis)`);
 
-  try {
-    const apiUrl = `https://piloterr.com/api/v2/linkedin/profile/info?query=${encodeURIComponent(profileUrl)}`;
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: { 
-        'x-api-key': PILOTERR_API_KEY,
-        'Content-Type': 'application/json'
+  for (let i = 0; i < PILOTERR_API_KEYS.length; i++) {
+    const apiKey = PILOTERR_API_KEYS[i];
+    console.log(`Tentando Piloterr key ${i + 1}/${PILOTERR_API_KEYS.length}...`);
+
+    try {
+      const apiUrl = `https://piloterr.com/api/v2/linkedin/profile/info?query=${encodeURIComponent(profileUrl)}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: { 
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Se crédito acabou (402/403/429), tenta próxima key
+      if (response.status === 402 || response.status === 403 || response.status === 429) {
+        const errorText = await response.text();
+        console.warn(`Piloterr key ${i + 1} sem crédito (${response.status}): ${errorText}`);
+        if (i < PILOTERR_API_KEYS.length - 1) {
+          console.log('Tentando próxima key...');
+          continue;
+        }
+        return { success: false, error: `Todas as API keys do Piloterr sem crédito` };
       }
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Piloterr LinkedIn HTTP error:', response.status, errorText);
-      return { success: false, error: `Piloterr LinkedIn error: ${response.status}` };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Piloterr LinkedIn HTTP error:', response.status, errorText);
+        return { success: false, error: `Piloterr LinkedIn error: ${response.status}` };
+      }
+
+      const data = await response.json();
+      console.log(`Piloterr LinkedIn success (key ${i + 1}), response keys:`, Object.keys(data || {}));
+
+      if (!data || data.error) {
+        return { success: false, error: data?.error || 'Dados não encontrados no LinkedIn' };
+      }
+
+      const markdown = formatLinkedInProfile(data);
+      
+      if (!markdown || markdown.length < 50) {
+        return { success: false, error: 'Dados insuficientes do LinkedIn' };
+      }
+
+      return { success: true, data: markdown };
+    } catch (error) {
+      console.error(`Piloterr LinkedIn error (key ${i + 1}):`, error);
+      if (i < PILOTERR_API_KEYS.length - 1) {
+        console.log('Tentando próxima key após erro...');
+        continue;
+      }
+      return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr LinkedIn' };
     }
-
-    const data = await response.json();
-    console.log('Piloterr LinkedIn response keys:', Object.keys(data || {}));
-
-    if (!data || data.error) {
-      return { success: false, error: data?.error || 'Dados não encontrados no LinkedIn' };
-    }
-
-    const markdown = formatLinkedInProfile(data);
-    
-    if (!markdown || markdown.length < 50) {
-      return { success: false, error: 'Dados insuficientes do LinkedIn' };
-    }
-
-    return { success: true, data: markdown };
-  } catch (error) {
-    console.error('Piloterr LinkedIn error:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Erro no Piloterr LinkedIn' };
   }
+
+  return { success: false, error: 'Falha em todas as tentativas do Piloterr LinkedIn' };
 }
 
 function formatLinkedInProfile(data: any): string {
