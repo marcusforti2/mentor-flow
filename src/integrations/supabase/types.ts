@@ -3012,6 +3012,10 @@ export type Database = {
       }
       is_first_mentor: { Args: never; Returns: boolean }
       is_master_admin: { Args: { _user_id?: string }; Returns: boolean }
+      is_mentorado_owner: {
+        Args: { _mentorado_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id?: string }
         Returns: boolean
