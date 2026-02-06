@@ -33,8 +33,8 @@ export interface Trail {
 // Helper to get YouTube thumbnail
 export const getYouTubeThumbnail = (videoId: string, quality: 'default' | 'hq' | 'maxres' = 'hq'): string => {
   // Handle full YouTube URLs or just video IDs
-  const match = videoId.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)?([^&\s]+)/);
-  const extractedId = match ? match[1] : videoId;
+  const urlMatch = videoId.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+  const extractedId = urlMatch ? urlMatch[1] : videoId;
   
   const qualityMap = {
     default: 'default',
