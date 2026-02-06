@@ -4,6 +4,8 @@
  import { useTenant } from '@/contexts/TenantContext';
  import { WhatsAppGroupModal } from '@/components/WhatsAppGroupModal';
  import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+ import { useQuery } from '@tanstack/react-query';
+ import { supabase } from '@/integrations/supabase/client';
  import { Button } from '@/components/ui/button';
  import { LogOut, ArrowLeft } from 'lucide-react';
  import { LBVLogo } from '@/components/LBVLogo';
@@ -46,6 +48,23 @@
     const { activeMembership, realMembership, isImpersonating, endImpersonation } = useTenant();
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Fetch impersonated user's profile when impersonating
+    const { data: impersonatedProfile } = useQuery({
+      queryKey: ['impersonated-profile', activeMembership?.user_id],
+      queryFn: async () => {
+        if (!activeMembership?.user_id) return null;
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url, email')
+          .eq('user_id', activeMembership.user_id)
+          .maybeSingle();
+        return data;
+      },
+      enabled: isImpersonating && !!activeMembership?.user_id,
+    });
+
+    const displayProfile = isImpersonating && impersonatedProfile ? impersonatedProfile : profile;
   
     const isDashboard = location.pathname === '/mentorado';
     const currentPage = menuItems.find(item => item.path === location.pathname);
@@ -106,10 +125,10 @@
  
            <div className="flex items-center gap-3">
              <Avatar className="h-8 w-8">
-               <AvatarImage src={profile?.avatar_url || ''} />
-               <AvatarFallback className="bg-accent/20 text-accent text-sm">
-                 {profile?.full_name?.charAt(0) || 'U'}
-               </AvatarFallback>
+              <AvatarImage src={displayProfile?.avatar_url || ''} />
+                <AvatarFallback className="bg-accent/20 text-accent text-sm">
+                  {displayProfile?.full_name?.charAt(0) || 'U'}
+                </AvatarFallback>
              </Avatar>
              <Tooltip>
                <TooltipTrigger asChild>
@@ -136,15 +155,15 @@
            </Link>
  
            <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
-             <Avatar className="h-8 w-8">
-               <AvatarImage src={profile?.avatar_url || ''} />
-               <AvatarFallback className="bg-accent/20 text-accent text-sm">
-                 {profile?.full_name?.charAt(0) || 'U'}
-               </AvatarFallback>
-             </Avatar>
-             <span className="text-sm font-medium text-foreground hidden sm:block">
-               {profile?.full_name || 'Mentorado'}
-             </span>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={displayProfile?.avatar_url || ''} />
+                <AvatarFallback className="bg-accent/20 text-accent text-sm">
+                  {displayProfile?.full_name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-foreground hidden sm:block">
+                {displayProfile?.full_name || 'Mentorado'}
+              </span>
              <Tooltip>
                <TooltipTrigger asChild>
                  <Button
