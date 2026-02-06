@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ export default function Calendario() {
   });
   
   const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const { toast } = useToast();
 
   const fetchData = async () => {
@@ -87,11 +89,9 @@ export default function Calendario() {
     
     setIsLoading(true);
     try {
-      // Use activeMembership.id as mentor_id for calendar_events
-      // Fallback to legacy mentors table for backward compatibility
       let resolvedMentorId: string | null = null;
 
-      // Try to get from TenantContext if available
+      // Try legacy mentors table for backward compatibility (calendar_events FK)
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
@@ -111,8 +111,19 @@ export default function Calendario() {
         
         if (error) throw error;
         setEvents(eventsData || []);
+      } else if (activeMembership?.tenant_id) {
+        // Fallback: use tenant_id filter if available
+        const { data: eventsData, error } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .eq('tenant_id', activeMembership.tenant_id)
+          .order('event_date', { ascending: true });
+        
+        if (error) throw error;
+        setEvents(eventsData || []);
+        // Use membership ID as surrogate mentor_id for creating events
+        setMentorId(activeMembership.id);
       } else {
-        // No legacy mentor found - events may use tenant_id filter in the future
         setMentorId(null);
         setEvents([]);
       }
@@ -130,7 +141,7 @@ export default function Calendario() {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, activeMembership]);
 
   const resetForm = () => {
     setNewEvent({

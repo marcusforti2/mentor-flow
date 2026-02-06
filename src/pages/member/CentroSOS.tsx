@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ interface SOSRequest {
 
 export default function CentroSOS() {
   const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("novo");
   const [problemDescription, setProblemDescription] = useState("");
@@ -64,37 +66,48 @@ export default function CentroSOS() {
   useEffect(() => {
     if (user) {
       fetchMentoradoId();
+    }
+  }, [user, activeMembership]);
+
+  useEffect(() => {
+    if (mentoradoId) {
       fetchSOSRequests();
     }
-  }, [user]);
+  }, [mentoradoId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
   const fetchMentoradoId = async () => {
-    const { data } = await supabase
-      .from("mentorados")
-      .select("id")
-      .eq("user_id", user?.id)
-      .single();
-    if (data) setMentoradoId(data.id);
-  };
-
-  const fetchSOSRequests = async () => {
+    if (!user) return;
+    
+    // Try legacy mentorados table first (has FK to sos_requests)
     const { data: mentorado } = await supabase
       .from("mentorados")
       .select("id")
-      .eq("user_id", user?.id)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (mentorado) {
+      setMentoradoId(mentorado.id);
+    } else if (activeMembership?.id) {
+      // Fallback to membership ID
+      setMentoradoId(activeMembership.id);
+    }
+  };
 
-    if (!mentorado) return;
+  const fetchSOSRequests = async () => {
+    if (!mentoradoId) return;
 
-    const { data, error } = await supabase
+    // Query SOS requests by mentorado_id OR tenant_id
+    let query = supabase
       .from("sos_requests")
       .select("*")
-      .eq("mentorado_id", mentorado.id)
+      .eq("mentorado_id", mentoradoId)
       .order("created_at", { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching SOS requests:", error);
