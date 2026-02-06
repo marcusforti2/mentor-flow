@@ -2169,6 +2169,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          membership_id: string | null
           mentorado_id: string
           period_end: string | null
           period_start: string | null
@@ -2179,6 +2180,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          membership_id?: string | null
           mentorado_id: string
           period_end?: string | null
           period_start?: string | null
@@ -2189,6 +2191,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          membership_id?: string | null
           mentorado_id?: string
           period_end?: string | null
           period_start?: string | null
@@ -2197,6 +2200,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ranking_entries_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ranking_entries_mentorado_id_fkey"
             columns: ["mentorado_id"]

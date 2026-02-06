@@ -101,6 +101,8 @@ export default function AdminCentroSOS() {
 
       const enrichedRequests: SOSRequest[] = requests.map(r => ({
         ...r,
+        ai_chat_history: (Array.isArray(r.ai_chat_history) ? r.ai_chat_history : []) as unknown as ChatMessage[],
+        ai_analysis: (typeof r.ai_analysis === 'object' && r.ai_analysis !== null ? r.ai_analysis : {}) as unknown as SOSRequest['ai_analysis'],
         mentorado_name: profileMap.get(r.membership_id)?.full_name || 'Mentorado',
         mentorado_email: profileMap.get(r.membership_id)?.email || '',
       }));
