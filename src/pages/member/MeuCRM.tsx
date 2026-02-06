@@ -23,9 +23,10 @@ import {
 const columns = [
   { status: "new", title: "Novos", color: "bg-slate-500" },
   { status: "contacted", title: "Contato", color: "bg-blue-500" },
-  { status: "proposal", title: "Proposta", color: "bg-purple-500" },
-  { status: "closed", title: "Fechados", color: "bg-green-500" },
-  { status: "lost", title: "Perdidos", color: "bg-red-500" },
+  { status: "meeting_scheduled", title: "Reunião", color: "bg-amber-500" },
+  { status: "proposal_sent", title: "Proposta", color: "bg-purple-500" },
+  { status: "closed_won", title: "Fechados", color: "bg-green-500" },
+  { status: "closed_lost", title: "Perdidos", color: "bg-red-500" },
 ];
 
 export default function MeuCRM() {
@@ -117,7 +118,7 @@ export default function MeuCRM() {
   // Stats
   const totalLeads = leads.length;
   const hotLeads = leads.filter((l) => l.temperature === "hot").length;
-  const closedLeads = leads.filter((l) => l.status === "closed").length;
+  const closedLeads = leads.filter((l) => l.status === "closed_won").length;
 
   if (isLoading) {
     return (
