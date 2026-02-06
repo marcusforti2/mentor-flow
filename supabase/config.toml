@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.send-test-flow]
 verify_jwt = false
+
+[functions.cleanup-system]
+verify_jwt = false
