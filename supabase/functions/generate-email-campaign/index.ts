@@ -169,11 +169,23 @@ Os emails devem ter CTAs claros e criar conexão emocional.`;
       yPosition += 150;
     });
 
+    // Look up mentor's tenant_id
+    let tenantId: string | null = null;
+    const { data: mentorMembership } = await supabase
+      .from('memberships')
+      .select('tenant_id')
+      .eq('user_id', (await supabase.from('mentors').select('user_id').eq('id', mentorId).single()).data?.user_id || '')
+      .eq('role', 'mentor')
+      .eq('status', 'active')
+      .maybeSingle();
+    if (mentorMembership) tenantId = mentorMembership.tenant_id;
+
     // Save the flow to database
     const { data: flowData, error: flowError } = await supabase
       .from("email_flows")
       .insert({
         mentor_id: mentorId,
+        tenant_id: tenantId,
         name: campaignData.flowName || "Campanha Gerada por IA",
         description: campaignData.flowDescription || prompt,
         nodes: flowNodes,
