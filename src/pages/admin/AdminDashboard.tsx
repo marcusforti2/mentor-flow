@@ -172,48 +172,91 @@ export default function AdminDashboard() {
           </div>
         </BentoCard>
 
-        {/* Alerts */}
+        {/* Alerts & Insights */}
         <BentoCard size="lg" glow>
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Alertas & Insights IA</h3>
             </div>
-            <div className="flex-1">
-              {stats.sosCount > 0 || stats.atRiskCount > 0 ? (
-                <div className="space-y-3">
-                  {stats.sosCount > 0 && (
-                    <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{stats.sosCount} SOS pendente{stats.sosCount > 1 ? 's' : ''}</p>
-                          <p className="text-sm text-muted-foreground mt-1">Requer atenção urgente</p>
-                        </div>
-                        <Link to="/admin/centro-sos">
-                          <Button size="sm" variant="destructive">
-                            Atender
-                          </Button>
-                        </Link>
+            <div className="flex-1 space-y-3 overflow-auto">
+              {/* SOS Alerts */}
+              {stats.sosDetails.length > 0 && stats.sosDetails.map((sos) => (
+                <div key={sos.id} className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                        <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full ${
+                          sos.priority === 'high' ? 'bg-destructive/20 text-destructive' : 'bg-amber-500/20 text-amber-500'
+                        }`}>
+                          {sos.priority === 'high' ? 'Urgente' : 'Média'}
+                        </span>
                       </div>
+                      <p className="font-medium text-foreground text-sm truncate">{sos.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{sos.mentoradoName} • {formatRelativeTime(sos.createdAt)}</p>
                     </div>
-                  )}
-                  {stats.atRiskCount > 0 && (
-                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-foreground">{stats.atRiskCount} mentorado{stats.atRiskCount > 1 ? 's' : ''} em risco</p>
-                          <p className="text-sm text-muted-foreground mt-1">Baixo engajamento detectado</p>
-                        </div>
-                        <Link to="/admin/mentorados">
-                          <Button size="sm" variant="outline">
-                            Ver
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  )}
+                    <Link to="/admin/centro-sos">
+                      <Button size="sm" variant="destructive" className="text-xs shrink-0">
+                        Atender
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-              ) : (
+              ))}
+
+              {/* At Risk */}
+              {stats.atRiskDetails.length > 0 && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Users className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <span className="text-xs font-semibold text-amber-500">
+                          {stats.atRiskCount} mentorado{stats.atRiskCount > 1 ? 's' : ''} sem atividade
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {stats.atRiskDetails.slice(0, 3).map((m) => (
+                          <p key={m.membershipId} className="text-xs text-muted-foreground">
+                            <span className="text-foreground font-medium">{m.name}</span>
+                            {' — '}
+                            {m.daysSinceActivity >= 999 
+                              ? 'Nunca acessou'
+                              : `${m.daysSinceActivity}d sem atividade`}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                    <Link to="/admin/mentorados">
+                      <Button size="sm" variant="outline" className="text-xs shrink-0">
+                        Ver
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Wins */}
+              {stats.recentWins.length > 0 && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Trophy className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold text-emerald-500">Conquistas Recentes</span>
+                  </div>
+                  <div className="space-y-1">
+                    {stats.recentWins.slice(0, 3).map((win) => (
+                      <p key={win.id} className="text-xs text-muted-foreground">
+                        <span className="text-foreground font-medium">{win.mentoradoName}</span>
+                        {' — '}{win.description}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state only if truly nothing */}
+              {stats.sosDetails.length === 0 && stats.atRiskDetails.length === 0 && stats.recentWins.length === 0 && (
                 <EmptyState
                   icon={<Sparkles className="h-10 w-10 text-muted-foreground/50" />}
                   title="Tudo em ordem!"
