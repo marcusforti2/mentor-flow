@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, X, Shield, TrendingUp, Users, Crosshair, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AIBusinessProfileParser } from "./AIBusinessProfileParser";
+import { PitchContextEditor } from "./PitchContextEditor";
 
 interface BusinessProfile {
   id?: string;
@@ -31,6 +32,7 @@ interface BusinessProfile {
   pain_points_solved: string[];
   ideal_client_profile: string;
   daily_prospection_goal: number;
+  pitch_context: string;
   // Diagnóstico
   monthly_revenue: string;
   team_size: string;
@@ -180,6 +182,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
     pain_points_solved: [],
     ideal_client_profile: "",
     daily_prospection_goal: 10,
+    pitch_context: "",
     monthly_revenue: "",
     team_size: "",
     time_in_market: "",
@@ -252,6 +255,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
           pain_points_solved: data.pain_points_solved || [],
           ideal_client_profile: data.ideal_client_profile || "",
           daily_prospection_goal: data.daily_prospection_goal || 10,
+          pitch_context: (data as any).pitch_context || "",
           monthly_revenue: data.monthly_revenue || "",
           team_size: data.team_size || "",
           time_in_market: data.time_in_market || "",
@@ -293,6 +297,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
         pain_points_solved: profile.pain_points_solved,
         ideal_client_profile: profile.ideal_client_profile || null,
         daily_prospection_goal: profile.daily_prospection_goal,
+        pitch_context: profile.pitch_context || null,
         monthly_revenue: profile.monthly_revenue || null,
         team_size: profile.team_size || null,
         time_in_market: profile.time_in_market || null,
@@ -483,7 +488,11 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
 
       <CardContent>
         <Tabs defaultValue="diagnostico" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 mb-6">
+          <TabsList className="w-full grid grid-cols-4 mb-6">
+            <TabsTrigger value="contexto-ia" className="gap-2">
+              <Crosshair className="w-4 h-4" />
+              <span className="hidden sm:inline">Contexto IA</span>
+            </TabsTrigger>
             <TabsTrigger value="diagnostico" className="gap-2">
               <AlertTriangle className="w-4 h-4" />
               <span className="hidden sm:inline">Diagnóstico</span>
@@ -497,6 +506,15 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
               <span className="hidden sm:inline">Identidade</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* CONTEXTO IA */}
+          <TabsContent value="contexto-ia" className="space-y-6">
+            <PitchContextEditor
+              value={profile.pitch_context}
+              onChange={(value) => setProfile({ ...profile, pitch_context: value })}
+              mentoradoId={resolvedMentoradoId}
+            />
+          </TabsContent>
 
           {/* DIAGNÓSTICO */}
           <TabsContent value="diagnostico" className="space-y-6">

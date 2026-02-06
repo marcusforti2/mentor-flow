@@ -12,7 +12,104 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json();
+    const { text, mode } = await req.json();
+
+    // Pitch context mode - just structure the text for lead analysis
+    if (mode === "pitch_context") {
+      if (!text || typeof text !== "string" || text.trim().length < 20) {
+        return new Response(
+          JSON.stringify({ error: "Texto muito curto. Cole pelo menos um parágrafo." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+      const pitchSystemPrompt = `Você é um especialista em posicionamento comercial e vendas High Ticket.
+
+Sua tarefa é receber um texto bruto sobre um negócio/produto/serviço e organizá-lo em um CONTEXTO ESTRUTURADO que será usado pela IA para analisar perfis de leads no LinkedIn e Instagram.
+
+REGRAS:
+1. Organize as informações em seções claras
+2. Destaque os diferenciais competitivos
+3. Liste os problemas que o produto/serviço resolve
+4. Identifique o perfil ideal de cliente
+5. Extraia argumentos de venda e prova social
+6. Mantenha o texto em português brasileiro
+7. Seja conciso mas completo - este texto será cruzado com perfis de leads
+
+FORMATO DE SAÍDA (texto estruturado, não JSON):
+
+## Produto/Serviço
+[descrição clara]
+
+## Público-Alvo Ideal
+[quem é o cliente ideal]
+
+## Problemas que Resolve
+- [problema 1]
+- [problema 2]
+
+## Diferenciais Competitivos
+- [diferencial 1]
+- [diferencial 2]
+
+## Faixa de Investimento
+[valor/ticket médio]
+
+## Argumentos de Venda
+- [argumento 1]
+- [argumento 2]
+
+## Prova Social / Resultados
+- [resultado 1]
+- [resultado 2]
+
+## Gatilhos de Qualificação
+[sinais no perfil do lead que indicam que ele é ideal]`;
+
+      const pitchResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: pitchSystemPrompt },
+            { role: "user", content: `Organize este texto em contexto estruturado para análise de leads:\n\n${text}` },
+          ],
+          temperature: 0.5,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!pitchResponse.ok) {
+        if (pitchResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (pitchResponse.status === 402) {
+          return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        throw new Error("Erro no gateway de IA");
+      }
+
+      const pitchData = await pitchResponse.json();
+      const pitchContext = pitchData.choices?.[0]?.message?.content;
+
+      if (!pitchContext) throw new Error("Resposta vazia da IA");
+
+      return new Response(
+        JSON.stringify({ pitch_context: pitchContext.trim() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!text || typeof text !== "string" || text.trim().length < 20) {
       return new Response(

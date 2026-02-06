@@ -1790,6 +1790,7 @@ export type Database = {
           monthly_revenue: string | null
           owner_dependency_level: string | null
           pain_points_solved: string[] | null
+          pitch_context: string | null
           price_range: string | null
           sales_cycle_days: number | null
           sales_predictability: string | null
@@ -1819,6 +1820,7 @@ export type Database = {
           monthly_revenue?: string | null
           owner_dependency_level?: string | null
           pain_points_solved?: string[] | null
+          pitch_context?: string | null
           price_range?: string | null
           sales_cycle_days?: number | null
           sales_predictability?: string | null
@@ -1848,6 +1850,7 @@ export type Database = {
           monthly_revenue?: string | null
           owner_dependency_level?: string | null
           pain_points_solved?: string[] | null
+          pitch_context?: string | null
           price_range?: string | null
           sales_cycle_days?: number | null
           sales_predictability?: string | null
