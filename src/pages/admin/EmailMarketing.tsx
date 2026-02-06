@@ -85,29 +85,29 @@ export default function EmailMarketing() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (activeMembership) fetchData();
-  }, [activeMembership]);
+    if (activeMembership && user) fetchData();
+  }, [activeMembership, user]);
 
   const fetchData = async () => {
-    if (!activeMembership) return;
+    if (!activeMembership || !user) return;
     setIsLoading(true);
     try {
       const tenantId = activeMembership.tenant_id;
-      const effectiveUserId = activeMembership.user_id;
+      const realUserId = user.id; // Always use the REAL logged-in user, not impersonated
 
-      // Get mentor id — try direct lookup first, then fall back to first mentor in tenant
+      // Get mentor id — try the real logged-in user first (works for admin who is also a mentor)
       let foundMentorId: string | null = null;
 
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', realUserId)
         .maybeSingle();
 
       if (mentorData) {
         foundMentorId = mentorData.id;
       } else {
-        // Admin/Master: find first mentor in the tenant
+        // Fallback: find first mentor in the tenant (now works with new RLS policy)
         const { data: mentorMemberships } = await supabase
           .from('memberships')
           .select('user_id')
@@ -127,10 +127,12 @@ export default function EmailMarketing() {
       }
 
       if (!foundMentorId) {
+        console.error('No mentor found for user:', realUserId, 'in tenant:', tenantId);
         setIsLoading(false);
         return;
       }
       setMentorId(foundMentorId);
+      console.log('Mentor resolved:', foundMentorId);
 
       // Fetch flows
       const { data: flowsData } = await supabase
