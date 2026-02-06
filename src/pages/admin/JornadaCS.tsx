@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,45 +53,72 @@ export default function JornadaCS() {
   const [currentPage, setCurrentPage] = useState(0);
   
   const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const { toast } = useToast();
 
   const fetchMentorados = async () => {
-    if (!user) return;
+    if (!activeMembership) return;
     
     setIsLoading(true);
     
     try {
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      const tenantId = activeMembership.tenant_id;
+      const effectiveUserId = activeMembership.user_id;
+      const role = activeMembership.role;
       
-      if (mentorData) {
-        const { data: mentoradosData, error: mentoradosError } = await supabase
-          .from('mentorados')
-          .select('id, user_id, status, joined_at')
-          .eq('mentor_id', mentorData.id)
+      let mentoradosData: any[] = [];
+      
+      if (role === 'mentor') {
+        // Mentor: get their specific mentorados
+        const { data: mentorData } = await supabase
+          .from('mentors')
+          .select('id')
+          .eq('user_id', effectiveUserId)
+          .single();
+        
+        if (mentorData) {
+          const { data, error } = await supabase
+            .from('mentorados')
+            .select('id, user_id, status, joined_at')
+            .eq('mentor_id', mentorData.id)
+            .eq('status', 'active');
+          if (error) throw error;
+          mentoradosData = data || [];
+        }
+      } else {
+        // Admin/Master: get ALL mentorados in tenant via memberships
+        const { data: menteeMemberships } = await supabase
+          .from('memberships')
+          .select('user_id')
+          .eq('tenant_id', tenantId)
+          .eq('role', 'mentee')
           .eq('status', 'active');
         
-        if (mentoradosError) throw mentoradosError;
-        
-        if (mentoradosData && mentoradosData.length > 0) {
-          const userIds = mentoradosData.map(m => m.user_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, full_name, email, avatar_url')
-            .in('user_id', userIds);
-          
-          const mentoradosWithProfiles = mentoradosData.map(m => ({
-            ...m,
-            profile: profiles?.find(p => p.user_id === m.user_id) || null
-          }));
-          
-          setMentorados(mentoradosWithProfiles);
-        } else {
-          setMentorados([]);
+        if (menteeMemberships && menteeMemberships.length > 0) {
+          const userIds = menteeMemberships.map(m => m.user_id);
+          const { data, error } = await supabase
+            .from('mentorados')
+            .select('id, user_id, status, joined_at')
+            .in('user_id', userIds)
+            .eq('status', 'active');
+          if (error) throw error;
+          mentoradosData = data || [];
         }
+      }
+      
+      if (mentoradosData.length > 0) {
+        const userIds = mentoradosData.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email, avatar_url')
+          .in('user_id', userIds);
+        
+        setMentorados(mentoradosData.map(m => ({
+          ...m,
+          profile: profiles?.find(p => p.user_id === m.user_id) || null
+        })));
+      } else {
+        setMentorados([]);
       }
     } catch (error) {
       console.error('Error fetching mentorados:', error);
@@ -106,7 +134,7 @@ export default function JornadaCS() {
 
   useEffect(() => {
     fetchMentorados();
-  }, [user]);
+  }, [activeMembership]);
 
   const getInitials = (name: string | null) => {
     if (!name) return "?";

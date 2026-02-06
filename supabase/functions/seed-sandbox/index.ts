@@ -46,6 +46,7 @@ interface Persona {
   sosDesc?: string
   temperature: 'hot' | 'warm' | 'cold'
   points: number
+  joinDaysAgo: number     // how many days ago the mentee joined (controls Jornada CS week)
   businessProfile: {
     business_type: string
     monthly_revenue: string
@@ -62,28 +63,28 @@ const PERSONAS: Persona[] = [
     name: 'Ana Carolina Martins', email: 'ana.martins.demo@lbvpreview.com',
     business: 'AC Consultoria Empresarial', segment: 'Consultoria',
     leadsCount: 35, activityLevel: 'high', trailProgress: 100, hasSOS: false,
-    temperature: 'hot', points: 480,
+    temperature: 'hot', points: 480, joinDaysAgo: 2,
     businessProfile: { business_type: 'Consultoria', monthly_revenue: 'R$ 30-50k', team_size: '3-5', main_offer: 'Consultoria de gestão para PMEs', target_audience: 'PMEs de 10-50 funcionários', maturity_level: 'scaling', daily_prospection_goal: 8 },
   },
   {
     name: 'Bruno Henrique Costa', email: 'bruno.costa.demo@lbvpreview.com',
     business: 'BH Marketing Digital', segment: 'Marketing',
     leadsCount: 22, activityLevel: 'high', trailProgress: 75, hasSOS: false,
-    temperature: 'warm', points: 350,
+    temperature: 'warm', points: 350, joinDaysAgo: 5,
     businessProfile: { business_type: 'Agência', monthly_revenue: 'R$ 20-30k', team_size: '2-3', main_offer: 'Gestão de tráfego pago', target_audience: 'E-commerces e infoprodutores', maturity_level: 'growing', daily_prospection_goal: 6 },
   },
   {
     name: 'Camila Ferreira Santos', email: 'camila.santos.demo@lbvpreview.com',
     business: 'CF Design Studio', segment: 'Design',
     leadsCount: 8, activityLevel: 'medium', trailProgress: 45, hasSOS: false,
-    temperature: 'warm', points: 210,
+    temperature: 'warm', points: 210, joinDaysAgo: 9,
     businessProfile: { business_type: 'Studio', monthly_revenue: 'R$ 8-15k', team_size: '1-2', main_offer: 'Identidade visual e branding', target_audience: 'Startups e marcas em lançamento', maturity_level: 'early', daily_prospection_goal: 4 },
   },
   {
     name: 'Diego Oliveira Lima', email: 'diego.lima.demo@lbvpreview.com',
     business: 'DOL Tecnologia', segment: 'SaaS',
     leadsCount: 50, activityLevel: 'high', trailProgress: 90, hasSOS: false,
-    temperature: 'hot', points: 520,
+    temperature: 'hot', points: 520, joinDaysAgo: 12,
     businessProfile: { business_type: 'SaaS', monthly_revenue: 'R$ 50-80k', team_size: '5-10', main_offer: 'ERP para restaurantes', target_audience: 'Restaurantes e bares', maturity_level: 'scaling', daily_prospection_goal: 10 },
   },
   {
@@ -91,7 +92,7 @@ const PERSONAS: Persona[] = [
     business: 'ES Coaching Executivo', segment: 'Coaching',
     leadsCount: 15, activityLevel: 'medium', trailProgress: 60, hasSOS: true,
     sosCategory: 'crm', sosTitle: 'Dificuldade com follow-up', sosDesc: 'Não consigo manter cadência de follow-up com meus leads. Preciso de ajuda para organizar meu processo de contato.',
-    temperature: 'warm', points: 275,
+    temperature: 'warm', points: 275, joinDaysAgo: 16,
     businessProfile: { business_type: 'Coaching', monthly_revenue: 'R$ 15-25k', team_size: '1', main_offer: 'Coaching executivo 1:1', target_audience: 'C-levels e diretores', maturity_level: 'growing', daily_prospection_goal: 5 },
   },
   {
@@ -99,35 +100,35 @@ const PERSONAS: Persona[] = [
     business: 'FA Vendas B2B', segment: 'Vendas',
     leadsCount: 3, activityLevel: 'low', trailProgress: 15, hasSOS: true,
     sosCategory: 'motivation', sosTitle: 'Desmotivado com resultados', sosDesc: 'Estou há 2 semanas sem fechar nenhum negócio. Sinto que meu script não está funcionando e preciso de orientação urgente.',
-    temperature: 'cold', points: 65,
+    temperature: 'cold', points: 65, joinDaysAgo: 20,
     businessProfile: { business_type: 'Representação', monthly_revenue: 'R$ 3-8k', team_size: '1', main_offer: 'Representação comercial B2B', target_audience: 'Indústrias de pequeno porte', maturity_level: 'early', daily_prospection_goal: 3 },
   },
   {
     name: 'Gabriela Nascimento Dias', email: 'gabriela.dias.demo@lbvpreview.com',
     business: 'GN Treinamentos Corporativos', segment: 'Treinamentos',
     leadsCount: 28, activityLevel: 'high', trailProgress: 85, hasSOS: false,
-    temperature: 'hot', points: 410,
+    temperature: 'hot', points: 410, joinDaysAgo: 24,
     businessProfile: { business_type: 'Treinamentos', monthly_revenue: 'R$ 25-40k', team_size: '3-5', main_offer: 'Treinamentos in-company de liderança', target_audience: 'Empresas médias (50-200 funcionários)', maturity_level: 'scaling', daily_prospection_goal: 7 },
   },
   {
     name: 'Henrique Barbosa Mendes', email: 'henrique.mendes.demo@lbvpreview.com',
     business: 'HB Soluções Financeiras', segment: 'Finanças',
     leadsCount: 12, activityLevel: 'medium', trailProgress: 55, hasSOS: false,
-    temperature: 'warm', points: 190,
+    temperature: 'warm', points: 190, joinDaysAgo: 27,
     businessProfile: { business_type: 'Consultoria Financeira', monthly_revenue: 'R$ 12-20k', team_size: '2', main_offer: 'Planejamento financeiro para empresas', target_audience: 'Empresários com faturamento acima de R$500k/ano', maturity_level: 'growing', daily_prospection_goal: 5 },
   },
   {
     name: 'Isabela Torres Vieira', email: 'isabela.vieira.demo@lbvpreview.com',
     business: 'IT Arquitetura de Negócios', segment: 'Arquitetura',
     leadsCount: 5, activityLevel: 'inactive', trailProgress: 10, hasSOS: false,
-    temperature: 'cold', points: 30,
+    temperature: 'cold', points: 30, joinDaysAgo: 38,
     businessProfile: { business_type: 'Arquitetura', monthly_revenue: 'R$ 5-10k', team_size: '1', main_offer: 'Projetos de arquitetura comercial', target_audience: 'Donos de lojas e franquias', maturity_level: 'early', daily_prospection_goal: 2 },
   },
   {
     name: 'João Pedro Carvalho', email: 'joao.carvalho.demo@lbvpreview.com',
     business: 'JP Automação Comercial', segment: 'Automação',
     leadsCount: 42, activityLevel: 'high', trailProgress: 95, hasSOS: false,
-    temperature: 'hot', points: 490,
+    temperature: 'hot', points: 490, joinDaysAgo: 50,
     businessProfile: { business_type: 'Automação', monthly_revenue: 'R$ 40-60k', team_size: '4-6', main_offer: 'Automação de processos comerciais', target_audience: 'Empresas B2B com time de vendas', maturity_level: 'scaling', daily_prospection_goal: 9 },
   },
 ]
@@ -390,7 +391,7 @@ Deno.serve(async (req) => {
         phone: `+5511${rand(90000, 99999)}${rand(1000, 9999)}`,
       }, { onConflict: 'user_id' })
 
-      const joinedDaysAgo = rand(30, 120)
+      const joinedDaysAgo = persona.joinDaysAgo
       const joinedAt = ago(joinedDaysAgo)
 
       const { data: mem } = await admin.from('memberships').insert({
@@ -791,6 +792,94 @@ Deno.serve(async (req) => {
     }
 
     console.log('[seed] Community created.')
+
+    // ━━━ PHASE 8: EMAIL MARKETING ━━━━━━━━━━━━━━━━━━━━━━━━━
+    console.log('[seed] Phase 8: Creating email flows & templates...')
+
+    // Create email template
+    const { data: emailTemplate } = await admin.from('email_templates').insert({
+      mentor_id: legacyMentor.id,
+      tenant_id: T,
+      name: 'Boas-vindas Mentorado',
+      subject: 'Bem-vindo(a) à mentoria, {{nome}}! 🚀',
+      body_html: '<h2>Olá, {{nome}}!</h2><p>Seja muito bem-vindo(a) ao programa de mentoria. Estamos animados em ter você conosco!</p><p>Nas próximas semanas, você terá acesso a:</p><ul><li>🎯 CRM com IA para organizar suas prospecções</li><li>🤖 8 ferramentas de IA personalizadas</li><li>📚 Trilhas de conteúdo exclusivas</li><li>💬 Comunidade de mentorados</li></ul><p>Qualquer dúvida, use o Centro SOS dentro da plataforma.</p><p>Vamos juntos!</p>',
+      body_text: 'Olá, {{nome}}! Bem-vindo à mentoria.',
+      merge_tags: ['nome', 'business_name'],
+    }).select('id').single()
+
+    const { data: emailTemplate2 } = await admin.from('email_templates').insert({
+      mentor_id: legacyMentor.id,
+      tenant_id: T,
+      name: 'Follow-up Semana 1',
+      subject: '{{nome}}, como foi sua primeira semana? 📊',
+      body_html: '<h2>E aí, {{nome}}! Como está?</h2><p>Já se passou uma semana desde que você entrou no programa. Quero saber:</p><ol><li>Já configurou seu CRM?</li><li>Quantas prospecções você fez?</li><li>Assistiu às primeiras aulas da trilha?</li></ol><p>Se precisar de ajuda, o Mentor Virtual está disponível 24/7 na plataforma. Use sem moderação!</p><p>Lembre-se: <strong>consistência > intensidade</strong>.</p>',
+      body_text: 'Olá {{nome}}, como foi sua primeira semana?',
+      merge_tags: ['nome'],
+    }).select('id').single()
+
+    const { data: emailTemplate3 } = await admin.from('email_templates').insert({
+      mentor_id: legacyMentor.id,
+      tenant_id: T,
+      name: 'Reengajamento Inativo',
+      subject: '{{nome}}, sentimos sua falta! 💛',
+      body_html: '<h2>{{nome}}, tudo bem?</h2><p>Percebemos que faz alguns dias que você não acessa a plataforma. Sabemos que a rotina aperta, mas cada dia sem prospectar é um dia de faturamento perdido.</p><p>Aqui vai um desafio rápido: <strong>faça 3 prospecções hoje</strong>. Só 3. Use o Hub de Comunicação para gerar scripts prontos em segundos.</p><p>Seus colegas estão avançando no ranking. Não fique para trás! 🏆</p>',
+      body_text: 'Olá {{nome}}, sentimos sua falta!',
+      merge_tags: ['nome'],
+    }).select('id').single()
+
+    // Create email flow: Onboarding Sequence
+    const onboardingNodes = [
+      { id: 'trigger-1', type: 'trigger', position: { x: 250, y: 50 }, data: { label: 'Gatilho', triggerType: 'onboarding', config: {} } },
+      { id: 'email-1', type: 'email', position: { x: 250, y: 200 }, data: { label: 'Enviar Email', subject: 'Bem-vindo(a) à mentoria! 🚀', body: emailTemplate?.id ? '' : 'Boas-vindas', templateId: emailTemplate?.id || '' } },
+      { id: 'wait-1', type: 'wait', position: { x: 250, y: 350 }, data: { label: 'Aguardar', duration: 7, unit: 'days' } },
+      { id: 'email-2', type: 'email', position: { x: 250, y: 500 }, data: { label: 'Enviar Email', subject: 'Como foi sua primeira semana? 📊', body: '', templateId: emailTemplate2?.id || '' } },
+      { id: 'wait-2', type: 'wait', position: { x: 250, y: 650 }, data: { label: 'Aguardar', duration: 14, unit: 'days' } },
+      { id: 'condition-1', type: 'condition', position: { x: 250, y: 800 }, data: { label: 'Condição', conditionType: 'inactivity', config: { days: 7 } } },
+      { id: 'email-3', type: 'email', position: { x: 250, y: 950 }, data: { label: 'Enviar Email', subject: 'Sentimos sua falta! 💛', body: '', templateId: emailTemplate3?.id || '' } },
+    ]
+    const onboardingEdges = [
+      { id: 'e-t1-e1', source: 'trigger-1', target: 'email-1', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-e1-w1', source: 'email-1', target: 'wait-1', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-w1-e2', source: 'wait-1', target: 'email-2', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-e2-w2', source: 'email-2', target: 'wait-2', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-w2-c1', source: 'wait-2', target: 'condition-1', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-c1-e3', source: 'condition-1', target: 'email-3', markerEnd: { type: 'arrowclosed' } },
+    ]
+
+    await admin.from('email_flows').insert({
+      mentor_id: legacyMentor.id,
+      tenant_id: T,
+      name: 'Sequência de Onboarding',
+      description: 'Fluxo automático de boas-vindas e acompanhamento das primeiras semanas do mentorado',
+      nodes: onboardingNodes,
+      edges: onboardingEdges,
+      is_active: true,
+    })
+
+    // Create second flow: Re-engagement
+    const reengageNodes = [
+      { id: 'trigger-1', type: 'trigger', position: { x: 250, y: 50 }, data: { label: 'Gatilho', triggerType: 'inactivity', config: { days: 5 } } },
+      { id: 'email-1', type: 'email', position: { x: 250, y: 200 }, data: { label: 'Enviar Email', subject: 'Sentimos sua falta! 💛', body: '', templateId: emailTemplate3?.id || '' } },
+      { id: 'wait-1', type: 'wait', position: { x: 250, y: 350 }, data: { label: 'Aguardar', duration: 3, unit: 'days' } },
+      { id: 'email-2', type: 'email', position: { x: 250, y: 500 }, data: { label: 'Enviar Email', subject: 'Última chance de retomar! 🔥', body: '<h2>{{nome}}, ainda dá tempo!</h2><p>O ranking fecha em breve. Seus colegas estão crescendo. Volte hoje e faça pelo menos 1 prospecção.</p>' } },
+    ]
+    const reengageEdges = [
+      { id: 'e-t1-e1', source: 'trigger-1', target: 'email-1', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-e1-w1', source: 'email-1', target: 'wait-1', markerEnd: { type: 'arrowclosed' } },
+      { id: 'e-w1-e2', source: 'wait-1', target: 'email-2', markerEnd: { type: 'arrowclosed' } },
+    ]
+
+    await admin.from('email_flows').insert({
+      mentor_id: legacyMentor.id,
+      tenant_id: T,
+      name: 'Reengajamento de Inativos',
+      description: 'Dispara automaticamente quando o mentorado fica 5+ dias sem acessar a plataforma',
+      nodes: reengageNodes,
+      edges: reengageEdges,
+      is_active: false,
+    })
+
+    console.log('[seed] Email flows & templates created.')
 
     // ━━━ SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const totalLeads = PERSONAS.reduce((s, p) => s + p.leadsCount, 0)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,33 +81,62 @@ export default function EmailMarketing() {
   const [newFlowDescription, setNewFlowDescription] = useState("");
 
   const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+    if (activeMembership) fetchData();
+  }, [activeMembership]);
 
   const fetchData = async () => {
+    if (!activeMembership) return;
     setIsLoading(true);
     try {
-      // Get mentor id - try legacy mentors table, fallback gracefully
+      const tenantId = activeMembership.tenant_id;
+      const effectiveUserId = activeMembership.user_id;
+
+      // Get mentor id — try direct lookup first, then fall back to first mentor in tenant
+      let foundMentorId: string | null = null;
+
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
-        .eq('user_id', user!.id)
+        .eq('user_id', effectiveUserId)
         .maybeSingle();
-      
-      if (!mentorData) {
+
+      if (mentorData) {
+        foundMentorId = mentorData.id;
+      } else {
+        // Admin/Master: find first mentor in the tenant
+        const { data: mentorMemberships } = await supabase
+          .from('memberships')
+          .select('user_id')
+          .eq('tenant_id', tenantId)
+          .eq('role', 'mentor')
+          .eq('status', 'active')
+          .limit(1);
+
+        if (mentorMemberships?.length) {
+          const { data: tenantMentor } = await supabase
+            .from('mentors')
+            .select('id')
+            .eq('user_id', mentorMemberships[0].user_id)
+            .maybeSingle();
+          if (tenantMentor) foundMentorId = tenantMentor.id;
+        }
+      }
+
+      if (!foundMentorId) {
         setIsLoading(false);
         return;
       }
-      setMentorId(mentorData.id);
+      setMentorId(foundMentorId);
 
       // Fetch flows
       const { data: flowsData } = await supabase
         .from('email_flows')
         .select('*')
-        .eq('mentor_id', mentorData.id)
+        .eq('mentor_id', foundMentorId)
         .order('created_at', { ascending: false });
       
       setFlows(flowsData || []);
@@ -115,7 +145,7 @@ export default function EmailMarketing() {
       const { data: templatesData } = await supabase
         .from('email_templates')
         .select('*')
-        .eq('mentor_id', mentorData.id)
+        .eq('mentor_id', foundMentorId)
         .order('created_at', { ascending: false });
       
       setTemplates(templatesData || []);
