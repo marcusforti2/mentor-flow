@@ -27,16 +27,33 @@ export function useLeadsWithQualification(mentoradoId: string | null) {
       setIsLoading(true);
       
       try {
+        // Resolve legacy mentorado_id from membership
+        let legacyMentoradoId = mentoradoId;
+        const { data: membership } = await supabase
+          .from('memberships')
+          .select('user_id')
+          .eq('id', mentoradoId)
+          .maybeSingle();
+        
+        if (membership?.user_id) {
+          const { data: mentorado } = await supabase
+            .from('mentorados')
+            .select('id')
+            .eq('user_id', membership.user_id)
+            .maybeSingle();
+          if (mentorado) legacyMentoradoId = mentorado.id;
+        }
+
         const [profileRes, leadsRes] = await Promise.all([
           supabase
             .from('mentorado_business_profiles')
             .select('*')
-            .eq('mentorado_id', mentoradoId)
+            .eq('mentorado_id', legacyMentoradoId)
             .maybeSingle(),
           supabase
             .from('crm_prospections')
             .select('id, contact_name, company, contact_email, contact_phone, temperature, status, notes, ai_insights, updated_at')
-            .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
+            .or(`mentorado_id.eq.${legacyMentoradoId},membership_id.eq.${mentoradoId}`)
             .order('updated_at', { ascending: false })
             .limit(50)
         ]);

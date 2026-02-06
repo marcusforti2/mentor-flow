@@ -84,6 +84,39 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  
+  // Resolved IDs for dual-ID support (membership vs legacy mentorado)
+  const [resolvedLegacyId, setResolvedLegacyId] = useState<string | null>(null);
+  const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
+
+  // Resolve legacy mentorado_id and tenant_id from membership
+  useEffect(() => {
+    const resolveIds = async () => {
+      if (!mentoradoId) return;
+      try {
+        // Get membership info (tenant_id + user_id)
+        const { data: membership } = await supabase
+          .from('memberships')
+          .select('user_id, tenant_id')
+          .eq('id', mentoradoId)
+          .maybeSingle();
+        
+        if (membership) {
+          setResolvedTenantId(membership.tenant_id);
+          // Find legacy mentorado_id from user_id
+          const { data: mentorado } = await supabase
+            .from('mentorados')
+            .select('id')
+            .eq('user_id', membership.user_id)
+            .maybeSingle();
+          if (mentorado) setResolvedLegacyId(mentorado.id);
+        }
+      } catch (error) {
+        console.error('Error resolving IDs:', error);
+      }
+    };
+    resolveIds();
+  }, [mentoradoId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -264,6 +297,10 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       };
       const temperature = temperatureMap[reportData.recommendation] || 'warm';
       
+      // Use resolved legacy mentorado_id for FK, membership_id for new system
+      const effectiveMentoradoId = resolvedLegacyId || mentoradoId;
+      const effectiveTenantId = resolvedTenantId;
+      
       // Check if URL is a valid profile URL to save
       const isValidProfileUrl = profileUrl.startsWith('http') && 
         (profileUrl.includes('instagram.com') || profileUrl.includes('linkedin.com'));
@@ -271,7 +308,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       // If a lead was selected, update that specific lead
       if (selectedLeadId) {
         const selectedLead = existingLeads.find(l => l.id === selectedLeadId);
-        await supabase
+        const { error: updateError } = await supabase
           .from('crm_prospections')
           .update({
             ai_insights: JSON.parse(JSON.stringify(reportData)),
@@ -282,6 +319,12 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedLeadId);
+        
+        if (updateError) {
+          console.error('Error updating lead:', updateError);
+          toast.error('Erro ao salvar qualificação no lead');
+          return;
+        }
         toast.success(`Qualificação salva no lead "${selectedLead?.contact_name}"`);
       } else {
         // Check if lead already exists by profile_url (for requalification deduplication)
@@ -289,12 +332,11 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           const { data: existingByUrl } = await supabase
             .from('crm_prospections')
             .select('id, contact_name')
-            .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
+            .or(`mentorado_id.eq.${effectiveMentoradoId},membership_id.eq.${mentoradoId}`)
             .eq('profile_url', profileUrl)
             .maybeSingle();
           
           if (existingByUrl) {
-            // Delete the old one and create fresh
             await supabase
               .from('crm_prospections')
               .delete()
@@ -303,13 +345,14 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           }
         }
         
-        // Create new lead
+        // Create new lead with correct IDs
         const leadName = extractedData?.name || 'Lead Qualificado';
-        await supabase
+        const { error: insertError } = await supabase
           .from('crm_prospections')
           .insert([{
-            mentorado_id: mentoradoId,
+            mentorado_id: effectiveMentoradoId,
             membership_id: mentoradoId,
+            tenant_id: effectiveTenantId,
             contact_name: leadName,
             company: extractedData?.company || null,
             temperature,
@@ -320,13 +363,20 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
             profile_url: isValidProfileUrl ? profileUrl : null
           }]);
         
-        toast.success(`Lead "${leadName}" criado no CRM`);
+        if (insertError) {
+          console.error('Error inserting lead:', insertError);
+          toast.error(`Erro ao salvar lead no CRM: ${insertError.message}`);
+          return;
+        }
+        
+        toast.success(`Lead "${leadName}" criado e salvo no CRM ✅`);
       }
       
       await fetchQualificationHistory();
       await fetchExistingLeads();
     } catch (error) {
       console.error('Error saving lead to CRM:', error);
+      toast.error('Erro inesperado ao salvar no CRM');
     }
   };
 
