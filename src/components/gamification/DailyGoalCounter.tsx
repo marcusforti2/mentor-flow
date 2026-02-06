@@ -70,21 +70,21 @@ export function DailyGoalCounter({ mentoradoId, className }: DailyGoalCounterPro
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
 
-        // Fetch today's prospections count
+        // Fetch today's prospections count (check both membership_id and mentorado_id)
         const { count } = await supabase
           .from("crm_prospections")
           .select("id", { count: "exact" })
-          .eq("mentorado_id", mentoradoId)
+          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
           .gte("created_at", todayStart.toISOString())
           .lte("created_at", todayEnd.toISOString());
 
         setTodayCount(count || 0);
 
-        // Fetch daily goal from business profile
+        // Fetch daily goal from business profile (try membership_id first, then mentorado_id)
         const { data: profile } = await supabase
           .from("mentorado_business_profiles")
           .select("daily_prospection_goal")
-          .eq("mentorado_id", mentoradoId)
+          .or(`mentorado_id.eq.${mentoradoId}`)
           .maybeSingle();
 
         if (profile?.daily_prospection_goal) {
