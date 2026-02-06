@@ -1,89 +1,88 @@
 
+## Plano: Apresentacao Fullscreen Premium no Master Admin
 
-## Plano: Garantir Persistencia das Analises de Lead do Master Admin
+### Objetivo
 
-### Problema Identificado
+Criar uma pagina de apresentacao (slideshow) dentro da area Master Admin, acessivel pelo menu lateral (Floating Dock). A apresentacao sera fullscreen com navegacao por teclado (setas e ESC), branding premium escuro da LBV TECH, e representacoes visuais das telas do sistema como "prints".
 
-Quando o Master Admin (Marcus Forti) impersona o Diego e roda uma analise de lead, o sistema tenta resolver o `mentorado_id` legado consultando a tabela `mentorados`. Porem, as politicas de seguranca (RLS) dessa tabela **bloqueiam a leitura pelo Master Admin**:
+### Arquitetura da Solucao
 
-- Politica 1: "Mentorados can view their own record" -- exige que `auth.uid() = user_id` (o master admin nao e dono do registro)
-- Politica 2: "Mentors can manage mentorados" -- exige `has_role('mentor')` (master_admin nao e mentor)
+A apresentacao sera um componente React standalone com:
+- **Fullscreen API** nativa do browser (document.requestFullscreen)
+- **Navegacao por teclado**: setas esquerda/direita para slides, ESC para sair do fullscreen
+- **Transicoes suaves** entre slides com animacao de fade/slide
+- **8 slides** com todo o conteudo do relatorio
+- **Mini-mockups visuais** das telas do sistema (feitos em CSS/componentes) no lugar de screenshots reais, prontos para substituir por imagens reais no futuro
 
-**Resultado**: A resolucao de IDs falha silenciosamente, e dependendo do momento, o `mentorado_id` e/ou `tenant_id` podem nao ser definidos corretamente, causando falha na insercao (RLS exige `tenant_id` para staff).
+### Estrutura dos Slides
 
-### Dados Atuais
+1. **Capa** - Logo LBV TECH grande, titulo "Sistema Operacional de Governo para Mentorias", gradiente premium
+2. **Visao Geral** - O que e a plataforma, proposta de valor em 4 pilares
+3. **Area do Aluno - Dashboard e Arsenal IA** - Bento Grid, 8 ferramentas de IA, mini-mockup do dashboard
+4. **Area do Aluno - CRM, Trilhas e Comunidade** - CRM Vision AI, Trilhas Netflix, Comunidade, SOS, mini-mockups
+5. **Painel do Mentor - Dashboard e Gestao** - KPIs, gestao de mentorados, CRM unificado, mini-mockup
+6. **Painel do Mentor - Automacao e Relatorios** - Email Marketing, Jornada CS, Relatorios, Rankings
+7. **Diferenciais Tecnologicos e Seguranca** - Tabela de diferenciais, arquitetura de seguranca, hierarquia de papeis
+8. **Jornada do Mentorado e Metricas de Valor** - Fluxo de 14 passos, valor para mentor vs mentorado
 
-Diego possui 10 leads com analise salva no banco:
-1. Fatima Capucci (Score: 62)
-2. Conrado Santos (Score: 82)
-3. Patricia Almeida (Score: 87)
-4. Lucas Ferreira (Score: 62)
-5. Roberto Santos (Score: 38)
-6. Carolina Duarte
-7. Fernando Matsuda
-8. Juliana Bastos
-9. Thiago Rezende
-10. Rafaela Mendonca
+### Navegacao Visual
 
-Nenhuma analise nova foi salva apos as 20:52 (Fatima Capucci), confirmando que analises posteriores falharam.
+Cada slide tera:
+- Indicador de progresso (dots) no rodape
+- Numero do slide (ex: "3 / 8") discreto no canto
+- Logo LBV TECH pequeno no canto superior esquerdo
+- Botao de fullscreen no canto superior direito
+- Hint "Use as setas para navegar | ESC para sair" no primeiro slide
 
-### Solucao
+### Representacao Visual das Telas
 
-#### Passo 1: Adicionar politica de RLS na tabela `mentorados` para master_admin
+Em vez de screenshots estaticos (que podem ficar desatualizados), vou criar **mini-mockups estilizados** usando CSS que representam visualmente cada tela principal:
+- Dashboard do Aluno (bento grid simplificado com cards coloridos)
+- CRM Kanban (colunas com cards de lead)
+- Arsenal de IA (grid de 8 icones com labels)
+- Dashboard do Mentor (KPIs + graficos simplificados)
+- Trilhas Netflix (carrossel com thumbnails)
 
-Criar uma politica SELECT que permita ao master_admin ler registros da tabela `mentorados`:
-
-```text
-CREATE POLICY "master_admin_view_mentorados"
-ON public.mentorados FOR SELECT
-USING (is_master_admin(auth.uid()));
-```
-
-Isso resolve a causa raiz: o master_admin podera consultar o `mentorado_id` legado do Diego durante a impersonation.
-
-#### Passo 2: Adicionar politica equivalente para `mentorado_business_profiles`
-
-A mesma logica se aplica a tabela de perfis de negocio, que tambem e consultada durante a analise:
-
-```text
-CREATE POLICY "master_admin_view_business_profiles"
-ON public.mentorado_business_profiles FOR SELECT
-USING (is_master_admin(auth.uid()));
-```
-
-#### Passo 3: Melhorar o tratamento de erros no `saveLeadToCRM`
-
-No arquivo `src/components/ai-tools/LeadQualifier.tsx`, adicionar logs e tratamento mais robusto:
-
-- Log de debug para verificar quais IDs foram resolvidos antes do insert
-- Fallback: se `effectiveTenantId` for null, buscar do `activeMembership` via contexto
-- Mensagem de erro mais descritiva caso a insercao falhe
-
-#### Passo 4: Ampliar o limite do historico de qualificacoes
-
-Atualmente a funcao `fetchQualificationHistory` tem `.limit(10)`. Aumentar para `.limit(50)` para garantir que todas as analises aparecem no historico.
+Esses mockups serao componentes React embutidos, mantendo o branding consistente.
 
 ### Secao Tecnica
 
-**Arquivos a modificar:**
-- `supabase/migrations/` -- nova migracao para as politicas RLS
-- `src/components/ai-tools/LeadQualifier.tsx` -- tratamento de erros e limite do historico
+**Arquivos a criar:**
+- `src/pages/master/ApresentacaoPage.tsx` - Componente principal com logica de slides, fullscreen e teclado
+- `src/components/presentation/SlideRenderer.tsx` - Renderizador individual de cada slide com mini-mockups
 
-**Fluxo corrigido (impersonation + analise):**
+**Arquivos a modificar:**
+- `src/App.tsx` - Adicionar rota `/master/apresentacao`
+- `src/components/layouts/MasterLayout.tsx` - Adicionar item "Apresentacao" no menuItems do Floating Dock (icone: Presentation/Monitor)
+
+**Logica do componente principal:**
 
 ```text
-Master Admin impersona Diego
-  -> mentoradoId = Diego membership_id (c80b41da-...)
-  -> saveLeadToCRM()
-    -> Query memberships (RLS OK: master_admin_view_all) -> tenant_id resolvido
-    -> Query mentorados (RLS OK: nova politica master_admin) -> mentorado_id legado resolvido
-    -> INSERT crm_prospections com:
-       - mentorado_id: 3e5eee8c-... (legado, resolvido)
-       - membership_id: c80b41da-... (direto do prop)
-       - tenant_id: b0000000-... (resolvido)
-    -> RLS staff_write verifica tenant_id -> PASSA
-    -> Registro salvo com sucesso
+Estado:
+  - currentSlide: number (0 a 7)
+  - isFullscreen: boolean
+
+Efeitos:
+  - useEffect para KeyboardEvent listener (ArrowLeft, ArrowRight, Escape)
+  - useEffect para fullscreenchange event
+
+Funcoes:
+  - enterFullscreen() -> containerRef.requestFullscreen()
+  - exitFullscreen() -> document.exitFullscreen()
+  - nextSlide() / prevSlide() com limites
+
+Render:
+  - Container ref com bg escuro absoluto
+  - Header: logo + numero do slide + botao fullscreen
+  - Area do slide: conteudo renderizado com transicao CSS
+  - Footer: dots de navegacao + hint de teclado
 ```
 
-**Risco**: Nenhum. As novas politicas apenas adicionam permissao de leitura para o master_admin, sem afetar a seguranca dos dados ou permissoes de outros papeis.
+**Estilo visual dos slides:**
+- Fundo: gradiente from-slate-950 via-slate-900 to-slate-950 (mesmo do MasterLayout)
+- Textos: Space Grotesk para titulos, Inter para corpo
+- Destaques: cor dourada (hsl(45 100% 51%)) para titulos e acentos
+- Cards internos: glassmorphism (glass-card) com borda sutil
+- Transicao entre slides: opacity + translateX com 300ms ease
 
+**Dependencias:** Nenhuma nova - apenas React, Lucide icons e CSS existentes.
