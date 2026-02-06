@@ -169,6 +169,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [painPointInput, setPainPointInput] = useState("");
+  const [resolvedMentoradoId, setResolvedMentoradoId] = useState<string | null>(null);
   const [profile, setProfile] = useState<BusinessProfile>({
     business_name: "",
     business_type: "",
@@ -196,15 +197,52 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
   });
 
   useEffect(() => {
-    loadProfile();
+    resolveMentoradoId();
   }, [membershipId]);
 
-  const loadProfile = async () => {
+  const resolveMentoradoId = async () => {
+    try {
+      // First, get the user_id from the membership
+      const { data: membership, error: memError } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("id", membershipId)
+        .single();
+
+      if (memError || !membership) {
+        console.error("Could not resolve membership:", memError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Then find the mentorado record for this user
+      const { data: mentorado, error: mentError } = await supabase
+        .from("mentorados")
+        .select("id")
+        .eq("user_id", membership.user_id)
+        .limit(1)
+        .single();
+
+      if (mentError || !mentorado) {
+        console.error("Could not find mentorado for user:", mentError);
+        setIsLoading(false);
+        return;
+      }
+
+      setResolvedMentoradoId(mentorado.id);
+      loadProfile(mentorado.id);
+    } catch (error) {
+      console.error("Error resolving mentorado id:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const loadProfile = async (mentoradoId: string) => {
     try {
       const { data, error } = await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .eq("mentorado_id", membershipId)
+        .eq("mentorado_id", mentoradoId)
         .single();
 
       if (data && !error) {
@@ -243,10 +281,14 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
   };
 
   const handleSave = async () => {
+    if (!resolvedMentoradoId) {
+      toast({ title: "Erro", description: "Não foi possível identificar o mentorado.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
     try {
       const payload = {
-        mentorado_id: membershipId,
+        mentorado_id: resolvedMentoradoId,
         business_name: profile.business_name || null,
         business_type: profile.business_type || null,
         target_audience: profile.target_audience || null,
@@ -286,7 +328,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
       }
 
       toast({ title: "Perfil salvo!", description: "Seu diagnóstico foi atualizado." });
-      loadProfile();
+      loadProfile(resolvedMentoradoId);
     } catch (error) {
       console.error("Error saving profile:", error);
       toast({
