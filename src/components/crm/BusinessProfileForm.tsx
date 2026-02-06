@@ -198,30 +198,25 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
 
   useEffect(() => {
     resolveMentoradoId();
-  }, [membershipId]);
+  }, []);
 
   const resolveMentoradoId = async () => {
     try {
-      // First, get the user_id from the membership
-      const { data: membership, error: memError } = await supabase
-        .from("memberships")
-        .select("user_id")
-        .eq("id", membershipId)
-        .single();
+      // Use auth.uid() directly to find the mentorado record - this is more reliable
+      // than going through membership, especially with impersonation or multi-tenant contexts
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (memError || !membership) {
-        console.error("Could not resolve membership:", memError);
+      if (authError || !user) {
+        console.error("Could not get authenticated user:", authError);
         setIsLoading(false);
         return;
       }
 
-      // Then find the mentorado record for this user
       const { data: mentorado, error: mentError } = await supabase
         .from("mentorados")
         .select("id")
-        .eq("user_id", membership.user_id)
-        .limit(1)
-        .single();
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (mentError || !mentorado) {
         console.error("Could not find mentorado for user:", mentError);
