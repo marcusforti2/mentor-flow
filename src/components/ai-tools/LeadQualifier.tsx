@@ -297,9 +297,31 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       };
       const temperature = temperatureMap[reportData.recommendation] || 'warm';
       
-      // Use resolved legacy mentorado_id for FK, membership_id for new system
-      const effectiveMentoradoId = resolvedLegacyId || mentoradoId;
-      const effectiveTenantId = resolvedTenantId;
+      // Resolve IDs inline to avoid race conditions with useEffect
+      let effectiveMentoradoId: string | null = resolvedLegacyId;
+      let effectiveTenantId: string | null = resolvedTenantId;
+      
+      // If not yet resolved, resolve now
+      if (!effectiveMentoradoId || !effectiveTenantId) {
+        const { data: membership } = await supabase
+          .from('memberships')
+          .select('user_id, tenant_id')
+          .eq('id', mentoradoId)
+          .maybeSingle();
+        
+        if (membership) {
+          effectiveTenantId = membership.tenant_id;
+          const { data: mentorado } = await supabase
+            .from('mentorados')
+            .select('id')
+            .eq('user_id', membership.user_id)
+            .maybeSingle();
+          effectiveMentoradoId = mentorado?.id || null;
+          // Cache for future calls
+          if (mentorado) setResolvedLegacyId(mentorado.id);
+          setResolvedTenantId(membership.tenant_id);
+        }
+      }
       
       // Check if URL is a valid profile URL to save
       const isValidProfileUrl = profileUrl.startsWith('http') && 
