@@ -61,11 +61,12 @@ export default function FerramentasIA() {
             const bp = menteeProfile.business_profile as Record<string, unknown>;
             setHasBusinessProfile(!!(bp.business_name || bp.main_offer));
           } else {
-            // Fallback: check legacy mentorado_business_profiles
+            // Fallback: check legacy mentorado_business_profiles using membership's user_id
+            const targetUserId = activeMembership.user_id || user.id;
             const { data: mentorado } = await supabase
               .from('mentorados')
               .select('id')
-              .eq('user_id', user.id)
+              .eq('user_id', targetUserId)
               .maybeSingle();
 
             if (mentorado) {
