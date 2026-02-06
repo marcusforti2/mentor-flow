@@ -801,8 +801,9 @@ const Mentorados = () => {
       {activeMembership && (
         <MentoradoUploadModal
           open={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
+          onOpenChange={setIsUploadModalOpen}
           mentorId={activeMembership.id}
+          mentorName=""
           onSuccess={fetchData}
         />
       )}

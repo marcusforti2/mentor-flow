@@ -396,7 +396,8 @@ export default function CRMMentorados() {
       <LeadDetailSheet
         lead={selectedLead}
         open={detailSheetOpen}
-        onClose={() => { setDetailSheetOpen(false); setSelectedLead(null); }}
+        onOpenChange={(open) => { if (!open) { setDetailSheetOpen(false); setSelectedLead(null); } }}
+        onUpdate={loadData}
       />
     </div>
   );
