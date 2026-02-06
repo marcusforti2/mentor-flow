@@ -222,29 +222,47 @@ export default function EmailMarketing() {
   };
 
   const handleGenerateWithAI = async () => {
-    if (!aiPrompt.trim() || !mentorId) return;
+    if (!aiPrompt.trim()) {
+      toast({ title: "Digite uma descrição para a campanha", variant: "destructive" });
+      return;
+    }
+    if (!mentorId) {
+      toast({ title: "Erro: Mentor não encontrado", description: "Não foi possível identificar o mentor para criar a campanha. Verifique se você está logado corretamente.", variant: "destructive" });
+      console.error('handleGenerateWithAI: mentorId is null. activeMembership:', activeMembership);
+      return;
+    }
     
     setIsGenerating(true);
     try {
+      console.log('Generating campaign with mentorId:', mentorId, 'prompt:', aiPrompt);
       const { data, error } = await supabase.functions.invoke('generate-email-campaign', {
         body: { prompt: aiPrompt, mentorId }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('Campaign generation error:', data.error);
+        throw new Error(data.error);
+      }
       
-      if (data.flow) {
+      if (data?.flow) {
         setFlows([data.flow, ...flows]);
         toast({ title: "Campanha gerada com sucesso!", description: data.flow.name });
       }
       
-      if (data.template) {
+      if (data?.template) {
         setTemplates([data.template, ...templates]);
       }
       
       setIsAIDialogOpen(false);
       setAiPrompt("");
     } catch (error: any) {
-      toast({ title: "Erro ao gerar campanha", description: error.message, variant: "destructive" });
+      console.error('handleGenerateWithAI error:', error);
+      toast({ title: "Erro ao gerar campanha", description: error.message || "Tente novamente", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
