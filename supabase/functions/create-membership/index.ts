@@ -530,6 +530,42 @@ serve(async (req) => {
       }
     }
 
+    // ========== CREATE SPECIALIZED PROFILE ==========
+    if (role === 'mentee') {
+      const { error: menteeProfileError } = await supabaseAdmin
+        .from("mentee_profiles")
+        .insert({
+          membership_id: membership.id,
+          joined_at: effectiveJoinedAt,
+          onboarding_completed: false,
+          onboarding_step: 0,
+          business_name: full_name || null,
+          business_profile: {},
+        });
+
+      if (menteeProfileError) {
+        console.error("create-membership: Error creating mentee_profile:", menteeProfileError);
+        // Don't fail - membership was already created
+      } else {
+        console.log("create-membership: Created mentee_profile for membership:", membership.id);
+      }
+    }
+
+    if (role === 'mentor') {
+      const { error: mentorProfileError } = await supabaseAdmin
+        .from("mentor_profiles")
+        .insert({
+          membership_id: membership.id,
+          business_name: null,
+        });
+
+      if (mentorProfileError) {
+        console.error("create-membership: Error creating mentor_profile:", mentorProfileError);
+      } else {
+        console.log("create-membership: Created mentor_profile for membership:", membership.id);
+      }
+    }
+
     // ========== AUDIT LOG ==========
     await createAuditLog(supabaseAdmin, {
       userId: caller.id,
