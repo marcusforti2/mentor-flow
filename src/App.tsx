@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import Setup from "./pages/Setup";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
+import ShowcasePage from "./pages/ShowcasePage";
 
 // Layouts
  import { MasterLayout } from "@/components/layouts/MasterLayout";
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/setup" element={<Setup />} />
+            <Route path="/showcase" element={<ShowcasePage />} />
             
              {/* Master Admin Routes */}
             <Route
