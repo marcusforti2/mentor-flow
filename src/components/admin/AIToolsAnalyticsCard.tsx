@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/contexts/TenantContext';
 import { Brain, Zap, TrendingUp, Users, Sparkles, ArrowUpRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
@@ -47,31 +47,20 @@ const TOOL_COLORS: Record<string, string> = {
 };
 
 export function AIToolsAnalyticsCard() {
-  const { user } = useAuth();
+  const { activeMembership } = useTenant();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mentorId, setMentorId] = useState<string | null>(null);
-
-  // Get mentor ID from user
-  useEffect(() => {
-    const fetchMentorId = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      setMentorId(data?.id || null);
-    };
-    fetchMentorId();
-  }, [user]);
 
   useEffect(() => {
-    if (!mentorId) return;
+    if (!activeMembership?.tenant_id) {
+      setLoading(false);
+      return;
+    }
+
+    const tenantId = activeMembership.tenant_id;
     
     const fetchAnalytics = async () => {
       try {
-        // Get today's usage
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         
@@ -81,13 +70,14 @@ export function AIToolsAnalyticsCard() {
         const lastWeekStart = new Date();
         lastWeekStart.setDate(lastWeekStart.getDate() - 14);
 
-        // Query usage for mentorados of this mentor
-        const { data: mentoradoIds } = await supabase
-          .from('mentorados')
-          .select('id')
-          .eq('mentor_id', mentorId);
+        // Get mentee memberships for this tenant
+        const { data: menteeMemberships } = await supabase
+          .from('memberships')
+          .select('id, user_id')
+          .eq('tenant_id', tenantId)
+          .eq('role', 'mentee');
 
-        if (!mentoradoIds || mentoradoIds.length === 0) {
+        if (!menteeMemberships || menteeMemberships.length === 0) {
           setAnalytics({
             totalUsesToday: 0,
             totalUsesWeek: 0,
@@ -99,27 +89,30 @@ export function AIToolsAnalyticsCard() {
           return;
         }
 
-        const ids = mentoradoIds.map(m => m.id);
+        const membershipIds = menteeMemberships.map(m => m.id);
+
+        // Query ai_tool_usage using membership_id (new) or mentorado_id (legacy)
+        const membershipFilter = membershipIds.map(id => `membership_id.eq.${id},mentorado_id.eq.${id}`).join(',');
 
         // Today's usage
         const { count: todayCount } = await supabase
           .from('ai_tool_usage')
           .select('*', { count: 'exact', head: true })
-          .in('mentorado_id', ids)
+          .eq('tenant_id', tenantId)
           .gte('created_at', todayStart.toISOString());
 
         // This week's usage
         const { count: weekCount } = await supabase
           .from('ai_tool_usage')
           .select('*', { count: 'exact', head: true })
-          .in('mentorado_id', ids)
+          .eq('tenant_id', tenantId)
           .gte('created_at', weekStart.toISOString());
 
         // Last week's usage (for trend)
         const { count: lastWeekCount } = await supabase
           .from('ai_tool_usage')
           .select('*', { count: 'exact', head: true })
-          .in('mentorado_id', ids)
+          .eq('tenant_id', tenantId)
           .gte('created_at', lastWeekStart.toISOString())
           .lt('created_at', weekStart.toISOString());
 
@@ -127,7 +120,7 @@ export function AIToolsAnalyticsCard() {
         const { data: toolBreakdown } = await supabase
           .from('ai_tool_usage')
           .select('tool_type')
-          .in('mentorado_id', ids)
+          .eq('tenant_id', tenantId)
           .gte('created_at', weekStart.toISOString());
 
         // Count by tool type
@@ -146,33 +139,52 @@ export function AIToolsAnalyticsCard() {
           .sort((a, b) => b.uses - a.uses)
           .slice(0, 4);
 
-        // Top users this week
+        // Top users this week - use membership_id
         const { data: userUsage } = await supabase
           .from('ai_tool_usage')
-          .select(`
-            mentorado_id,
-            mentorados!inner(
-              user_id,
-              profiles:user_id(full_name)
-            )
-          `)
-          .in('mentorado_id', ids)
+          .select('membership_id')
+          .eq('tenant_id', tenantId)
           .gte('created_at', weekStart.toISOString());
 
-        const userCounts: Record<string, { name: string; uses: number }> = {};
+        const userCounts: Record<string, number> = {};
         userUsage?.forEach(item => {
-          const mentorado = item.mentorados as any;
-          const name = mentorado?.profiles?.full_name || 'Sem nome';
-          const id = item.mentorado_id;
-          if (!userCounts[id]) {
-            userCounts[id] = { name, uses: 0 };
+          if (item.membership_id) {
+            userCounts[item.membership_id] = (userCounts[item.membership_id] || 0) + 1;
           }
-          userCounts[id].uses++;
         });
 
-        const topUsers = Object.values(userCounts)
-          .sort((a, b) => b.uses - a.uses)
-          .slice(0, 3);
+        // Resolve names for top users
+        const topMembershipIds = Object.entries(userCounts)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 3)
+          .map(([id]) => id);
+
+        let topUsers: TopUser[] = [];
+        if (topMembershipIds.length > 0) {
+          const { data: topMemberships } = await supabase
+            .from('memberships')
+            .select('id, user_id')
+            .in('id', topMembershipIds);
+
+          if (topMemberships) {
+            const userIds = topMemberships.map(m => m.user_id);
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('user_id, full_name')
+              .in('user_id', userIds);
+
+            const memberToUser = new Map(topMemberships.map(m => [m.id, m.user_id]));
+            const profileMap = new Map((profiles || []).map(p => [p.user_id, p.full_name]));
+
+            topUsers = topMembershipIds.map(mid => {
+              const userId = memberToUser.get(mid) || '';
+              return {
+                name: profileMap.get(userId) || 'Sem nome',
+                uses: userCounts[mid] || 0,
+              };
+            });
+          }
+        }
 
         // Calculate trend
         const trend = lastWeekCount && lastWeekCount > 0
@@ -194,7 +206,7 @@ export function AIToolsAnalyticsCard() {
     };
 
     fetchAnalytics();
-  }, [mentorId]);
+  }, [activeMembership?.tenant_id]);
 
   if (loading) {
     return (
