@@ -27,6 +27,7 @@ import MasterDashboard from "./pages/master/MasterDashboard";
 import PreviewPage from "./pages/master/PreviewPage";
 import TenantsPage from "./pages/master/TenantsPage";
 import UsersPage from "./pages/master/UsersPage";
+import ApresentacaoPage from "./pages/master/ApresentacaoPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -89,6 +90,7 @@ const App = () => (
                <Route path="tenants" element={<TenantsPage />} />
                <Route path="users" element={<UsersPage />} />
                <Route path="config" element={<PlaceholderPage title="Configurações" />} />
+               <Route path="apresentacao" element={<ApresentacaoPage />} />
              </Route>
  
              {/* Mentor Routes (Admin + Ops + Mentor) */}
