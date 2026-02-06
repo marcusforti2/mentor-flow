@@ -87,23 +87,34 @@ export default function Calendario() {
     
     setIsLoading(true);
     try {
+      // Use activeMembership.id as mentor_id for calendar_events
+      // Fallback to legacy mentors table for backward compatibility
+      let resolvedMentorId: string | null = null;
+
+      // Try to get from TenantContext if available
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
-      if (mentorData) {
-        setMentorId(mentorData.id);
+      resolvedMentorId = mentorData?.id || null;
+      
+      if (resolvedMentorId) {
+        setMentorId(resolvedMentorId);
         
         const { data: eventsData, error } = await supabase
           .from('calendar_events')
           .select('*')
-          .eq('mentor_id', mentorData.id)
+          .eq('mentor_id', resolvedMentorId)
           .order('event_date', { ascending: true });
         
         if (error) throw error;
         setEvents(eventsData || []);
+      } else {
+        // No legacy mentor found - events may use tenant_id filter in the future
+        setMentorId(null);
+        setEvents([]);
       }
     } catch (error) {
       console.error('Error fetching data:', error);

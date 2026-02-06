@@ -89,14 +89,17 @@ export default function EmailMarketing() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Get mentor id
+      // Get mentor id - try legacy mentors table, fallback gracefully
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
         .eq('user_id', user!.id)
-        .single();
+        .maybeSingle();
       
-      if (!mentorData) return;
+      if (!mentorData) {
+        setIsLoading(false);
+        return;
+      }
       setMentorId(mentorData.id);
 
       // Fetch flows
