@@ -258,6 +258,8 @@ export default function CentroSOS() {
         initial_guidance: lastTriageResult.initialGuidance,
         ai_chat_history: chatHistory as unknown,
         ai_analysis: lastTriageResult as unknown,
+        tenant_id: activeMembership?.tenant_id || null,
+        membership_id: activeMembership?.id || null,
       };
 
       const { error } = await supabase.from("sos_requests").insert(insertData as never);
