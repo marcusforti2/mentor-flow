@@ -12,7 +12,6 @@ import {
   BookOpen,
   Calendar,
   AlertTriangle,
-  Trophy,
   Mail,
   BarChart3,
   Compass,
@@ -32,7 +31,6 @@ const menuItems = [
   { icon: BookOpen, label: 'Trilhas', path: '/admin/trilhas' },
   { icon: Calendar, label: 'Calendário', path: '/admin/calendario' },
   { icon: AlertTriangle, label: 'Centro SOS', path: '/admin/sos' },
-  { icon: Trophy, label: 'Rankings', path: '/admin/ranking' },
   { icon: Mail, label: 'Emails', path: '/admin/emails' },
   { icon: BarChart3, label: 'Relatórios', path: '/admin/relatorios' },
 ];
