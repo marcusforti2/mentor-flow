@@ -4,13 +4,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MeetingVideoPlayer } from './MeetingVideoPlayer';
 import { TaskExtractionModal } from './TaskExtractionModal';
-import { Video, FileText, Calendar, ChevronDown, ChevronUp, Loader2, Search, CheckCircle2, Clock, AlertCircle, ListTodo, Sparkles } from 'lucide-react';
+import { Video, FileText, Calendar, ChevronDown, ChevronUp, Loader2, Search, CheckCircle2, Clock, AlertCircle, ListTodo, Sparkles, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface Meeting {
   id: string;
@@ -48,6 +52,14 @@ const SOURCE_FILTERS = [
 
 const PAGE_SIZE = 10;
 
+function detectVideoSource(url: string): string {
+  if (!url) return 'manual';
+  if (url.includes('tldv.io')) return 'tldv';
+  if (url.includes('drive.google.com')) return 'google_drive';
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+  return 'other';
+}
+
 export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, tenantId, refreshKey, onTasksSaved }: MeetingHistoryListProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
@@ -58,6 +70,17 @@ export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, 
   const [sourceFilter, setSourceFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [extractionMeeting, setExtractionMeeting] = useState<Meeting | null>(null);
+
+  // Edit state
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', date: '', videoUrl: '', rawText: '' });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Delete state
+  const [deletingMeeting, setDeletingMeeting] = useState<Meeting | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const isMentor = !!mentorMembershipId;
 
   useEffect(() => {
     fetchMeetings();
@@ -123,6 +146,80 @@ export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, 
   const handleTasksSaved = () => {
     fetchTaskCounts();
     onTasksSaved?.();
+  };
+
+  // Edit handlers
+  const openEdit = (meeting: Meeting) => {
+    setEditForm({
+      title: meeting.meeting_title || '',
+      date: meeting.meeting_date ? meeting.meeting_date.slice(0, 16) : '',
+      videoUrl: meeting.video_url || '',
+      rawText: meeting.raw_text || '',
+    });
+    setEditingMeeting(meeting);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMeeting || !editForm.title.trim()) {
+      toast.error('Título é obrigatório');
+      return;
+    }
+    setIsSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('meeting_transcripts')
+        .update({
+          meeting_title: editForm.title.trim(),
+          meeting_date: editForm.date || null,
+          video_url: editForm.videoUrl.trim() || null,
+          video_source: detectVideoSource(editForm.videoUrl),
+          raw_text: editForm.rawText.trim() || null,
+        })
+        .eq('id', editingMeeting.id);
+
+      if (error) throw error;
+      toast.success('Reunião atualizada!');
+      setEditingMeeting(null);
+      fetchMeetings();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!deletingMeeting) return;
+    setIsDeleting(true);
+    try {
+      // Delete related tasks first
+      await supabase
+        .from('campan_tasks')
+        .delete()
+        .eq('source_transcript_id', deletingMeeting.id);
+
+      // Delete related drafts
+      await supabase
+        .from('extracted_task_drafts')
+        .delete()
+        .eq('transcript_id', deletingMeeting.id);
+
+      const { error } = await supabase
+        .from('meeting_transcripts')
+        .delete()
+        .eq('id', deletingMeeting.id);
+
+      if (error) throw error;
+      toast.success('Reunião excluída!');
+      setDeletingMeeting(null);
+      fetchMeetings();
+      fetchTaskCounts();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao excluir');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -223,6 +320,28 @@ export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, 
                         Gerar Tarefas
                       </Button>
                     )}
+                    {isMentor && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => openEdit(meeting)}
+                          title="Editar reunião"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingMeeting(meeting)}
+                          title="Excluir reunião"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
                     {meeting.video_url && (
                       <Button
                         variant="ghost"
@@ -280,6 +399,80 @@ export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, 
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Edit meeting modal */}
+      <Dialog open={!!editingMeeting} onOpenChange={(open) => { if (!open) setEditingMeeting(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Reunião</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Título *</Label>
+              <Input
+                value={editForm.title}
+                onChange={(e) => setEditForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Título da reunião"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Data/hora</Label>
+              <Input
+                type="datetime-local"
+                value={editForm.date}
+                onChange={(e) => setEditForm(f => ({ ...f, date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Link do vídeo</Label>
+              <Input
+                value={editForm.videoUrl}
+                onChange={(e) => setEditForm(f => ({ ...f, videoUrl: e.target.value }))}
+                placeholder="YouTube, Google Drive, tl;dv..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Transcrição</Label>
+              <Textarea
+                value={editForm.rawText}
+                onChange={(e) => setEditForm(f => ({ ...f, rawText: e.target.value }))}
+                placeholder="Texto da transcrição..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingMeeting(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit || !editForm.title.trim()}>
+              {isSavingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Pencil className="h-4 w-4 mr-1" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingMeeting} onOpenChange={(open) => { if (!open) setDeletingMeeting(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir reunião?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A reunião "{deletingMeeting?.meeting_title || 'Reunião'}" será excluída permanentemente, junto com as tarefas vinculadas a ela. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Task Extraction Modal */}
       {extractionMeeting && mentorMembershipId && (
