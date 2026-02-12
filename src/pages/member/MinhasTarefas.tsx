@@ -20,7 +20,7 @@ const MinhasTarefas = () => {
         <p className="text-muted-foreground text-sm">Gerencie suas tarefas atribuídas pelo mentor</p>
       </div>
 
-      <CampanKanban mentoradoMembershipId={activeMembership.id} />
+      <CampanKanban mentoradoMembershipId={activeMembership.id} allowSelfCreate={true} />
     </div>
   );
 };
