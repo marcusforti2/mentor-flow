@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MeetingVideoPlayer } from './MeetingVideoPlayer';
-import { Video, FileText, Calendar, ChevronDown, ChevronUp, Loader2, Search, CheckCircle2, Clock, AlertCircle, ListTodo } from 'lucide-react';
+import { TaskExtractionModal } from './TaskExtractionModal';
+import { Video, FileText, Calendar, ChevronDown, ChevronUp, Loader2, Search, CheckCircle2, Clock, AlertCircle, ListTodo, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,7 +25,10 @@ interface Meeting {
 
 interface MeetingHistoryListProps {
   mentoradoMembershipId: string;
+  mentorMembershipId?: string;
   tenantId: string;
+  refreshKey?: number;
+  onTasksSaved?: () => void;
 }
 
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
@@ -44,7 +48,7 @@ const SOURCE_FILTERS = [
 
 const PAGE_SIZE = 10;
 
-export function MeetingHistoryList({ mentoradoMembershipId, tenantId }: MeetingHistoryListProps) {
+export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, tenantId, refreshKey, onTasksSaved }: MeetingHistoryListProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -53,11 +57,12 @@ export function MeetingHistoryList({ mentoradoMembershipId, tenantId }: MeetingH
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [extractionMeeting, setExtractionMeeting] = useState<Meeting | null>(null);
 
   useEffect(() => {
     fetchMeetings();
     fetchTaskCounts();
-  }, [mentoradoMembershipId]);
+  }, [mentoradoMembershipId, refreshKey]);
 
   const fetchMeetings = async () => {
     setIsLoading(true);
@@ -113,6 +118,11 @@ export function MeetingHistoryList({ mentoradoMembershipId, tenantId }: MeetingH
     if (count > 0) return { label: 'Processada', icon: CheckCircle2, className: 'text-green-500' };
     if (meeting.raw_text && meeting.raw_text.length > 50) return { label: 'Pendente', icon: Clock, className: 'text-yellow-500' };
     return { label: 'Sem transcrição', icon: AlertCircle, className: 'text-muted-foreground' };
+  };
+
+  const handleTasksSaved = () => {
+    fetchTaskCounts();
+    onTasksSaved?.();
   };
 
   if (isLoading) {
@@ -171,6 +181,7 @@ export function MeetingHistoryList({ mentoradoMembershipId, tenantId }: MeetingH
           const status = getProcessingStatus(meeting);
           const StatusIcon = status.icon;
           const taskCount = taskCounts[meeting.id] || 0;
+          const canExtract = mentorMembershipId && meeting.raw_text && meeting.raw_text.length > 50 && taskCount === 0;
 
           return (
             <Card key={meeting.id} className="glass-card">
@@ -201,6 +212,17 @@ export function MeetingHistoryList({ mentoradoMembershipId, tenantId }: MeetingH
                     <Badge className={`text-xs text-white border-0 ${source.color}`}>
                       {source.label}
                     </Badge>
+                    {canExtract && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs px-2 gap-1"
+                        onClick={() => setExtractionMeeting(meeting)}
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        Gerar Tarefas
+                      </Button>
+                    )}
                     {meeting.video_url && (
                       <Button
                         variant="ghost"
@@ -258,6 +280,21 @@ export function MeetingHistoryList({ mentoradoMembershipId, tenantId }: MeetingH
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Task Extraction Modal */}
+      {extractionMeeting && mentorMembershipId && (
+        <TaskExtractionModal
+          open={!!extractionMeeting}
+          onOpenChange={(open) => { if (!open) setExtractionMeeting(null); }}
+          transcriptId={extractionMeeting.id}
+          rawText={extractionMeeting.raw_text || ''}
+          meetingTitle={extractionMeeting.meeting_title || 'Reunião'}
+          mentoradoMembershipId={mentoradoMembershipId}
+          mentorMembershipId={mentorMembershipId}
+          tenantId={tenantId}
+          onTasksSaved={handleTasksSaved}
+        />
+      )}
     </div>
   );
 }
