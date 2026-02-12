@@ -1,29 +1,87 @@
 
 
-## Promover Mariana para Admin
+## Corrigir Upload de Arquivos de Mentorado (Solucao Definitiva)
 
-### Situacao Atual
-- **Mariana** (`mariana@atlasalesinvest.com`) possui membership com role `mentor` no tenant `683e41ac-...`
-- O painel `/mentor` ja aceita roles `admin`, `ops`, `mentor` e `master_admin` -- ou seja, ela continuara usando o mesmo layout (MentorLayout)
+O problema tem 3 camadas que precisam ser resolvidas juntas:
 
-### O que sera feito
+### Problema 1: Politica RLS da tabela `mentorado_files`
+A politica "Mentors can manage files" verifica se o `mentor_id` do registro pertence ao usuario logado. Quando a Mariana (admin) tenta subir arquivo para um mentorado que pertence a outro mentor legado, a FK `mentor_id` aponta para o mentor original, nao para ela -- e a policy falha.
 
-1. **Alterar o role da Mariana de `mentor` para `admin`** via migration SQL
-   - Membership ID: `1f3c5b81-d0e8-424b-9331-e915643deeaa`
-   - De: `mentor` -> Para: `admin`
+A policy de staff (`mentorado_files_staff_manage`) deveria cobrir isso, mas depende de `tenant_id` estar preenchido no INSERT. Se for `null`, a policy nao bate.
 
-2. **Habilitar permissao de impersonation** (`can_impersonate = true`) para que ela possa visualizar o sistema como mentorado quando necessario
+**Solucao**: Tornar o `mentor_id` nullable (ja que temos `owner_membership_id` e `tenant_id` como substitutos modernos) e garantir que `tenant_id` seja sempre preenchido.
 
-### Impacto
-- Mariana passara a ter acesso completo de gestao dentro do tenant dela (criar/editar/deletar mentorados, trilhas, emails, configuracoes)
-- O layout visual permanece o mesmo (`/mentor` com MentorLayout)
-- As permissoes no `usePermissions` serao automaticamente atualizadas pois o role `admin` tem acesso total no permission matrix
+### Problema 2: Politica de Storage do bucket `mentorado-files`
+As policies do bucket so permitem upload/delete para quem tem registro na tabela `mentors`. Nao existe policy de staff para admin/ops.
+
+**Solucao**: Adicionar policies de storage para staff do tenant.
+
+### Problema 3: O componente esconde o file manager quando nao tem dados legados
+A correcao anterior adicionou um guard que exige `legacy_mentorado_id` E `legacy_mentor_id`. Mentorados sem registro legado nao conseguem usar arquivos.
+
+**Solucao**: Permitir que o file manager funcione sem dados legados, usando `membership_id` e `tenant_id` como identificadores primarios.
+
+---
 
 ### Detalhes Tecnicos
-Uma unica migration SQL:
+
+#### Migration SQL
+
+1. Tornar `mentor_id` e `mentorado_id` nullable na tabela `mentorado_files`
+2. Adicionar policies de storage para staff
+3. Atualizar a policy RLS de staff para cobrir inserts sem `mentorado_id` legado
+
 ```sql
-UPDATE public.memberships
-SET role = 'admin', can_impersonate = true, updated_at = now()
-WHERE id = '1f3c5b81-d0e8-424b-9331-e915643deeaa';
+-- 1. Tornar FKs legadas nullable
+ALTER TABLE public.mentorado_files ALTER COLUMN mentor_id DROP NOT NULL;
+ALTER TABLE public.mentorado_files ALTER COLUMN mentorado_id DROP NOT NULL;
+
+-- 2. Storage: policy de upload para staff
+CREATE POLICY "Staff can upload mentorado files"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'mentorado-files'
+  AND is_tenant_staff(auth.uid(), (
+    SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid() AND status = 'active' LIMIT 1
+  ))
+);
+
+-- 3. Storage: policy de leitura para staff
+CREATE POLICY "Staff can view mentorado files"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'mentorado-files'
+  AND is_tenant_staff(auth.uid(), (
+    SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid() AND status = 'active' LIMIT 1
+  ))
+);
+
+-- 4. Storage: policy de delete para staff
+CREATE POLICY "Staff can delete mentorado files"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'mentorado-files'
+  AND is_tenant_staff(auth.uid(), (
+    SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid() AND status = 'active' LIMIT 1
+  ))
+);
 ```
+
+#### Alteracoes no Codigo
+
+**`MentoradoFilesManager.tsx`**:
+- Tornar `mentoradoId` e `mentorId` opcionais nas props
+- Usar `owner_membership_id` como identificador principal para fetch (com fallback para `mentorado_id`)
+- No insert, passar `mentorado_id` e `mentor_id` apenas se disponíveis (ambos agora nullable)
+- Organizar path de storage usando `owner_membership_id` em vez de `mentorado_id`
+
+**`Mentorados.tsx`**:
+- Remover o guard condicional que esconde o file manager
+- Sempre renderizar o `MentoradoFilesManager`, passando os IDs legados como opcionais
+- Garantir que `tenantId` sempre venha do `activeMembership`
+
+### Resultado
+- Admin/Ops/Mentor poderao subir arquivos para qualquer mentorado do tenant
+- Funciona tanto para mentorados legados quanto novos (sem registro na tabela `mentorados`)
+- Storage e DB com policies alinhadas
 
