@@ -55,9 +55,10 @@ interface MentoradoFilesManagerProps {
   mentorId: string;
   mentoradoName: string;
   tenantId?: string | null;
+  ownerMembershipId?: string | null;
 }
 
-export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, tenantId }: MentoradoFilesManagerProps) {
+export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, tenantId, ownerMembershipId }: MentoradoFilesManagerProps) {
   const [files, setFiles] = useState<MentoradoFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -117,6 +118,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
           mentorado_id: mentoradoId,
           mentor_id: mentorId,
           tenant_id: tenantId || null,
+          owner_membership_id: ownerMembershipId || null,
           file_type: type,
           file_name: file.name,
           file_path: filePath,
@@ -153,6 +155,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
           mentorado_id: mentoradoId,
           mentor_id: mentorId,
           tenant_id: tenantId || null,
+          owner_membership_id: ownerMembershipId || null,
           file_type: 'link',
           link_url: linkForm.url,
           link_title: linkForm.title || linkForm.url,
@@ -188,6 +191,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
           mentorado_id: mentoradoId,
           mentor_id: mentorId,
           tenant_id: tenantId || null,
+          owner_membership_id: ownerMembershipId || null,
           file_type: 'note',
           note_title: noteForm.title,
           note_content: noteForm.content,
