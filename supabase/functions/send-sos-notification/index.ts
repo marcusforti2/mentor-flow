@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -18,6 +19,7 @@ interface SOSNotificationRequest {
   sosPriority: string;
   sosCategory: string;
   initialGuidance: string;
+  tenantId?: string;
 }
 
 serve(async (req) => {
@@ -35,15 +37,48 @@ serve(async (req) => {
       sosPriority,
       sosCategory,
       initialGuidance,
+      tenantId,
     } = (await req.json()) as SOSNotificationRequest;
 
-    console.log("SOS Notification - Sending emails for:", mentoradoName);
+    console.log("SOS Notification - Sending emails for:", mentoradoName, "tenant:", tenantId);
 
-    // Mentors' emails (Jacob and Mari)
-    const mentorEmails = [
-      "jacob@marcusforti.online", // Email do Jacob
-      "mari@marcusforti.online",  // Email da Mari
-    ];
+    // Dynamically find mentor emails for this tenant
+    const mentorEmails: string[] = [];
+
+    if (tenantId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Find all mentor/admin memberships for this tenant
+      const { data: mentorMemberships } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .in("role", ["mentor", "admin"])
+        .eq("status", "active");
+
+      if (mentorMemberships && mentorMemberships.length > 0) {
+        const userIds = mentorMemberships.map((m: any) => m.user_id);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("email")
+          .in("user_id", userIds);
+
+        if (profiles) {
+          for (const p of profiles) {
+            if (p.email) mentorEmails.push(p.email);
+          }
+        }
+      }
+    }
+
+    // Fallback if no mentors found
+    if (mentorEmails.length === 0) {
+      mentorEmails.push("jacob@marcusforti.online", "mari@marcusforti.online");
+    }
+
+    console.log("Sending SOS emails to mentors:", mentorEmails);
 
     const priorityColors: Record<string, string> = {
       urgente: "#ef4444",
@@ -54,7 +89,6 @@ serve(async (req) => {
 
     const priorityColor = priorityColors[sosPriority] || "#6b7280";
 
-    // Email para os mentores
     const mentorEmailHtml = `
 <!DOCTYPE html>
 <html>
@@ -118,7 +152,6 @@ serve(async (req) => {
 </html>
     `;
 
-    // Email de confirmação para o mentorado
     const mentoradoEmailHtml = `
 <!DOCTYPE html>
 <html>
@@ -133,7 +166,7 @@ serve(async (req) => {
     .success-icon { font-size: 48px; text-align: center; margin-bottom: 20px; }
     .message { font-size: 16px; line-height: 1.7; color: #e2e8f0; }
     .guidance-box { margin: 24px 0; padding: 20px; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(244, 208, 63, 0.1)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; }
-    .guidance-title { font-size: 14px; font-weight: 600; color: #d4af37; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .guidance-title { font-size: 14px; font-weight: 600; color: #d4af37; margin-bottom: 12px; }
     .guidance-content { color: #e2e8f0; line-height: 1.6; }
     .footer { padding: 20px 30px; background: #09090b; text-align: center; color: #52525b; font-size: 12px; border-top: 1px solid #27272a; }
   </style>
@@ -148,8 +181,8 @@ serve(async (req) => {
       
       <div class="message">
         <p>Olá <strong>${mentoradoName}</strong>,</p>
-        <p>Seu chamado SOS foi enviado com sucesso para os mentores <strong>Jacob</strong> e <strong>Mari</strong>!</p>
-        <p>Eles foram notificados e entrarão em contato em breve. Enquanto isso, já comece a aplicar as orientações abaixo:</p>
+        <p>Seu chamado SOS foi enviado com sucesso! Seu mentor foi notificado e entrará em contato em breve.</p>
+        <p>Enquanto isso, já comece a aplicar as orientações abaixo:</p>
       </div>
       
       <div class="guidance-box">
@@ -171,7 +204,7 @@ serve(async (req) => {
 </html>
     `;
 
-    // Enviar emails para os mentores
+    // Send emails to mentors
     for (const mentorEmail of mentorEmails) {
       try {
         await resend.emails.send({
@@ -186,7 +219,7 @@ serve(async (req) => {
       }
     }
 
-    // Enviar email de confirmação para o mentorado
+    // Send confirmation to mentorado
     if (mentoradoEmail) {
       try {
         await resend.emails.send({
@@ -203,19 +236,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, message: "Emails enviados com sucesso" }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in send-sos-notification:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
