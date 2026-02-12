@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   FileText, Sparkles, Loader2, Trash2, Save, RefreshCw, 
-  Calendar, Tag, AlertCircle, CheckCircle2, Upload
+  Calendar, AlertCircle, CheckCircle2, Plus
 } from 'lucide-react';
 
 interface ExtractedTask {
@@ -45,6 +46,14 @@ export function TranscriptionTaskExtractor({
   const [isSaving, setIsSaving] = useState(false);
   const [transcriptId, setTranscriptId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    due_date: '',
+  });
+  const [isSavingManual, setIsSavingManual] = useState(false);
 
   const handleExtract = async () => {
     if (!transcription.trim() || transcription.trim().length < 20) {
@@ -69,7 +78,10 @@ export function TranscriptionTaskExtractor({
         .select('id')
         .single();
 
-      if (txError) throw txError;
+      if (txError) {
+        console.error('[Campan] Transcript save failed:', txError);
+        throw new Error(`Erro ao salvar transcrição: ${txError.message}`);
+      }
       setTranscriptId(transcript.id);
 
       setState('extracting');
@@ -79,7 +91,10 @@ export function TranscriptionTaskExtractor({
         body: { transcription: transcription.trim() },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Campan] AI call failed:', error);
+        throw new Error(`Erro na IA: ${error.message}`);
+      }
       if (data?.error) throw new Error(data.error);
 
       const extracted: ExtractedTask[] = (data?.tasks || []).map((t: any) => ({
@@ -93,7 +108,7 @@ export function TranscriptionTaskExtractor({
       }));
 
       if (extracted.length === 0) {
-        toast.info('Nenhuma tarefa acionável encontrada na transcrição.');
+        toast.info('Nenhuma tarefa encontrada. Use "Adicionar tarefa manual".');
       }
 
       setTasks(extracted);
@@ -110,8 +125,9 @@ export function TranscriptionTaskExtractor({
 
       setState('done');
     } catch (err: any) {
-      console.error('Error extracting tasks:', err);
+      console.error('[Campan] Extract error:', err);
       setErrorMsg(err.message || 'Erro ao processar transcrição');
+      toast.error(err.message || 'Erro ao processar transcrição');
       setState('error');
     }
   };
@@ -153,8 +169,32 @@ export function TranscriptionTaskExtractor({
         task_hash: `${mentoradoMembershipId}_${transcriptId}_${t.title.toLowerCase().replace(/\s+/g, '_').slice(0, 50)}`,
       }));
 
+      // Try batch insert first
       const { error } = await supabase.from('campan_tasks').insert(inserts);
-      if (error) throw error;
+      
+      if (error) {
+        console.warn('[Campan] Batch insert failed, trying individual:', error.message);
+        // Fallback: insert individually
+        let successCount = 0;
+        let failedCount = 0;
+        for (const insert of inserts) {
+          const { error: indError } = await supabase.from('campan_tasks').insert(insert);
+          if (indError) {
+            console.error('[Campan] Individual insert failed:', indError.message);
+            failedCount++;
+          } else {
+            successCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          toast.success(`${successCount} tarefa(s) salva(s). ${failedCount > 0 ? `${failedCount} falharam.` : ''}`);
+        } else {
+          throw new Error(`Todas as ${failedCount} inserções falharam. Verifique permissões.`);
+        }
+      } else {
+        toast.success(`${selected.length} tarefa(s) salva(s) no Campan!`);
+      }
 
       // Update draft status
       if (transcriptId) {
@@ -164,27 +204,52 @@ export function TranscriptionTaskExtractor({
           .eq('transcript_id', transcriptId);
       }
 
-      toast.success(`${selected.length} tarefa(s) salva(s) no Campan!`);
       setTasks([]);
       setTranscription('');
       setState('idle');
       setTranscriptId(null);
       onTasksSaved?.();
     } catch (err: any) {
-      console.error('Error saving tasks:', err);
+      console.error('[Campan] Save error:', err);
       toast.error(err.message || 'Erro ao salvar tarefas');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const priorityColors = {
-    low: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-    medium: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    high: 'bg-red-500/10 text-red-400 border-red-500/30',
-  };
+  const handleSaveManual = async () => {
+    if (!manualForm.title.trim()) {
+      toast.error('Título é obrigatório');
+      return;
+    }
 
-  const priorityLabels = { low: 'Baixa', medium: 'Média', high: 'Alta' };
+    setIsSavingManual(true);
+    try {
+      const { error } = await supabase.from('campan_tasks').insert({
+        mentorado_membership_id: mentoradoMembershipId,
+        created_by_membership_id: mentorMembershipId,
+        tenant_id: tenantId,
+        title: manualForm.title.trim(),
+        description: manualForm.description.trim() || null,
+        priority: manualForm.priority,
+        due_date: manualForm.due_date || null,
+        status_column: 'a_fazer',
+        tags: [],
+      });
+
+      if (error) throw error;
+
+      toast.success('Tarefa manual criada!');
+      setShowManualModal(false);
+      setManualForm({ title: '', description: '', priority: 'medium', due_date: '' });
+      onTasksSaved?.();
+    } catch (err: any) {
+      console.error('[Campan] Manual task error:', err);
+      toast.error(err.message || 'Erro ao criar tarefa manual');
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -196,7 +261,6 @@ export function TranscriptionTaskExtractor({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Input area */}
           <div className="space-y-2">
             <Label>Cole a transcrição da reunião</Label>
             <Textarea
@@ -208,11 +272,10 @@ export function TranscriptionTaskExtractor({
             />
           </div>
 
-          {/* Status indicators */}
           {state === 'reading' && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Lendo transcrição...
+              Salvando transcrição...
             </div>
           )}
           {state === 'extracting' && (
@@ -222,15 +285,19 @@ export function TranscriptionTaskExtractor({
             </div>
           )}
           {state === 'error' && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              {errorMsg}
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {errorMsg}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use o botão "Adicionar tarefa manual" para criar tarefas sem IA.
+              </p>
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-2">
-          {(state === 'idle' || state === 'error') && (
+          <div className="flex gap-2 flex-wrap">
+            {(state === 'idle' || state === 'error') && (
               <Button 
                 onClick={handleExtract} 
                 disabled={!transcription.trim()}
@@ -246,6 +313,11 @@ export function TranscriptionTaskExtractor({
                 Tentar novamente
               </Button>
             )}
+            {/* Always visible manual add button */}
+            <Button variant="outline" onClick={() => setShowManualModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar tarefa manual
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -353,6 +425,62 @@ export function TranscriptionTaskExtractor({
           </CardContent>
         </Card>
       )}
+
+      {/* Manual task modal */}
+      <Dialog open={showManualModal} onOpenChange={setShowManualModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar tarefa manual</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Título *</Label>
+              <Input
+                value={manualForm.title}
+                onChange={(e) => setManualForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Ex: Revisar proposta comercial"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Textarea
+                value={manualForm.description}
+                onChange={(e) => setManualForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Detalhes opcionais..."
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Select value={manualForm.priority} onValueChange={(v) => setManualForm(f => ({ ...f, priority: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">🟢 Baixa</SelectItem>
+                    <SelectItem value="medium">🟡 Média</SelectItem>
+                    <SelectItem value="high">🔴 Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prazo</Label>
+                <Input
+                  type="date"
+                  value={manualForm.due_date}
+                  onChange={(e) => setManualForm(f => ({ ...f, due_date: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualModal(false)}>Cancelar</Button>
+            <Button onClick={handleSaveManual} disabled={isSavingManual || !manualForm.title.trim()}>
+              {isSavingManual ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
