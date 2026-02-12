@@ -29,6 +29,7 @@ interface CampanKanbanProps {
   tenantId?: string;
   readOnly?: boolean;
   refreshKey?: number;
+  allowSelfCreate?: boolean;
 }
 
 const COLUMNS = [
@@ -43,7 +44,7 @@ const priorityColors: Record<string, string> = {
   high: 'border-l-red-400',
 };
 
-export function CampanKanban({ mentoradoMembershipId, mentorMembershipId, tenantId, readOnly = false, refreshKey = 0 }: CampanKanbanProps) {
+export function CampanKanban({ mentoradoMembershipId, mentorMembershipId, tenantId, readOnly = false, refreshKey = 0, allowSelfCreate = false }: CampanKanbanProps) {
   const [tasks, setTasks] = useState<CampanTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -56,8 +57,23 @@ export function CampanKanban({ mentoradoMembershipId, mentorMembershipId, tenant
     status_column: 'a_fazer',
   });
   const [isSavingManual, setIsSavingManual] = useState(false);
+  const [selfTenantId, setSelfTenantId] = useState<string | null>(null);
 
-  const canCreateManual = !!mentorMembershipId && !!tenantId;
+  const canCreateManual = (!!mentorMembershipId && !!tenantId) || allowSelfCreate;
+
+  // Fetch tenant_id from membership when allowSelfCreate is true
+  useEffect(() => {
+    if (allowSelfCreate && !tenantId && mentoradoMembershipId) {
+      supabase
+        .from('memberships')
+        .select('tenant_id')
+        .eq('id', mentoradoMembershipId)
+        .single()
+        .then(({ data }) => {
+          if (data) setSelfTenantId(data.tenant_id);
+        });
+    }
+  }, [allowSelfCreate, tenantId, mentoradoMembershipId]);
 
   const fetchTasks = async () => {
     setIsLoading(true);
@@ -119,14 +135,15 @@ export function CampanKanban({ mentoradoMembershipId, mentorMembershipId, tenant
       toast.error('Título é obrigatório');
       return;
     }
-    if (!mentorMembershipId || !tenantId) return;
-
+    const effectiveTenantId = tenantId || selfTenantId;
+    const effectiveCreatorId = mentorMembershipId || mentoradoMembershipId;
+    if (!effectiveTenantId || !effectiveCreatorId) return;
     setIsSavingManual(true);
     try {
       const { error } = await supabase.from('campan_tasks').insert({
         mentorado_membership_id: mentoradoMembershipId,
-        created_by_membership_id: mentorMembershipId,
-        tenant_id: tenantId,
+        created_by_membership_id: effectiveCreatorId,
+        tenant_id: effectiveTenantId,
         title: manualForm.title.trim(),
         description: manualForm.description.trim() || null,
         priority: manualForm.priority,
@@ -173,7 +190,7 @@ export function CampanKanban({ mentoradoMembershipId, mentorMembershipId, tenant
         <div className="text-center py-12 text-muted-foreground">
           <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">Nenhuma tarefa ainda.</p>
-          <p className="text-xs mt-1">Tarefas criadas pelo mentor aparecerão aqui.</p>
+          <p className="text-xs mt-1">{allowSelfCreate ? 'Crie sua primeira tarefa!' : 'Tarefas criadas pelo mentor aparecerão aqui.'}</p>
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
