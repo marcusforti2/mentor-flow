@@ -36,6 +36,24 @@ export interface Trail {
   total_duration: number;
 }
 
+// Helper to detect if a video URL is from Google Drive
+export const isGoogleDriveUrl = (url: string): boolean => {
+  return url.includes('drive.google.com') || url.startsWith('drive:');
+};
+
+// Extract Google Drive file ID from various URL formats
+export const getGoogleDriveFileId = (url: string): string => {
+  if (url.startsWith('drive:')) return url.replace('drive:', '');
+  const match = url.match(/\/d\/([^/]+)/);
+  return match ? match[1] : url;
+};
+
+// Build Google Drive embed URL
+export const getGoogleDriveEmbedUrl = (url: string): string => {
+  const fileId = getGoogleDriveFileId(url);
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+};
+
 // Helper to get YouTube thumbnail
 export const getYouTubeThumbnail = (videoId: string, quality: 'default' | 'hq' | 'maxres' = 'hq'): string => {
   if (!videoId) return '';

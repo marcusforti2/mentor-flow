@@ -29,6 +29,7 @@ import {
   Loader2,
   FileText,
   Type,
+  HardDrive,
 } from 'lucide-react';
 import {
   Select,
@@ -41,6 +42,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { isGoogleDriveUrl } from '@/types/trails';
 import type { Trail, TrailInput, TrailModule, TrailLesson } from '@/hooks/useTrails';
 
 interface TrailEditorSheetProps {
@@ -538,7 +540,7 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                                             <Input
                                               value={lesson.content_url}
                                               onChange={(e) => updateLesson(module.id, lesson.id, { content_url: e.target.value })}
-                                              placeholder="ID do vídeo YouTube"
+                                              placeholder="ID YouTube ou link do Google Drive"
                                               className="h-8 text-sm flex-1"
                                             />
                                             <Input
@@ -549,7 +551,12 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                                               className="h-8 text-sm w-16"
                                             />
                                           </div>
-                                          {lesson.content_url && getYouTubeThumbnail(lesson.content_url) && (
+                                          {lesson.content_url && isGoogleDriveUrl(lesson.content_url) ? (
+                                            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                                              <HardDrive className="h-3.5 w-3.5 text-primary" />
+                                              <span>Google Drive embed configurado</span>
+                                            </div>
+                                          ) : lesson.content_url && getYouTubeThumbnail(lesson.content_url) ? (
                                             <div className="w-24 h-14 rounded overflow-hidden bg-muted">
                                               <img 
                                                 src={getYouTubeThumbnail(lesson.content_url)}
@@ -557,7 +564,10 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                                                 className="w-full h-full object-cover"
                                               />
                                             </div>
-                                          )}
+                                          ) : null}
+                                          <p className="text-[10px] text-muted-foreground">
+                                            YouTube: cole o ID do vídeo • Drive: cole o link completo (ex: https://drive.google.com/file/d/.../view)
+                                          </p>
                                         </>
                                       )}
 
