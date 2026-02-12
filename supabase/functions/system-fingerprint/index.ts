@@ -7,10 +7,10 @@ const corsHeaders = {
 
 // Documento conceitual completo do sistema LBV TECH
 const SYSTEM_CONCEPT = `
-LBV TECH - SISTEMA OPERACIONAL DE GOVERNO PARA MENTORIAS HIGH TICKET
+Learning Brand - SISTEMA OPERACIONAL DE GOVERNO PARA MENTORIAS HIGH TICKET
 
 Data de Concepção: Fevereiro 2025
-Nome do Sistema: LBV TECH
+Nome do Sistema: Learning Brand
 
 === TITULAR DOS DIREITOS DE PROPRIEDADE INTELECTUAL ===
 
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
       'CPF: 387.912.328-48',
       '',
       '=== SISTEMA ===',
-      'LBV TECH',
+      'Learning Brand',
     ].join('\n')
 
     // Gerar hash SHA-256
@@ -170,11 +170,11 @@ Deno.serve(async (req) => {
       .from('system_fingerprints')
       .insert({
         sha256_hash: sha256Hash,
-        content_summary: 'LBV TECH - Sistema Operacional de Governo para Mentorias High Ticket. Plataforma SaaS multi-tenant com 8 ferramentas de IA, gamificação, CRM, trilhas e mais.',
+        content_summary: 'Learning Brand - Sistema Operacional de Governo para Mentorias High Ticket. Plataforma SaaS multi-tenant com 8 ferramentas de IA, gamificação, CRM, trilhas e mais.',
         full_content: fullContent,
         version: '1.0.0',
         author: 'Marcus Vinicius Barreto Forti',
-        system_name: 'LBV TECH',
+        system_name: 'Learning Brand',
         metadata: {
           files_count: SYSTEM_FILES.length,
           concept_length: SYSTEM_CONCEPT.length,

@@ -5,7 +5,7 @@ import {
   Eye, Trophy, Sparkles, CheckCircle2, Monitor, Clock,
   XCircle, Flame, LineChart, Award, Rocket, Crown, Lock, Heart
 } from 'lucide-react';
-import { LBVLogo } from '@/components/LBVLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 
 interface SlideRendererProps {
   slideIndex: number;
@@ -113,7 +113,7 @@ function SlideCapa() {
       <div className="relative">
         <div className="absolute inset-0 blur-[100px] opacity-25 rounded-full scale-[2]"
           style={{ background: `radial-gradient(circle, ${gold}, transparent 70%)` }} />
-        <LBVLogo variant="full" size="xl" />
+        <BrandLogo variant="full" size="xl" />
       </div>
 
       <div className="space-y-8 max-w-4xl relative z-10">
@@ -638,7 +638,7 @@ function SlideEncerramento() {
       </div>
 
       <div className="relative z-10">
-        <LBVLogo variant="full" size="lg" className="opacity-60" />
+        <BrandLogo variant="full" size="lg" className="opacity-60" />
       </div>
     </div>
   );

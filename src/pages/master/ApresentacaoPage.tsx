@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Maximize, Minimize, ChevronLeft, ChevronRight } from 'lucide-react';
-import { LBVLogo } from '@/components/LBVLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 import { SlideRenderer } from '@/components/presentation/SlideRenderer';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -67,7 +67,7 @@ export default function ApresentacaoPage() {
 
       {/* ── Header ── */}
       <header className="relative flex items-center justify-between px-6 md:px-10 py-4 shrink-0 z-10">
-        <LBVLogo variant="full" size="sm" className="opacity-70" />
+        <BrandLogo variant="full" size="sm" className="opacity-70" />
         <div className="flex items-center gap-4">
           <span className="text-slate-600 text-[11px] font-mono tracking-wider">
             {String(currentSlide + 1).padStart(2, '0')} / {String(TOTAL_SLIDES).padStart(2, '0')}

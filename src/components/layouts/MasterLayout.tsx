@@ -5,7 +5,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Presentation } from 'lucide-react';
-import { LBVLogo } from '@/components/LBVLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
   TooltipContent,
@@ -50,7 +50,7 @@ export function MasterLayout() {
          <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
            <div className="flex items-center gap-4">
              <Link to="/master">
-               <LBVLogo variant="full" size="sm" />
+              <BrandLogo variant="full" size="sm" />
              </Link>
              <div className="h-6 w-px bg-slate-700/50" />
              <Button
@@ -97,7 +97,7 @@ export function MasterLayout() {
        {isDashboard && (
          <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
            <Link to="/master" className="ml-28">
-             <LBVLogo variant="full" size="sm" />
+             <BrandLogo variant="full" size="sm" />
            </Link>
  
            <div className="flex items-center gap-3">

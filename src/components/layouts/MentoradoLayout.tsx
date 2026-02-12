@@ -8,7 +8,7 @@
  import { supabase } from '@/integrations/supabase/client';
  import { Button } from '@/components/ui/button';
  import { LogOut, ArrowLeft } from 'lucide-react';
- import { LBVLogo } from '@/components/LBVLogo';
+ import { BrandLogo } from '@/components/BrandLogo';
 import {
   LayoutDashboard,
   BookOpen,
@@ -145,7 +145,7 @@ const menuItems = [
        {isDashboard && (
           <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0">
            <Link to="/mentorado" className="ml-28">
-             <LBVLogo variant="full" size="sm" />
+             <BrandLogo variant="full" size="sm" />
            </Link>
  
            <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">

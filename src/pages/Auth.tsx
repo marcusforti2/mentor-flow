@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
-import { LBVLogo } from "@/components/LBVLogo";
+import { BrandLogo } from "@/components/BrandLogo";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const emailSchema = z.string().email("Email inválido");
@@ -403,9 +403,9 @@ const Auth = () => {
         <Card className="bg-card border-border">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
-              <LBVLogo variant="compact" size="lg" />
+              <BrandLogo variant="compact" size="lg" />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground">LBV TECH</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground">Learning Brand</CardTitle>
             <CardDescription className="text-muted-foreground">
               {step === "email" && "Digite seu email para receber o código de acesso"}
               {step === "code" && "Digite o código enviado para seu email"}

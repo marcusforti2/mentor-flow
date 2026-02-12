@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { OnboardingProgressBar } from "@/components/onboarding/ProgressBar";
 import { OnboardingQuestionCard } from "@/components/onboarding/QuestionCard";
-import { LBVLogo } from "@/components/LBVLogo";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
   Loader2,
   ArrowRight,
@@ -464,7 +464,7 @@ const Onboarding = () => {
       
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
-        <LBVLogo variant="full" size="sm" />
+        <BrandLogo variant="full" size="sm" />
         {step !== 'intro' && step !== 'complete' && (
           <OnboardingProgressBar 
             current={getCurrentStepNumber()} 

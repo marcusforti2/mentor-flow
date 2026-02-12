@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Crown, Mail, User, Loader2, Sparkles, Shield, ArrowLeft, Clipboard } from "lucide-react";
 import { z } from "zod";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { LBVLogo } from "@/components/LBVLogo";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const emailSchema = z.string().email("Email inválido");
 
@@ -283,7 +283,7 @@ const Setup = () => {
         <Card className="glass-card border-primary/20">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
-              <LBVLogo size="lg" />
+              <BrandLogo size="lg" />
             </div>
             <CardTitle className="text-3xl font-display font-bold text-foreground">
               {step === "form" ? "Configuração Inicial" : "Verificar Código"}

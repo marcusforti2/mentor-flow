@@ -54,12 +54,12 @@ async function sendWelcomeEmail(params: {
   <div class="container">
     <div class="card">
       <div class="header">
-        <div class="logo">LBV <span>TECH</span></div>
+        <div class="logo">Learning <span>Brand</span></div>
       </div>
       
       <h1>Olá ${displayName},</h1>
       
-      <p>Seu acesso à plataforma <strong>LBV TECH</strong> já está liberado.</p>
+      <p>Seu acesso à plataforma <strong>Learning Brand</strong> já está liberado.</p>
       
       <div class="steps">
         <h3>📋 Como acessar</h3>
@@ -83,8 +83,8 @@ async function sendWelcomeEmail(params: {
       <p>Seja bem-vindo(a)!</p>
       
       <div class="footer">
-        <p>Com carinho,<br><strong>Equipe LBV TECH</strong></p>
-        <p style="font-size: 12px; color: #999;">© ${new Date().getFullYear()} LBV TECH. Todos os direitos reservados.</p>
+        <p>Com carinho,<br><strong>Equipe Learning Brand</strong></p>
+        <p style="font-size: 12px; color: #999;">© ${new Date().getFullYear()} Learning Brand. Todos os direitos reservados.</p>
       </div>
     </div>
   </div>
@@ -100,9 +100,9 @@ async function sendWelcomeEmail(params: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "LBV TECH <no-reply@equipe.aceleracaoforti.online>",
+        from: "Learning Brand <no-reply@equipe.aceleracaoforti.online>",
         to: [email],
-        subject: "Bem-vindo à LBV TECH | Seu acesso está pronto",
+        subject: "Bem-vindo à Learning Brand | Seu acesso está pronto",
         html: htmlBody,
       }),
     });

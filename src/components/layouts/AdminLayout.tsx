@@ -5,7 +5,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, Settings, ArrowLeft } from 'lucide-react';
-import { LBVLogo } from '@/components/LBVLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 import {
   LayoutDashboard,
   Users,
@@ -60,7 +60,7 @@ export function AdminLayout() {
         <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50">
           <div className="flex items-center gap-4">
             <Link to="/admin">
-              <LBVLogo variant="full" size="sm" />
+              <BrandLogo variant="full" size="sm" />
             </Link>
             <div className="h-6 w-px bg-border/50" />
             <Button
@@ -106,7 +106,7 @@ export function AdminLayout() {
         <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
           {/* Logo on the left */}
           <Link to="/admin" className="ml-28">
-            <LBVLogo variant="full" size="sm" />
+            <BrandLogo variant="full" size="sm" />
           </Link>
 
           {/* User controls on the right */}
