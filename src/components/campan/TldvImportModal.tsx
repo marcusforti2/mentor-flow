@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Video, Calendar, Download, ExternalLink, Key } from 'lucide-react';
+import { Loader2, Video, Calendar, Download, Key } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -28,10 +29,70 @@ interface TldvImportModalProps {
 
 export function TldvImportModal({ open, onOpenChange, onImport }: TldvImportModalProps) {
   const [apiKey, setApiKey] = useState('');
+  const [rememberKey, setRememberKey] = useState(false);
   const [meetings, setMeetings] = useState<TldvMeeting[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isImporting, setIsImporting] = useState<string | null>(null);
   const [step, setStep] = useState<'key' | 'list'>('key');
+  const [loadingSavedKey, setLoadingSavedKey] = useState(false);
+
+  // Load saved API key on open
+  useEffect(() => {
+    if (open) {
+      loadSavedKey();
+    }
+  }, [open]);
+
+  const loadSavedKey = async () => {
+    setLoadingSavedKey(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('tldv_api_key')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data?.tldv_api_key) {
+        setApiKey(data.tldv_api_key);
+        setRememberKey(true);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingSavedKey(false);
+    }
+  };
+
+  const saveApiKey = async (key: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase
+        .from('profiles')
+        .update({ tldv_api_key: key })
+        .eq('user_id', user.id);
+    } catch {
+      // silent fail
+    }
+  };
+
+  const clearSavedKey = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase
+        .from('profiles')
+        .update({ tldv_api_key: null })
+        .eq('user_id', user.id);
+    } catch {
+      // silent fail
+    }
+  };
 
   const fetchMeetings = async () => {
     if (!apiKey.trim()) {
@@ -41,6 +102,13 @@ export function TldvImportModal({ open, onOpenChange, onImport }: TldvImportModa
 
     setIsLoading(true);
     try {
+      // Save or clear key based on checkbox
+      if (rememberKey) {
+        await saveApiKey(apiKey.trim());
+      } else {
+        await clearSavedKey();
+      }
+
       const { data, error } = await supabase.functions.invoke('fetch-tldv-meetings', {
         body: { tldv_api_key: apiKey.trim(), limit: 20 },
       });
@@ -121,8 +189,19 @@ export function TldvImportModal({ open, onOpenChange, onImport }: TldvImportModa
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Cole sua API Key aqui..."
+                placeholder={loadingSavedKey ? 'Carregando chave salva...' : 'Cole sua API Key aqui...'}
+                disabled={loadingSavedKey}
               />
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember-key"
+                  checked={rememberKey}
+                  onCheckedChange={(v) => setRememberKey(!!v)}
+                />
+                <label htmlFor="remember-key" className="text-xs text-muted-foreground cursor-pointer">
+                  Lembrar esta chave
+                </label>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Obtenha em{' '}
                 <a href="https://tldv.io/app/settings/api" target="_blank" rel="noopener noreferrer" className="text-primary underline">
@@ -132,7 +211,7 @@ export function TldvImportModal({ open, onOpenChange, onImport }: TldvImportModa
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={fetchMeetings} disabled={isLoading || !apiKey.trim()}>
+              <Button onClick={fetchMeetings} disabled={isLoading || !apiKey.trim() || loadingSavedKey}>
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Buscar reuniões
               </Button>
