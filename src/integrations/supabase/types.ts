@@ -3023,6 +3023,10 @@ export type Database = {
         Args: { _tenant_id: string; _user_id?: string }
         Returns: boolean
       }
+      is_tenant_staff: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       start_impersonation: {
         Args: {
           _admin_membership_id: string
