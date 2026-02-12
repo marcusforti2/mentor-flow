@@ -6,6 +6,8 @@ import { KanbanColumn } from "@/components/crm/KanbanColumn";
 import { LeadUploadModal } from "@/components/crm/LeadUploadModal";
 import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import { BusinessProfileForm } from "@/components/crm/BusinessProfileForm";
+import { ManualLeadModal } from "@/components/crm/ManualLeadModal";
+import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -18,16 +20,8 @@ import {
   Target,
   TrendingUp,
   Users,
+  UserPlus,
 } from "lucide-react";
-
-const columns = [
-  { status: "new", title: "Novos", color: "bg-slate-500" },
-  { status: "contacted", title: "Contato", color: "bg-blue-500" },
-  { status: "meeting_scheduled", title: "Reunião", color: "bg-amber-500" },
-  { status: "proposal_sent", title: "Proposta", color: "bg-purple-500" },
-  { status: "closed_won", title: "Fechados", color: "bg-green-500" },
-  { status: "closed_lost", title: "Perdidos", color: "bg-red-500" },
-];
 
 export default function MeuCRM() {
   const { toast } = useToast();
@@ -36,11 +30,15 @@ export default function MeuCRM() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   const membershipId = activeMembership?.id;
   const tenantId = activeMembership?.tenant_id;
+  const { stages } = usePipelineStages(tenantId);
+  const columns = stages.map((s) => ({ status: s.status_key, title: s.name, color: s.color }));
+
 
   useEffect(() => {
     if (membershipId) {
@@ -136,10 +134,16 @@ export default function MeuCRM() {
           <h1 className="text-2xl font-display font-bold">Meu CRM</h1>
           <p className="text-muted-foreground">Gerencie seus leads com inteligência</p>
         </div>
-        <Button onClick={() => setUploadModalOpen(true)}>
-          <Sparkles className="w-4 h-4 mr-2" />
-          Novo Lead com IA
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setManualModalOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Cadastro Manual
+          </Button>
+          <Button onClick={() => setUploadModalOpen(true)}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            Novo Lead com IA
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -219,6 +223,25 @@ export default function MeuCRM() {
               actionType: 'lead_created',
               description: 'Novo lead cadastrado via IA',
               pointsEarned: 10,
+            });
+          }}
+          membershipId={membershipId}
+          tenantId={tenantId}
+        />
+      )}
+
+      {membershipId && (
+        <ManualLeadModal
+          open={manualModalOpen}
+          onOpenChange={setManualModalOpen}
+          onLeadCreated={() => {
+            loadLeads();
+            logActivity({
+              membershipId,
+              tenantId,
+              actionType: 'lead_created',
+              description: 'Novo lead cadastrado manualmente',
+              pointsEarned: 5,
             });
           }}
           membershipId={membershipId}
