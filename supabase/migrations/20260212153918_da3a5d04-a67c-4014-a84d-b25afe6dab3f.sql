@@ -1,0 +1,2 @@
+ALTER TABLE public.meeting_transcripts DROP CONSTRAINT meeting_transcripts_input_type_check;
+ALTER TABLE public.meeting_transcripts ADD CONSTRAINT meeting_transcripts_input_type_check CHECK (input_type = ANY (ARRAY['pdf'::text, 'text'::text, 'file'::text, 'tldv'::text]));
