@@ -73,6 +73,7 @@ interface Mentorado {
   membership_id: string;
   user_id: string;
   legacy_mentorado_id?: string | null;
+  legacy_mentor_id?: string | null;
   status: string | null;
   joined_at: string | null;
   onboarding_completed: boolean | null;
@@ -190,7 +191,7 @@ const Mentorados = () => {
           .in('membership_id', membershipIds),
         supabase
           .from('mentorados')
-          .select('id, user_id')
+          .select('id, user_id, mentor_id')
           .in('user_id', userIds)
       ]);
       
@@ -205,6 +206,7 @@ const Mentorados = () => {
           membership_id: m.id,
           user_id: m.user_id,
           legacy_mentorado_id: legacyMentorado?.id || null,
+          legacy_mentor_id: legacyMentorado?.mentor_id || null,
           status: m.status,
           joined_at: menteeProfile?.joined_at || m.created_at,
           onboarding_completed: menteeProfile?.onboarding_completed || false,
@@ -811,13 +813,20 @@ const Mentorados = () => {
                 )}
 
                 {/* Files Manager */}
-                <MentoradoFilesManager
-                  mentoradoId={selectedMentorado.legacy_mentorado_id || selectedMentorado.id}
-                  mentorId={legacyMentorId || ''}
-                  mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
-                  tenantId={activeMembership?.tenant_id}
-                  ownerMembershipId={selectedMentorado.membership_id}
-                />
+                {selectedMentorado.legacy_mentorado_id && selectedMentorado.legacy_mentor_id ? (
+                  <MentoradoFilesManager
+                    mentoradoId={selectedMentorado.legacy_mentorado_id}
+                    mentorId={selectedMentorado.legacy_mentor_id}
+                    mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                    tenantId={activeMembership?.tenant_id}
+                    ownerMembershipId={selectedMentorado.membership_id}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Arquivos indisponíveis — perfil legado não encontrado.</p>
+                  </div>
+                )}
               </div>
             </>
           )}
