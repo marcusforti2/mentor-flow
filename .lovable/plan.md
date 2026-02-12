@@ -1,59 +1,66 @@
 
-# Aba Tarefas: Trocar Kanban por Lista + Adicionar IA e Edicao
 
-O Kanban atual dentro do Sheet lateral nao funciona bem - as colunas ficam apertadas e nao da pra ver os detalhes das tarefas. A proposta e substituir por uma lista agrupada por status, com acoes de editar/excluir, geracao de tarefas via IA (PDF/transcricao), e criacao manual.
+# Mobile Funcional - Otimizar UI para Telas Pequenas
+
+Todos os componentes dentro do Sheet lateral do mentorado precisam de ajustes para funcionar bem em telas de celular (390px). Os problemas principais sao: grids de 2 colunas que espremem campos, botoes amontoados em linhas horizontais, e textos truncados.
 
 ---
 
-## O que muda
+## Mudancas por Componente
 
-### 1. Substituir Kanban por Lista agrupada
+### 1. MeetingRegistrar.tsx - Formulario de Registrar Reuniao
 
-Trocar o `CampanKanban` na aba Tarefas por um novo componente `TaskListView` que exibe:
+**Problema**: Grid de 2 colunas (Titulo + Data) fica apertado no mobile.
 
-- Tarefas em formato de lista, agrupadas por status (A Fazer, Fazendo, Feito) com headers coloridos e contagem
-- Cada tarefa mostra: titulo, prioridade (badge colorido), prazo, tags, descricao truncada
-- Indicador visual de reuniao associada (se `source_transcript_id` existir)
-- Clicar na tarefa abre modal de edicao
-- Botao de excluir com confirmacao
-- Alterar status via Select inline (sem precisar de drag-and-drop)
+- Trocar `grid grid-cols-2` por `grid grid-cols-1 sm:grid-cols-2` para empilhar titulo e data no mobile
+- Botoes de acao (Cancelar/Salvar) ja estao ok com `flex gap-2`
 
-### 2. Geracao de tarefas com IA na aba Tarefas
+### 2. MeetingHistoryList.tsx - Cards de Reunioes
 
-Adicionar o `TranscriptionTaskExtractor` (que ja existe e funciona) diretamente na aba Tarefas, acima da lista. O mentor pode:
+**Problema**: Titulo truncado ("R..."), botoes (Editar, Excluir, Gerar Tarefas) amontoados na mesma linha.
 
-- Colar texto de transcricao ou subir PDF/Word
-- A IA extrai tarefas automaticamente para aprovacao
-- Mentor revisa, edita e salva as tarefas aprovadas
-- Tarefas manual tambem disponiveis
+- Separar o layout do card em duas linhas no mobile:
+  - Linha 1: titulo completo (sem truncate no mobile) + badge de fonte
+  - Linha 2: metadados (data, status, contagem de tarefas) com flex-wrap
+  - Linha 3: botoes de acao empilhados horizontalmente com mais espaco
+- Usar `flex-col sm:flex-row` no container principal do card
+- Mover os botoes de acao para uma linha propria abaixo dos metadados
 
-### 3. Associar reuniao a tarefa
+### 3. TranscriptionTaskExtractor.tsx - Extrator de Tarefas com IA
 
-Na edicao de uma tarefa, adicionar um Select opcional que lista as reunioes do mentorado (`meeting_transcripts`), permitindo "taguear" a tarefa com uma reuniao existente.
+**Problema**: Botoes de upload (PDF/Word, tl;dv) e acoes (Gerar IA, Manual) ficam apertados.
+
+- Botoes de upload: ja usam `flex-wrap`, ok
+- Botoes de acao: ja usam `flex-wrap`, ok
+- Arquivo selecionado: truncar nome do arquivo com `max-w-[150px]` no mobile
+- Card de review de tarefas: garantir que checkboxes e campos de edicao nao quebrem
+
+### 4. TaskListView.tsx - Lista de Tarefas
+
+**Problema**: Select de status (90px) + botao editar + botao excluir ficam apertados ao lado do titulo.
+
+- Reorganizar o card da tarefa para empilhar no mobile:
+  - Linha 1: titulo + descricao + badges
+  - Linha 2: controles (select de status, editar, excluir) em linha separada
+- Usar `flex-col sm:flex-row` no container principal
+- Dialog de edicao: trocar `grid grid-cols-2` por `grid grid-cols-1 sm:grid-cols-2` nos campos Prioridade/Status
 
 ---
 
 ## Detalhes Tecnicos
 
-### Novo componente: `src/components/campan/TaskListView.tsx`
+### Arquivos alterados:
+- `src/components/campan/MeetingRegistrar.tsx` - grid responsivo
+- `src/components/campan/MeetingHistoryList.tsx` - layout de card empilhado
+- `src/components/campan/TranscriptionTaskExtractor.tsx` - ajustes menores
+- `src/components/campan/TaskListView.tsx` - layout de card + dialog responsivos
 
-Substitui o `CampanKanban` na aba Tarefas. Responsabilidades:
+### Padrao utilizado:
+- Classes Tailwind responsivas (`sm:` breakpoint)
+- `flex-col sm:flex-row` para empilhar no mobile e alinhar no desktop
+- `grid-cols-1 sm:grid-cols-2` para grids adaptativos
+- Remover `truncate` de titulos no mobile ou usar `line-clamp-2`
 
-- Fetch de `campan_tasks` filtrado por `mentorado_membership_id`
-- Fetch de `meeting_transcripts` para popular o select de reuniao associada
-- Agrupamento por `status_column` (a_fazer, fazendo, feito)
-- Modal de edicao: titulo, descricao, prioridade, prazo, status, reuniao associada
-- Dialog de exclusao com confirmacao
-- Alterar status via dropdown inline
+### Nenhuma migracao ou novo componente necessario
+Todas as mudancas sao de CSS/classes Tailwind nos componentes existentes.
 
-### Arquivo modificado: `src/pages/admin/Mentorados.tsx`
-
-Na `TabsContent value="tasks"` (linhas 988-998):
-
-- Adicionar o `TranscriptionTaskExtractor` acima do `TaskListView`
-- Remover a referencia ao `CampanKanban`
-- Conectar o `onTasksSaved` do extractor ao refresh da lista
-
-### Nenhuma migracao necessaria
-
-O campo `source_transcript_id` ja existe na tabela `campan_tasks` e referencia `meeting_transcripts.id`. Toda a mudanca e de frontend.
