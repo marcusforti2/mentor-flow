@@ -45,6 +45,9 @@ interface EmailFlow {
   nodes: any;
   edges: any;
   created_at: string;
+  audience_type?: string;
+  audience_membership_ids?: string[];
+  tenant_id?: string;
 }
 
 interface EmailTemplate {
@@ -166,6 +169,7 @@ export default function EmailMarketing() {
         .from('email_flows')
         .insert({
           mentor_id: mentorId,
+          tenant_id: activeMembership.tenant_id,
           name: newFlowName,
           description: newFlowDescription || null,
           nodes: [],
@@ -270,16 +274,20 @@ export default function EmailMarketing() {
     }
   };
 
-  const handleSaveFlow = async (flowId: string, nodes: any[], edges: any[]) => {
+  const handleSaveFlow = async (flowId: string, nodes: any[], edges: any[], audienceType?: string, audienceMembershipIds?: string[]) => {
     try {
+      const updateData: any = { nodes, edges };
+      if (audienceType !== undefined) updateData.audience_type = audienceType;
+      if (audienceMembershipIds !== undefined) updateData.audience_membership_ids = audienceMembershipIds;
+
       const { error } = await supabase
         .from('email_flows')
-        .update({ nodes, edges })
+        .update(updateData)
         .eq('id', flowId);
       
       if (error) throw error;
       
-      setFlows(flows.map(f => f.id === flowId ? { ...f, nodes, edges } : f));
+      setFlows(flows.map(f => f.id === flowId ? { ...f, nodes, edges, audience_type: audienceType || f.audience_type, audience_membership_ids: audienceMembershipIds || f.audience_membership_ids } : f));
       toast({ title: "Fluxo salvo!" });
     } catch (error: any) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
@@ -300,7 +308,8 @@ export default function EmailMarketing() {
       <FlowEditor
         flow={selectedFlow}
         templates={templates}
-        onSave={(nodes, edges) => handleSaveFlow(selectedFlow.id, nodes, edges)}
+        tenantId={activeMembership?.tenant_id}
+        onSave={(nodes, edges, audienceType, audienceMembershipIds) => handleSaveFlow(selectedFlow.id, nodes, edges, audienceType, audienceMembershipIds)}
         onClose={() => {
           setIsFlowEditorOpen(false);
           setSelectedFlow(null);
