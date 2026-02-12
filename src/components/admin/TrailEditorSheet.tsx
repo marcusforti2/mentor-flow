@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -25,7 +25,13 @@ import {
   Video, 
   Save,
   Image as ImageIcon,
+  Upload,
+  Loader2,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { Trail, TrailInput, TrailModule, TrailLesson } from '@/hooks/useTrails';
 
 interface TrailEditorSheetProps {
@@ -73,6 +79,10 @@ interface FormData {
 }
 
 export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEditorSheetProps) {
+  const { activeMembership } = useTenant();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -265,28 +275,78 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="thumbnail">URL da Capa</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="thumbnail"
-                    value={formData.thumbnail_url}
-                    onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                    placeholder="https://..."
-                    className="bg-muted/50"
-                  />
-                  <Button variant="outline" size="icon" className="shrink-0">
-                    <ImageIcon className="h-4 w-4" />
-                  </Button>
+                <Label>Capa da Trilha</Label>
+                <p className="text-xs text-muted-foreground">
+                  Formato ideal: <strong>1280×720px (16:9)</strong> • JPG ou PNG • Máx 2MB
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) {
+                      toast.error('Arquivo muito grande. Máximo 2MB.');
+                      return;
+                    }
+                    setIsUploading(true);
+                    try {
+                      const ext = file.name.split('.').pop();
+                      const path = `${activeMembership?.tenant_id || 'default'}/${Date.now()}.${ext}`;
+                      const { error: uploadError } = await supabase.storage
+                        .from('trail-covers')
+                        .upload(path, file, { upsert: true });
+                      if (uploadError) throw uploadError;
+                      const { data: urlData } = supabase.storage
+                        .from('trail-covers')
+                        .getPublicUrl(path);
+                      setFormData({ ...formData, thumbnail_url: urlData.publicUrl });
+                      toast.success('Capa enviada!');
+                    } catch (err) {
+                      console.error('Upload error:', err);
+                      toast.error('Erro ao enviar capa');
+                    } finally {
+                      setIsUploading(false);
+                    }
+                  }}
+                />
+                <div 
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  className={cn(
+                    "border-2 border-dashed border-border rounded-lg overflow-hidden cursor-pointer transition-colors hover:border-primary/50",
+                    isUploading && "opacity-50 pointer-events-none"
+                  )}
+                >
+                  {formData.thumbnail_url ? (
+                    <div className="relative w-full h-36">
+                      <img 
+                        src={formData.thumbnail_url} 
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="text-white text-sm font-medium flex items-center gap-2">
+                          <Upload className="h-4 w-4" />
+                          Trocar capa
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      {isUploading ? (
+                        <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                      ) : (
+                        <Upload className="h-8 w-8 mb-2" />
+                      )}
+                      <span className="text-sm font-medium">
+                        {isUploading ? 'Enviando...' : 'Clique para enviar a capa'}
+                      </span>
+                      <span className="text-xs mt-1">1280×720px • JPG/PNG</span>
+                    </div>
+                  )}
                 </div>
-                {formData.thumbnail_url && (
-                  <div className="w-full h-32 rounded-lg overflow-hidden bg-muted mt-2">
-                    <img 
-                      src={formData.thumbnail_url} 
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="flex items-center justify-between py-2">
