@@ -1,100 +1,74 @@
 
-## Email Marketing Funcional: Envio Real + Selecao de Audiencia
+# Plano: Exclusao de Mentorados + Verificacao de Emails + Email Marketing
 
-O sistema de email marketing atual permite criar fluxos visuais e testar envios, mas nao tem o mecanismo para **enviar de verdade** para os mentorados. Vamos implementar:
+## 1. Permitir que o Mentor Exclua Mentorados
+
+**Problema**: A pagina de Mentorados (`src/pages/admin/Mentorados.tsx`) nao tem botao de excluir. O mentor nao consegue remover mentorados da sua base.
+
+**Solucao**: Adicionar botao de excluir no painel de detalhes (Sheet) do mentorado, com confirmacao via dialog.
+
+### Alteracoes:
+- **`src/pages/admin/Mentorados.tsx`**: Adicionar botao "Excluir Mentorado" no Sheet de detalhes com AlertDialog de confirmacao
+- A exclusao vai:
+  1. Desativar o membership (status = 'suspended') em vez de deletar permanentemente
+  2. Desativar o assignment mentor-mentee
+  3. Atualizar a lista local apos exclusao
+  4. Mostrar toast de sucesso/erro
 
 ---
 
-### 1. Selecao de Audiencia no Fluxo
+## 2. Verificacao de Emails de Boas-Vindas
 
-Ao criar/editar um fluxo, o mentor podera configurar **para quem** o fluxo sera enviado. Adicionaremos um campo `audience` na tabela `email_flows` e uma UI no FlowEditor.
+**Status**: FUNCIONANDO
 
-**Opcoes de audiencia:**
-- **Todos os mentorados** do tenant (padrao)
-- **Mentorados especificos** - selecionados manualmente por nome
+Os logs confirmam que os emails estao sendo enviados com sucesso via Resend:
+- `Welcome email sent successfully to: teste@gmail.com`
+- `Welcome email sent successfully to: mariana@teste.com`
+- `Welcome email sent successfully to: marcus.forti@live.com`
 
-**Alteracoes no banco:**
+A chave `RESEND_API_KEY` esta configurada e o template usa o branding "Learning Brand" corretamente.
+
+**Nenhuma alteracao necessaria.**
+
+---
+
+## 3. Email Marketing - Verificacao de Conexao com Fluxos
+
+**Status**: CONECTADO E FUNCIONAL
+
+A analise mostra que o sistema de Email Marketing esta completo:
+
+| Componente | Status |
+|---|---|
+| Editor de Fluxos (drag-and-drop) | OK - ReactFlow com nos de Email, Wait, Condition, Trigger |
+| Gatilhos disponiveis | OK - Onboarding, Jornada CS, Inatividade, Conclusao de Trilha, Data, Manual |
+| Audiencia (todos ou especificos) | OK - Seletor de mentorados no FlowEditor |
+| Envio via Resend | OK - `execute-email-flow` com rate limit de 600ms |
+| Templates personalizaveis | OK - Editor de templates com variaveis |
+| Teste de fluxos | OK - FlowTestModal com preview mobile |
+| Envio real | OK - FlowSendModal |
+| Branding Learning Brand | OK - Template HTML com marca correta |
+
+**Nenhuma alteracao necessaria no Email Marketing.**
+
+---
+
+## Resumo Tecnico
+
+### Arquivo a modificar:
+- `src/pages/admin/Mentorados.tsx`
+
+### Logica de exclusao:
 ```text
-ALTER TABLE email_flows ADD COLUMN audience_type text DEFAULT 'all';
-ALTER TABLE email_flows ADD COLUMN audience_membership_ids uuid[] DEFAULT '{}';
+1. Mentor clica "Excluir" no Sheet de detalhes
+2. AlertDialog pede confirmacao
+3. Ao confirmar:
+   - UPDATE memberships SET status = 'suspended' WHERE id = mentorado.membership_id
+   - UPDATE mentor_mentee_assignments SET status = 'inactive' WHERE mentee_membership_id = mentorado.membership_id
+4. Refresh da lista
+5. Toast de sucesso
 ```
 
-**UI no FlowEditor:** Novo painel lateral ou secao no header com:
-- Select "Para quem enviar?" (Todos / Especificos)
-- Se "Especificos", mostra lista de mentorados do tenant com checkboxes
-- Busca de mentorados por nome
-
----
-
-### 2. Botao "Enviar Agora" no FlowEditor
-
-Alem do "Testar Fluxo" (que ja existe), adicionaremos um botao **"Enviar Agora"** que dispara o fluxo para a audiencia selecionada em producao.
-
-Fluxo:
-1. Mentor clica "Enviar Agora"
-2. Modal de confirmacao mostra: quantidade de destinatarios, quantos emails serao enviados
-3. Mentor confirma
-4. Chama a edge function `execute-email-flow`
-5. Mostra progresso/resultado
-
----
-
-### 3. Edge Function `execute-email-flow`
-
-Nova edge function que:
-1. Recebe `flowId` e opcionalmente `immediate: true`
-2. Carrega o fluxo (nodes, edges, audience)
-3. Resolve os destinatarios:
-   - Se `audience_type = 'all'`: busca todos os mentees ativos do tenant via `memberships` + `profiles`
-   - Se `audience_type = 'specific'`: usa os `audience_membership_ids`
-4. Para cada destinatario, percorre os nodes do fluxo:
-   - Nodes `email`: envia via Resend (com delay de 600ms entre envios)
-   - Nodes `wait`: se `immediate = true`, pula os waits (envia tudo de uma vez)
-   - Se o fluxo ficar "ativo" (rodando), registra na tabela `email_flow_executions` para processar os waits depois
-5. Registra cada envio na tabela `email_flow_executions`
-
-**Para fluxos com wait nodes (deixar rodando):**
-- O fluxo e marcado como `is_active = true`
-- A execucao e registrada com `status = 'waiting'` e `current_node_id`
-- Uma segunda edge function (ou a mesma, chamada por cron) processa as execucoes pendentes
-
-**Para envio imediato (sem respeitar waits):**
-- Envia todos os emails do fluxo de uma vez, ignorando wait nodes
-- Util para campanhas pontuais
-
----
-
-### 4. Modal de Confirmacao de Envio
-
-Novo componente `FlowSendModal.tsx`:
-- Mostra resumo: "X mentorados receberao Y emails"
-- Toggle: "Enviar imediatamente (ignorar esperas)" vs "Respeitar o fluxo (ativar automacao)"
-- Lista dos mentorados que receberao
-- Botao de confirmacao
-
----
-
-### 5. Salvar audiencia junto com o fluxo
-
-A funcao `handleSaveFlow` no `EmailMarketing.tsx` sera atualizada para salvar tambem `audience_type` e `audience_membership_ids`.
-
----
-
-### Resumo de arquivos
-
-| Arquivo | Alteracao |
-|---|---|
-| Migracao SQL | `audience_type` e `audience_membership_ids` em `email_flows` |
-| `src/components/email/FlowEditor.tsx` | Painel de audiencia + botao "Enviar Agora" |
-| `src/components/email/FlowSendModal.tsx` | NOVO - Modal de confirmacao de envio |
-| `src/pages/admin/EmailMarketing.tsx` | Atualizar save para incluir audiencia |
-| `supabase/functions/execute-email-flow/index.ts` | NOVO - Edge function de envio real |
-| `supabase/config.toml` | Registrar nova function |
-
-### Detalhes tecnicos
-
-- Destinatarios sao resolvidos via: `memberships` (role = mentee, tenant_id, status = active) + JOIN `profiles` (email, full_name)
-- Resend rate limit respeitado: 600ms delay entre envios
-- Variavel `{{nome}}` substituida pelo `full_name` do profile de cada mentorado
-- Execucoes registradas em `email_flow_executions` para rastreamento
-- A coluna `mentorado_id` existente na `email_flow_executions` sera usada para registrar por membership_id (reusar)
+### Imports adicionais necessarios:
+- `AlertDialog` components do Radix UI (ja instalado)
+- Icone `Trash2` do Lucide (ja importado na pagina de Email Marketing)
