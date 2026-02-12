@@ -79,7 +79,7 @@ import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager"
 import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
 import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
 import { Send } from "lucide-react";
-import { TranscriptionTaskExtractor } from "@/components/campan/TranscriptionTaskExtractor";
+import { MeetingRegistrar } from "@/components/campan/MeetingRegistrar";
 import { CampanKanban } from "@/components/campan/CampanKanban";
 import { MeetingHistoryList } from "@/components/campan/MeetingHistoryList";
 
@@ -154,6 +154,7 @@ const Mentorados = () => {
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [campanRefreshKey, setCampanRefreshKey] = useState(0);
+  const [meetingRefreshKey, setMeetingRefreshKey] = useState(0);
 
   const { user } = useAuth();
   const { activeMembership } = useTenant();
@@ -867,35 +868,25 @@ const Mentorados = () => {
                   </div>
                 )}
 
-                {/* Transcription → Tasks */}
-                {activeMembership && (
-                  <TranscriptionTaskExtractor
-                    mentoradoMembershipId={selectedMentorado.membership_id}
-                    mentorMembershipId={activeMembership.id}
-                    tenantId={activeMembership.tenant_id}
-                    onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
-                  />
-                )}
-
-                {/* Campan Kanban */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Tarefas (Campan)</h4>
-                  <CampanKanban 
-                    mentoradoMembershipId={selectedMentorado.membership_id}
-                    refreshKey={campanRefreshKey}
-                  />
-                </div>
-
-                {/* Meeting History */}
+                {/* Register Meeting */}
                 {activeMembership && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                       <Video className="h-4 w-4" />
                       Reuniões
                     </h4>
+                    <MeetingRegistrar
+                      mentoradoMembershipId={selectedMentorado.membership_id}
+                      mentorMembershipId={activeMembership.id}
+                      tenantId={activeMembership.tenant_id}
+                      onMeetingSaved={() => setMeetingRefreshKey(k => k + 1)}
+                    />
                     <MeetingHistoryList
                       mentoradoMembershipId={selectedMentorado.membership_id}
+                      mentorMembershipId={activeMembership.id}
                       tenantId={activeMembership.tenant_id}
+                      refreshKey={meetingRefreshKey}
+                      onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
                     />
                   </div>
                 )}
