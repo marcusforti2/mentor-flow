@@ -81,6 +81,7 @@ import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
 import { Send } from "lucide-react";
 import { TranscriptionTaskExtractor } from "@/components/campan/TranscriptionTaskExtractor";
 import { CampanKanban } from "@/components/campan/CampanKanban";
+import { MeetingHistoryList } from "@/components/campan/MeetingHistoryList";
 
 interface Mentorado {
   id: string;
@@ -884,6 +885,20 @@ const Mentorados = () => {
                     refreshKey={campanRefreshKey}
                   />
                 </div>
+
+                {/* Meeting History */}
+                {activeMembership && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Video className="h-4 w-4" />
+                      Reuniões
+                    </h4>
+                    <MeetingHistoryList
+                      mentoradoMembershipId={selectedMentorado.membership_id}
+                      tenantId={activeMembership.tenant_id}
+                    />
+                  </div>
+                )}
 
                 {/* Files Manager */}
                 <MentoradoFilesManager
