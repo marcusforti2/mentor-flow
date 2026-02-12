@@ -1,25 +1,60 @@
 
 
-## Corrigir Upload de Arquivos de Mentorado (Solucao Definitiva)
+## Mapa de Conexoes Mentor-Mentorado: Status Atual e Correcoes
 
-O problema tem 3 camadas que precisam ser resolvidas juntas:
+### Legenda
+- OK = Funciona com a arquitetura moderna (tenant_id / membership_id)
+- PARCIAL = Funciona mas depende de tabelas legadas como fallback
+- QUEBRADO = Depende 100% de tabelas legadas (mentors/mentorados), falha para usuarios novos
 
-### Problema 1: Politica RLS da tabela `mentorado_files`
-A politica "Mentors can manage files" verifica se o `mentor_id` do registro pertence ao usuario logado. Quando a Mariana (admin) tenta subir arquivo para um mentorado que pertence a outro mentor legado, a FK `mentor_id` aponta para o mentor original, nao para ela -- e a policy falha.
+---
 
-A policy de staff (`mentorado_files_staff_manage`) deveria cobrir isso, mas depende de `tenant_id` estar preenchido no INSERT. Se for `null`, a policy nao bate.
+### Status por Funcionalidade
 
-**Solucao**: Tornar o `mentor_id` nullable (ja que temos `owner_membership_id` e `tenant_id` como substitutos modernos) e garantir que `tenant_id` seja sempre preenchido.
+| Funcionalidade | Mentor (admin) | Mentorado (mentee) | Status |
+|---|---|---|---|
+| **Arquivos** | Sobe via membership_id | Ve via owner_membership_id | OK (corrigido agora) |
+| **Trilhas** | Cria com tenant_id | Ve por tenant_id | OK |
+| **CRM (Meu CRM)** | N/A | Usa membership_id | OK |
+| **CRM (Gestao)** | Ve todos do tenant | N/A | OK |
+| **Calendario (admin)** | Depende de `mentors.id` para criar eventos; fallback usa membership_id como mentor_id (FK invalida) | N/A | QUEBRADO |
+| **Calendario (mentee)** | N/A | Busca por tenant_id com fallback legado | PARCIAL |
+| **Centro SOS** | Ve por tenant_id | Cria com mentorado_id legado; fallback membership_id | PARCIAL |
+| **Comunidade** | N/A | 100% dependente de `mentorados` table (mentor_id, mentorado_id) | QUEBRADO |
+| **Chat** | N/A | 100% dependente de `mentorados` table | QUEBRADO |
+| **Gamificacao** | N/A | Dual-ID (funciona) | PARCIAL |
+| **Ferramentas IA** | N/A | Depende de mentorado_id legado para business profile | PARCIAL |
+| **Dashboard Mentee** | N/A | Usa membership corretamente | OK |
 
-### Problema 2: Politica de Storage do bucket `mentorado-files`
-As policies do bucket so permitem upload/delete para quem tem registro na tabela `mentors`. Nao existe policy de staff para admin/ops.
+---
 
-**Solucao**: Adicionar policies de storage para staff do tenant.
+### Correcoes Necessarias (3 itens criticos)
 
-### Problema 3: O componente esconde o file manager quando nao tem dados legados
-A correcao anterior adicionou um guard que exige `legacy_mentorado_id` E `legacy_mentor_id`. Mentorados sem registro legado nao conseguem usar arquivos.
+#### 1. Calendario Admin -- Remover dependencia de `mentors.id`
 
-**Solucao**: Permitir que o file manager funcione sem dados legados, usando `membership_id` e `tenant_id` como identificadores primarios.
+**Problema**: O calendario admin (`src/pages/admin/Calendario.tsx`) busca `mentors.id` para gravar eventos. Se o admin nao tem registro na tabela `mentors`, usa `activeMembership.id` como `mentor_id`, o que viola a FK.
+
+**Solucao**:
+- Migration: Tornar `calendar_events.mentor_id` nullable e adicionar coluna `tenant_id` como filtro principal (ja existe)
+- Codigo: Alterar `fetchData()` para buscar eventos por `tenant_id` primeiro, e so usar `mentor_id` como fallback
+- Na criacao de eventos, gravar `tenant_id` obrigatoriamente e `mentor_id` apenas se existir registro legado
+
+#### 2. Comunidade e Chat -- Migrar para tenant_id
+
+**Problema**: Os hooks `useCommunityPosts` e `useCommunityChat` dependem 100% da tabela `mentorados` para obter `mentor_id`. As tabelas `community_posts` e `community_messages` filtram por `mentor_id`. Usuarios sem registro legado nao conseguem participar.
+
+**Solucao**:
+- Migration: Adicionar coluna `tenant_id` (UUID, nullable, FK para tenants) em `community_posts` e `community_messages`. Preencher dados existentes via `UPDATE ... SET tenant_id = (SELECT tenant_id FROM mentors WHERE id = mentor_id)`
+- Codigo: Alterar `useCommunityPosts` e `useCommunityChat` para filtrar por `tenant_id` do `activeMembership` em vez de `mentor_id`. Usar `membership_id` em vez de `mentorado_id` para identificar o autor
+- RLS: Adicionar policies baseadas em tenant_id
+
+#### 3. Centro SOS -- Consolidar criacao com membership_id
+
+**Problema**: O `fetchMentoradoId` no SOS ainda busca primeiro na tabela `mentorados`. O `mentorado_id` inserido pode ser um membership_id (UUID de formato diferente), causando problemas na FK.
+
+**Solucao**:
+- Migration: Tornar `sos_requests.mentorado_id` nullable (o `membership_id` ja esta sendo gravado)
+- Codigo: Usar `activeMembership.id` diretamente no fetch e no insert, removendo a busca na tabela legada
 
 ---
 
@@ -27,61 +62,77 @@ A correcao anterior adicionou um guard que exige `legacy_mentorado_id` E `legacy
 
 #### Migration SQL
 
-1. Tornar `mentor_id` e `mentorado_id` nullable na tabela `mentorado_files`
-2. Adicionar policies de storage para staff
-3. Atualizar a policy RLS de staff para cobrir inserts sem `mentorado_id` legado
-
 ```sql
--- 1. Tornar FKs legadas nullable
-ALTER TABLE public.mentorado_files ALTER COLUMN mentor_id DROP NOT NULL;
-ALTER TABLE public.mentorado_files ALTER COLUMN mentorado_id DROP NOT NULL;
+-- 1. calendar_events: tornar mentor_id nullable
+ALTER TABLE public.calendar_events ALTER COLUMN mentor_id DROP NOT NULL;
 
--- 2. Storage: policy de upload para staff
-CREATE POLICY "Staff can upload mentorado files"
-ON storage.objects FOR INSERT
+-- 2. community_posts: adicionar tenant_id e membership_id
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id);
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS membership_id UUID REFERENCES public.memberships(id);
+
+-- Preencher tenant_id dos posts existentes
+UPDATE public.community_posts cp
+SET tenant_id = m.tenant_id
+FROM public.mentors m
+WHERE cp.mentor_id = m.id AND cp.tenant_id IS NULL;
+
+-- 3. community_messages: adicionar tenant_id e membership_id
+ALTER TABLE public.community_messages ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id);
+ALTER TABLE public.community_messages ADD COLUMN IF NOT EXISTS membership_id UUID REFERENCES public.memberships(id);
+
+-- Preencher tenant_id das mensagens existentes
+UPDATE public.community_messages cm
+SET tenant_id = m.tenant_id
+FROM public.mentors m
+WHERE cm.mentor_id = m.id AND cm.tenant_id IS NULL;
+
+-- 4. sos_requests: tornar mentorado_id nullable
+ALTER TABLE public.sos_requests ALTER COLUMN mentorado_id DROP NOT NULL;
+
+-- 5. RLS para community_posts por tenant
+CREATE POLICY "community_posts_tenant_read"
+ON public.community_posts FOR SELECT
+USING (
+  tenant_id IN (
+    SELECT tenant_id FROM public.memberships
+    WHERE user_id = auth.uid() AND status = 'active'
+  )
+);
+
+-- 6. RLS para community_messages por tenant
+CREATE POLICY "community_messages_tenant_read"
+ON public.community_messages FOR SELECT
+USING (
+  tenant_id IN (
+    SELECT tenant_id FROM public.memberships
+    WHERE user_id = auth.uid() AND status = 'active'
+  )
+);
+
+-- INSERT policies para community
+CREATE POLICY "community_posts_tenant_insert"
+ON public.community_posts FOR INSERT
 WITH CHECK (
-  bucket_id = 'mentorado-files'
-  AND is_tenant_staff(auth.uid(), (
-    SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid() AND status = 'active' LIMIT 1
-  ))
+  tenant_id IN (
+    SELECT tenant_id FROM public.memberships
+    WHERE user_id = auth.uid() AND status = 'active'
+  )
 );
 
--- 3. Storage: policy de leitura para staff
-CREATE POLICY "Staff can view mentorado files"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'mentorado-files'
-  AND is_tenant_staff(auth.uid(), (
-    SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid() AND status = 'active' LIMIT 1
-  ))
-);
-
--- 4. Storage: policy de delete para staff
-CREATE POLICY "Staff can delete mentorado files"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'mentorado-files'
-  AND is_tenant_staff(auth.uid(), (
-    SELECT tenant_id FROM public.memberships WHERE user_id = auth.uid() AND status = 'active' LIMIT 1
-  ))
+CREATE POLICY "community_messages_tenant_insert"
+ON public.community_messages FOR INSERT
+WITH CHECK (
+  tenant_id IN (
+    SELECT tenant_id FROM public.memberships
+    WHERE user_id = auth.uid() AND status = 'active'
+  )
 );
 ```
 
-#### Alteracoes no Codigo
+#### Arquivos a Alterar
 
-**`MentoradoFilesManager.tsx`**:
-- Tornar `mentoradoId` e `mentorId` opcionais nas props
-- Usar `owner_membership_id` como identificador principal para fetch (com fallback para `mentorado_id`)
-- No insert, passar `mentorado_id` e `mentor_id` apenas se disponíveis (ambos agora nullable)
-- Organizar path de storage usando `owner_membership_id` em vez de `mentorado_id`
-
-**`Mentorados.tsx`**:
-- Remover o guard condicional que esconde o file manager
-- Sempre renderizar o `MentoradoFilesManager`, passando os IDs legados como opcionais
-- Garantir que `tenantId` sempre venha do `activeMembership`
-
-### Resultado
-- Admin/Ops/Mentor poderao subir arquivos para qualquer mentorado do tenant
-- Funciona tanto para mentorados legados quanto novos (sem registro na tabela `mentorados`)
-- Storage e DB com policies alinhadas
+1. **`src/pages/admin/Calendario.tsx`**: Refatorar `fetchData` para priorizar `tenant_id`; gravar eventos com `tenant_id` obrigatorio e `mentor_id` opcional
+2. **`src/hooks/useCommunityPosts.tsx`**: Substituir `useMentorado()` por `useTenant()`, filtrar por `tenant_id`, identificar autor por `membership_id`
+3. **`src/hooks/useCommunityChat.tsx`**: Mesma migracao: filtrar mensagens por `tenant_id`, usar `membership_id` como autor
+4. **`src/pages/member/CentroSOS.tsx`**: Remover `fetchMentoradoId`, usar `activeMembership.id` diretamente
 
