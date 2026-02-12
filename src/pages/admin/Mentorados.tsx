@@ -82,6 +82,10 @@ import { Send } from "lucide-react";
 import { MeetingRegistrar } from "@/components/campan/MeetingRegistrar";
 import { CampanKanban } from "@/components/campan/CampanKanban";
 import { MeetingHistoryList } from "@/components/campan/MeetingHistoryList";
+import { MentoradoProfileStats } from "@/components/admin/MentoradoProfileStats";
+import { MentoradoAIScore } from "@/components/admin/MentoradoAIScore";
+import { MentoradoBusinessSummary } from "@/components/admin/MentoradoBusinessSummary";
+import { MentoradoActivityTimeline } from "@/components/admin/MentoradoActivityTimeline";
 
 interface Mentorado {
   id: string;
@@ -831,8 +835,37 @@ const Mentorados = () => {
                 </TabsList>
 
                 {/* === TAB: Perfil === */}
-                <TabsContent value="info" className="space-y-6 mt-4">
-                  {/* Stats */}
+                <TabsContent value="info" className="space-y-5 mt-4">
+                  {/* Quick Actions */}
+                  <div className="flex gap-2">
+                    {selectedMentorado.profile?.phone && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          const phone = selectedMentorado.profile?.phone?.replace(/\D/g, '');
+                          window.open(`https://wa.me/55${phone}`, '_blank');
+                        }}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                        WhatsApp
+                      </Button>
+                    )}
+                    {selectedMentorado.profile?.email && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => window.open(`mailto:${selectedMentorado.profile?.email}`, '_blank')}
+                      >
+                        <Mail className="h-3.5 w-3.5 mr-1.5" />
+                        Email
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Journey Stats */}
                   <div className="grid grid-cols-2 gap-4">
                     <Card>
                       <CardContent className="pt-4">
@@ -849,6 +882,28 @@ const Mentorados = () => {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* KPIs */}
+                  <MentoradoProfileStats
+                    membershipId={selectedMentorado.membership_id}
+                    legacyMentoradoId={selectedMentorado.legacy_mentorado_id}
+                  />
+
+                  {/* AI Score */}
+                  <MentoradoAIScore
+                    legacyMentoradoId={selectedMentorado.legacy_mentorado_id}
+                    membershipId={selectedMentorado.membership_id}
+                  />
+
+                  {/* Business Summary */}
+                  <MentoradoBusinessSummary
+                    legacyMentoradoId={selectedMentorado.legacy_mentorado_id}
+                  />
+
+                  {/* Activity Timeline */}
+                  <MentoradoActivityTimeline
+                    membershipId={selectedMentorado.membership_id}
+                  />
                   
                   {/* Contact Info */}
                   <div className="space-y-3">
@@ -868,19 +923,6 @@ const Mentorados = () => {
                       <span>Entrou em {formatDate(selectedMentorado.joined_at)}</span>
                     </div>
                   </div>
-                  
-                  {/* Business Info */}
-                  {selectedMentorado.business_profile && (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium text-muted-foreground">Negócio</h4>
-                      {selectedMentorado.business_profile.business_name && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <span>{selectedMentorado.business_profile.business_name}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Files Manager */}
                   <MentoradoFilesManager
