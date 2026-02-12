@@ -404,7 +404,7 @@ export function TranscriptionTaskExtractor({
               {uploadedFile && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary/50 text-sm">
                   <FileText className="h-4 w-4 text-primary" />
-                  <span className="truncate max-w-[200px]">{uploadedFile.name}</span>
+                  <span className="truncate max-w-[120px] sm:max-w-[200px]">{uploadedFile.name}</span>
                   <span className="text-muted-foreground text-xs">
                     ({(uploadedFile.size / 1024).toFixed(0)}KB)
                   </span>

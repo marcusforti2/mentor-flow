@@ -283,32 +283,37 @@ export function MeetingHistoryList({ mentoradoMembershipId, mentorMembershipId, 
           return (
             <Card key={meeting.id} className="glass-card">
               <CardContent className="p-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                <div className="space-y-2">
+                  {/* Row 1: Title + Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium line-clamp-2 flex-1 min-w-0">
                       {meeting.meeting_title || 'Reunião'}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(displayDate), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                      <span className={`flex items-center gap-1 ${status.className}`}>
-                        <StatusIcon className="h-3 w-3" />
-                        {status.label}
-                      </span>
-                      {taskCount > 0 && (
-                        <span className="flex items-center gap-1 text-primary">
-                          <ListTodo className="h-3 w-3" />
-                          {taskCount} tarefa{taskCount !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Badge className={`text-xs text-white border-0 ${source.color}`}>
+                    <Badge className={`text-xs text-white border-0 shrink-0 ${source.color}`}>
                       {source.label}
                     </Badge>
+                  </div>
+
+                  {/* Row 2: Metadata */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {format(new Date(displayDate), "dd MMM yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                    <span className={`flex items-center gap-1 ${status.className}`}>
+                      <StatusIcon className="h-3 w-3" />
+                      {status.label}
+                    </span>
+                    {taskCount > 0 && (
+                      <span className="flex items-center gap-1 text-primary">
+                        <ListTodo className="h-3 w-3" />
+                        {taskCount} tarefa{taskCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 3: Action buttons */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {canExtract && (
                       <Button
                         variant="outline"
