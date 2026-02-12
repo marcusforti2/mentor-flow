@@ -35,24 +35,25 @@ export function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-    // If no membership assigned yet, try refreshing once or let through
-    // (membership may still be loading or user just registered)
+    // If no membership yet, just render children
+    if (!activeMembership) {
+      return <>{children}</>;
+    }
 
-   // Admin has full access to everything
-   if (activeMembership.role === 'admin') {
-    return <>{children}</>;
-  }
+    // Admin has full access to everything
+    if (activeMembership.role === 'admin') {
+      return <>{children}</>;
+    }
 
-  // Check if user has required role
-   if (allowedRoles && !allowedRoles.includes(activeMembership.role)) {
-    // Redirect to appropriate dashboard based on role
+    // Check if user has required role
+    if (allowedRoles && !allowedRoles.includes(activeMembership.role)) {
       const correctPath = activeMembership.role === 'master_admin' 
         ? '/master' 
         : activeMembership.role === 'mentee' 
           ? '/mentorado' 
           : '/mentor';
-    return <Navigate to={correctPath} replace />;
-  }
+      return <Navigate to={correctPath} replace />;
+    }
 
   return <>{children}</>;
 }
