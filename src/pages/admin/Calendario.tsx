@@ -89,42 +89,36 @@ export default function Calendario() {
     
     setIsLoading(true);
     try {
-      let resolvedMentorId: string | null = null;
-
-      // Try legacy mentors table for backward compatibility (calendar_events FK)
+      // Try to resolve legacy mentor_id for backward compat
       const { data: mentorData } = await supabase
         .from('mentors')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
       
-      resolvedMentorId = mentorData?.id || null;
-      
-      if (resolvedMentorId) {
-        setMentorId(resolvedMentorId);
-        
+      const legacyMentorId = mentorData?.id || null;
+      setMentorId(legacyMentorId);
+
+      // Always fetch events by tenant_id (primary), with legacy fallback
+      if (activeMembership?.tenant_id) {
         const { data: eventsData, error } = await supabase
           .from('calendar_events')
           .select('*')
-          .eq('mentor_id', resolvedMentorId)
+          .or(`tenant_id.eq.${activeMembership.tenant_id}${legacyMentorId ? `,mentor_id.eq.${legacyMentorId}` : ''}`)
           .order('event_date', { ascending: true });
         
         if (error) throw error;
         setEvents(eventsData || []);
-      } else if (activeMembership?.tenant_id) {
-        // Fallback: use tenant_id filter if available
+      } else if (legacyMentorId) {
         const { data: eventsData, error } = await supabase
           .from('calendar_events')
           .select('*')
-          .eq('tenant_id', activeMembership.tenant_id)
+          .eq('mentor_id', legacyMentorId)
           .order('event_date', { ascending: true });
         
         if (error) throw error;
         setEvents(eventsData || []);
-        // Use membership ID as surrogate mentor_id for creating events
-        setMentorId(activeMembership.id);
       } else {
-        setMentorId(null);
         setEvents([]);
       }
     } catch (error) {
@@ -158,7 +152,7 @@ export default function Calendario() {
   };
 
   const handleCreateEvent = async () => {
-    if (!mentorId || !newEvent.title.trim()) {
+    if (!newEvent.title.trim()) {
       toast({
         title: "Erro",
         description: "Preencha o título do evento.",
@@ -200,7 +194,7 @@ export default function Calendario() {
               : addMonths(newEvent.event_date, i);
             
             eventsToCreate.push({
-              mentor_id: mentorId,
+              ...(mentorId ? { mentor_id: mentorId } : {}),
               tenant_id: activeMembership?.tenant_id || null,
               title: newEvent.title,
               description: newEvent.description || null,
@@ -209,11 +203,11 @@ export default function Calendario() {
               event_type: newEvent.event_type,
               meeting_url: newEvent.meeting_url || null,
               is_recurring: true,
-            });
+            } as any);
           }
         } else {
           eventsToCreate.push({
-            mentor_id: mentorId,
+            ...(mentorId ? { mentor_id: mentorId } : {}),
             tenant_id: activeMembership?.tenant_id || null,
             title: newEvent.title,
             description: newEvent.description || null,
@@ -222,7 +216,7 @@ export default function Calendario() {
             event_type: newEvent.event_type,
             meeting_url: newEvent.meeting_url || null,
             is_recurring: false,
-          });
+          } as any);
         }
         
         const { error } = await supabase

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
 export interface CommunityPost {
@@ -14,6 +15,8 @@ export interface CommunityPost {
   comments_count: number;
   created_at: string;
   updated_at: string;
+  tenant_id?: string | null;
+  author_membership_id?: string | null;
   author?: {
     full_name: string;
     avatar_url: string | null;
@@ -39,7 +42,7 @@ interface Mentorado {
   mentor_id: string;
 }
 
-// Hook to get current user's mentorado record
+// Hook to get current user's mentorado record (legacy compat)
 export function useMentorado() {
   const { user } = useAuth();
 
@@ -66,85 +69,114 @@ export function useMentorado() {
 }
 
 export function useCommunityPosts() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { activeMembership } = useTenant();
   const { data: mentorado } = useMentorado();
   const queryClient = useQueryClient();
 
-  // Fetch all posts
-  const { data: posts, isLoading, error } = useQuery({
-    queryKey: ['community-posts', mentorado?.id],
-    queryFn: async () => {
-      if (!mentorado) return [];
+  const tenantId = activeMembership?.tenant_id;
+  const membershipId = activeMembership?.id;
 
-      // Get posts
+  // Fetch all posts by tenant_id
+  const { data: posts, isLoading, error } = useQuery({
+    queryKey: ['community-posts', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+
       const { data: postsData, error: postsError } = await supabase
         .from('community_posts')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
 
-      // Get mentorado IDs to fetch profiles
-      const mentoradoIds = [...new Set(postsData.map(p => p.mentorado_id))];
-      
-      // Fetch mentorado user_ids
-      const { data: mentoradosData } = await supabase
-        .from('mentorados')
-        .select('id, user_id')
-        .in('id', mentoradoIds);
+      // Resolve author profiles via author_membership_id -> memberships -> profiles
+      const authorMembershipIds = [...new Set(postsData.map(p => p.author_membership_id).filter(Boolean))];
+      const legacyMentoradoIds = [...new Set(postsData.filter(p => !p.author_membership_id).map(p => p.mentorado_id).filter(Boolean))];
 
-      const userIds = mentoradosData?.map(m => m.user_id) || [];
-      
-      // Fetch profiles
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url')
-        .in('user_id', userIds);
+      // Fetch membership user_ids
+      let membershipToUser = new Map<string, string>();
+      if (authorMembershipIds.length > 0) {
+        const { data: membershipsData } = await supabase
+          .from('memberships')
+          .select('id, user_id')
+          .in('id', authorMembershipIds);
+        membershipToUser = new Map(membershipsData?.map(m => [m.id, m.user_id]) || []);
+      }
 
-      // Create lookup maps
-      const mentoradoToUser = new Map(mentoradosData?.map(m => [m.id, m.user_id]));
-      const userToProfile = new Map(profilesData?.map(p => [p.user_id, p]));
+      // Fetch legacy mentorado user_ids
+      let mentoradoToUser = new Map<string, string>();
+      if (legacyMentoradoIds.length > 0) {
+        const { data: mentoradosData } = await supabase
+          .from('mentorados')
+          .select('id, user_id')
+          .in('id', legacyMentoradoIds);
+        mentoradoToUser = new Map(mentoradosData?.map(m => [m.id, m.user_id]) || []);
+      }
 
-      // Get user's likes
-      const { data: userLikes } = await supabase
-        .from('community_likes')
-        .select('post_id')
-        .eq('mentorado_id', mentorado.id);
+      // Collect all user_ids and fetch profiles
+      const allUserIds = [...new Set([...membershipToUser.values(), ...mentoradoToUser.values()])];
+      let userToProfile = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+      if (allUserIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url')
+          .in('user_id', allUserIds);
+        userToProfile = new Map(profilesData?.map(p => [p.user_id, p]) || []);
+      }
 
-      const likedPostIds = new Set(userLikes?.map(l => l.post_id));
+      // Get user's likes (by membership_id or legacy mentorado_id)
+      let likedPostIds = new Set<string>();
+      if (mentorado?.id) {
+        const { data: userLikes } = await supabase
+          .from('community_likes')
+          .select('post_id')
+          .eq('mentorado_id', mentorado.id);
+        likedPostIds = new Set(userLikes?.map(l => l.post_id) || []);
+      }
 
-      // Combine data
       return postsData.map(post => {
-        const userId = mentoradoToUser.get(post.mentorado_id);
-        const profile = userId ? userToProfile.get(userId) : null;
+        let userId: string | undefined;
+        if (post.author_membership_id) {
+          userId = membershipToUser.get(post.author_membership_id);
+        } else if (post.mentorado_id) {
+          userId = mentoradoToUser.get(post.mentorado_id);
+        }
+        const authorProfile = userId ? userToProfile.get(userId) : null;
         
         return {
           ...post,
-          author: profile ? {
-            full_name: profile.full_name || 'Anônimo',
-            avatar_url: profile.avatar_url
+          author: authorProfile ? {
+            full_name: authorProfile.full_name || 'Anônimo',
+            avatar_url: authorProfile.avatar_url
           } : { full_name: 'Anônimo', avatar_url: null },
           has_liked: likedPostIds.has(post.id)
         };
       }) as CommunityPost[];
     },
-    enabled: !!mentorado,
+    enabled: !!tenantId,
   });
 
-  // Create post mutation
+  // Create post mutation - uses tenant_id + membership_id
   const createPost = useMutation({
     mutationFn: async ({ content, tags, imageUrl }: { content: string; tags?: string[]; imageUrl?: string }) => {
-      if (!mentorado) throw new Error('Não autenticado');
+      if (!tenantId || !membershipId) throw new Error('Não autenticado');
+
+      const insertData: any = {
+        content,
+        tags: tags || [],
+        image_url: imageUrl || null,
+        tenant_id: tenantId,
+        author_membership_id: membershipId,
+        // Legacy fields - populate if available
+        mentor_id: mentorado?.mentor_id || membershipId,
+        mentorado_id: mentorado?.id || membershipId,
+      };
 
       const { data, error } = await supabase
         .from('community_posts')
-        .insert({
-          mentorado_id: mentorado.id,
-          mentor_id: mentorado.mentor_id,
-          content,
-          tags: tags || [],
-          image_url: imageUrl || null,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -186,7 +218,6 @@ export function useCommunityPosts() {
       if (!mentorado) throw new Error('Não autenticado');
 
       if (isLiked) {
-        // Unlike
         const { error } = await supabase
           .from('community_likes')
           .delete()
@@ -194,7 +225,6 @@ export function useCommunityPosts() {
           .eq('mentorado_id', mentorado.id);
         if (error) throw error;
 
-        // Update likes_count manually
         const { data: currentPost } = await supabase
           .from('community_posts')
           .select('likes_count')
@@ -208,7 +238,6 @@ export function useCommunityPosts() {
             .eq('id', postId);
         }
       } else {
-        // Like
         const { error } = await supabase
           .from('community_likes')
           .insert({
@@ -217,7 +246,6 @@ export function useCommunityPosts() {
           });
         if (error) throw error;
 
-        // Update likes_count manually
         const { data: currentPost } = await supabase
           .from('community_posts')
           .select('likes_count')
@@ -266,10 +294,8 @@ export function usePostComments(postId: string) {
 
       if (error) throw error;
 
-      // Get mentorado IDs
       const mentoradoIds = [...new Set(commentsData.map(c => c.mentorado_id))];
       
-      // Fetch mentorado user_ids
       const { data: mentoradosData } = await supabase
         .from('mentorados')
         .select('id, user_id')
@@ -277,25 +303,23 @@ export function usePostComments(postId: string) {
 
       const userIds = mentoradosData?.map(m => m.user_id) || [];
       
-      // Fetch profiles
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('user_id, full_name, avatar_url')
         .in('user_id', userIds);
 
-      // Create lookup maps
       const mentoradoToUser = new Map(mentoradosData?.map(m => [m.id, m.user_id]));
       const userToProfile = new Map(profilesData?.map(p => [p.user_id, p]));
 
       return commentsData.map(comment => {
         const userId = mentoradoToUser.get(comment.mentorado_id);
-        const profile = userId ? userToProfile.get(userId) : null;
+        const commentProfile = userId ? userToProfile.get(userId) : null;
         
         return {
           ...comment,
-          author: profile ? {
-            full_name: profile.full_name || 'Anônimo',
-            avatar_url: profile.avatar_url
+          author: commentProfile ? {
+            full_name: commentProfile.full_name || 'Anônimo',
+            avatar_url: commentProfile.avatar_url
           } : { full_name: 'Anônimo', avatar_url: null }
         };
       }) as CommunityComment[];
@@ -317,7 +341,6 @@ export function usePostComments(postId: string) {
 
       if (error) throw error;
 
-      // Update comments_count
       const { data: currentPost } = await supabase
         .from('community_posts')
         .select('comments_count')
@@ -349,7 +372,6 @@ export function usePostComments(postId: string) {
 
       if (error) throw error;
 
-      // Update comments_count
       const { data: currentPost } = await supabase
         .from('community_posts')
         .select('comments_count')

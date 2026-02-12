@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useTenant } from '@/contexts/TenantContext';
 import { useMentorado } from './useCommunityPosts';
 import { toast } from 'sonner';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface ChatMessage {
   id: string;
@@ -12,6 +12,8 @@ export interface ChatMessage {
   mentorado_id: string;
   content: string;
   created_at: string;
+  tenant_id?: string | null;
+  author_membership_id?: string | null;
   author?: {
     full_name: string;
     avatar_url: string | null;
@@ -27,68 +29,82 @@ export interface OnlineUser {
 
 export function useCommunityChat() {
   const { profile } = useAuth();
+  const { activeMembership } = useTenant();
   const { data: mentorado } = useMentorado();
   const queryClient = useQueryClient();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
 
-  // Fetch messages
+  const tenantId = activeMembership?.tenant_id;
+  const membershipId = activeMembership?.id;
+
+  // Fetch messages by tenant_id
   const { data: messages, isLoading } = useQuery({
-    queryKey: ['community-messages', mentorado?.mentor_id],
+    queryKey: ['community-messages', tenantId],
     queryFn: async () => {
-      if (!mentorado) return [];
+      if (!tenantId) return [];
 
       const { data: messagesData, error } = await supabase
         .from('community_messages')
         .select('*')
-        .eq('mentor_id', mentorado.mentor_id)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: true })
         .limit(100);
 
       if (error) throw error;
 
-      // Get mentorado IDs
-      const mentoradoIds = [...new Set(messagesData.map(m => m.mentorado_id))];
-      
-      // Fetch mentorado user_ids
-      const { data: mentoradosData } = await supabase
-        .from('mentorados')
-        .select('id, user_id')
-        .in('id', mentoradoIds);
+      // Resolve authors via author_membership_id or legacy mentorado_id
+      const authorMembershipIds = [...new Set(messagesData.map(m => m.author_membership_id).filter(Boolean))];
+      const legacyMentoradoIds = [...new Set(messagesData.filter(m => !m.author_membership_id).map(m => m.mentorado_id).filter(Boolean))];
 
-      const userIds = mentoradosData?.map(m => m.user_id) || [];
-      
-      // Fetch profiles
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url')
-        .in('user_id', userIds);
+      let membershipToUser = new Map<string, string>();
+      if (authorMembershipIds.length > 0) {
+        const { data } = await supabase.from('memberships').select('id, user_id').in('id', authorMembershipIds);
+        membershipToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
+      }
 
-      // Create lookup maps
-      const mentoradoToUser = new Map(mentoradosData?.map(m => [m.id, m.user_id]));
-      const userToProfile = new Map(profilesData?.map(p => [p.user_id, p]));
+      let mentoradoToUser = new Map<string, string>();
+      if (legacyMentoradoIds.length > 0) {
+        const { data } = await supabase.from('mentorados').select('id, user_id').in('id', legacyMentoradoIds);
+        mentoradoToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
+      }
+
+      const allUserIds = [...new Set([...membershipToUser.values(), ...mentoradoToUser.values()])];
+      let userToProfile = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+      if (allUserIds.length > 0) {
+        const { data } = await supabase.from('profiles').select('user_id, full_name, avatar_url').in('user_id', allUserIds);
+        userToProfile = new Map(data?.map(p => [p.user_id, p]) || []);
+      }
 
       return messagesData.map(message => {
-        const userId = mentoradoToUser.get(message.mentorado_id);
+        let userId: string | undefined;
+        if (message.author_membership_id) {
+          userId = membershipToUser.get(message.author_membership_id);
+        } else if (message.mentorado_id) {
+          userId = mentoradoToUser.get(message.mentorado_id);
+        }
         const msgProfile = userId ? userToProfile.get(userId) : null;
         
+        const isOwn = message.author_membership_id === membershipId || 
+                      (mentorado && message.mentorado_id === mentorado.id);
+
         return {
           ...message,
           author: msgProfile ? {
             full_name: msgProfile.full_name || 'Anônimo',
             avatar_url: msgProfile.avatar_url
           } : { full_name: 'Anônimo', avatar_url: null },
-          isOwn: message.mentorado_id === mentorado.id
+          isOwn,
         };
       }) as ChatMessage[];
     },
-    enabled: !!mentorado,
+    enabled: !!tenantId,
   });
 
-  // Setup realtime subscription
+  // Realtime subscription by tenant_id
   useEffect(() => {
-    if (!mentorado) return;
+    if (!tenantId) return;
 
-    const channelName = `community-chat-${mentorado.mentor_id}`;
+    const channelName = `community-chat-tenant-${tenantId}`;
     
     const newChannel = supabase
       .channel(channelName)
@@ -98,48 +114,11 @@ export function useCommunityChat() {
           event: 'INSERT',
           schema: 'public',
           table: 'community_messages',
-          filter: `mentor_id=eq.${mentorado.mentor_id}`,
+          filter: `tenant_id=eq.${tenantId}`,
         },
-        async (payload) => {
-          // Fetch author info for the new message
-          const newMessage = payload.new as any;
-          
-          const { data: mentoradoData } = await supabase
-            .from('mentorados')
-            .select('user_id')
-            .eq('id', newMessage.mentorado_id)
-            .single();
-
-          let authorInfo = { full_name: 'Anônimo', avatar_url: null };
-          
-          if (mentoradoData) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('full_name, avatar_url')
-              .eq('user_id', mentoradoData.user_id)
-              .single();
-            
-            if (profileData) {
-              authorInfo = {
-                full_name: profileData.full_name || 'Anônimo',
-                avatar_url: profileData.avatar_url
-              };
-            }
-          }
-
-          const completeMessage: ChatMessage = {
-            ...newMessage,
-            author: authorInfo,
-            isOwn: newMessage.mentorado_id === mentorado.id
-          };
-
-          // Update cache directly for instant updates
-          queryClient.setQueryData(['community-messages', mentorado.mentor_id], (old: ChatMessage[] | undefined) => {
-            if (!old) return [completeMessage];
-            // Avoid duplicates
-            if (old.some(m => m.id === completeMessage.id)) return old;
-            return [...old, completeMessage];
-          });
+        () => {
+          // Invalidate to refetch with author info
+          queryClient.invalidateQueries({ queryKey: ['community-messages', tenantId] });
         }
       )
       .subscribe();
@@ -147,14 +126,14 @@ export function useCommunityChat() {
     return () => {
       supabase.removeChannel(newChannel);
     };
-  }, [mentorado, queryClient]);
+  }, [tenantId, queryClient]);
 
-  // Setup presence for online users
+  // Presence for online users
   useEffect(() => {
-    if (!mentorado || !profile) return;
+    if (!tenantId || !profile || !membershipId) return;
 
     const presenceChannel = supabase
-      .channel(`presence-${mentorado.mentor_id}`)
+      .channel(`presence-tenant-${tenantId}`)
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState();
         const users: OnlineUser[] = [];
@@ -176,7 +155,7 @@ export function useCommunityChat() {
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await presenceChannel.track({
-            mentorado_id: mentorado.id,
+            mentorado_id: membershipId,
             full_name: profile.full_name || 'Anônimo',
             avatar_url: profile.avatar_url,
             online_at: new Date().toISOString(),
@@ -187,20 +166,25 @@ export function useCommunityChat() {
     return () => {
       supabase.removeChannel(presenceChannel);
     };
-  }, [mentorado, profile]);
+  }, [tenantId, profile, membershipId]);
 
   // Send message mutation
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
-      if (!mentorado) throw new Error('Não autenticado');
+      if (!tenantId || !membershipId) throw new Error('Não autenticado');
+
+      const insertData: any = {
+        content,
+        tenant_id: tenantId,
+        author_membership_id: membershipId,
+        // Legacy fields
+        mentor_id: mentorado?.mentor_id || membershipId,
+        mentorado_id: mentorado?.id || membershipId,
+      };
 
       const { error } = await supabase
         .from('community_messages')
-        .insert({
-          mentor_id: mentorado.mentor_id,
-          mentorado_id: mentorado.id,
-          content,
-        });
+        .insert(insertData);
 
       if (error) throw error;
     },

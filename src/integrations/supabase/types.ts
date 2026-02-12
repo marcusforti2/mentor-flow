@@ -382,7 +382,7 @@ export type Database = {
           id: string
           is_recurring: boolean | null
           meeting_url: string | null
-          mentor_id: string
+          mentor_id: string | null
           tenant_id: string | null
           title: string
           updated_at: string
@@ -396,7 +396,7 @@ export type Database = {
           id?: string
           is_recurring?: boolean | null
           meeting_url?: string | null
-          mentor_id: string
+          mentor_id?: string | null
           tenant_id?: string | null
           title: string
           updated_at?: string
@@ -410,7 +410,7 @@ export type Database = {
           id?: string
           is_recurring?: boolean | null
           meeting_url?: string | null
-          mentor_id?: string
+          mentor_id?: string | null
           tenant_id?: string | null
           title?: string
           updated_at?: string
@@ -2374,7 +2374,7 @@ export type Database = {
           initial_guidance: string | null
           meeting_id: string | null
           membership_id: string | null
-          mentorado_id: string
+          mentorado_id: string | null
           priority: string | null
           resolved_at: string | null
           status: string | null
@@ -2392,7 +2392,7 @@ export type Database = {
           initial_guidance?: string | null
           meeting_id?: string | null
           membership_id?: string | null
-          mentorado_id: string
+          mentorado_id?: string | null
           priority?: string | null
           resolved_at?: string | null
           status?: string | null
@@ -2410,7 +2410,7 @@ export type Database = {
           initial_guidance?: string | null
           meeting_id?: string | null
           membership_id?: string | null
-          mentorado_id?: string
+          mentorado_id?: string | null
           priority?: string | null
           resolved_at?: string | null
           status?: string | null
