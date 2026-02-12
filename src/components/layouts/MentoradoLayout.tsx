@@ -9,19 +9,16 @@
  import { Button } from '@/components/ui/button';
  import { LogOut, ArrowLeft } from 'lucide-react';
  import { LBVLogo } from '@/components/LBVLogo';
- import {
-   LayoutDashboard,
-   BookOpen,
-   Target,
-   Calendar,
-   Trophy,
-   AlertTriangle,
-   User,
-   Sparkles,
-   Gift,
-   Users,
-   FolderOpen,
- } from 'lucide-react';
+import {
+  LayoutDashboard,
+  BookOpen,
+  Target,
+  Calendar,
+  AlertTriangle,
+  User,
+  Sparkles,
+  FolderOpen,
+} from 'lucide-react';
  import {
    Tooltip,
    TooltipContent,
@@ -29,19 +26,16 @@
  } from '@/components/ui/tooltip';
  import { cn } from '@/lib/utils';
  
- const menuItems = [
-   { icon: LayoutDashboard, label: 'Dashboard', path: '/mentorado' },
-   { icon: BookOpen, label: 'Trilhas', path: '/mentorado/trilhas' },
-   { icon: Target, label: 'Meu CRM', path: '/mentorado/meu-crm' },
-   { icon: Users, label: 'Comunidade', path: '/mentorado/comunidade' },
-   { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
-   { icon: FolderOpen, label: 'Meus Arquivos', path: '/mentorado/meus-arquivos' },
-   { icon: Gift, label: 'Loja de Prêmios', path: '/mentorado/loja' },
-   { icon: Calendar, label: 'Calendário', path: '/mentorado/calendario' },
-   { icon: Trophy, label: 'Ranking', path: '/mentorado/ranking' },
-   { icon: AlertTriangle, label: 'Centro SOS', path: '/mentorado/sos' },
-   { icon: User, label: 'Meu Perfil', path: '/mentorado/perfil' },
- ];
+const menuItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/mentorado' },
+  { icon: BookOpen, label: 'Trilhas', path: '/mentorado/trilhas' },
+  { icon: Target, label: 'Meu CRM', path: '/mentorado/meu-crm' },
+  { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
+  { icon: FolderOpen, label: 'Meus Arquivos', path: '/mentorado/meus-arquivos' },
+  { icon: Calendar, label: 'Calendário', path: '/mentorado/calendario' },
+  { icon: AlertTriangle, label: 'Centro SOS', path: '/mentorado/sos' },
+  { icon: User, label: 'Meu Perfil', path: '/mentorado/perfil' },
+];
  
   export function MentoradoLayout() {
     const { profile, signOut } = useAuth();

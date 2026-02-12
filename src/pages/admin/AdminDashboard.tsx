@@ -9,7 +9,6 @@ import {
   Target,
   Trophy,
   BookOpen,
-  ArrowUpRight,
   Sparkles,
   Activity,
   Loader2,
@@ -267,51 +266,6 @@ export default function AdminDashboard() {
           </div>
         </BentoCard>
 
-        {/* Ranking Preview */}
-        <BentoCard size="md">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Top Ranking</h3>
-              </div>
-              {stats.topRanking.length > 0 && (
-                <Link to="/mentor/ranking" className="text-xs text-primary hover:underline flex items-center gap-1">
-                  Ver todos <ArrowUpRight className="h-3 w-3" />
-                </Link>
-              )}
-            </div>
-            <div className="flex-1">
-              {stats.topRanking.length > 0 ? (
-                <div className="space-y-3">
-                  {stats.topRanking.slice(0, 3).map((item) => (
-                    <RankingItem 
-                      key={item.mentoradoId}
-                      position={item.position} 
-                      name={item.name} 
-                      points={item.points} 
-                    />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  icon={<Trophy className="h-10 w-10 text-muted-foreground/50" />}
-                  title="Ranking vazio"
-                  description="Adicione mentorados para ver o ranking"
-                  action={
-                    <Link to="/admin/mentorados">
-                      <Button size="sm" variant="outline">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Adicionar
-                      </Button>
-                    </Link>
-                  }
-                />
-              )}
-            </div>
-          </div>
-        </BentoCard>
-
         {/* AI Tools Analytics */}
         <BentoCard size="md" glow>
           <AIToolsAnalyticsCard />
@@ -402,18 +356,6 @@ function ActivityItem({
   );
 }
 
-function RankingItem({ position, name, points }: { position: number; name: string; points: number }) {
-  const medals = ['🥇', '🥈', '🥉'];
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/30">
-      <span className="text-xl">{medals[position - 1] || `#${position}`}</span>
-      <div className="flex-1">
-        <p className="font-medium text-foreground text-sm">{name}</p>
-      </div>
-      <span className="text-sm font-semibold text-primary">{points} pts</span>
-    </div>
-  );
-}
 
 function TrailProgress({ name, progress }: { name: string; progress: number }) {
   return (

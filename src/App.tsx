@@ -49,10 +49,10 @@ import Trilhas from "./pages/member/Trilhas";
 import MeuCRM from "./pages/member/MeuCRM";
 import CentroSOS from "./pages/member/CentroSOS";
 import Perfil from "./pages/member/Perfil";
-import LojaPremios from "./pages/member/LojaPremios";
+
 import FerramentasIA from "./pages/member/FerramentasIA";
 import CalendarioMembro from "./pages/member/Calendario";
-import Comunidade from "./pages/member/Comunidade";
+
 import MeusArquivos from "./pages/member/MeusArquivos";
 
 // Admin Pages (additional)
@@ -111,7 +111,7 @@ const App = () => (
                 <Route path="trilhas" element={<AdminTrilhas />} />
                 <Route path="calendario" element={<Calendario />} />
                <Route path="sos" element={<AdminCentroSOS />} />
-               <Route path="ranking" element={<PlaceholderPage title="Rankings" />} />
+               
                <Route path="emails" element={<EmailMarketing />} />
                <Route path="relatorios" element={<Relatorios />} />
                <Route path="devtools" element={<DevTools />} />
@@ -130,13 +130,13 @@ const App = () => (
               <Route index element={<MemberDashboard />} />
                <Route path="trilhas" element={<Trilhas />} />
                <Route path="meu-crm" element={<MeuCRM />} />
-               <Route path="comunidade" element={<Comunidade />} />
+               
                <Route path="calendario" element={<CalendarioMembro />} />
-               <Route path="ranking" element={<PlaceholderPage title="Ranking" />} />
+               
                <Route path="sos" element={<CentroSOS />} />
                <Route path="perfil" element={<Perfil />} />
                <Route path="ferramentas" element={<FerramentasIA />} />
-               <Route path="loja" element={<LojaPremios />} />
+               
                <Route path="meus-arquivos" element={<MeusArquivos />} />
             </Route>
 

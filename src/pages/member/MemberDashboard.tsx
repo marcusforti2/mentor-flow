@@ -10,8 +10,8 @@ import { StreakCounter } from '@/components/gamification/StreakCounter';
 import { DailyGoalCounter } from '@/components/gamification/DailyGoalCounter';
 import { RecentActivityFeed } from '@/components/activity/RecentActivityFeed';
 import { 
-  BookOpen, Target, Trophy, Calendar, TrendingUp, Award,
-  ArrowUpRight, Play, Zap, Clock, Star, Loader2, Gift, Activity,
+  BookOpen, Target, Calendar, TrendingUp, Award,
+  ArrowUpRight, Play, Zap, Clock, Star, Loader2, Activity, FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -106,7 +106,7 @@ export default function MemberDashboard() {
   }
 
   const hasTrailProgress = dashboardStats.trailProgress.length > 0;
-  const hasRanking = dashboardStats.rankingPosition !== null;
+  
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -161,19 +161,6 @@ export default function MemberDashboard() {
         {/* Stats Cards */}
         <BentoCard size="sm">
           <div className="flex flex-col justify-between h-full">
-            <Trophy className="h-8 w-8 text-primary" />
-            <div className="mt-auto">
-              {hasRanking ? (
-                <><p className="stat-value text-gradient-gold">#{dashboardStats.rankingPosition}</p><p className="stat-label mt-1">Posição no Ranking</p></>
-              ) : (
-                <><p className="stat-value text-muted-foreground">-</p><p className="stat-label mt-1">Posição no Ranking</p><span className="text-xs text-muted-foreground mt-2 inline-block">Faça prospecções para pontuar</span></>
-              )}
-            </div>
-          </div>
-        </BentoCard>
-
-        <BentoCard size="sm">
-          <div className="flex flex-col justify-between h-full">
             <Target className="h-8 w-8 text-accent" />
             <div className="mt-auto">
               <p className="stat-value">{dashboardStats.monthlyProspections}</p>
@@ -211,7 +198,7 @@ export default function MemberDashboard() {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2"><Award className="h-5 w-5 text-primary" /><h3 className="font-semibold text-foreground">Conquistas</h3></div>
-              <Link to="/app/loja" className="text-xs text-primary hover:underline flex items-center gap-1"><Gift className="h-3 w-3" />{gamificationStats?.totalPoints || 0} pts</Link>
+              <span className="text-xs text-primary flex items-center gap-1"><Award className="h-3 w-3" />{gamificationStats?.totalPoints || 0} pts</span>
             </div>
             <div className="flex-1 grid grid-cols-3 gap-2">
               {isLoadingGamification ? (
@@ -224,7 +211,7 @@ export default function MemberDashboard() {
                 <div className="col-span-3 flex flex-col items-center justify-center text-center py-4"><Award className="h-8 w-8 text-muted-foreground/50 mb-2" /><p className="text-sm text-muted-foreground">Nenhuma conquista disponível</p></div>
               )}
             </div>
-            {badges.length > 0 && (<Link to="/app/loja" className="mt-3"><Button variant="outline" size="sm" className="w-full text-xs">Ver Todas as Conquistas</Button></Link>)}
+            
           </div>
         </BentoCard>
 
@@ -241,10 +228,10 @@ export default function MemberDashboard() {
               <h3 className="font-semibold text-foreground text-lg">Ferramentas IA</h3>
               <p className="text-muted-foreground text-sm mt-1">IA analisa sua performance</p>
             </Link>
-            <Link to="/app/ranking" className="flex-1 p-6 group hover:bg-primary/5 transition-colors">
-              <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Trophy className="h-6 w-6 text-primary" /></div>
-              <h3 className="font-semibold text-foreground text-lg">Ver Ranking</h3>
-              <p className="text-muted-foreground text-sm mt-1">{hasRanking ? `Sua posição: #${dashboardStats.rankingPosition}` : 'Confira a classificação'}</p>
+            <Link to="/app/meus-arquivos" className="flex-1 p-6 group hover:bg-primary/5 transition-colors">
+              <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><FolderOpen className="h-6 w-6 text-primary" /></div>
+              <h3 className="font-semibold text-foreground text-lg">Meus Arquivos</h3>
+              <p className="text-muted-foreground text-sm mt-1">Acesse seus documentos</p>
             </Link>
           </div>
         </BentoCard>
