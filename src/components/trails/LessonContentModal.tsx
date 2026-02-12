@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import type { TrailLesson } from '@/types/trails';
+import { isGoogleDriveUrl, getGoogleDriveEmbedUrl } from '@/types/trails';
 
 interface LessonContentModalProps {
   lesson: TrailLesson | null;
@@ -17,11 +18,15 @@ export function LessonContentModal({ lesson, isOpen, onClose, onComplete }: Less
 
   const renderContent = () => {
     switch (lesson.content_type) {
-      case 'video':
+      case 'video': {
+        const isDrive = isGoogleDriveUrl(lesson.content_url);
+        const embedSrc = isDrive
+          ? getGoogleDriveEmbedUrl(lesson.content_url)
+          : `https://www.youtube.com/embed/${lesson.content_url}?autoplay=1&rel=0&modestbranding=1`;
         return (
           <div className="relative aspect-video bg-black">
             <iframe
-              src={`https://www.youtube.com/embed/${lesson.content_url}?autoplay=1&rel=0&modestbranding=1`}
+              src={embedSrc}
               title={lesson.title}
               className="absolute inset-0 w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -29,6 +34,7 @@ export function LessonContentModal({ lesson, isOpen, onClose, onComplete }: Less
             />
           </div>
         );
+      }
 
       case 'text':
         return (

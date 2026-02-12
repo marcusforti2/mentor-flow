@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { TrailLesson } from '@/types/trails';
+import { isGoogleDriveUrl, getGoogleDriveEmbedUrl } from '@/types/trails';
 
 interface VideoPlayerModalProps {
   lesson: TrailLesson | null;
@@ -12,6 +13,11 @@ interface VideoPlayerModalProps {
 
 export function VideoPlayerModal({ lesson, isOpen, onClose, onComplete }: VideoPlayerModalProps) {
   if (!lesson) return null;
+
+  const isDrive = isGoogleDriveUrl(lesson.content_url);
+  const embedSrc = isDrive
+    ? getGoogleDriveEmbedUrl(lesson.content_url)
+    : `https://www.youtube.com/embed/${lesson.content_url}?autoplay=1&rel=0&modestbranding=1`;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -39,7 +45,7 @@ export function VideoPlayerModal({ lesson, isOpen, onClose, onComplete }: VideoP
         {/* Video Player */}
         <div className="relative aspect-video bg-black">
           <iframe
-            src={`https://www.youtube.com/embed/${lesson.content_url}?autoplay=1&rel=0&modestbranding=1`}
+            src={embedSrc}
             title={lesson.title}
             className="absolute inset-0 w-full h-full"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
