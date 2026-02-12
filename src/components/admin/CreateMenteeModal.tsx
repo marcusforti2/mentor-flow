@@ -154,7 +154,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
 
     // Get tenant name for the message
     const selectedTenant = tenants.find(t => t.id === effectiveTenantId);
-    const tenantName = selectedTenant?.name || 'LBV TECH';
+    const tenantName = selectedTenant?.name || 'Learning Brand';
 
     try {
       await createMembership.mutateAsync({

@@ -51,7 +51,7 @@
            Master Admin
          </h1>
          <p className="text-slate-400 mt-1">
-           Gerenciamento global da plataforma LBV TECH
+           Gerenciamento global da plataforma Learning Brand
          </p>
        </div>
  

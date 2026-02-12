@@ -12,7 +12,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { LBVLogo } from "@/components/LBVLogo";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const Index = () => {
   const features = [
@@ -61,7 +61,7 @@ const Index = () => {
       <header className="fixed top-0 left-0 right-0 z-50 glass">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center">
-            <LBVLogo variant="full" size="md" />
+            <BrandLogo variant="full" size="md" />
           </Link>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
@@ -98,7 +98,7 @@ const Index = () => {
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             Escale sua <span className="text-gradient-gold">Mentoria</span>
             <br />
-            com <span className="text-gradient-premium">LBV TECH</span>
+            com <span className="text-gradient-premium">Learning Brand</span>
           </h1>
           
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: "0.2s" }}>
@@ -177,7 +177,7 @@ const Index = () => {
                 Pronto para transformar sua <span className="text-gradient-gold">mentoria</span>?
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-                Junte-se a mentores que estão escalando seus programas com a LBV TECH.
+                Junte-se a mentores que estão escalando seus programas com a Learning Brand.
                 Comece gratuitamente.
               </p>
               <Link to="/auth?mode=signup">
@@ -195,9 +195,9 @@ const Index = () => {
       <footer className="py-12 px-6 border-t border-border">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <LBVLogo variant="full" size="sm" />
+            <BrandLogo variant="full" size="sm" />
             <p className="text-sm text-muted-foreground">
-              © 2024 LBV TECH. Todos os direitos reservados.
+              © 2024 Learning Brand. Todos os direitos reservados.
             </p>
             <div className="flex gap-6">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termos</a>

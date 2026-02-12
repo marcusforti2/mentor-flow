@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LBVLogo } from '@/components/LBVLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import {
   Brain, Target, MessageSquare, BarChart3, Trophy, BookOpen,
@@ -176,7 +176,7 @@ export default function ShowcasePage() {
         )}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <LBVLogo variant="full" size="sm" />
+          <BrandLogo variant="full" size="sm" />
           <div className="hidden md:flex items-center gap-8">
             {[
               ['#arsenal', 'Arsenal IA'],
@@ -710,9 +710,9 @@ export default function ShowcasePage() {
       {/* ── Footer ── */}
       <footer className="border-t border-border/30 py-8 px-6 md:px-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <LBVLogo variant="full" size="sm" className="opacity-60" />
+          <BrandLogo variant="full" size="sm" className="opacity-60" />
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} LBV TECH. Todos os direitos reservados.
+            © {new Date().getFullYear()} Learning Brand. Todos os direitos reservados.
           </p>
         </div>
       </footer>

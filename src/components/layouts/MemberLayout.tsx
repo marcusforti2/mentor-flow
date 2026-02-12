@@ -5,7 +5,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
-import { LBVLogo } from '@/components/LBVLogo';
+import { BrandLogo } from '@/components/BrandLogo';
 import {
   LayoutDashboard,
   BookOpen,
@@ -101,7 +101,7 @@ export function MemberLayout() {
         <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
           {/* Logo on the left */}
           <Link to="/app" className="ml-28">
-            <LBVLogo variant="full" size="sm" />
+            <BrandLogo variant="full" size="sm" />
           </Link>
 
           {/* User controls on the right */}
