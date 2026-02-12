@@ -422,12 +422,42 @@ serve(async (req) => {
     const { tool, mentorado_id, data, stream } = await req.json();
     console.log(`AI Tools - Tool: ${tool}, Mentorado: ${mentorado_id}`);
 
-    // Fetch business profile for context
-    const { data: businessProfile } = await supabase
+    // Resolve the effective mentorado_id (could be a membership ID)
+    let effectiveMentoradoId = mentorado_id;
+    
+    // Try to fetch business profile directly first
+    let { data: businessProfile } = await supabase
       .from("mentorado_business_profiles")
       .select("*")
       .eq("mentorado_id", mentorado_id)
-      .single();
+      .maybeSingle();
+    
+    // If not found, try resolving via memberships table (mentorado_id might be a membership ID)
+    if (!businessProfile && mentorado_id) {
+      const { data: membership } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .eq("id", mentorado_id)
+        .maybeSingle();
+      
+      if (membership) {
+        const { data: mentorado } = await supabase
+          .from("mentorados")
+          .select("id")
+          .eq("user_id", membership.user_id)
+          .maybeSingle();
+        
+        if (mentorado) {
+          effectiveMentoradoId = mentorado.id;
+          const { data: resolvedProfile } = await supabase
+            .from("mentorado_business_profiles")
+            .select("*")
+            .eq("mentorado_id", mentorado.id)
+            .maybeSingle();
+          businessProfile = resolvedProfile;
+        }
+      }
+    }
 
     const businessContext = buildBusinessContext(businessProfile);
     let systemPrompt = "";
@@ -518,11 +548,11 @@ serve(async (req) => {
         break;
 
       case "conversion_analyzer":
-        // Fetch all leads
+        // Fetch all leads (try both legacy mentorado_id and membership_id)
         const { data: allLeads } = await supabase
           .from("crm_prospections")
           .select("*")
-          .eq("mentorado_id", mentorado_id);
+          .or(`mentorado_id.eq.${effectiveMentoradoId},membership_id.eq.${mentorado_id}`);
 
         systemPrompt = getConversionAnalyzerPrompt(allLeads || [], businessContext);
         userMessage = "Analise os padrões de conversão do meu pipeline.";

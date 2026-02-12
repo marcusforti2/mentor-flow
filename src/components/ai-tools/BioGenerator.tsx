@@ -64,15 +64,39 @@ export function BioGenerator({ mentoradoId }: BioGeneratorProps) {
       if (!mentoradoId) return;
 
       try {
-        const { data } = await supabase
+        // Try legacy mentorado_id first
+        let { data } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
           .eq('mentorado_id', mentoradoId)
-          .single();
+          .maybeSingle();
+
+        // If not found, resolve via memberships (mentoradoId might be membership ID)
+        if (!data) {
+          const { data: membership } = await supabase
+            .from('memberships')
+            .select('user_id')
+            .eq('id', mentoradoId)
+            .maybeSingle();
+          if (membership) {
+            const { data: mentorado } = await supabase
+              .from('mentorados')
+              .select('id')
+              .eq('user_id', membership.user_id)
+              .maybeSingle();
+            if (mentorado) {
+              const { data: resolved } = await supabase
+                .from('mentorado_business_profiles')
+                .select('*')
+                .eq('mentorado_id', mentorado.id)
+                .maybeSingle();
+              data = resolved;
+            }
+          }
+        }
 
         if (data) {
           setBusinessProfile(data);
-          // Auto-fill fields from business profile
           if (data.business_type) setNiche(data.business_type);
           if (data.target_audience) setTargetAudience(data.target_audience);
           if (data.unique_value_proposition) setDifferentiator(data.unique_value_proposition);
