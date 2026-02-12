@@ -112,7 +112,7 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
           supabase
             .from('crm_prospections')
             .select('id, contact_name, company, contact_email, temperature, status, ai_insights, notes')
-            .eq('mentorado_id', mentoradoId)
+            .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
             .order('updated_at', { ascending: false })
             .limit(50),
           supabase

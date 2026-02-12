@@ -111,7 +111,7 @@ export function TrainingAnalyzer({ mentoradoId }: TrainingAnalyzerProps) {
       const { data, error } = await supabase
         .from("training_analyses")
         .select("*")
-        .eq("mentorado_id", mentoradoId)
+        .or(`mentorado_id.eq.${mentoradoId}`)
         .order("created_at", { ascending: false });
       
       if (error) throw error;

@@ -38,6 +38,7 @@ export default function FerramentasIA() {
   const { activeMembership, isMentor } = useTenant();
   const navigate = useNavigate();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
+  const [membershipId, setMembershipId] = useState<string | null>(null);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,11 +47,26 @@ export default function FerramentasIA() {
       if (!user) { setIsLoading(false); return; }
 
       try {
-        // Use membership ID as primary identifier
         if (activeMembership?.id && activeMembership.role === 'mentee') {
-          setMentoradoId(activeMembership.id);
+          setMembershipId(activeMembership.id);
 
-          // Check for business profile in mentee_profiles
+          // Resolve legacy mentorado_id from mentorados table
+          const targetUserId = activeMembership.user_id || user.id;
+          const { data: mentorado } = await supabase
+            .from('mentorados')
+            .select('id')
+            .eq('user_id', targetUserId)
+            .maybeSingle();
+
+          // Use legacy mentorado_id for all AI tools (legacy tables depend on it)
+          if (mentorado) {
+            setMentoradoId(mentorado.id);
+          } else {
+            // Fallback to membership ID if no legacy record
+            setMentoradoId(activeMembership.id);
+          }
+
+          // Check for business profile
           const { data: menteeProfile } = await supabase
             .from('mentee_profiles')
             .select('id, business_profile')
@@ -60,23 +76,13 @@ export default function FerramentasIA() {
           if (menteeProfile?.business_profile) {
             const bp = menteeProfile.business_profile as Record<string, unknown>;
             setHasBusinessProfile(!!(bp.business_name || bp.main_offer));
-          } else {
-            // Fallback: check legacy mentorado_business_profiles using membership's user_id
-            const targetUserId = activeMembership.user_id || user.id;
-            const { data: mentorado } = await supabase
-              .from('mentorados')
-              .select('id')
-              .eq('user_id', targetUserId)
+          } else if (mentorado) {
+            const { data: profile } = await supabase
+              .from('mentorado_business_profiles')
+              .select('id, business_name, main_offer')
+              .eq('mentorado_id', mentorado.id)
               .maybeSingle();
-
-            if (mentorado) {
-              const { data: profile } = await supabase
-                .from('mentorado_business_profiles')
-                .select('id, business_name, main_offer')
-                .eq('mentorado_id', mentorado.id)
-                .maybeSingle();
-              setHasBusinessProfile(!!(profile?.business_name || profile?.main_offer));
-            }
+            setHasBusinessProfile(!!(profile?.business_name || profile?.main_offer));
           }
         } else {
           // Fallback to legacy

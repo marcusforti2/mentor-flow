@@ -35,7 +35,7 @@ export function FollowUpCoach({ mentoradoId }: FollowUpCoachProps) {
         const { data, error } = await supabase
           .from('crm_prospections')
           .select('id, contact_name, company, status, temperature, ai_insights')
-          .eq('mentorado_id', mentoradoId)
+          .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
           .not('status', 'eq', 'fechado')
           .not('status', 'eq', 'perdido')
           .order('updated_at', { ascending: false });
