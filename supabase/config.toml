@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.execute-email-flow]
 verify_jwt = false
+
+[functions.extract-tasks]
+verify_jwt = false

@@ -523,6 +523,86 @@ export type Database = {
           },
         ]
       }
+      campan_tasks: {
+        Row: {
+          created_at: string
+          created_by_membership_id: string
+          description: string | null
+          due_date: string | null
+          id: string
+          mentorado_membership_id: string
+          priority: string
+          source_transcript_id: string | null
+          status_column: string
+          tags: string[] | null
+          task_hash: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_membership_id: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          mentorado_membership_id: string
+          priority?: string
+          source_transcript_id?: string | null
+          status_column?: string
+          tags?: string[] | null
+          task_hash?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_membership_id?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          mentorado_membership_id?: string
+          priority?: string
+          source_transcript_id?: string | null
+          status_column?: string
+          tags?: string[] | null
+          task_hash?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campan_tasks_created_by_membership_id_fkey"
+            columns: ["created_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campan_tasks_mentorado_membership_id_fkey"
+            columns: ["mentorado_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campan_tasks_source_transcript_id_fkey"
+            columns: ["source_transcript_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_transcripts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campan_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           certificate_url: string | null
@@ -1321,6 +1401,71 @@ export type Database = {
           },
         ]
       }
+      extracted_task_drafts: {
+        Row: {
+          created_at: string
+          id: string
+          mentor_membership_id: string
+          mentorado_membership_id: string
+          status: string
+          tasks_json: Json
+          tenant_id: string
+          transcript_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mentor_membership_id: string
+          mentorado_membership_id: string
+          status?: string
+          tasks_json?: Json
+          tenant_id: string
+          transcript_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mentor_membership_id?: string
+          mentorado_membership_id?: string
+          status?: string
+          tasks_json?: Json
+          tenant_id?: string
+          transcript_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extracted_task_drafts_mentor_membership_id_fkey"
+            columns: ["mentor_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_drafts_mentorado_membership_id_fkey"
+            columns: ["mentorado_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_drafts_transcript_id_fkey"
+            columns: ["transcript_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_transcripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       impersonation_logs: {
         Row: {
           admin_membership_id: string
@@ -1503,6 +1648,61 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_transcripts: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          id: string
+          input_type: string
+          mentor_membership_id: string
+          mentorado_membership_id: string
+          raw_text: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          input_type?: string
+          mentor_membership_id: string
+          mentorado_membership_id: string
+          raw_text?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          input_type?: string
+          mentor_membership_id?: string
+          mentorado_membership_id?: string
+          raw_text?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_transcripts_mentor_membership_id_fkey"
+            columns: ["mentor_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_transcripts_mentorado_membership_id_fkey"
+            columns: ["mentorado_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_transcripts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
