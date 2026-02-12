@@ -13,7 +13,7 @@
     BookOpen,
     Calendar,
     AlertTriangle,
-    Trophy,
+    
     Mail,
     BarChart3,
     Compass,
@@ -34,7 +34,7 @@
     { icon: BookOpen, label: 'Trilhas', path: '/mentor/trilhas' },
     { icon: Calendar, label: 'Calendário', path: '/mentor/calendario' },
     { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
-    { icon: Trophy, label: 'Rankings', path: '/mentor/ranking' },
+    
     { icon: Mail, label: 'Emails', path: '/mentor/emails' },
     { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
   ];
