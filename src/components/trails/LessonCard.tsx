@@ -1,4 +1,4 @@
-import { Play, Check, Clock } from 'lucide-react';
+import { Play, Check, Clock, FileText, Type } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getYouTubeThumbnail, type TrailLesson } from '@/types/trails';
 
@@ -19,7 +19,12 @@ export function LessonCard({
   progress = 0,
   onClick 
 }: LessonCardProps) {
-  const thumbnail = getYouTubeThumbnail(lesson.content_url, 'hq');
+  const isVideo = lesson.content_type === 'video';
+  const isText = lesson.content_type === 'text';
+  const isFile = lesson.content_type === 'file';
+  const thumbnail = isVideo ? getYouTubeThumbnail(lesson.content_url, 'hq') : '';
+
+  const ContentIcon = isText ? Type : isFile ? FileText : Play;
 
   return (
     <div
@@ -30,22 +35,36 @@ export function LessonCard({
         isCompleted && "opacity-75"
       )}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail / Icon */}
       <div className="relative flex-shrink-0 w-32 md:w-40 aspect-video rounded-md overflow-hidden">
-        <img
-          src={thumbnail}
-          alt={lesson.title}
-          className="w-full h-full object-cover"
-        />
-        
-        {/* Play overlay */}
-        <div className="absolute inset-0 bg-background/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-            <Play className="w-5 h-5 text-primary-foreground ml-0.5" fill="currentColor" />
+        {isVideo && thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={lesson.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className={cn(
+            "w-full h-full flex items-center justify-center",
+            isText ? "bg-blue-500/10" : "bg-orange-500/10"
+          )}>
+            <ContentIcon className={cn(
+              "w-8 h-8",
+              isText ? "text-blue-400" : "text-orange-400"
+            )} />
           </div>
-        </div>
+        )}
+        
+        {/* Play overlay for video */}
+        {isVideo && (
+          <div className="absolute inset-0 bg-background/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+              <Play className="w-5 h-5 text-primary-foreground ml-0.5" fill="currentColor" />
+            </div>
+          </div>
+        )}
 
-        {/* Progress bar on video */}
+        {/* Progress bar */}
         {isInProgress && progress > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
             <div 
@@ -63,9 +82,11 @@ export function LessonCard({
         )}
 
         {/* Duration badge */}
-        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-background/80 rounded text-xs font-medium">
-          {lesson.duration_minutes}min
-        </div>
+        {lesson.duration_minutes > 0 && (
+          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-background/80 rounded text-xs font-medium">
+            {lesson.duration_minutes}min
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -85,8 +106,9 @@ export function LessonCard({
               {lesson.description}
             </p>
             <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              <span>{lesson.duration_minutes} minutos</span>
+              {isVideo && <><Clock className="w-3 h-3" /><span>{lesson.duration_minutes} minutos</span></>}
+              {isText && <><Type className="w-3 h-3" /><span>Conteúdo escrito</span></>}
+              {isFile && <><FileText className="w-3 h-3" /><span>{lesson.file_name || 'Arquivo'}</span></>}
               {isInProgress && (
                 <span className="text-primary font-medium">• Em andamento</span>
               )}

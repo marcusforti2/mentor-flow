@@ -24,6 +24,10 @@ export interface TrailInput {
       description: string;
       duration_minutes: number;
       content_url: string;
+      content_type?: string;
+      text_content?: string;
+      file_url?: string;
+      file_name?: string;
       order_index: number;
     }[];
   }[];
@@ -59,6 +63,10 @@ export function useTrails() {
               description,
               duration_minutes,
               content_url,
+              content_type,
+              text_content,
+              file_url,
+              file_name,
               order_index
             )
           )
@@ -91,6 +99,10 @@ export function useTrails() {
                 description: les.description || '',
                 duration_minutes: les.duration_minutes || 0,
                 content_url: les.content_url || '',
+                content_type: (les.content_type || 'video') as 'video' | 'text' | 'file',
+                text_content: les.text_content || '',
+                file_url: les.file_url || '',
+                file_name: les.file_name || '',
                 order_index: les.order_index || 0,
               })),
           })),
@@ -154,6 +166,10 @@ export function useTrails() {
             description: les.description,
             duration_minutes: les.duration_minutes,
             content_url: les.content_url,
+            content_type: les.content_type || 'video',
+            text_content: les.text_content || null,
+            file_url: les.file_url || null,
+            file_name: les.file_name || null,
             order_index: les.order_index,
           }));
 
@@ -225,6 +241,10 @@ export function useTrails() {
             description: les.description,
             duration_minutes: les.duration_minutes,
             content_url: les.content_url,
+            content_type: les.content_type || 'video',
+            text_content: les.text_content || null,
+            file_url: les.file_url || null,
+            file_name: les.file_name || null,
             order_index: les.order_index,
           }));
 

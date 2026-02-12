@@ -2564,9 +2564,12 @@ export type Database = {
           created_at: string | null
           description: string | null
           duration_minutes: number | null
+          file_name: string | null
+          file_url: string | null
           id: string
           module_id: string
           order_index: number | null
+          text_content: string | null
           title: string
           updated_at: string | null
         }
@@ -2577,9 +2580,12 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           duration_minutes?: number | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           module_id: string
           order_index?: number | null
+          text_content?: string | null
           title: string
           updated_at?: string | null
         }
@@ -2590,9 +2596,12 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           duration_minutes?: number | null
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           module_id?: string
           order_index?: number | null
+          text_content?: string | null
           title?: string
           updated_at?: string | null
         }

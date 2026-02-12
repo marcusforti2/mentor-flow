@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrailCarousel } from '@/components/trails/TrailCarousel';
 import { TrailDetailSheet } from '@/components/trails/TrailDetailSheet';
-import { VideoPlayerModal } from '@/components/trails/VideoPlayerModal';
+import { LessonContentModal } from '@/components/trails/LessonContentModal';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -43,6 +43,10 @@ export default function Trilhas() {
               description,
               duration_minutes,
               content_url,
+              content_type,
+              text_content,
+              file_url,
+              file_name,
               order_index
             )
           )
@@ -75,6 +79,10 @@ export default function Trilhas() {
                 description: les.description || '',
                 duration_minutes: les.duration_minutes || 0,
                 content_url: les.content_url || '',
+                content_type: (les.content_type || 'video') as 'video' | 'text' | 'file',
+                text_content: les.text_content || '',
+                file_url: les.file_url || '',
+                file_name: les.file_name || '',
                 order_index: les.order_index
               }))
           })),
@@ -251,8 +259,8 @@ export default function Trilhas() {
         onLessonClick={handleLessonClick}
       />
 
-      {/* Video Player Modal */}
-      <VideoPlayerModal
+      {/* Lesson Content Modal */}
+      <LessonContentModal
         lesson={selectedLesson}
         isOpen={isVideoOpen}
         onClose={handleCloseVideo}
