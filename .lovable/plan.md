@@ -1,119 +1,161 @@
 
+# Integracoes Google Meet/Drive e tl;dv + Historico de Reunioes
 
-# Correção Completa do Campan: RLS + Fallback Manual + Observabilidade
+## Contexto
 
-## Problema Raiz
+Os mentores usam Google Meet (gravacoes vao pro Drive) e tl;dv para gravar e transcrever reunioes. O objetivo e integrar esses servicos para que:
 
-Os logs do console mostram claramente:
+1. A IA busque automaticamente a transcricao e gere tarefas
+2. O video replay fique disponivel no perfil do mentorado
+3. O mentorado tenha um historico de reunioes realizadas
 
-```
-"new row violates row-level security policy for table meeting_transcripts" (code 42501)
-```
+## Limitacoes Importantes
 
-A IA funciona corretamente (a edge function `extract-tasks` esta OK), mas o fluxo falha **antes** de chamar a IA, na hora de salvar a transcricao no banco. A politica RLS exige que `mentor_membership_id` pertenca ao usuario logado, mas em cenarios de impersonation ou roles como `master_admin`/`admin`, o `activeMembership.id` pode nao coincidir com a verificacao `auth.uid()`.
+- **Google Drive**: Nao ha conector disponivel no workspace. Seria necessario OAuth completo (Google Cloud project, credenciais, etc). Complexidade alta.
+- **tl;dv**: Tem API publica (REST com API Key). Permite buscar reunioes, transcricoes e links de gravacao. Viavel com uma API key do usuario.
 
-O mesmo problema potencialmente afeta `extracted_task_drafts` e `campan_tasks`.
+## Estrategia Proposta (Pragmatica)
 
-## Plano de Correcao (4 frentes)
+Implementar em 2 camadas:
 
-### 1. Corrigir RLS das 3 tabelas Campan
+### Camada 1 - Funcional Agora (sem dependencia de OAuth)
 
-Adicionar politicas que permitam tenant staff (admin, ops, mentor, master_admin) operar nas tabelas, usando a funcao `is_tenant_staff` que ja existe no projeto:
+Criar um sistema de **registro de reunioes** no perfil do mentorado onde o mentor pode:
 
-**meeting_transcripts**:
-- DROP politica atual "Mentors can manage transcripts..."
-- CREATE nova politica ALL: `is_tenant_staff(auth.uid(), tenant_id)` -- permite qualquer staff do tenant inserir/ler/atualizar
+- Colar o link do video (Google Drive, tl;dv, YouTube, etc)
+- Colar a transcricao ou subir PDF (ja existe)
+- A IA extrai tarefas (ja funciona)
+- O video fica registrado e acessivel pelo mentorado
 
-**extracted_task_drafts**:
-- DROP politica atual "Mentors can manage task drafts"
-- CREATE nova politica ALL: `is_tenant_staff(auth.uid(), tenant_id)`
+Isso adiciona:
+- Secao "Reunioes" no perfil do mentorado (visao mentor e mentorado)
+- Player de video embutido (Google Drive embed, tl;dv embed, YouTube)
+- Historico de todas as reunioes com data, titulo, video e tarefas geradas
 
-**campan_tasks**:
-- DROP politica "Mentors can manage tasks" (restritiva demais)
-- CREATE nova politica ALL para staff: `is_tenant_staff(auth.uid(), tenant_id)`
-- Manter as politicas de SELECT/UPDATE do mentorado (estao corretas)
+### Camada 2 - Integracao tl;dv (com API Key)
 
-### 2. Fallback Manual Obrigatorio
+Criar uma edge function que conecta na API do tl;dv para:
+- Buscar reunioes recentes do mentor
+- Puxar transcricao automaticamente
+- Puxar link da gravacao
+- Permitir "importar" direto para o perfil do mentorado com 1 clique
 
-Adicionar botao "Adicionar tarefa manual" em dois lugares:
+O mentor precisara fornecer sua API Key do tl;dv (obtida em tldv.io > Settings > API).
 
-**A) No CampanKanban** (visivel tanto para mentor quanto mentorado):
-- Botao "+" no header do kanban
-- Modal simples: titulo (obrigatorio), descricao, prioridade, prazo, coluna inicial
-- INSERT direto em `campan_tasks`
+## Plano de Implementacao
 
-**B) No TranscriptionTaskExtractor** (visao do mentor):
-- Botao "Adicionar tarefa manual" sempre visivel, independente do estado da IA
-- Mesmo modal acima
+### 1. Migracoes de Banco
 
-### 3. Melhorar Tratamento de Erros na UI
+Adicionar colunas a `meeting_transcripts` para suportar video:
 
-No `TranscriptionTaskExtractor`:
-- Exibir mensagem de erro detalhada via toast quando RLS ou IA falhar
-- Mostrar botao "Tentar novamente" + "Adicionar manual" quando erro ocorrer
-- Nao "engolir" excecoes silenciosamente
+- `video_url` (TEXT) - link do video/gravacao
+- `video_source` (TEXT) - "google_drive" | "tldv" | "youtube" | "other"
+- `meeting_title` (TEXT) - titulo da reuniao
+- `meeting_date` (TIMESTAMPTZ) - data/hora da reuniao
+- `tldv_meeting_id` (TEXT) - ID da reuniao no tl;dv (para deduplicacao)
 
-No `CampanKanban`:
-- Toast de erro quando drag-and-drop falhar
-- Feedback visual de salvamento
+### 2. Edge Function: fetch-tldv-meetings
 
-### 4. Robustez na Insercao de Tarefas
+Nova edge function que:
+- Recebe a API Key do tl;dv (passada pelo frontend, sem salvar no banco)
+- Chama `GET https://api.tldv.io/v1alpha1/meetings` para listar reunioes recentes
+- Para cada reuniao selecionada, chama `GET /meetings/{id}` e `GET /meetings/{id}/transcript`
+- Retorna lista de reunioes com transcricao e link de gravacao
 
-No `TranscriptionTaskExtractor.handleSave`:
-- Se insercao em lote falhar, tentar inserir individualmente
-- Reportar quantas falharam e por que
-- Nao perder as tarefas que deram certo
+### 3. Atualizar TranscriptionTaskExtractor
 
-## Arquivos Alterados
+Adicionar uma terceira opcao de input alem de texto e PDF:
 
-| Arquivo | Tipo | Descricao |
-|---------|------|-----------|
-| Nova migracao SQL | Criar | Corrigir RLS das 3 tabelas |
-| `src/components/campan/CampanKanban.tsx` | Editar | Adicionar botao manual + modal de criacao |
-| `src/components/campan/TranscriptionTaskExtractor.tsx` | Editar | Melhorar erros + fallback manual + insercao individual |
+- Botao "Importar do tl;dv"
+- Abre modal pedindo API Key do tl;dv (com link para onde obter)
+- Lista reunioes recentes do tl;dv
+- Mentor seleciona a reuniao
+- Sistema importa transcricao + link do video automaticamente
+- IA extrai tarefas normalmente
+
+Tambem adicionar campo para "Link do video da reuniao" (manual) para quem usa Google Drive direto.
+
+### 4. Secao "Reunioes" no Perfil do Mentorado (Visao Mentor)
+
+No sheet de detalhe do mentorado (`Mentorados.tsx`), adicionar uma aba/secao "Reunioes" que mostra:
+
+- Lista cronologica de reunioes (baseada em `meeting_transcripts`)
+- Cada item mostra: data, titulo, badge da fonte (tl;dv / Drive / Manual), numero de tarefas geradas
+- Botao para assistir o video (abre player embutido)
+- Botao para ver transcricao completa
+
+### 5. Aba "Reunioes" no Dock do Mentorado
+
+No layout do mentorado, adicionar nova aba "Reunioes" (ao lado de "Minhas Tarefas") que mostra:
+
+- Historico de reunioes com o mentor
+- Player de video para cada reuniao
+- Link para ver tarefas geradas a partir de cada reuniao
+
+### 6. Player de Video Universal
+
+Componente que detecta a fonte do video e renderiza o embed correto:
+
+- Google Drive: `https://drive.google.com/file/d/{ID}/preview`
+- tl;dv: link direto do tl;dv (abre em nova aba ou embed)
+- YouTube: embed padrao
 
 ## Detalhes Tecnicos
 
-### Migracao SQL
+### Edge Function fetch-tldv-meetings
 
 ```text
--- Drop politicas restritivas
-DROP POLICY "Mentors can manage transcripts for their mentorados" ON meeting_transcripts;
-DROP POLICY "Mentors can manage task drafts" ON extracted_task_drafts;
-DROP POLICY "Mentors can manage tasks" ON campan_tasks;
+POST /fetch-tldv-meetings
+Body: { tldv_api_key: string, limit?: number }
 
--- Novas politicas usando is_tenant_staff
-CREATE POLICY "Staff can manage transcripts"
-  ON meeting_transcripts FOR ALL
-  USING (is_tenant_staff(auth.uid(), tenant_id))
-  WITH CHECK (is_tenant_staff(auth.uid(), tenant_id));
+Chama: GET https://api.tldv.io/v1alpha1/meetings
+Headers: x-api-key: {tldv_api_key}
 
-CREATE POLICY "Staff can manage task drafts"
-  ON extracted_task_drafts FOR ALL
-  USING (is_tenant_staff(auth.uid(), tenant_id))
-  WITH CHECK (is_tenant_staff(auth.uid(), tenant_id));
-
-CREATE POLICY "Staff can manage tasks"
-  ON campan_tasks FOR ALL
-  USING (is_tenant_staff(auth.uid(), tenant_id))
-  WITH CHECK (is_tenant_staff(auth.uid(), tenant_id));
-```
-
-### Modal de Tarefa Manual (CampanKanban)
-
-- Dialog com campos: titulo, descricao, prioridade (select), prazo (date), coluna inicial (select)
-- Props `mentorMembershipId` e `tenantId` adicionadas ao componente
-- INSERT em `campan_tasks` com `created_by_membership_id = mentorMembershipId`
-
-### Insercao Individual como Fallback
-
-```text
-// Se batch falhar, tenta um por um
-for (const insert of inserts) {
-  const { error } = await supabase.from('campan_tasks').insert(insert);
-  if (error) failedCount++;
-  else successCount++;
+Retorna: {
+  meetings: [{
+    id: string,
+    title: string,
+    date: string,
+    duration: number,
+    video_url: string,
+    transcript: string,
+    participants: string[]
+  }]
 }
-// Reporta resultado parcial
 ```
 
+### Alteracao em meeting_transcripts
+
+```text
+ALTER TABLE meeting_transcripts
+  ADD COLUMN video_url TEXT,
+  ADD COLUMN video_source TEXT DEFAULT 'manual',
+  ADD COLUMN meeting_title TEXT,
+  ADD COLUMN meeting_date TIMESTAMPTZ,
+  ADD COLUMN tldv_meeting_id TEXT;
+```
+
+### Novos Componentes
+
+| Componente | Descricao |
+|------------|-----------|
+| `MeetingHistoryList` | Lista de reunioes com filtros e acoes |
+| `MeetingVideoPlayer` | Player universal (Drive/YouTube/tl;dv) |
+| `TldvImportModal` | Modal para importar reunioes do tl;dv |
+| `MinhasReunioes.tsx` | Pagina do mentorado para ver historico |
+
+### Arquivos Alterados
+
+| Arquivo | Tipo | Descricao |
+|---------|------|-----------|
+| Nova migracao SQL | Criar | Adicionar colunas de video/reuniao |
+| `supabase/functions/fetch-tldv-meetings/index.ts` | Criar | Edge function para API tl;dv |
+| `src/components/campan/MeetingHistoryList.tsx` | Criar | Lista de reunioes |
+| `src/components/campan/MeetingVideoPlayer.tsx` | Criar | Player de video universal |
+| `src/components/campan/TldvImportModal.tsx` | Criar | Modal importacao tl;dv |
+| `src/pages/member/MinhasReunioes.tsx` | Criar | Pagina de reunioes do mentorado |
+| `src/components/campan/TranscriptionTaskExtractor.tsx` | Editar | Adicionar importacao tl;dv + campo video URL |
+| `src/pages/admin/Mentorados.tsx` | Editar | Adicionar secao reunioes no perfil |
+| `src/components/layouts/MentoradoLayout.tsx` | Editar | Adicionar aba Reunioes no dock |
+| `src/App.tsx` | Editar | Rota para MinhasReunioes |
+| `supabase/config.toml` | Editar | Registrar nova edge function |
