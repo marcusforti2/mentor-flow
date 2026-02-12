@@ -828,10 +828,11 @@ const Mentorados = () => {
 
       {/* Upload Modal */}
       {activeMembership && (
-        <MentoradoUploadModal
+       <MentoradoUploadModal
           open={isUploadModalOpen}
           onOpenChange={setIsUploadModalOpen}
-          mentorId={legacyMentorId || activeMembership.id}
+          tenantId={activeMembership.tenant_id}
+          mentorMembershipId={activeMembership.id}
           mentorName=""
           onSuccess={fetchData}
         />
