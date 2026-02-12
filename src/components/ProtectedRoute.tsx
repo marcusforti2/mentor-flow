@@ -35,19 +35,8 @@ export function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-   // If no membership assigned yet, redirect to a waiting page or show message
-   if (!activeMembership) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold text-foreground">Aguardando aprovação</h1>
-          <p className="text-muted-foreground">
-            Sua conta ainda não foi configurada. Entre em contato com o mentor.
-          </p>
-        </div>
-      </div>
-    );
-  }
+    // If no membership assigned yet, try refreshing once or let through
+    // (membership may still be loading or user just registered)
 
    // Admin has full access to everything
    if (activeMembership.role === 'admin') {
