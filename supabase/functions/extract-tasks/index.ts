@@ -6,15 +6,68 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const systemPrompt = `Você é um assistente especializado em extrair tarefas acionáveis de transcrições de reuniões de mentoria de vendas e negócios.
+
+REGRAS:
+- Só crie tarefas que sejam claramente acionáveis (com verbo de ação).
+- Transforme frases vagas em ações concretas quando possível.
+- Atribua prioridade baseada no contexto e urgência mencionada.
+- Se uma data/prazo for mencionado, inclua em due_date (formato YYYY-MM-DD).
+- Cada tarefa deve ter um título curto (máx 80 chars) e descrição opcional mais detalhada.
+- Inclua tags relevantes (ex: "vendas", "marketing", "processo", "financeiro").
+- confidence é um número de 0 a 1 indicando sua confiança de que aquilo é realmente uma tarefa.`;
+
+const toolsDef = [
+  {
+    type: "function",
+    function: {
+      name: "extract_tasks",
+      description: "Retorna as tarefas acionáveis extraídas da transcrição ou documento.",
+      parameters: {
+        type: "object",
+        properties: {
+          tasks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Título curto e acionável (máx 80 chars)" },
+                description: { type: "string", description: "Descrição opcional com mais detalhes" },
+                priority: { type: "string", enum: ["low", "medium", "high"] },
+                due_date: { type: "string", description: "YYYY-MM-DD ou null" },
+                tags: { type: "array", items: { type: "string" } },
+                confidence: { type: "number", description: "0 a 1" },
+              },
+              required: ["title", "priority", "confidence"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["tasks"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { transcription } = await req.json();
+    const body = await req.json();
+    const { transcription, file_base64, file_mime_type } = body;
 
-    if (!transcription || transcription.trim().length < 20) {
+    // Validate: need either transcription text or a file
+    if (!transcription && !file_base64) {
+      return new Response(
+        JSON.stringify({ error: "Envie uma transcrição ou um arquivo (PDF/Word)." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (transcription && transcription.trim().length < 20) {
       return new Response(
         JSON.stringify({ error: "Transcrição muito curta ou vazia." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -26,16 +79,33 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Você é um assistente especializado em extrair tarefas acionáveis de transcrições de reuniões de mentoria de vendas e negócios.
+    // Build messages based on input type
+    const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-REGRAS:
-- Só crie tarefas que sejam claramente acionáveis (com verbo de ação).
-- Transforme frases vagas em ações concretas quando possível.
-- Atribua prioridade baseada no contexto e urgência mencionada.
-- Se uma data/prazo for mencionado, inclua em due_date (formato YYYY-MM-DD).
-- Cada tarefa deve ter um título curto (máx 80 chars) e descrição opcional mais detalhada.
-- Inclua tags relevantes (ex: "vendas", "marketing", "processo", "financeiro").
-- confidence é um número de 0 a 1 indicando sua confiança de que aquilo é realmente uma tarefa.`;
+    if (file_base64 && file_mime_type) {
+      // Multimodal: send file as inline_data for Gemini
+      const mimeType = file_mime_type || "application/pdf";
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Analise este documento e extraia todas as tarefas acionáveis com datas, descrições e prioridades:",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${file_base64}`,
+            },
+          },
+        ],
+      });
+    } else {
+      messages.push({
+        role: "user",
+        content: `Analise esta transcrição de reunião e extraia todas as tarefas acionáveis:\n\n${transcription}`,
+      });
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -45,42 +115,8 @@ REGRAS:
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Analise esta transcrição de reunião e extraia todas as tarefas acionáveis:\n\n${transcription}` },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_tasks",
-              description: "Retorna as tarefas acionáveis extraídas da transcrição.",
-              parameters: {
-                type: "object",
-                properties: {
-                  tasks: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string", description: "Título curto e acionável (máx 80 chars)" },
-                        description: { type: "string", description: "Descrição opcional com mais detalhes" },
-                        priority: { type: "string", enum: ["low", "medium", "high"] },
-                        due_date: { type: "string", description: "YYYY-MM-DD ou null" },
-                        tags: { type: "array", items: { type: "string" } },
-                        confidence: { type: "number", description: "0 a 1" },
-                      },
-                      required: ["title", "priority", "confidence"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["tasks"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
+        messages,
+        tools: toolsDef,
         tool_choice: { type: "function", function: { name: "extract_tasks" } },
       }),
     });
