@@ -80,7 +80,8 @@ import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
 import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
 import { Send } from "lucide-react";
 import { MeetingRegistrar } from "@/components/campan/MeetingRegistrar";
-import { CampanKanban } from "@/components/campan/CampanKanban";
+import { TaskListView } from "@/components/campan/TaskListView";
+import { TranscriptionTaskExtractor } from "@/components/campan/TranscriptionTaskExtractor";
 import { MeetingHistoryList } from "@/components/campan/MeetingHistoryList";
 import { MentoradoProfileStats } from "@/components/admin/MentoradoProfileStats";
 import { MentoradoAIScore } from "@/components/admin/MentoradoAIScore";
@@ -988,12 +989,20 @@ const Mentorados = () => {
                 {/* === TAB: Tarefas === */}
                 <TabsContent value="tasks" className="space-y-3 mt-4">
                   {activeMembership && (
-                    <CampanKanban
-                      mentoradoMembershipId={selectedMentorado.membership_id}
-                      mentorMembershipId={activeMembership.id}
-                      tenantId={activeMembership.tenant_id}
-                      refreshKey={campanRefreshKey}
-                    />
+                    <>
+                      <TranscriptionTaskExtractor
+                        mentoradoMembershipId={selectedMentorado.membership_id}
+                        mentorMembershipId={activeMembership.id}
+                        tenantId={activeMembership.tenant_id}
+                        onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
+                      />
+                      <TaskListView
+                        mentoradoMembershipId={selectedMentorado.membership_id}
+                        mentorMembershipId={activeMembership.id}
+                        tenantId={activeMembership.tenant_id}
+                        refreshKey={campanRefreshKey}
+                      />
+                    </>
                   )}
                 </TabsContent>
               </Tabs>
