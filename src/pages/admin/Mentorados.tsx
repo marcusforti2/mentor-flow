@@ -815,6 +815,7 @@ const Mentorados = () => {
                   mentoradoId={selectedMentorado.legacy_mentorado_id || selectedMentorado.id}
                   mentorId={legacyMentorId || ''}
                   mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                  tenantId={activeMembership?.tenant_id}
                 />
               </div>
             </>
