@@ -18,6 +18,7 @@ import {
   User,
   Sparkles,
   FolderOpen,
+  ClipboardCheck,
 } from 'lucide-react';
  import {
    Tooltip,
@@ -29,6 +30,7 @@ import {
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/mentorado' },
   { icon: BookOpen, label: 'Trilhas', path: '/mentorado/trilhas' },
+  { icon: ClipboardCheck, label: 'Minhas Tarefas', path: '/mentorado/tarefas' },
   { icon: Target, label: 'Meu CRM', path: '/mentorado/meu-crm' },
   { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
   { icon: FolderOpen, label: 'Meus Arquivos', path: '/mentorado/meus-arquivos' },

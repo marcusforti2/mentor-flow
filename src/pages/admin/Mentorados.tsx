@@ -79,6 +79,8 @@ import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager"
 import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
 import { WelcomeMessageCard } from "@/components/admin/WelcomeMessageCard";
 import { Send } from "lucide-react";
+import { TranscriptionTaskExtractor } from "@/components/campan/TranscriptionTaskExtractor";
+import { CampanKanban } from "@/components/campan/CampanKanban";
 
 interface Mentorado {
   id: string;
@@ -150,6 +152,7 @@ const Mentorados = () => {
   const [legacyMentorId, setLegacyMentorId] = useState<string | null>(null);
 
   const [isDeleting, setIsDeleting] = useState(false);
+  const [campanRefreshKey, setCampanRefreshKey] = useState(0);
 
   const { user } = useAuth();
   const { activeMembership } = useTenant();
@@ -862,6 +865,25 @@ const Mentorados = () => {
                     )}
                   </div>
                 )}
+
+                {/* Transcription → Tasks */}
+                {activeMembership && (
+                  <TranscriptionTaskExtractor
+                    mentoradoMembershipId={selectedMentorado.membership_id}
+                    mentorMembershipId={activeMembership.id}
+                    tenantId={activeMembership.tenant_id}
+                    onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
+                  />
+                )}
+
+                {/* Campan Kanban */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Tarefas (Campan)</h4>
+                  <CampanKanban 
+                    mentoradoMembershipId={selectedMentorado.membership_id}
+                    refreshKey={campanRefreshKey}
+                  />
+                </div>
 
                 {/* Files Manager */}
                 <MentoradoFilesManager
