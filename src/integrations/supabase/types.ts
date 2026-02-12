@@ -1148,6 +1148,8 @@ export type Database = {
       }
       email_flows: {
         Row: {
+          audience_membership_ids: string[] | null
+          audience_type: string | null
           created_at: string | null
           description: string | null
           edges: Json | null
@@ -1160,6 +1162,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          audience_membership_ids?: string[] | null
+          audience_type?: string | null
           created_at?: string | null
           description?: string | null
           edges?: Json | null
@@ -1172,6 +1176,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          audience_membership_ids?: string[] | null
+          audience_type?: string | null
           created_at?: string | null
           description?: string | null
           edges?: Json | null

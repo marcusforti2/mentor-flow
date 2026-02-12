@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -57,8 +58,12 @@ import {
   PlayCircle,
   Route,
   CalendarDays,
+  Send,
+  UserCheck,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import FlowTestModal from './FlowTestModal';
+import FlowSendModal from './FlowSendModal';
 
 // Custom Node Components
 import TriggerNode from './nodes/TriggerNode';
@@ -79,9 +84,12 @@ interface FlowEditorProps {
     name: string;
     nodes: any[];
     edges: any[];
+    audience_type?: string;
+    audience_membership_ids?: string[];
   };
   templates: any[];
-  onSave: (nodes: any[], edges: any[]) => void;
+  tenantId?: string;
+  onSave: (nodes: any[], edges: any[], audienceType: string, audienceMembershipIds: string[]) => void;
   onClose: () => void;
 }
 
@@ -100,13 +108,60 @@ const NODE_TEMPLATES = [
   { type: 'condition', label: 'Condição', icon: GitBranch, color: '#8b5cf6' },
 ];
 
-export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEditorProps) {
+export default function FlowEditor({ flow, templates, tenantId, onSave, onClose }: FlowEditorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(flow.nodes || []);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flow.edges || []);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isNodeSheetOpen, setIsNodeSheetOpen] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [audienceType, setAudienceType] = useState<string>(flow.audience_type || 'all');
+  const [audienceMembershipIds, setAudienceMembershipIds] = useState<string[]>(flow.audience_membership_ids || []);
+  const [mentees, setMentees] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [menteesLoading, setMenteesLoading] = useState(false);
+  const [audiencePanelOpen, setAudiencePanelOpen] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
+  // Load mentees when audience panel opens for "specific" mode
+  useEffect(() => {
+    if (audienceType === 'specific' && mentees.length === 0 && tenantId) {
+      loadMentees();
+    }
+  }, [audienceType, tenantId]);
+
+  const loadMentees = async () => {
+    if (!tenantId) return;
+    setMenteesLoading(true);
+    try {
+      const { data: memberships } = await supabase
+        .from('memberships')
+        .select('id, user_id')
+        .eq('tenant_id', tenantId)
+        .eq('role', 'mentee')
+        .eq('status', 'active');
+
+      if (memberships && memberships.length > 0) {
+        const userIds = memberships.map(m => m.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email')
+          .in('user_id', userIds);
+
+        const profileMap = new Map(profiles?.map((p: any) => [p.user_id, p]) || []);
+        setMentees(
+          memberships.map(m => ({
+            id: m.id,
+            name: (profileMap.get(m.user_id) as any)?.full_name || 'Sem nome',
+            email: (profileMap.get(m.user_id) as any)?.email || '',
+          }))
+        );
+      }
+    } catch (e) {
+      console.error('Error loading mentees:', e);
+    } finally {
+      setMenteesLoading(false);
+    }
+  };
 
   // Initialize with trigger node if empty
   useEffect(() => {
@@ -189,7 +244,15 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
   };
 
   const handleSave = () => {
-    onSave(nodes, edges);
+    onSave(nodes, edges, audienceType, audienceMembershipIds);
+  };
+
+  const toggleMenteeSelection = (menteeId: string) => {
+    setAudienceMembershipIds(prev =>
+      prev.includes(menteeId)
+        ? prev.filter(id => id !== menteeId)
+        : [...prev, menteeId]
+    );
   };
 
   return (
@@ -205,18 +268,80 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
             <p className="text-sm text-muted-foreground">Editor de Fluxo</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {/* Audience Selector */}
+          <Popover open={audiencePanelOpen} onOpenChange={setAudiencePanelOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <UserCheck className="h-4 w-4" />
+                {audienceType === 'all' ? 'Todos' : `${audienceMembershipIds.length} selecionados`}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 z-[100]" align="end">
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Para quem enviar?</Label>
+                <Select
+                  value={audienceType}
+                  onValueChange={(v) => {
+                    setAudienceType(v);
+                    if (v === 'all') setAudienceMembershipIds([]);
+                    if (v === 'specific' && mentees.length === 0) loadMentees();
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os mentorados</SelectItem>
+                    <SelectItem value="specific">Mentorados específicos</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {audienceType === 'specific' && (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {menteesLoading ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">Carregando...</p>
+                    ) : mentees.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">Nenhum mentorado encontrado</p>
+                    ) : (
+                      mentees.map(m => (
+                        <label key={m.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                          <Checkbox
+                            checked={audienceMembershipIds.includes(m.id)}
+                            onCheckedChange={() => toggleMenteeSelection(m.id)}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm truncate">{m.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <Button 
             variant="outline" 
             onClick={() => setIsTestModalOpen(true)}
             className="gap-2"
           >
             <PlayCircle className="h-4 w-4" />
-            Testar Fluxo
+            Testar
+          </Button>
+          <Button 
+            variant="default"
+            onClick={() => setIsSendModalOpen(true)}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Send className="h-4 w-4" />
+            Enviar Agora
           </Button>
           <Button onClick={handleSave} className="gradient-gold text-primary-foreground">
             <Save className="h-4 w-4 mr-2" />
-            Salvar Fluxo
+            Salvar
           </Button>
         </div>
       </div>
@@ -691,6 +816,17 @@ export default function FlowEditor({ flow, templates, onSave, onClose }: FlowEdi
         flowName={flow.name}
         nodes={nodes}
         templates={templates}
+      />
+
+      {/* Send Flow Modal */}
+      <FlowSendModal
+        open={isSendModalOpen}
+        onOpenChange={setIsSendModalOpen}
+        flowId={flow.id}
+        flowName={flow.name}
+        nodes={nodes}
+        audienceType={audienceType}
+        audienceMembershipIds={audienceMembershipIds}
       />
     </div>
   );

@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.parse-business-profile]
 verify_jwt = false
+
+[functions.execute-email-flow]
+verify_jwt = false
