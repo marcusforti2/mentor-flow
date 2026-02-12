@@ -54,9 +54,10 @@ interface MentoradoFilesManagerProps {
   mentoradoId: string;
   mentorId: string;
   mentoradoName: string;
+  tenantId?: string | null;
 }
 
-export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName }: MentoradoFilesManagerProps) {
+export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, tenantId }: MentoradoFilesManagerProps) {
   const [files, setFiles] = useState<MentoradoFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -115,6 +116,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName }: 
         .insert({
           mentorado_id: mentoradoId,
           mentor_id: mentorId,
+          tenant_id: tenantId || null,
           file_type: type,
           file_name: file.name,
           file_path: filePath,
@@ -150,6 +152,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName }: 
         .insert({
           mentorado_id: mentoradoId,
           mentor_id: mentorId,
+          tenant_id: tenantId || null,
           file_type: 'link',
           link_url: linkForm.url,
           link_title: linkForm.title || linkForm.url,
@@ -184,6 +187,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName }: 
         .insert({
           mentorado_id: mentoradoId,
           mentor_id: mentorId,
+          tenant_id: tenantId || null,
           file_type: 'note',
           note_title: noteForm.title,
           note_content: noteForm.content,
