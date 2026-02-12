@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { File, FileText, Image, Link2, StickyNote, Loader2, Download, ExternalLink, FolderOpen, Eye, Calendar } from 'lucide-react';
+import { File, FileText, Image, Link2, StickyNote, Loader2, Download, ExternalLink, FolderOpen, Eye, Calendar, Video } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { MeetingHistoryList } from '@/components/campan/MeetingHistoryList';
 
 interface MentoradoFile {
   id: string; file_type: string; file_name: string | null; file_path: string | null;
@@ -125,8 +126,8 @@ export default function MeusArquivos() {
     <div className="container max-w-4xl mx-auto p-6 space-y-6">
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4"><FolderOpen className="h-8 w-8 text-primary" /></div>
-        <h1 className="text-3xl font-display font-bold text-foreground">Meus Arquivos</h1>
-        <p className="text-muted-foreground mt-2">Arquivos e materiais compartilhados pelo seu mentor</p>
+        <h1 className="text-3xl font-display font-bold text-foreground">Meus Arquivos & Reuniões</h1>
+        <p className="text-muted-foreground mt-2">Arquivos compartilhados e gravações de reuniões</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -139,18 +140,28 @@ export default function MeusArquivos() {
 
       <Card className="glass-card">
         <CardHeader>
-          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-            <TabsList className="grid grid-cols-5 w-full">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+            <TabsList className="grid grid-cols-6 w-full">
               <TabsTrigger value="all">Todos</TabsTrigger>
               <TabsTrigger value="file">Arquivos</TabsTrigger>
               <TabsTrigger value="image">Imagens</TabsTrigger>
               <TabsTrigger value="link">Links</TabsTrigger>
               <TabsTrigger value="note">Notas</TabsTrigger>
+              <TabsTrigger value="meetings" className="flex items-center gap-1"><Video className="h-3 w-3" />Reuniões</TabsTrigger>
             </TabsList>
           </Tabs>
         </CardHeader>
         <CardContent>
-          {filteredFiles.length === 0 ? (
+          {selectedTab === 'meetings' ? (
+            activeMembership ? (
+              <MeetingHistoryList
+                mentoradoMembershipId={activeMembership.id}
+                tenantId={activeMembership.tenant_id}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+            )
+          ) : filteredFiles.length === 0 ? (
             <div className="text-center py-12"><FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><h3 className="text-lg font-semibold text-foreground mb-2">Nenhum conteúdo ainda</h3><p className="text-muted-foreground">Quando seu mentor compartilhar arquivos, eles aparecerão aqui.</p></div>
           ) : (
             <div className="space-y-3">
