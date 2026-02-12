@@ -20,8 +20,10 @@ import { ptBR } from "date-fns/locale";
 import {
   Loader2, Search, Users, Target, TrendingUp, Building2,
   Phone, Mail, Calendar, Eye, Filter, BarChart3,
-  Flame, Snowflake, ThermometerSun, ChevronRight,
+  Flame, Snowflake, ThermometerSun, ChevronRight, Settings,
 } from "lucide-react";
+import { PipelineStageEditor } from "@/components/crm/PipelineStageEditor";
+import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import type { Lead } from "@/components/crm/LeadCard";
 
@@ -60,17 +62,20 @@ const temperatureConfig: Record<string, TemperatureConfig> = {
   cold: { label: "Frio", color: "text-blue-400", icon: Snowflake },
 };
 
-const statusConfig: Record<string, { label: string; color: string }> = {
+const defaultStatusConfig: Record<string, { label: string; color: string }> = {
   new: { label: "Novo", color: "bg-slate-500" },
   contacted: { label: "Contato", color: "bg-blue-500" },
-  proposal: { label: "Proposta", color: "bg-purple-500" },
-  closed: { label: "Fechado", color: "bg-green-500" },
-  lost: { label: "Perdido", color: "bg-red-500" },
+  meeting_scheduled: { label: "Reunião", color: "bg-amber-500" },
+  proposal_sent: { label: "Proposta", color: "bg-purple-500" },
+  closed_won: { label: "Fechado", color: "bg-green-500" },
+  closed_lost: { label: "Perdido", color: "bg-red-500" },
 };
 
 export default function CRMMentorados() {
   const { toast } = useToast();
   const { activeMembership } = useTenant();
+  const { statusConfigMap, stages } = usePipelineStages(activeMembership?.tenant_id);
+  const statusConfig = Object.keys(statusConfigMap).length > 0 ? statusConfigMap : defaultStatusConfig;
   const [isLoading, setIsLoading] = useState(true);
   const [mentorados, setMentorados] = useState<MentoradoWithLeads[]>([]);
   const [allLeads, setAllLeads] = useState<LeadWithMentorado[]>([]);
@@ -138,7 +143,7 @@ export default function CRMMentorados() {
           profile,
           leadsCount: mentoradoLeads.length,
           hotLeads: mentoradoLeads.filter((l) => l.temperature === "hot").length,
-          closedLeads: mentoradoLeads.filter((l) => l.status === "closed").length,
+          closedLeads: mentoradoLeads.filter((l) => l.status === "closed_won").length,
         };
       });
 
@@ -186,7 +191,7 @@ export default function CRMMentorados() {
   const stats = useMemo(() => {
     const total = filteredLeads.length;
     const hot = filteredLeads.filter((l) => l.temperature === "hot").length;
-    const closed = filteredLeads.filter((l) => l.status === "closed").length;
+    const closed = filteredLeads.filter((l) => l.status === "closed_won").length;
     const conversionRate = total > 0 ? Math.round((closed / total) * 100) : 0;
     return { total, hot, closed, conversionRate };
   }, [filteredLeads]);
@@ -262,6 +267,10 @@ export default function CRMMentorados() {
         <TabsList>
           <TabsTrigger value="leads">Todos os Leads</TabsTrigger>
           <TabsTrigger value="mentorados">Por Mentorado</TabsTrigger>
+          <TabsTrigger value="pipeline">
+            <Settings className="w-4 h-4 mr-1" />
+            Pipeline
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="leads" className="space-y-4">
@@ -389,6 +398,12 @@ export default function CRMMentorados() {
                 </Card>
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="pipeline">
+          {activeMembership?.tenant_id && (
+            <PipelineStageEditor tenantId={activeMembership.tenant_id} />
           )}
         </TabsContent>
       </Tabs>

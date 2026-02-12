@@ -61,12 +61,13 @@ interface LeadDetailSheetProps {
   onUpdate: () => void;
 }
 
-const statusOptions = [
+const defaultStatusOptions = [
   { value: "new", label: "Novo", color: "bg-slate-500" },
   { value: "contacted", label: "Contato", color: "bg-blue-500" },
-  { value: "proposal", label: "Proposta", color: "bg-purple-500" },
-  { value: "closed", label: "Fechado", color: "bg-green-500" },
-  { value: "lost", label: "Perdido", color: "bg-red-500" },
+  { value: "meeting_scheduled", label: "Reunião", color: "bg-amber-500" },
+  { value: "proposal_sent", label: "Proposta", color: "bg-purple-500" },
+  { value: "closed_won", label: "Fechado", color: "bg-green-500" },
+  { value: "closed_lost", label: "Perdido", color: "bg-red-500" },
 ];
 
 const temperatureConfig = {
@@ -90,6 +91,7 @@ export function LeadDetailSheet({
   if (!lead) return null;
 
   const temp = temperatureConfig[lead.temperature as keyof typeof temperatureConfig] || temperatureConfig.cold;
+  const statusOptions = defaultStatusOptions;
   const currentStatus = statusOptions.find((s) => s.value === lead.status) || statusOptions[0];
 
   const handleStatusChange = async (newStatus: string) => {
