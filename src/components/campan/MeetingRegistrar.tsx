@@ -162,6 +162,7 @@ export function MeetingRegistrar({
               className="h-8 text-sm"
               disabled={isSaving}
             />
+            <p className="text-[11px] text-muted-foreground">Nome para identificar a reunião. Ex: Sessão 3 - Funil de vendas</p>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Data/hora</Label>
@@ -172,6 +173,7 @@ export function MeetingRegistrar({
               className="h-8 text-sm"
               disabled={isSaving}
             />
+            <p className="text-[11px] text-muted-foreground">Quando a reunião aconteceu. Deixe em branco se não lembrar.</p>
           </div>
         </div>
 
@@ -193,12 +195,16 @@ export function MeetingRegistrar({
             className="h-8 text-sm"
             disabled={isSaving}
           />
+          <p className="text-[11px] text-muted-foreground">Cole o link da gravação (YouTube, Google Drive, tl;dv). O sistema detecta a plataforma automaticamente. Deixe em branco se não gravou.</p>
         </div>
 
         {/* Transcription */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Label className="text-xs">Transcrição (opcional)</Label>
+          </div>
+          <p className="text-[11px] text-muted-foreground -mt-1">Cole o texto da transcrição ou envie um arquivo PDF/Word. A IA vai ler o conteúdo para extrair tarefas e insights na aba Tarefas.</p>
+          <div className="flex items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
