@@ -12,8 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   FileText, Sparkles, Loader2, Trash2, Save, RefreshCw, 
-  Calendar, AlertCircle, CheckCircle2, Plus, Upload
+  Calendar, AlertCircle, CheckCircle2, Plus, Upload, Video, Link as LinkIcon
 } from 'lucide-react';
+import { TldvImportModal } from './TldvImportModal';
 
 interface ExtractedTask {
   title: string;
@@ -33,6 +34,14 @@ interface TranscriptionTaskExtractorProps {
 }
 
 type ExtractionState = 'idle' | 'reading' | 'extracting' | 'done' | 'error';
+
+function detectVideoSource(url: string): string {
+  if (!url) return 'manual';
+  if (url.includes('tldv.io')) return 'tldv';
+  if (url.includes('drive.google.com')) return 'google_drive';
+  if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+  return 'other';
+}
 
 export function TranscriptionTaskExtractor({
   mentoradoMembershipId,
@@ -56,6 +65,11 @@ export function TranscriptionTaskExtractor({
   const [isSavingManual, setIsSavingManual] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [showTldvModal, setShowTldvModal] = useState(false);
+  const [tldvMeetingId, setTldvMeetingId] = useState<string | null>(null);
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [meetingDate, setMeetingDate] = useState('');
 
   const ACCEPTED_FILE_TYPES = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -106,16 +120,23 @@ export function TranscriptionTaskExtractor({
     setErrorMsg('');
 
     try {
-      // Save transcript
+      // Save transcript with video metadata
+      const insertData: any = {
+        mentorado_membership_id: mentoradoMembershipId,
+        mentor_membership_id: mentorMembershipId,
+        tenant_id: tenantId,
+        input_type: hasFile ? 'file' : 'text',
+        raw_text: hasText ? transcription.trim() : (uploadedFile?.name || null),
+        video_url: videoUrl.trim() || null,
+        video_source: detectVideoSource(videoUrl),
+        meeting_title: meetingTitle.trim() || null,
+        meeting_date: meetingDate || null,
+        tldv_meeting_id: tldvMeetingId,
+      };
+
       const { data: transcript, error: txError } = await supabase
         .from('meeting_transcripts')
-        .insert({
-          mentorado_membership_id: mentoradoMembershipId,
-          mentor_membership_id: mentorMembershipId,
-          tenant_id: tenantId,
-          input_type: hasFile ? 'file' : 'text',
-          raw_text: hasText ? transcription.trim() : (uploadedFile?.name || null),
-        })
+        .insert(insertData)
         .select('id')
         .single();
 
@@ -260,6 +281,10 @@ export function TranscriptionTaskExtractor({
       setTasks([]);
       setTranscription('');
       clearFile();
+      setVideoUrl('');
+      setMeetingTitle('');
+      setMeetingDate('');
+      setTldvMeetingId(null);
       setState('idle');
       setTranscriptId(null);
       onTasksSaved?.();
@@ -305,6 +330,16 @@ export function TranscriptionTaskExtractor({
     }
   };
 
+  const handleTldvImport = (data: { transcript: string; videoUrl: string; title: string; date: string; tldvMeetingId: string }) => {
+    setTranscription(data.transcript);
+    setVideoUrl(data.videoUrl);
+    setMeetingTitle(data.title);
+    setMeetingDate(data.date ? new Date(data.date).toISOString().slice(0, 16) : '');
+    setTldvMeetingId(data.tldvMeetingId);
+    clearFile();
+    toast.success('Dados do tl;dv importados. Clique em "Gerar tarefas com IA" para continuar.');
+  };
+
   return (
     <div className="space-y-4">
       <Card className="glass-card">
@@ -315,11 +350,50 @@ export function TranscriptionTaskExtractor({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Meeting metadata */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Título da reunião</Label>
+              <Input
+                value={meetingTitle}
+                onChange={(e) => setMeetingTitle(e.target.value)}
+                placeholder="Ex: Reunião semanal"
+                className="h-8 text-sm"
+                disabled={state === 'reading' || state === 'extracting'}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Data/hora</Label>
+              <Input
+                type="datetime-local"
+                value={meetingDate}
+                onChange={(e) => setMeetingDate(e.target.value)}
+                className="h-8 text-sm"
+                disabled={state === 'reading' || state === 'extracting'}
+              />
+            </div>
+          </div>
+
+          {/* Video URL */}
+          <div className="space-y-1">
+            <Label className="text-xs flex items-center gap-1.5">
+              <LinkIcon className="h-3 w-3" />
+              Link do vídeo (Google Drive, YouTube, tl;dv)
+            </Label>
+            <Input
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://drive.google.com/file/d/... ou link do tl;dv"
+              className="h-8 text-sm"
+              disabled={state === 'reading' || state === 'extracting'}
+            />
+          </div>
+
           <div className="space-y-2">
-            <Label>Cole a transcrição ou envie um arquivo (PDF / Word)</Label>
+            <Label>Transcrição (texto, PDF/Word ou importar do tl;dv)</Label>
             
-            {/* File upload area */}
-            <div className="flex items-center gap-2">
+            {/* File upload + tl;dv import */}
+            <div className="flex items-center gap-2 flex-wrap">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -335,7 +409,17 @@ export function TranscriptionTaskExtractor({
                 disabled={state === 'reading' || state === 'extracting'}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Enviar PDF / Word
+                PDF / Word
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTldvModal(true)}
+                disabled={state === 'reading' || state === 'extracting'}
+              >
+                <Video className="h-4 w-4 mr-2" />
+                Importar do tl;dv
               </Button>
               {uploadedFile && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary/50 text-sm">
@@ -576,6 +660,13 @@ export function TranscriptionTaskExtractor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* tl;dv Import Modal */}
+      <TldvImportModal
+        open={showTldvModal}
+        onOpenChange={setShowTldvModal}
+        onImport={handleTldvImport}
+      />
     </div>
   );
 }

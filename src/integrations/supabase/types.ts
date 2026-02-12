@@ -1658,30 +1658,45 @@ export type Database = {
           file_url: string | null
           id: string
           input_type: string
+          meeting_date: string | null
+          meeting_title: string | null
           mentor_membership_id: string
           mentorado_membership_id: string
           raw_text: string | null
           tenant_id: string
+          tldv_meeting_id: string | null
+          video_source: string | null
+          video_url: string | null
         }
         Insert: {
           created_at?: string
           file_url?: string | null
           id?: string
           input_type?: string
+          meeting_date?: string | null
+          meeting_title?: string | null
           mentor_membership_id: string
           mentorado_membership_id: string
           raw_text?: string | null
           tenant_id: string
+          tldv_meeting_id?: string | null
+          video_source?: string | null
+          video_url?: string | null
         }
         Update: {
           created_at?: string
           file_url?: string | null
           id?: string
           input_type?: string
+          meeting_date?: string | null
+          meeting_title?: string | null
           mentor_membership_id?: string
           mentorado_membership_id?: string
           raw_text?: string | null
           tenant_id?: string
+          tldv_meeting_id?: string | null
+          video_source?: string | null
+          video_url?: string | null
         }
         Relationships: [
           {

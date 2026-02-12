@@ -55,6 +55,7 @@ import CalendarioMembro from "./pages/member/Calendario";
 
 import MeusArquivos from "./pages/member/MeusArquivos";
 import MinhasTarefas from "./pages/member/MinhasTarefas";
+import MinhasReunioes from "./pages/member/MinhasReunioes";
 
 // Admin Pages (additional)
 import AdminCentroSOS from "./pages/admin/CentroSOS";
@@ -140,6 +141,7 @@ const App = () => (
                
                <Route path="meus-arquivos" element={<MeusArquivos />} />
                <Route path="tarefas" element={<MinhasTarefas />} />
+               <Route path="reunioes" element={<MinhasReunioes />} />
             </Route>
 
             {/* Legacy route redirect */}

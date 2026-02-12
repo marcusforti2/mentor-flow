@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.extract-tasks]
 verify_jwt = false
+
+[functions.fetch-tldv-meetings]
+verify_jwt = false
