@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -9,7 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Phone, MessageCircle, User, Clock } from 'lucide-react';
+import { AlertTriangle, MessageCircle, User, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -22,15 +23,14 @@ interface SOSNotification {
   priority: string | null;
   category: string | null;
   created_at: string | null;
-  mentorado_id: string;
+  membership_id: string | null;
+  mentorado_id: string | null;
   initial_guidance: string | null;
-  mentorado?: {
-    id: string;
-    profiles?: {
-      full_name: string | null;
-      email: string | null;
-      phone: string | null;
-    };
+  tenant_id: string | null;
+  profile?: {
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
   };
 }
 
@@ -38,9 +38,14 @@ export function SOSNotificationAlert() {
   const [notification, setNotification] = useState<SOSNotification | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { activeMembership } = useTenant();
 
   useEffect(() => {
-    // Subscribe to new SOS requests
+    if (!activeMembership?.tenant_id) return;
+
+    const tenantId = activeMembership.tenant_id;
+
+    // Subscribe to new SOS requests for this tenant
     const channel = supabase
       .channel('sos-notifications')
       .on(
@@ -49,50 +54,51 @@ export function SOSNotificationAlert() {
           event: 'INSERT',
           schema: 'public',
           table: 'sos_requests',
+          filter: `tenant_id=eq.${tenantId}`,
         },
         async (payload) => {
           console.log('New SOS received:', payload);
-          
-          // Fetch full SOS details with mentorado info
-          const { data: sosData, error } = await supabase
-            .from('sos_requests')
-            .select(`
-              *,
-              mentorado:mentorados!inner(
-                id,
-                user_id
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single();
+          const newRecord = payload.new as any;
 
-          if (error) {
-            console.error('Error fetching SOS details:', error);
-            return;
-          }
+          // Resolve profile from membership_id
+          let profile: SOSNotification['profile'] = undefined;
+          const membershipId = newRecord.membership_id;
 
-          // Fetch profile separately
-          if (sosData?.mentorado) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('full_name, email, phone')
-              .eq('user_id', sosData.mentorado.user_id)
+          if (membershipId) {
+            const { data: membership } = await supabase
+              .from('memberships')
+              .select('user_id')
+              .eq('id', membershipId)
               .single();
 
-            const enrichedNotification: SOSNotification = {
-              ...sosData,
-              mentorado: {
-                ...sosData.mentorado,
-                profiles: profileData || undefined,
-              },
-            };
+            if (membership) {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('full_name, email, phone')
+                .eq('user_id', membership.user_id)
+                .single();
 
-            setNotification(enrichedNotification);
-            setIsOpen(true);
-
-            // Play alert sound
-            playAlertSound();
+              profile = profileData || undefined;
+            }
           }
+
+          const enrichedNotification: SOSNotification = {
+            id: newRecord.id,
+            title: newRecord.title,
+            description: newRecord.description,
+            priority: newRecord.priority,
+            category: newRecord.category,
+            created_at: newRecord.created_at,
+            membership_id: newRecord.membership_id,
+            mentorado_id: newRecord.mentorado_id,
+            initial_guidance: newRecord.initial_guidance,
+            tenant_id: newRecord.tenant_id,
+            profile,
+          };
+
+          setNotification(enrichedNotification);
+          setIsOpen(true);
+          playAlertSound();
         }
       )
       .subscribe();
@@ -100,10 +106,9 @@ export function SOSNotificationAlert() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [activeMembership?.tenant_id]);
 
   const playAlertSound = () => {
-    // Create a simple beep sound using Web Audio API
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
@@ -118,11 +123,8 @@ export function SOSNotificationAlert() {
 
       oscillator.start();
       
-      // Beep pattern
       setTimeout(() => {
         oscillator.stop();
-        
-        // Second beep
         const osc2 = audioContext.createOscillator();
         osc2.connect(gainNode);
         osc2.frequency.value = 1000;
@@ -142,23 +144,23 @@ export function SOSNotificationAlert() {
 
   const getPriorityColor = (priority: string | null) => {
     switch (priority) {
-      case 'high':
-        return 'text-destructive';
-      case 'medium':
-        return 'text-amber-500';
-      default:
-        return 'text-muted-foreground';
+      case 'urgente': return 'text-destructive';
+      case 'alta': return 'text-destructive';
+      case 'high': return 'text-destructive';
+      case 'média':
+      case 'medium': return 'text-amber-500';
+      default: return 'text-muted-foreground';
     }
   };
 
   const getPriorityLabel = (priority: string | null) => {
     switch (priority) {
-      case 'high':
-        return 'URGENTE';
-      case 'medium':
-        return 'MÉDIA';
-      default:
-        return 'NORMAL';
+      case 'urgente':
+      case 'high': return 'URGENTE';
+      case 'alta': return 'ALTA';
+      case 'média':
+      case 'medium': return 'MÉDIA';
+      default: return 'NORMAL';
     }
   };
 
@@ -200,10 +202,10 @@ export function SOSNotificationAlert() {
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">
-                    {notification.mentorado?.profiles?.full_name || 'Mentorado'}
+                    {notification.profile?.full_name || 'Mentorado'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {notification.mentorado?.profiles?.email}
+                    {notification.profile?.email}
                   </p>
                 </div>
               </div>

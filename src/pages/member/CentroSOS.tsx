@@ -258,6 +258,7 @@ export default function CentroSOS() {
             sosPriority: lastTriageResult.priority || "média",
             sosCategory: lastTriageResult.category || "outro",
             initialGuidance: lastTriageResult.initialGuidance || "",
+            tenantId: activeMembership?.tenant_id || "",
           },
         });
         console.log("Email notifications sent successfully");
