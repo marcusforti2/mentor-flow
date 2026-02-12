@@ -1881,8 +1881,8 @@ export type Database = {
           id: string
           link_title: string | null
           link_url: string | null
-          mentor_id: string
-          mentorado_id: string
+          mentor_id: string | null
+          mentorado_id: string | null
           mime_type: string | null
           note_content: string | null
           note_title: string | null
@@ -1901,8 +1901,8 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
-          mentor_id: string
-          mentorado_id: string
+          mentor_id?: string | null
+          mentorado_id?: string | null
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
@@ -1921,8 +1921,8 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
-          mentor_id?: string
-          mentorado_id?: string
+          mentor_id?: string | null
+          mentorado_id?: string | null
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
