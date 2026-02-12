@@ -1,59 +1,92 @@
 
 
-# Tarefas manuais para o mentorado
+# Melhorias no perfil do mentorado (visao do mentor)
 
-## O que muda
-
-Hoje o botao "Adicionar tarefa manual" so aparece para o mentor, porque o componente exige `mentorMembershipId` e `tenantId`. O mentorado ve o Kanban mas nao consegue criar tarefas proprias. Alem disso, a politica de seguranca do banco nao permite que mentorados insiram tarefas.
+Hoje a aba "Perfil" do mentorado no painel do mentor mostra apenas: dia na jornada, etapa, contato (telefone/email/data de entrada), nome do negocio e arquivos. Existe muito mais dado disponivel no banco que pode ser consolidado para dar ao mentor uma visao completa sem precisar navegar para outras telas.
 
 ---
 
-## Mudancas
+## 1. Resumo de KPIs do mentorado (cards visuais)
 
-### 1. Permitir mentorados inserirem tarefas no banco
+Adicionar uma faixa de mini-cards logo abaixo dos cards de "Dia na Jornada" e "Etapa" com metricas reais do banco:
 
-Criar uma nova politica de seguranca que permite mentorados criarem tarefas para si mesmos (onde `mentorado_membership_id` e a propria membership do usuario).
+- **Leads no CRM**: contagem de `crm_leads` do mentorado
+- **Tarefas concluidas**: contagem de `campan_tasks` com status "done"
+- **Trilhas concluidas**: contagem de `trail_progress` com `completed = true`
+- **Ultima atividade**: data mais recente em `activity_logs`
 
-### 2. Adaptar o CampanKanban para aceitar criacao pelo mentorado
+Esses dados ja existem no banco e so precisam de queries simples.
 
-- Adicionar uma prop `allowSelfCreate` (boolean) ao componente
-- Quando `allowSelfCreate` e verdadeiro, exibir o botao "Adicionar tarefa" mesmo sem `mentorMembershipId`
-- Na criacao, o campo `created_by_membership_id` sera o proprio `mentoradoMembershipId` e o `tenant_id` sera buscado da membership do usuario
-- Tarefas criadas pelo mentorado nao terao `source_transcript_id` (nao sao de reuniao)
+---
 
-### 3. Atualizar a pagina MinhasTarefas
+## 2. Nota IA e ultimo diagnostico
 
-- Passar `allowSelfCreate={true}` para o `CampanKanban`
-- Atualizar o texto do empty state: "Voce ainda nao tem tarefas. Crie sua primeira tarefa!"
+Exibir o card da ultima `training_analyses` do mentorado:
+
+- Nota geral (com cor: verde >= 7, amarelo >= 4, vermelho < 4)
+- Resumo do diagnostico
+- Pontos fortes e melhorias urgentes como badges/tags
+- Data da analise
+
+Se nao houver analise, exibir um estado vazio com sugestao: "Nenhuma analise de performance ainda."
+
+---
+
+## 3. Governo do Negocio - visao somente leitura para o mentor
+
+Hoje o `BusinessProfileForm` so funciona para o proprio mentorado (usa `auth.uid()` para resolver o `mentorado_id`). Para o mentor, criar uma visao resumida read-only com os dados do `mentorado_business_profiles`:
+
+- Faturamento, ticket medio, taxa de conversao, volume de leads
+- Nivel de maturidade e dependencia do dono (com indicadores visuais)
+- Pontos de caos selecionados
+- Porcentagem de preenchimento do perfil de negocio
+
+Isso evita que o mentor precise "impersonar" o aluno so para ver o diagnostico.
+
+---
+
+## 4. Timeline de atividade recente
+
+Exibir as ultimas 5-10 acoes do `activity_logs` do mentorado em formato de timeline compacta:
+
+- Icone por tipo de acao (lead criado, login, tarefa concluida)
+- Descricao e data relativa ("ha 2 horas", "ontem")
+- Pontos ganhos por acao (se houver)
+
+---
+
+## 5. Acoes rapidas do mentor
+
+Adicionar botoes de acao rapida no topo do perfil:
+
+- **WhatsApp**: abrir conversa no WhatsApp com o telefone do mentorado (link direto `wa.me`)
+- **Enviar mensagem**: link para o WhatsApp ou email
+- **Ver CRM completo**: navegar para o CRM filtrado por este mentorado
 
 ---
 
 ## Detalhes Tecnicos
 
-### Migracao SQL
+### Arquivos a criar/modificar
 
-```text
-CREATE POLICY "Mentorados can insert own tasks"
-  ON campan_tasks FOR INSERT
-  WITH CHECK (
-    mentorado_membership_id IN (
-      SELECT id FROM memberships WHERE user_id = auth.uid()
-    )
-  );
-```
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/admin/MentoradoProfileStats.tsx` | Novo componente com os KPIs (leads, tarefas, trilhas, ultima atividade) |
+| `src/components/admin/MentoradoAIScore.tsx` | Novo componente com a nota IA e ultimo diagnostico |
+| `src/components/admin/MentoradoBusinessSummary.tsx` | Novo componente read-only com resumo do Governo do Negocio |
+| `src/components/admin/MentoradoActivityTimeline.tsx` | Novo componente com timeline de atividade recente |
+| `src/pages/admin/Mentorados.tsx` | Integrar os novos componentes na aba "Perfil" do Sheet |
 
-### Arquivos alterados
+### Dados consumidos (todos ja existentes)
 
-| Arquivo | Mudanca |
-|---------|---------|
-| Nova migracao SQL | Politica INSERT para mentorados |
-| `CampanKanban.tsx` | Nova prop `allowSelfCreate`, buscar `tenant_id` da membership quando mentor nao esta presente, exibir botao para mentorado |
-| `MinhasTarefas.tsx` | Passar `allowSelfCreate={true}`, melhorar empty state |
+- `crm_leads` (owner_membership_id) - contagem de leads
+- `campan_tasks` (mentorado_membership_id) - contagem e status
+- `trail_progress` (membership_id) - progresso em trilhas
+- `activity_logs` (membership_id) - timeline de atividade
+- `training_analyses` (mentorado_id) - nota IA e diagnostico
+- `mentorado_business_profiles` (mentorado_id) - dados do negocio
 
-### Logica de criacao pelo mentorado
+### Nenhuma migracao necessaria
 
-Quando `allowSelfCreate` esta ativo e nao ha `mentorMembershipId`:
-- Buscar o `tenant_id` da membership do mentorado via query simples
-- Usar o proprio `mentoradoMembershipId` como `created_by_membership_id`
-- O resto do formulario e identico (titulo, descricao, prioridade, prazo, coluna)
+Todos os dados ja estao no banco. As melhorias sao puramente de frontend, consumindo tabelas existentes com queries Supabase filtradas pelo `membership_id` ou `mentorado_id` (legacy) do mentorado selecionado.
 
