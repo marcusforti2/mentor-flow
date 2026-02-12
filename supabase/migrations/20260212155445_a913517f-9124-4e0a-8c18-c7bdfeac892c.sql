@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN tldv_api_key TEXT;
