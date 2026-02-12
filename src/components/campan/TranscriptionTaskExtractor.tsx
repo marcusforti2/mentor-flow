@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   FileText, Sparkles, Loader2, Trash2, Save, RefreshCw, 
-  Calendar, AlertCircle, CheckCircle2, Plus
+  Calendar, AlertCircle, CheckCircle2, Plus, Upload
 } from 'lucide-react';
 
 interface ExtractedTask {
@@ -54,10 +54,51 @@ export function TranscriptionTaskExtractor({
     due_date: '',
   });
   const [isSavingManual, setIsSavingManual] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ACCEPTED_FILE_TYPES = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error('Arquivo muito grande. Máximo 10MB.');
+      return;
+    }
+    
+    setUploadedFile(file);
+    setTranscription(''); // clear text when file is selected
+    toast.success(`Arquivo "${file.name}" selecionado.`);
+  };
+
+  const clearFile = () => {
+    setUploadedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data:...;base64, prefix
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleExtract = async () => {
-    if (!transcription.trim() || transcription.trim().length < 20) {
-      toast.error('Cole uma transcrição com pelo menos 20 caracteres.');
+    const hasText = transcription.trim().length >= 20;
+    const hasFile = !!uploadedFile;
+    
+    if (!hasText && !hasFile) {
+      toast.error('Cole uma transcrição (mín. 20 chars) ou envie um arquivo PDF/Word.');
       return;
     }
 
@@ -72,8 +113,8 @@ export function TranscriptionTaskExtractor({
           mentorado_membership_id: mentoradoMembershipId,
           mentor_membership_id: mentorMembershipId,
           tenant_id: tenantId,
-          input_type: 'text',
-          raw_text: transcription.trim(),
+          input_type: hasFile ? 'file' : 'text',
+          raw_text: hasText ? transcription.trim() : (uploadedFile?.name || null),
         })
         .select('id')
         .single();
@@ -86,9 +127,21 @@ export function TranscriptionTaskExtractor({
 
       setState('extracting');
 
+      // Build request body
+      let invokeBody: any = {};
+      if (hasFile && uploadedFile) {
+        const base64 = await fileToBase64(uploadedFile);
+        invokeBody = {
+          file_base64: base64,
+          file_mime_type: uploadedFile.type || 'application/pdf',
+        };
+      } else {
+        invokeBody = { transcription: transcription.trim() };
+      }
+
       // Call AI
       const { data, error } = await supabase.functions.invoke('extract-tasks', {
-        body: { transcription: transcription.trim() },
+        body: invokeBody,
       });
 
       if (error) {
@@ -206,6 +259,7 @@ export function TranscriptionTaskExtractor({
 
       setTasks([]);
       setTranscription('');
+      clearFile();
       setState('idle');
       setTranscriptId(null);
       onTasksSaved?.();
@@ -262,14 +316,55 @@ export function TranscriptionTaskExtractor({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Cole a transcrição da reunião</Label>
-            <Textarea
-              value={transcription}
-              onChange={(e) => setTranscription(e.target.value)}
-              placeholder="Cole aqui a transcrição da reunião com o mentorado..."
-              className="min-h-[120px] bg-secondary/30"
-              disabled={state === 'reading' || state === 'extracting'}
-            />
+            <Label>Cole a transcrição ou envie um arquivo (PDF / Word)</Label>
+            
+            {/* File upload area */}
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_FILE_TYPES}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={state === 'reading' || state === 'extracting'}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Enviar PDF / Word
+              </Button>
+              {uploadedFile && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-secondary/50 text-sm">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="truncate max-w-[200px]">{uploadedFile.name}</span>
+                  <span className="text-muted-foreground text-xs">
+                    ({(uploadedFile.size / 1024).toFixed(0)}KB)
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={clearFile}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {!uploadedFile && (
+              <Textarea
+                value={transcription}
+                onChange={(e) => setTranscription(e.target.value)}
+                placeholder="Ou cole aqui a transcrição da reunião com o mentorado..."
+                className="min-h-[120px] bg-secondary/30"
+                disabled={state === 'reading' || state === 'extracting'}
+              />
+            )}
           </div>
 
           {state === 'reading' && (
@@ -300,7 +395,7 @@ export function TranscriptionTaskExtractor({
             {(state === 'idle' || state === 'error') && (
               <Button 
                 onClick={handleExtract} 
-                disabled={!transcription.trim()}
+                disabled={!transcription.trim() && !uploadedFile}
                 className="gradient-gold text-primary-foreground"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
