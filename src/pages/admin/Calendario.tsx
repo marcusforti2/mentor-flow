@@ -201,6 +201,7 @@ export default function Calendario() {
             
             eventsToCreate.push({
               mentor_id: mentorId,
+              tenant_id: activeMembership?.tenant_id || null,
               title: newEvent.title,
               description: newEvent.description || null,
               event_date: format(eventDate, 'yyyy-MM-dd'),
@@ -213,6 +214,7 @@ export default function Calendario() {
         } else {
           eventsToCreate.push({
             mentor_id: mentorId,
+            tenant_id: activeMembership?.tenant_id || null,
             title: newEvent.title,
             description: newEvent.description || null,
             event_date: format(newEvent.event_date, 'yyyy-MM-dd'),
