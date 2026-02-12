@@ -403,7 +403,13 @@ export default function CRMMentorados() {
 
         <TabsContent value="pipeline">
           {activeMembership?.tenant_id && (
-            <PipelineStageEditor tenantId={activeMembership.tenant_id} />
+            <PipelineStageEditor
+              tenantId={activeMembership.tenant_id}
+              mentorados={mentorados.map((m) => ({
+                id: m.id,
+                name: m.profile?.full_name || "Sem nome",
+              }))}
+            />
           )}
         </TabsContent>
       </Tabs>
