@@ -200,7 +200,7 @@ export function TaskListView({ mentoradoMembershipId, mentorMembershipId, tenant
                   return (
                     <Card key={task.id} className="ml-4 border-l-4 transition-all hover:shadow-sm" style={{ borderLeftColor: task.priority === 'high' ? 'hsl(var(--destructive))' : task.priority === 'low' ? 'hsl(142 71% 45%)' : 'hsl(45 93% 47%)' }}>
                       <CardContent className="p-3">
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-2">
                           <div className="flex-1 min-w-0 space-y-1">
                             <p className="text-sm font-medium leading-tight">{task.title}</p>
                             {task.description && (
@@ -226,7 +226,7 @@ export function TaskListView({ mentoradoMembershipId, mentorMembershipId, tenant
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1 pt-1">
                             <Select value={task.status_column} onValueChange={(v) => handleStatusChange(task.id, v)}>
                               <SelectTrigger className="h-7 w-[90px] text-[10px] px-2">
                                 <SelectValue />
@@ -270,7 +270,7 @@ export function TaskListView({ mentoradoMembershipId, mentorMembershipId, tenant
               <Label>Descrição</Label>
               <Textarea value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))} rows={3} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Prioridade</Label>
                 <Select value={editForm.priority} onValueChange={(v) => setEditForm(f => ({ ...f, priority: v }))}>
