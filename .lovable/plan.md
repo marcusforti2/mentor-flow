@@ -1,51 +1,91 @@
 
 
-## Ocultar Comunidade, Loja de Premios e Ranking
+## CRM: Cadastro Manual + Visibilidade para Mentor + Pipeline Customizavel
 
-### O que sera removido
+### 1. Cadastro Manual de Leads (Mentorado)
 
-**Mentorado (dock + dashboard + rotas):**
-- Comunidade (`/mentorado/comunidade`)
-- Loja de Premios (`/mentorado/loja`)
-- Ranking (`/mentorado/ranking`)
+Atualmente o mentorado so pode criar leads via upload de screenshots com IA. Vamos adicionar um botao "Cadastro Manual" ao lado do botao "Novo Lead com IA" na pagina `MeuCRM.tsx`.
 
-**Mentor (dock + dashboard):**
-- Rankings (`/mentor/ranking`) -- e uma pagina placeholder, sem funcionalidade
+Sera criado um novo componente `ManualLeadModal.tsx` com formulario simples:
+- Nome do contato (obrigatorio)
+- Telefone
+- Email
+- Empresa
+- Temperatura (frio/morno/quente)
+- Notas
 
-**Dashboard do Mentorado -- cards removidos:**
-- Card "Posicao no Ranking" (BentoCard sm com Trophy)
-- Quick Action "Ver Ranking" (terceira coluna do card wide)
-- Link "Loja" no card de Conquistas (badges)
+O lead sera inserido direto na tabela `crm_prospections` com o `membership_id` e `tenant_id` do mentorado, sem passar por analise de IA.
 
-**Dashboard do Mentor -- cards removidos:**
-- Card "Top Ranking" (BentoCard md com Trophy)
+**Arquivos:**
+- Criar `src/components/crm/ManualLeadModal.tsx`
+- Editar `src/pages/member/MeuCRM.tsx` (adicionar botao + modal)
 
 ---
 
-### Arquivos alterados
+### 2. Visibilidade Total para o Mentor
 
-1. **`src/components/layouts/MentoradoLayout.tsx`** (linhas 36, 39, 41)
-   - Remover do array `menuItems`: Comunidade, Loja de Premios, Ranking
-   - Remover imports nao utilizados: `Users`, `Gift`, `Trophy`
+A pagina `/mentor/crm-mentorados` (`CRMMentorados.tsx`) ja existe e mostra todos os leads de todos os mentorados do tenant. Porem, os status do pipeline estao inconsistentes entre a visao do mentorado e a do mentor.
 
-2. **`src/components/layouts/MentorLayout.tsx`** (linha 37)
-   - Remover do array `menuItems`: Rankings
-   - Remover import: `Trophy`
+**Correcao de status inconsistentes:**
+- O mentorado usa: `new`, `contacted`, `meeting_scheduled`, `proposal_sent`, `closed_won`, `closed_lost`
+- O detalhe do lead usa: `new`, `contacted`, `proposal`, `closed`, `lost`
+- O CRM do mentor usa: `new`, `contacted`, `proposal`, `closed`, `lost`
 
-3. **`src/pages/member/MemberDashboard.tsx`**
-   - Remover card de Ranking (linhas 162-173)
-   - Substituir quick action "Ver Ranking" por outro util (ex: "Meus Arquivos" ou "Centro SOS")
-   - Remover link "/app/loja" do card de badges, manter apenas a contagem de pontos sem link
-   - Remover import `Gift`
+Vamos padronizar TODOS para os 6 status do Kanban do mentorado, que sao mais completos e descritivos:
+- `new`, `contacted`, `meeting_scheduled`, `proposal_sent`, `closed_won`, `closed_lost`
 
-4. **`src/pages/admin/AdminDashboard.tsx`**
-   - Remover card "Top Ranking" (linhas 270-313)
-   - Remover `RankingItem` component
-   - Remover link `/mentor/ranking` references
+**Arquivos:**
+- Editar `src/components/crm/LeadDetailSheet.tsx` (atualizar `statusOptions`)
+- Editar `src/pages/admin/CRMMentorados.tsx` (atualizar `statusConfig`)
 
-5. **`src/App.tsx`**
-   - Remover rotas: `/mentorado/comunidade`, `/mentorado/loja`, `/mentorado/ranking`, `/mentor/ranking`
-   - Remover imports: `Comunidade`, `LojaPremios`
+---
 
-As rotas serao removidas para que nao sejam acessiveis nem por URL direta. Os componentes de pagina (`Comunidade.tsx`, `LojaPremios.tsx`) serao mantidos no codigo para reativacao futura.
+### 3. Pipeline Customizavel pelo Mentor
+
+O mentor podera configurar as colunas do pipeline que os mentorados verao. Isso sera feito por tenant.
+
+**Banco de dados - nova tabela `crm_pipeline_stages`:**
+```
+id (uuid, PK)
+tenant_id (uuid, FK -> tenants)
+name (text) - ex: "Abordagem Inicial"
+status_key (text) - ex: "contacted"
+color (text) - ex: "bg-blue-500"
+position (integer) - ordem de exibicao
+created_at (timestamptz)
+```
+
+Com RLS: mentores/admins do tenant podem CRUD, mentorados do tenant podem SELECT.
+
+**Logica de fallback:** Se o tenant nao tiver stages customizados, o sistema usa os 6 stages padrao (hardcoded). Assim nenhuma funcionalidade quebra para tenants existentes.
+
+**Configuracao pelo mentor:**
+- Nova aba "Pipeline" dentro da pagina de CRM do mentor (`CRMMentorados.tsx`)
+- Interface drag-and-drop simples para reordenar colunas
+- Adicionar/remover/renomear colunas
+- Cada coluna tem: nome, cor (seletor de cores predefinidas), e posicao
+
+**Mentorado usa os stages dinamicos:**
+- `MeuCRM.tsx` carrega os stages do tenant (ou usa fallback)
+- O Kanban renderiza as colunas dinamicamente
+
+**Arquivos:**
+- Migracao SQL: criar tabela `crm_pipeline_stages` com RLS
+- Criar `src/components/crm/PipelineStageEditor.tsx` (editor para mentor)
+- Editar `src/pages/admin/CRMMentorados.tsx` (nova aba "Pipeline")
+- Editar `src/pages/member/MeuCRM.tsx` (carregar stages dinamicos)
+- Editar `src/components/crm/LeadDetailSheet.tsx` (usar stages dinamicos)
+
+---
+
+### Resumo das alteracoes
+
+| Arquivo | Alteracao |
+|---|---|
+| `src/components/crm/ManualLeadModal.tsx` | NOVO - Formulario manual de lead |
+| `src/components/crm/PipelineStageEditor.tsx` | NOVO - Editor de colunas do pipeline |
+| `src/pages/member/MeuCRM.tsx` | Botao manual + stages dinamicos |
+| `src/pages/admin/CRMMentorados.tsx` | Aba Pipeline + status corrigidos |
+| `src/components/crm/LeadDetailSheet.tsx` | Status padronizados + dinamicos |
+| Migracao SQL | Tabela `crm_pipeline_stages` + RLS |
 
