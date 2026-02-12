@@ -112,7 +112,7 @@ export default function CentroSOS() {
         .from("mentorado_business_profiles")
         .select("*")
         .eq("mentorado_id", mentoradoId)
-        .single();
+        .maybeSingle();
 
       const businessContext = businessProfile ? {
         businessName: businessProfile.business_name,
@@ -171,7 +171,7 @@ export default function CentroSOS() {
         .from("mentorado_business_profiles")
         .select("*")
         .eq("mentorado_id", mentoradoId)
-        .single();
+        .maybeSingle();
 
       const businessContext = businessProfile ? {
         businessName: businessProfile.business_name,
@@ -228,11 +228,17 @@ export default function CentroSOS() {
         .eq("user_id", user?.id)
         .single();
 
+      // Map PT priority to EN (DB constraint expects low/medium/high/urgent)
+      const priorityMap: Record<string, string> = {
+        'baixa': 'low', 'média': 'medium', 'alta': 'high', 'urgente': 'urgent',
+        'low': 'low', 'medium': 'medium', 'high': 'high', 'urgent': 'urgent',
+      };
+      const mappedPriority = priorityMap[lastTriageResult.priority || 'medium'] || 'medium';
+
       const insertData = {
-        mentorado_id: mentoradoId,
         title,
         description: lastTriageResult.summaryForMentor || problemDescription,
-        priority: lastTriageResult.priority || "média",
+        priority: mappedPriority,
         category: lastTriageResult.category || "outro",
         status: "pending",
         initial_guidance: lastTriageResult.initialGuidance,
