@@ -64,10 +64,10 @@ export default function CentroSOS() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchMentoradoId();
+    if (activeMembership?.id) {
+      setMentoradoId(activeMembership.id);
     }
-  }, [user, activeMembership]);
+  }, [activeMembership]);
 
   useEffect(() => {
     if (mentoradoId) {
@@ -79,35 +79,15 @@ export default function CentroSOS() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
-  const fetchMentoradoId = async () => {
-    if (!user) return;
-    
-    // Try legacy mentorados table first (has FK to sos_requests)
-    const { data: mentorado } = await supabase
-      .from("mentorados")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
-    if (mentorado) {
-      setMentoradoId(mentorado.id);
-    } else if (activeMembership?.id) {
-      // Fallback to membership ID
-      setMentoradoId(activeMembership.id);
-    }
-  };
-
   const fetchSOSRequests = async () => {
     if (!mentoradoId) return;
 
-    // Query SOS requests by mentorado_id OR tenant_id
-    let query = supabase
+    // Query by membership_id (modern) OR mentorado_id (legacy)
+    const { data, error } = await supabase
       .from("sos_requests")
       .select("*")
-      .eq("mentorado_id", mentoradoId)
+      .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
       .order("created_at", { ascending: false });
-
-    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching SOS requests:", error);
