@@ -1,91 +1,75 @@
 
 
-## CRM: Cadastro Manual + Visibilidade para Mentor + Pipeline Customizavel
+## Rebranding: LBV TECH → Learning Brand
 
-### 1. Cadastro Manual de Leads (Mentorado)
-
-Atualmente o mentorado so pode criar leads via upload de screenshots com IA. Vamos adicionar um botao "Cadastro Manual" ao lado do botao "Novo Lead com IA" na pagina `MeuCRM.tsx`.
-
-Sera criado um novo componente `ManualLeadModal.tsx` com formulario simples:
-- Nome do contato (obrigatorio)
-- Telefone
-- Email
-- Empresa
-- Temperatura (frio/morno/quente)
-- Notas
-
-O lead sera inserido direto na tabela `crm_prospections` com o `membership_id` e `tenant_id` do mentorado, sem passar por analise de IA.
-
-**Arquivos:**
-- Criar `src/components/crm/ManualLeadModal.tsx`
-- Editar `src/pages/member/MeuCRM.tsx` (adicionar botao + modal)
+Troca completa de toda a identidade visual e textual da plataforma de "LBV TECH" para "Learning Brand".
 
 ---
 
-### 2. Visibilidade Total para o Mentor
+### Arquivos e alteracoes
 
-A pagina `/mentor/crm-mentorados` (`CRMMentorados.tsx`) ja existe e mostra todos os leads de todos os mentorados do tenant. Porem, os status do pipeline estao inconsistentes entre a visao do mentorado e a do mentor.
+#### 1. `index.html` — Meta tags e titulo
+- Substituir todas as ocorrencias de "LBV TECH" por "Learning Brand"
+- Atualizar `og:site_name`, `twitter:site`, titulo, descricao, author
 
-**Correcao de status inconsistentes:**
-- O mentorado usa: `new`, `contacted`, `meeting_scheduled`, `proposal_sent`, `closed_won`, `closed_lost`
-- O detalhe do lead usa: `new`, `contacted`, `proposal`, `closed`, `lost`
-- O CRM do mentor usa: `new`, `contacted`, `proposal`, `closed`, `lost`
+#### 2. `src/components/LBVLogo.tsx` — Renomear para `src/components/BrandLogo.tsx`
+- Renomear componente de `LBVLogo` para `BrandLogo`
+- Trocar texto "LBV" + "TECH" por "Learning" + "Brand"
+- Manter a mesma estetica visual (hexagono dourado, cores premium)
+- Trocar a letra "L" no hexagono para "LB" ou manter "L" (de Learning)
 
-Vamos padronizar TODOS para os 6 status do Kanban do mentorado, que sao mais completos e descritivos:
-- `new`, `contacted`, `meeting_scheduled`, `proposal_sent`, `closed_won`, `closed_lost`
+#### 3. Atualizar todos os imports de `LBVLogo` para `BrandLogo`
+Arquivos que importam o componente:
+- `src/pages/Auth.tsx` — trocar import + uso + texto "LBV TECH" no CardTitle
+- `src/pages/Index.tsx` — trocar import + uso + textos "LBV TECH" no hero, CTA e footer
+- `src/pages/Setup.tsx` — trocar import + uso
+- `src/components/layouts/MemberLayout.tsx` — trocar import + uso
+- `src/components/layouts/MentorLayout.tsx` — trocar import + uso
+- `src/components/layouts/MentoradoLayout.tsx` — trocar import + uso
+- `src/components/layouts/AdminLayout.tsx` — trocar import + uso (se existir)
+- `src/components/layouts/MasterLayout.tsx` — trocar import + uso (se existir)
+- `src/pages/master/ApresentacaoPage.tsx` — trocar import + uso
+- `src/components/presentation/SlideRenderer.tsx` — trocar import + uso
 
-**Arquivos:**
-- Editar `src/components/crm/LeadDetailSheet.tsx` (atualizar `statusOptions`)
-- Editar `src/pages/admin/CRMMentorados.tsx` (atualizar `statusConfig`)
+#### 4. `src/pages/master/MasterDashboard.tsx`
+- Trocar "LBV TECH" por "Learning Brand" no texto do dashboard
 
----
+#### 5. `src/components/email/FlowTestModal.tsx`
+- Trocar "LBV TECH" por "Learning Brand" no preview de email
 
-### 3. Pipeline Customizavel pelo Mentor
+#### 6. `src/pages/admin/PropriedadeIntelectual.tsx`
+- Trocar "LBV TECH" por "Learning Brand" no PDF e fallback
 
-O mentor podera configurar as colunas do pipeline que os mentorados verao. Isso sera feito por tenant.
+#### 7. `src/components/admin/CreateMenteeModal.tsx`
+- Trocar fallback "LBV TECH" por "Learning Brand"
 
-**Banco de dados - nova tabela `crm_pipeline_stages`:**
-```
-id (uuid, PK)
-tenant_id (uuid, FK -> tenants)
-name (text) - ex: "Abordagem Inicial"
-status_key (text) - ex: "contacted"
-color (text) - ex: "bg-blue-500"
-position (integer) - ordem de exibicao
-created_at (timestamptz)
-```
+#### 8. Edge Functions (emails e backend)
+- **`supabase/functions/send-otp/index.ts`** — Trocar "LBV TECH" no remetente, subject e corpo do email
+- **`supabase/functions/create-membership/index.ts`** — Trocar "LBV TECH" no remetente, subject, corpo e copyright
+- **`supabase/functions/create-invite/index.ts`** — Trocar "LBV TECH" no remetente, subject, corpo e copyright
+- **`supabase/functions/send-test-flow/index.ts`** — Trocar `FROM_EMAIL` e copyright
+- **`supabase/functions/send-sos-notification/index.ts`** — Trocar "LBV TECH" e "SOS LBV TECH" nos remetentes e rodapes
+- **`supabase/functions/system-fingerprint/index.ts`** — Trocar "LBV TECH" por "Learning Brand" no documento conceitual
+- **`supabase/functions/generate-email-campaign/index.ts`** — Sem ocorrencias de LBV (nenhuma alteracao)
 
-Com RLS: mentores/admins do tenant podem CRUD, mentorados do tenant podem SELECT.
-
-**Logica de fallback:** Se o tenant nao tiver stages customizados, o sistema usa os 6 stages padrao (hardcoded). Assim nenhuma funcionalidade quebra para tenants existentes.
-
-**Configuracao pelo mentor:**
-- Nova aba "Pipeline" dentro da pagina de CRM do mentor (`CRMMentorados.tsx`)
-- Interface drag-and-drop simples para reordenar colunas
-- Adicionar/remover/renomear colunas
-- Cada coluna tem: nome, cor (seletor de cores predefinidas), e posicao
-
-**Mentorado usa os stages dinamicos:**
-- `MeuCRM.tsx` carrega os stages do tenant (ou usa fallback)
-- O Kanban renderiza as colunas dinamicamente
-
-**Arquivos:**
-- Migracao SQL: criar tabela `crm_pipeline_stages` com RLS
-- Criar `src/components/crm/PipelineStageEditor.tsx` (editor para mentor)
-- Editar `src/pages/admin/CRMMentorados.tsx` (nova aba "Pipeline")
-- Editar `src/pages/member/MeuCRM.tsx` (carregar stages dinamicos)
-- Editar `src/components/crm/LeadDetailSheet.tsx` (usar stages dinamicos)
+#### 9. Dominio de email
+O dominio de envio `@equipe.aceleracaoforti.online` sera mantido (pois depende da configuracao do Resend/DNS). Apenas o nome do remetente muda de "LBV TECH" para "Learning Brand".
 
 ---
 
-### Resumo das alteracoes
+### Resumo
 
-| Arquivo | Alteracao |
+| Arquivo | Tipo de alteracao |
 |---|---|
-| `src/components/crm/ManualLeadModal.tsx` | NOVO - Formulario manual de lead |
-| `src/components/crm/PipelineStageEditor.tsx` | NOVO - Editor de colunas do pipeline |
-| `src/pages/member/MeuCRM.tsx` | Botao manual + stages dinamicos |
-| `src/pages/admin/CRMMentorados.tsx` | Aba Pipeline + status corrigidos |
-| `src/components/crm/LeadDetailSheet.tsx` | Status padronizados + dinamicos |
-| Migracao SQL | Tabela `crm_pipeline_stages` + RLS |
+| `index.html` | Meta tags |
+| `src/components/LBVLogo.tsx` → `BrandLogo.tsx` | Renomear + rebranding |
+| 10 arquivos `.tsx` que importam LBVLogo | Atualizar imports |
+| `src/pages/Auth.tsx`, `Index.tsx` | Textos de branding |
+| `src/pages/master/MasterDashboard.tsx` | Texto |
+| `src/components/email/FlowTestModal.tsx` | Preview de email |
+| `src/pages/admin/PropriedadeIntelectual.tsx` | PDF |
+| `src/components/admin/CreateMenteeModal.tsx` | Fallback |
+| 6 edge functions | Remetente e corpo de emails |
+
+Total: ~20 arquivos editados. Nenhuma alteracao de banco de dados necessaria.
 
