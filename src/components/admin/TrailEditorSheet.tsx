@@ -27,7 +27,16 @@ import {
   Image as ImageIcon,
   Upload,
   Loader2,
+  FileText,
+  Type,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
@@ -64,6 +73,10 @@ interface FormLesson {
   content_url: string;
   duration_minutes: number;
   order_index: number;
+  content_type: 'video' | 'text' | 'file';
+  text_content: string;
+  file_url: string;
+  file_name: string;
 }
 
 interface FormData {
@@ -113,6 +126,10 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
             content_url: l.content_url,
             duration_minutes: l.duration_minutes,
             order_index: l.order_index,
+            content_type: l.content_type || 'video',
+            text_content: l.text_content || '',
+            file_url: l.file_url || '',
+            file_name: l.file_name || '',
           })),
         })),
         total_lessons: trail.total_lessons,
@@ -188,6 +205,10 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
         content_url: '',
         duration_minutes: 10,
         order_index: module.lessons.length,
+        content_type: 'video',
+        text_content: '',
+        file_url: '',
+        file_name: '',
       },
     ];
     updateModule(moduleId, { lessons: newLessons });
@@ -229,6 +250,10 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
           description: l.description,
           duration_minutes: l.duration_minutes,
           content_url: l.content_url,
+          content_type: l.content_type,
+          text_content: l.text_content,
+          file_url: l.file_url,
+          file_name: l.file_name,
           order_index: li,
         })),
       })),
@@ -473,37 +498,151 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                                   >
                                     <div className="flex items-center gap-2 mt-2">
                                       <GripVertical className="h-3 w-3 text-muted-foreground" />
-                                      <Video className="h-4 w-4 text-accent" />
+                                      {lesson.content_type === 'video' && <Video className="h-4 w-4 text-accent" />}
+                                      {lesson.content_type === 'text' && <Type className="h-4 w-4 text-blue-400" />}
+                                      {lesson.content_type === 'file' && <FileText className="h-4 w-4 text-orange-400" />}
                                     </div>
                                     <div className="flex-1 space-y-2">
-                                      <Input
-                                        value={lesson.title}
-                                        onChange={(e) => updateLesson(module.id, lesson.id, { title: e.target.value })}
-                                        placeholder="Título da aula"
-                                        className="h-8 text-sm"
-                                      />
                                       <div className="flex gap-2">
                                         <Input
-                                          value={lesson.content_url}
-                                          onChange={(e) => updateLesson(module.id, lesson.id, { content_url: e.target.value })}
-                                          placeholder="ID do vídeo YouTube"
+                                          value={lesson.title}
+                                          onChange={(e) => updateLesson(module.id, lesson.id, { title: e.target.value })}
+                                          placeholder="Título da aula"
                                           className="h-8 text-sm flex-1"
                                         />
-                                        <Input
-                                          type="number"
-                                          value={lesson.duration_minutes}
-                                          onChange={(e) => updateLesson(module.id, lesson.id, { duration_minutes: parseInt(e.target.value) || 0 })}
-                                          placeholder="Min"
-                                          className="h-8 text-sm w-16"
-                                        />
+                                        <Select
+                                          value={lesson.content_type}
+                                          onValueChange={(val) => updateLesson(module.id, lesson.id, { content_type: val as 'video' | 'text' | 'file' })}
+                                        >
+                                          <SelectTrigger className="h-8 w-[130px] text-xs">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="video">
+                                              <span className="flex items-center gap-1.5"><Video className="h-3 w-3" /> Vídeo</span>
+                                            </SelectItem>
+                                            <SelectItem value="text">
+                                              <span className="flex items-center gap-1.5"><Type className="h-3 w-3" /> Texto</span>
+                                            </SelectItem>
+                                            <SelectItem value="file">
+                                              <span className="flex items-center gap-1.5"><FileText className="h-3 w-3" /> Arquivo</span>
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
                                       </div>
-                                      {lesson.content_url && getYouTubeThumbnail(lesson.content_url) && (
-                                        <div className="w-24 h-14 rounded overflow-hidden bg-muted">
-                                          <img 
-                                            src={getYouTubeThumbnail(lesson.content_url)}
-                                            alt="Thumbnail"
-                                            className="w-full h-full object-cover"
+
+                                      {/* Video fields */}
+                                      {lesson.content_type === 'video' && (
+                                        <>
+                                          <div className="flex gap-2">
+                                            <Input
+                                              value={lesson.content_url}
+                                              onChange={(e) => updateLesson(module.id, lesson.id, { content_url: e.target.value })}
+                                              placeholder="ID do vídeo YouTube"
+                                              className="h-8 text-sm flex-1"
+                                            />
+                                            <Input
+                                              type="number"
+                                              value={lesson.duration_minutes}
+                                              onChange={(e) => updateLesson(module.id, lesson.id, { duration_minutes: parseInt(e.target.value) || 0 })}
+                                              placeholder="Min"
+                                              className="h-8 text-sm w-16"
+                                            />
+                                          </div>
+                                          {lesson.content_url && getYouTubeThumbnail(lesson.content_url) && (
+                                            <div className="w-24 h-14 rounded overflow-hidden bg-muted">
+                                              <img 
+                                                src={getYouTubeThumbnail(lesson.content_url)}
+                                                alt="Thumbnail"
+                                                className="w-full h-full object-cover"
+                                              />
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Text/Markdown fields */}
+                                      {lesson.content_type === 'text' && (
+                                        <div className="space-y-1">
+                                          <p className="text-xs text-muted-foreground">
+                                            Suporta <strong>Markdown</strong>: # título, **negrito**, *itálico*, - listas, ```código```
+                                          </p>
+                                          <Textarea
+                                            value={lesson.text_content}
+                                            onChange={(e) => updateLesson(module.id, lesson.id, { text_content: e.target.value })}
+                                            placeholder="# Título da aula&#10;&#10;Escreva seu conteúdo aqui usando **Markdown**...&#10;&#10;- Item 1&#10;- Item 2"
+                                            className="min-h-[200px] text-sm font-mono bg-muted/50"
                                           />
+                                          <Input
+                                            type="number"
+                                            value={lesson.duration_minutes}
+                                            onChange={(e) => updateLesson(module.id, lesson.id, { duration_minutes: parseInt(e.target.value) || 0 })}
+                                            placeholder="Tempo estimado de leitura (min)"
+                                            className="h-8 text-sm w-48"
+                                          />
+                                        </div>
+                                      )}
+
+                                      {/* File upload fields */}
+                                      {lesson.content_type === 'file' && (
+                                        <div className="space-y-2">
+                                          {lesson.file_url ? (
+                                            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded text-sm">
+                                              <FileText className="h-4 w-4 text-primary" />
+                                              <span className="flex-1 truncate">{lesson.file_name || 'Arquivo enviado'}</span>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 text-xs"
+                                                onClick={() => updateLesson(module.id, lesson.id, { file_url: '', file_name: '' })}
+                                              >
+                                                Trocar
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <div>
+                                              <input
+                                                type="file"
+                                                className="hidden"
+                                                id={`file-${lesson.id}`}
+                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
+                                                onChange={async (e) => {
+                                                  const file = e.target.files?.[0];
+                                                  if (!file) return;
+                                                  if (file.size > 20 * 1024 * 1024) {
+                                                    toast.error('Arquivo muito grande. Máximo 20MB.');
+                                                    return;
+                                                  }
+                                                  try {
+                                                    const ext = file.name.split('.').pop();
+                                                    const path = `${activeMembership?.tenant_id || 'default'}/${Date.now()}.${ext}`;
+                                                    const { error: uploadError } = await supabase.storage
+                                                      .from('lesson-files')
+                                                      .upload(path, file, { upsert: true });
+                                                    if (uploadError) throw uploadError;
+                                                    const { data: urlData } = supabase.storage
+                                                      .from('lesson-files')
+                                                      .getPublicUrl(path);
+                                                    updateLesson(module.id, lesson.id, { 
+                                                      file_url: urlData.publicUrl, 
+                                                      file_name: file.name 
+                                                    });
+                                                    toast.success('Arquivo enviado!');
+                                                  } catch (err) {
+                                                    console.error('Upload error:', err);
+                                                    toast.error('Erro ao enviar arquivo');
+                                                  }
+                                                }}
+                                              />
+                                              <label
+                                                htmlFor={`file-${lesson.id}`}
+                                                className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors text-sm text-muted-foreground"
+                                              >
+                                                <Upload className="h-4 w-4" />
+                                                Enviar arquivo (PDF, DOC, XLS, PPT... até 20MB)
+                                              </label>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </div>

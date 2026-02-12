@@ -10,6 +10,7 @@ function createLesson(overrides: Partial<TrailLesson> = {}): TrailLesson {
     description: 'Introdução ao conceito de prospecção B2B',
     duration_minutes: 15,
     content_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    content_type: 'video' as const,
     order_index: 0,
     ...overrides,
   };
