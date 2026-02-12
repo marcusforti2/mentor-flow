@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface PipelineStage {
   id?: string;
   tenant_id?: string;
+  membership_id?: string | null;
   name: string;
   status_key: string;
   color: string;
@@ -19,7 +20,13 @@ const DEFAULT_STAGES: PipelineStage[] = [
   { name: "Perdidos", status_key: "closed_lost", color: "bg-red-500", position: 5 },
 ];
 
-export function usePipelineStages(tenantId?: string) {
+/**
+ * Load pipeline stages with priority:
+ * 1. Per-mentee stages (membership_id match)
+ * 2. Tenant-wide stages (membership_id IS NULL)
+ * 3. Hardcoded defaults
+ */
+export function usePipelineStages(tenantId?: string, membershipId?: string) {
   const [stages, setStages] = useState<PipelineStage[]>(DEFAULT_STAGES);
   const [isLoading, setIsLoading] = useState(true);
   const [isCustom, setIsCustom] = useState(false);
@@ -31,7 +38,7 @@ export function usePipelineStages(tenantId?: string) {
       return;
     }
     loadStages();
-  }, [tenantId]);
+  }, [tenantId, membershipId]);
 
   const loadStages = async () => {
     if (!tenantId) return;
@@ -45,8 +52,22 @@ export function usePipelineStages(tenantId?: string) {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        setStages(data as PipelineStage[]);
-        setIsCustom(true);
+        // Priority: per-mentee > tenant-wide > default
+        const menteeStages = membershipId
+          ? data.filter((s) => s.membership_id === membershipId)
+          : [];
+        const tenantStages = data.filter((s) => !s.membership_id);
+
+        if (menteeStages.length > 0) {
+          setStages(menteeStages as PipelineStage[]);
+          setIsCustom(true);
+        } else if (tenantStages.length > 0) {
+          setStages(tenantStages as PipelineStage[]);
+          setIsCustom(true);
+        } else {
+          setStages(DEFAULT_STAGES);
+          setIsCustom(false);
+        }
       } else {
         setStages(DEFAULT_STAGES);
         setIsCustom(false);

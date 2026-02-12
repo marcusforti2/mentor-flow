@@ -893,6 +893,7 @@ export type Database = {
           color: string
           created_at: string
           id: string
+          membership_id: string | null
           name: string
           position: number
           status_key: string
@@ -902,6 +903,7 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
+          membership_id?: string | null
           name: string
           position?: number
           status_key: string
@@ -911,12 +913,20 @@ export type Database = {
           color?: string
           created_at?: string
           id?: string
+          membership_id?: string | null
           name?: string
           position?: number
           status_key?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_stages_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_pipeline_stages_tenant_id_fkey"
             columns: ["tenant_id"]

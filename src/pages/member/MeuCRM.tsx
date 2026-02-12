@@ -36,7 +36,7 @@ export default function MeuCRM() {
 
   const membershipId = activeMembership?.id;
   const tenantId = activeMembership?.tenant_id;
-  const { stages } = usePipelineStages(tenantId);
+  const { stages } = usePipelineStages(tenantId, membershipId);
   const columns = stages.map((s) => ({ status: s.status_key, title: s.name, color: s.color }));
 
 
