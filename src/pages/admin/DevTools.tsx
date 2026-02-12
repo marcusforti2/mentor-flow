@@ -5,9 +5,9 @@
 export default function DevTools() {
    const { realMembership, isLoading } = useTenant();
 
-   // Only admin can access
-   if (!isLoading && realMembership?.role !== 'admin') {
-    return <Navigate to="/admin" replace />;
+   // Only admin or master_admin can access
+   if (!isLoading && realMembership?.role !== 'admin' && realMembership?.role !== 'master_admin') {
+    return <Navigate to="/mentor" replace />;
   }
 
   return <DevToolsPanel />;

@@ -53,7 +53,7 @@ export default function MemberDashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user || activeMembership?.role === 'mentor' || activeMembership?.role === 'admin') return;
+      if (!user || activeMembership?.role === 'mentor' || activeMembership?.role === 'admin' || activeMembership?.role === 'ops') return;
       
       try {
         // Use membership ID to fetch training analyses
