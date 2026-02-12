@@ -1,161 +1,84 @@
 
-# Integracoes Google Meet/Drive e tl;dv + Historico de Reunioes
 
-## Contexto
+# Melhorias no Sistema de Reunioes e Campan
 
-Os mentores usam Google Meet (gravacoes vao pro Drive) e tl;dv para gravar e transcrever reunioes. O objetivo e integrar esses servicos para que:
+Apos revisar todo o codigo implementado, identifiquei melhorias praticas que agregam valor real ao fluxo de mentores e mentorados.
 
-1. A IA busque automaticamente a transcricao e gere tarefas
-2. O video replay fique disponivel no perfil do mentorado
-3. O mentorado tenha um historico de reunioes realizadas
+---
 
-## Limitacoes Importantes
+## 1. Salvar API Key do tl;dv no perfil do mentor
 
-- **Google Drive**: Nao ha conector disponivel no workspace. Seria necessario OAuth completo (Google Cloud project, credenciais, etc). Complexidade alta.
-- **tl;dv**: Tem API publica (REST com API Key). Permite buscar reunioes, transcricoes e links de gravacao. Viavel com uma API key do usuario.
+**Problema atual**: O mentor precisa colar a API Key toda vez que abre o modal de importacao do tl;dv. Isso e repetitivo e frustrante.
 
-## Estrategia Proposta (Pragmatica)
+**Solucao**: Salvar a API Key (criptografada) na tabela `mentee_profiles` ou em uma nova coluna em `memberships`/`profiles`, para que o modal ja venha preenchido. O mentor ainda pode alterar se quiser.
 
-Implementar em 2 camadas:
+- Adicionar coluna `tldv_api_key` (TEXT, criptografada no frontend com base64 simples ou armazenada como secret no backend)
+- No `TldvImportModal`, buscar a key salva ao abrir e pre-preencher
+- Botao "Lembrar esta chave" para salvar
 
-### Camada 1 - Funcional Agora (sem dependencia de OAuth)
+---
 
-Criar um sistema de **registro de reunioes** no perfil do mentorado onde o mentor pode:
+## 2. Vincular tarefas geradas a reuniao de origem
 
-- Colar o link do video (Google Drive, tl;dv, YouTube, etc)
-- Colar a transcricao ou subir PDF (ja existe)
-- A IA extrai tarefas (ja funciona)
-- O video fica registrado e acessivel pelo mentorado
+**Problema atual**: Na lista de reunioes (`MeetingHistoryList`), nao ha indicacao de quantas tarefas foram geradas a partir de cada reuniao. O mentor nao sabe se ja processou aquela reuniao.
 
-Isso adiciona:
-- Secao "Reunioes" no perfil do mentorado (visao mentor e mentorado)
-- Player de video embutido (Google Drive embed, tl;dv embed, YouTube)
-- Historico de todas as reunioes com data, titulo, video e tarefas geradas
+**Solucao**: Exibir um badge com o numero de tarefas criadas por reuniao e um link para filtra-las no Kanban.
 
-### Camada 2 - Integracao tl;dv (com API Key)
+- Query de contagem de `campan_tasks` por `source_transcript_id`
+- Badge "3 tarefas" ao lado de cada reuniao
+- Badge "Nao processada" para reunioes sem tarefas
 
-Criar uma edge function que conecta na API do tl;dv para:
-- Buscar reunioes recentes do mentor
-- Puxar transcricao automaticamente
-- Puxar link da gravacao
-- Permitir "importar" direto para o perfil do mentorado com 1 clique
+---
 
-O mentor precisara fornecer sua API Key do tl;dv (obtida em tldv.io > Settings > API).
+## 3. Filtros e busca no historico de reunioes
 
-## Plano de Implementacao
+**Problema atual**: `MeetingHistoryList` lista todas as reunioes sem nenhum filtro. Com o tempo, a lista fica longa.
 
-### 1. Migracoes de Banco
+**Solucao**: Adicionar filtro por fonte (tl;dv / Drive / Manual) e busca por titulo.
 
-Adicionar colunas a `meeting_transcripts` para suportar video:
+- Barra de busca simples no topo
+- Chips de filtro por `video_source`
 
-- `video_url` (TEXT) - link do video/gravacao
-- `video_source` (TEXT) - "google_drive" | "tldv" | "youtube" | "other"
-- `meeting_title` (TEXT) - titulo da reuniao
-- `meeting_date` (TIMESTAMPTZ) - data/hora da reuniao
-- `tldv_meeting_id` (TEXT) - ID da reuniao no tl;dv (para deduplicacao)
+---
 
-### 2. Edge Function: fetch-tldv-meetings
+## 4. Indicador de status de processamento na reuniao
 
-Nova edge function que:
-- Recebe a API Key do tl;dv (passada pelo frontend, sem salvar no banco)
-- Chama `GET https://api.tldv.io/v1alpha1/meetings` para listar reunioes recentes
-- Para cada reuniao selecionada, chama `GET /meetings/{id}` e `GET /meetings/{id}/transcript`
-- Retorna lista de reunioes com transcricao e link de gravacao
+**Problema atual**: Nao ha feedback visual se uma reuniao ja teve tarefas extraidas ou nao.
 
-### 3. Atualizar TranscriptionTaskExtractor
+**Solucao**: Badge de status visual (Processada / Pendente / Sem transcricao) em cada card de reuniao.
 
-Adicionar uma terceira opcao de input alem de texto e PDF:
+---
 
-- Botao "Importar do tl;dv"
-- Abre modal pedindo API Key do tl;dv (com link para onde obter)
-- Lista reunioes recentes do tl;dv
-- Mentor seleciona a reuniao
-- Sistema importa transcricao + link do video automaticamente
-- IA extrai tarefas normalmente
+## 5. Paginacao no historico de reunioes
 
-Tambem adicionar campo para "Link do video da reuniao" (manual) para quem usa Google Drive direto.
+**Problema atual**: O componente carrega todas as reunioes de uma vez. Com volume alto, pode ficar lento.
 
-### 4. Secao "Reunioes" no Perfil do Mentorado (Visao Mentor)
+**Solucao**: Implementar paginacao simples (carregar mais / infinite scroll) com limite de 10 por vez.
 
-No sheet de detalhe do mentorado (`Mentorados.tsx`), adicionar uma aba/secao "Reunioes" que mostra:
-
-- Lista cronologica de reunioes (baseada em `meeting_transcripts`)
-- Cada item mostra: data, titulo, badge da fonte (tl;dv / Drive / Manual), numero de tarefas geradas
-- Botao para assistir o video (abre player embutido)
-- Botao para ver transcricao completa
-
-### 5. Aba "Reunioes" no Dock do Mentorado
-
-No layout do mentorado, adicionar nova aba "Reunioes" (ao lado de "Minhas Tarefas") que mostra:
-
-- Historico de reunioes com o mentor
-- Player de video para cada reuniao
-- Link para ver tarefas geradas a partir de cada reuniao
-
-### 6. Player de Video Universal
-
-Componente que detecta a fonte do video e renderiza o embed correto:
-
-- Google Drive: `https://drive.google.com/file/d/{ID}/preview`
-- tl;dv: link direto do tl;dv (abre em nova aba ou embed)
-- YouTube: embed padrao
+---
 
 ## Detalhes Tecnicos
 
-### Edge Function fetch-tldv-meetings
+### Migracao de banco
 
 ```text
-POST /fetch-tldv-meetings
-Body: { tldv_api_key: string, limit?: number }
-
-Chama: GET https://api.tldv.io/v1alpha1/meetings
-Headers: x-api-key: {tldv_api_key}
-
-Retorna: {
-  meetings: [{
-    id: string,
-    title: string,
-    date: string,
-    duration: number,
-    video_url: string,
-    transcript: string,
-    participants: string[]
-  }]
-}
+ALTER TABLE profiles ADD COLUMN tldv_api_key TEXT;
 ```
 
-### Alteracao em meeting_transcripts
+### Arquivos alterados
 
-```text
-ALTER TABLE meeting_transcripts
-  ADD COLUMN video_url TEXT,
-  ADD COLUMN video_source TEXT DEFAULT 'manual',
-  ADD COLUMN meeting_title TEXT,
-  ADD COLUMN meeting_date TIMESTAMPTZ,
-  ADD COLUMN tldv_meeting_id TEXT;
-```
+| Arquivo | Mudanca |
+|---------|---------|
+| Nova migracao SQL | Coluna `tldv_api_key` em `profiles` |
+| `MeetingHistoryList.tsx` | Filtros, busca, badge de tarefas, paginacao, status |
+| `TldvImportModal.tsx` | Pre-carregar e salvar API Key do perfil |
+| `TranscriptionTaskExtractor.tsx` | Passar callback para atualizar lista de reunioes apos extracao |
 
-### Novos Componentes
+### Prioridade sugerida
 
-| Componente | Descricao |
-|------------|-----------|
-| `MeetingHistoryList` | Lista de reunioes com filtros e acoes |
-| `MeetingVideoPlayer` | Player universal (Drive/YouTube/tl;dv) |
-| `TldvImportModal` | Modal para importar reunioes do tl;dv |
-| `MinhasReunioes.tsx` | Pagina do mentorado para ver historico |
+1. Badge de tarefas por reuniao (mais valor imediato)
+2. Salvar API Key do tl;dv
+3. Filtros e busca
+4. Status de processamento
+5. Paginacao
 
-### Arquivos Alterados
-
-| Arquivo | Tipo | Descricao |
-|---------|------|-----------|
-| Nova migracao SQL | Criar | Adicionar colunas de video/reuniao |
-| `supabase/functions/fetch-tldv-meetings/index.ts` | Criar | Edge function para API tl;dv |
-| `src/components/campan/MeetingHistoryList.tsx` | Criar | Lista de reunioes |
-| `src/components/campan/MeetingVideoPlayer.tsx` | Criar | Player de video universal |
-| `src/components/campan/TldvImportModal.tsx` | Criar | Modal importacao tl;dv |
-| `src/pages/member/MinhasReunioes.tsx` | Criar | Pagina de reunioes do mentorado |
-| `src/components/campan/TranscriptionTaskExtractor.tsx` | Editar | Adicionar importacao tl;dv + campo video URL |
-| `src/pages/admin/Mentorados.tsx` | Editar | Adicionar secao reunioes no perfil |
-| `src/components/layouts/MentoradoLayout.tsx` | Editar | Adicionar aba Reunioes no dock |
-| `src/App.tsx` | Editar | Rota para MinhasReunioes |
-| `supabase/config.toml` | Editar | Registrar nova edge function |
