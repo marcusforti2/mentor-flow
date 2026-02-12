@@ -813,20 +813,13 @@ const Mentorados = () => {
                 )}
 
                 {/* Files Manager */}
-                {selectedMentorado.legacy_mentorado_id && selectedMentorado.legacy_mentor_id ? (
-                  <MentoradoFilesManager
-                    mentoradoId={selectedMentorado.legacy_mentorado_id}
-                    mentorId={selectedMentorado.legacy_mentor_id}
-                    mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
-                    tenantId={activeMembership?.tenant_id}
-                    ownerMembershipId={selectedMentorado.membership_id}
-                  />
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Arquivos indisponíveis — perfil legado não encontrado.</p>
-                  </div>
-                )}
+                <MentoradoFilesManager
+                  mentoradoId={selectedMentorado.legacy_mentorado_id}
+                  mentorId={selectedMentorado.legacy_mentor_id}
+                  mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                  tenantId={activeMembership?.tenant_id}
+                  ownerMembershipId={selectedMentorado.membership_id}
+                />
               </div>
             </>
           )}

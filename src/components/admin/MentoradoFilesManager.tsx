@@ -51,8 +51,8 @@ interface MentoradoFile {
 }
 
 interface MentoradoFilesManagerProps {
-  mentoradoId: string;
-  mentorId: string;
+  mentoradoId?: string | null;
+  mentorId?: string | null;
   mentoradoName: string;
   tenantId?: string | null;
   ownerMembershipId?: string | null;
@@ -74,11 +74,19 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
   const fetchFiles = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('mentorado_files')
         .select('*')
-        .eq('mentorado_id', mentoradoId)
         .order('created_at', { ascending: false });
+
+      // Use owner_membership_id as primary identifier, fallback to mentorado_id
+      if (ownerMembershipId) {
+        query = query.eq('owner_membership_id', ownerMembershipId);
+      } else if (mentoradoId) {
+        query = query.eq('mentorado_id', mentoradoId);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       setFiles(data || []);
@@ -92,7 +100,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
 
   useEffect(() => {
     fetchFiles();
-  }, [mentoradoId]);
+  }, [mentoradoId, ownerMembershipId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image') => {
     const file = e.target.files?.[0];
@@ -102,7 +110,8 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${mentoradoId}/${type}s/${fileName}`;
+      const storagePath = ownerMembershipId || mentoradoId || 'unknown';
+      const filePath = `${storagePath}/${type}s/${fileName}`;
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
@@ -111,20 +120,22 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
 
       if (uploadError) throw uploadError;
 
-      // Save metadata
+      // Save metadata — legacy IDs are optional (nullable)
+      const insertData: Record<string, unknown> = {
+        tenant_id: tenantId || null,
+        owner_membership_id: ownerMembershipId || null,
+        file_type: type,
+        file_name: file.name,
+        file_path: filePath,
+        file_size: file.size,
+        mime_type: file.type,
+      };
+      if (mentoradoId) insertData.mentorado_id = mentoradoId;
+      if (mentorId) insertData.mentor_id = mentorId;
+
       const { error: dbError } = await supabase
         .from('mentorado_files')
-        .insert({
-          mentorado_id: mentoradoId,
-          mentor_id: mentorId,
-          tenant_id: tenantId || null,
-          owner_membership_id: ownerMembershipId || null,
-          file_type: type,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          mime_type: file.type,
-        });
+        .insert(insertData as any);
 
       if (dbError) throw dbError;
 
@@ -149,18 +160,20 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
 
     setIsUploading(true);
     try {
+      const linkData: Record<string, unknown> = {
+        tenant_id: tenantId || null,
+        owner_membership_id: ownerMembershipId || null,
+        file_type: 'link',
+        link_url: linkForm.url,
+        link_title: linkForm.title || linkForm.url,
+        description: linkForm.description,
+      };
+      if (mentoradoId) linkData.mentorado_id = mentoradoId;
+      if (mentorId) linkData.mentor_id = mentorId;
+
       const { error } = await supabase
         .from('mentorado_files')
-        .insert({
-          mentorado_id: mentoradoId,
-          mentor_id: mentorId,
-          tenant_id: tenantId || null,
-          owner_membership_id: ownerMembershipId || null,
-          file_type: 'link',
-          link_url: linkForm.url,
-          link_title: linkForm.title || linkForm.url,
-          description: linkForm.description,
-        });
+        .insert(linkData as any);
 
       if (error) throw error;
 
@@ -185,18 +198,20 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
 
     setIsUploading(true);
     try {
+      const noteData: Record<string, unknown> = {
+        tenant_id: tenantId || null,
+        owner_membership_id: ownerMembershipId || null,
+        file_type: 'note',
+        note_title: noteForm.title,
+        note_content: noteForm.content,
+        description: noteForm.description,
+      };
+      if (mentoradoId) noteData.mentorado_id = mentoradoId;
+      if (mentorId) noteData.mentor_id = mentorId;
+
       const { error } = await supabase
         .from('mentorado_files')
-        .insert({
-          mentorado_id: mentoradoId,
-          mentor_id: mentorId,
-          tenant_id: tenantId || null,
-          owner_membership_id: ownerMembershipId || null,
-          file_type: 'note',
-          note_title: noteForm.title,
-          note_content: noteForm.content,
-          description: noteForm.description,
-        });
+        .insert(noteData as any);
 
       if (error) throw error;
 
