@@ -817,119 +817,144 @@ const Mentorados = () => {
                 </SheetDescription>
               </SheetHeader>
               
-              <div className="mt-6 space-y-6">
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Dia na Jornada</p>
-                      <p className="text-2xl font-bold">{getJourneyDay(selectedMentorado.joined_at)}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Etapa</p>
-                      <Badge className={`mt-1 text-white border-0 ${getJourneyStage(selectedMentorado.joined_at).color}`}>
-                        {getJourneyStage(selectedMentorado.joined_at).name}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                {/* Contact Info */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground">Contato</h4>
-                  {selectedMentorado.profile?.phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedMentorado.profile.phone}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{selectedMentorado.profile?.email}</span>
+              <Tabs defaultValue="info" className="mt-4">
+                <TabsList className="w-full grid grid-cols-3">
+                  <TabsTrigger value="info" className="text-xs">Perfil</TabsTrigger>
+                  <TabsTrigger value="meetings" className="text-xs">
+                    <Video className="h-3 w-3 mr-1" />
+                    Reuniões
+                  </TabsTrigger>
+                  <TabsTrigger value="tasks" className="text-xs">
+                    <ClipboardList className="h-3 w-3 mr-1" />
+                    Tarefas
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* === TAB: Perfil === */}
+                <TabsContent value="info" className="space-y-6 mt-4">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card>
+                      <CardContent className="pt-4">
+                        <p className="text-sm text-muted-foreground">Dia na Jornada</p>
+                        <p className="text-2xl font-bold">{getJourneyDay(selectedMentorado.joined_at)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <p className="text-sm text-muted-foreground">Etapa</p>
+                        <Badge className={`mt-1 text-white border-0 ${getJourneyStage(selectedMentorado.joined_at).color}`}>
+                          {getJourneyStage(selectedMentorado.joined_at).name}
+                        </Badge>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>Entrou em {formatDate(selectedMentorado.joined_at)}</span>
-                  </div>
-                </div>
-                
-                {/* Business Info */}
-                {selectedMentorado.business_profile && (
+                  
+                  {/* Contact Info */}
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-muted-foreground">Negócio</h4>
-                    {selectedMentorado.business_profile.business_name && (
+                    <h4 className="text-sm font-medium text-muted-foreground">Contato</h4>
+                    {selectedMentorado.profile?.phone && (
                       <div className="flex items-center gap-2 text-sm">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedMentorado.business_profile.business_name}</span>
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{selectedMentorado.profile.phone}</span>
                       </div>
                     )}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{selectedMentorado.profile?.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>Entrou em {formatDate(selectedMentorado.joined_at)}</span>
+                    </div>
                   </div>
-                )}
+                  
+                  {/* Business Info */}
+                  {selectedMentorado.business_profile && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-muted-foreground">Negócio</h4>
+                      {selectedMentorado.business_profile.business_name && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span>{selectedMentorado.business_profile.business_name}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                {/* Register Meeting */}
-                {activeMembership && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Video className="h-4 w-4" />
-                      Reuniões
-                    </h4>
-                    <MeetingRegistrar
+                  {/* Files Manager */}
+                  <MentoradoFilesManager
+                    mentoradoId={selectedMentorado.legacy_mentorado_id}
+                    mentorId={selectedMentorado.legacy_mentor_id}
+                    mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                    tenantId={activeMembership?.tenant_id}
+                    ownerMembershipId={selectedMentorado.membership_id}
+                  />
+
+                  {/* Delete Button */}
+                  <div className="pt-4 border-t border-destructive/20">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="w-full" disabled={isDeleting}>
+                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                          Excluir Mentorado
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir mentorado?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Isso vai desativar o acesso de <strong>{selectedMentorado.profile?.full_name || 'este mentorado'}</strong> à plataforma. 
+                            Os dados não serão apagados permanentemente e podem ser reativados depois.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteMentorado(selectedMentorado)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Confirmar Exclusão
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </TabsContent>
+
+                {/* === TAB: Reuniões === */}
+                <TabsContent value="meetings" className="space-y-3 mt-4">
+                  {activeMembership && (
+                    <>
+                      <MeetingRegistrar
+                        mentoradoMembershipId={selectedMentorado.membership_id}
+                        mentorMembershipId={activeMembership.id}
+                        tenantId={activeMembership.tenant_id}
+                        onMeetingSaved={() => setMeetingRefreshKey(k => k + 1)}
+                      />
+                      <MeetingHistoryList
+                        mentoradoMembershipId={selectedMentorado.membership_id}
+                        mentorMembershipId={activeMembership.id}
+                        tenantId={activeMembership.tenant_id}
+                        refreshKey={meetingRefreshKey}
+                        onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
+                      />
+                    </>
+                  )}
+                </TabsContent>
+
+                {/* === TAB: Tarefas === */}
+                <TabsContent value="tasks" className="space-y-3 mt-4">
+                  {activeMembership && (
+                    <CampanKanban
                       mentoradoMembershipId={selectedMentorado.membership_id}
                       mentorMembershipId={activeMembership.id}
                       tenantId={activeMembership.tenant_id}
-                      onMeetingSaved={() => setMeetingRefreshKey(k => k + 1)}
+                      refreshKey={campanRefreshKey}
                     />
-                    <MeetingHistoryList
-                      mentoradoMembershipId={selectedMentorado.membership_id}
-                      mentorMembershipId={activeMembership.id}
-                      tenantId={activeMembership.tenant_id}
-                      refreshKey={meetingRefreshKey}
-                      onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
-                    />
-                  </div>
-                )}
-
-                {/* Files Manager */}
-                <MentoradoFilesManager
-                  mentoradoId={selectedMentorado.legacy_mentorado_id}
-                  mentorId={selectedMentorado.legacy_mentor_id}
-                  mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
-                  tenantId={activeMembership?.tenant_id}
-                  ownerMembershipId={selectedMentorado.membership_id}
-                />
-
-                {/* Delete Button */}
-                <div className="pt-4 border-t border-destructive/20">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="w-full" disabled={isDeleting}>
-                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                        Excluir Mentorado
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir mentorado?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Isso vai desativar o acesso de <strong>{selectedMentorado.profile?.full_name || 'este mentorado'}</strong> à plataforma. 
-                          Os dados não serão apagados permanentemente e podem ser reativados depois.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => handleDeleteMentorado(selectedMentorado)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Confirmar Exclusão
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </>
           )}
         </SheetContent>
