@@ -60,8 +60,20 @@ import {
   History,
   ExternalLink,
   ClipboardList,
-  FolderOpen
+  FolderOpen,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import Formularios from "./Formularios";
 import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager";
 import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
@@ -137,10 +149,49 @@ const Mentorados = () => {
   // Legacy mentor ID from mentors table (needed for mentorado_files, mentorado_invites)
   const [legacyMentorId, setLegacyMentorId] = useState<string | null>(null);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const { user } = useAuth();
   const { activeMembership } = useTenant();
   const { toast } = useToast();
   const createMembership = useCreateMembership();
+
+  const handleDeleteMentorado = async (mentorado: Mentorado) => {
+    setIsDeleting(true);
+    try {
+      // 1. Suspend the membership
+      const { error: membershipError } = await supabase
+        .from('memberships')
+        .update({ status: 'suspended' })
+        .eq('id', mentorado.membership_id);
+      
+      if (membershipError) throw membershipError;
+
+      // 2. Deactivate mentor-mentee assignment
+      await supabase
+        .from('mentor_mentee_assignments')
+        .update({ status: 'inactive' })
+        .eq('mentee_membership_id', mentorado.membership_id);
+
+      // 3. Update local state
+      setMentorados(prev => prev.filter(m => m.id !== mentorado.id));
+      setSelectedMentorado(null);
+
+      toast({
+        title: "Mentorado removido",
+        description: `${mentorado.profile?.full_name || 'Mentorado'} foi desativado com sucesso.`,
+      });
+    } catch (error: any) {
+      console.error('Error deleting mentorado:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível remover o mentorado.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const fetchData = async () => {
     if (!user || !activeMembership) return;
@@ -820,6 +871,36 @@ const Mentorados = () => {
                   tenantId={activeMembership?.tenant_id}
                   ownerMembershipId={selectedMentorado.membership_id}
                 />
+
+                {/* Delete Button */}
+                <div className="pt-4 border-t border-destructive/20">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full" disabled={isDeleting}>
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        Excluir Mentorado
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir mentorado?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Isso vai desativar o acesso de <strong>{selectedMentorado.profile?.full_name || 'este mentorado'}</strong> à plataforma. 
+                          Os dados não serão apagados permanentemente e podem ser reativados depois.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDeleteMentorado(selectedMentorado)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Confirmar Exclusão
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </>
           )}
