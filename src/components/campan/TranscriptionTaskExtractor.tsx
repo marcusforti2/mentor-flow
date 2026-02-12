@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -65,11 +65,21 @@ export function TranscriptionTaskExtractor({
   const [isSavingManual, setIsSavingManual] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [videoUrl, setVideoUrl] = useState('');
   const [showTldvModal, setShowTldvModal] = useState(false);
-  const [tldvMeetingId, setTldvMeetingId] = useState<string | null>(null);
-  const [meetingTitle, setMeetingTitle] = useState('');
-  const [meetingDate, setMeetingDate] = useState('');
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
+  const [existingMeetings, setExistingMeetings] = useState<{ id: string; meeting_title: string | null; meeting_date: string | null }[]>([]);
+
+  // Fetch existing meetings for reference select
+  useEffect(() => {
+    supabase
+      .from('meeting_transcripts')
+      .select('id, meeting_title, meeting_date')
+      .eq('mentorado_membership_id', mentoradoMembershipId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setExistingMeetings(data);
+      });
+  }, [mentoradoMembershipId]);
 
   const ACCEPTED_FILE_TYPES = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -120,18 +130,13 @@ export function TranscriptionTaskExtractor({
     setErrorMsg('');
 
     try {
-      // Save transcript with video metadata
+      // Save transcript record
       const insertData: any = {
         mentorado_membership_id: mentoradoMembershipId,
         mentor_membership_id: mentorMembershipId,
         tenant_id: tenantId,
         input_type: hasFile ? 'file' : 'text',
         raw_text: hasText ? transcription.trim() : (uploadedFile?.name || null),
-        video_url: videoUrl.trim() || null,
-        video_source: detectVideoSource(videoUrl),
-        meeting_title: meetingTitle.trim() || null,
-        meeting_date: meetingDate || null,
-        tldv_meeting_id: tldvMeetingId,
       };
 
       const { data: transcript, error: txError } = await supabase
@@ -239,7 +244,7 @@ export function TranscriptionTaskExtractor({
         due_date: t.due_date || null,
         tags: t.tags,
         status_column: 'a_fazer',
-        source_transcript_id: transcriptId,
+        source_transcript_id: selectedMeetingId || transcriptId,
         task_hash: `${mentoradoMembershipId}_${transcriptId}_${t.title.toLowerCase().replace(/\s+/g, '_').slice(0, 50)}`,
       }));
 
@@ -281,10 +286,7 @@ export function TranscriptionTaskExtractor({
       setTasks([]);
       setTranscription('');
       clearFile();
-      setVideoUrl('');
-      setMeetingTitle('');
-      setMeetingDate('');
-      setTldvMeetingId(null);
+      setSelectedMeetingId('');
       setState('idle');
       setTranscriptId(null);
       onTasksSaved?.();
@@ -332,12 +334,8 @@ export function TranscriptionTaskExtractor({
 
   const handleTldvImport = (data: { transcript: string; videoUrl: string; title: string; date: string; tldvMeetingId: string }) => {
     setTranscription(data.transcript);
-    setVideoUrl(data.videoUrl);
-    setMeetingTitle(data.title);
-    setMeetingDate(data.date ? new Date(data.date).toISOString().slice(0, 16) : '');
-    setTldvMeetingId(data.tldvMeetingId);
     clearFile();
-    toast.success('Dados do tl;dv importados. Clique em "Gerar tarefas com IA" para continuar.');
+    toast.success('Transcrição do tl;dv importada. Clique em "Gerar tarefas com IA" para continuar.');
   };
 
   return (
@@ -350,44 +348,26 @@ export function TranscriptionTaskExtractor({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Meeting metadata */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Reference existing meeting */}
+          {existingMeetings.length > 0 && (
             <div className="space-y-1">
-              <Label className="text-xs">Título da reunião</Label>
-              <Input
-                value={meetingTitle}
-                onChange={(e) => setMeetingTitle(e.target.value)}
-                placeholder="Ex: Reunião semanal"
-                className="h-8 text-sm"
-                disabled={state === 'reading' || state === 'extracting'}
-              />
+              <Label className="text-xs">Reunião de referência (opcional)</Label>
+              <Select value={selectedMeetingId} onValueChange={(v) => setSelectedMeetingId(v === '_none' ? '' : v)}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Selecione uma reunião já cadastrada..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Nenhuma</SelectItem>
+                  {existingMeetings.map(m => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.meeting_title || (m.meeting_date ? new Date(m.meeting_date).toLocaleDateString('pt-BR') : m.id.slice(0, 8))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Associe as tarefas a uma reunião já registrada no sistema.</p>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Data/hora</Label>
-              <Input
-                type="datetime-local"
-                value={meetingDate}
-                onChange={(e) => setMeetingDate(e.target.value)}
-                className="h-8 text-sm"
-                disabled={state === 'reading' || state === 'extracting'}
-              />
-            </div>
-          </div>
-
-          {/* Video URL */}
-          <div className="space-y-1">
-            <Label className="text-xs flex items-center gap-1.5">
-              <LinkIcon className="h-3 w-3" />
-              Link do vídeo (Google Drive, YouTube, tl;dv)
-            </Label>
-            <Input
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://drive.google.com/file/d/... ou link do tl;dv"
-              className="h-8 text-sm"
-              disabled={state === 'reading' || state === 'extracting'}
-            />
-          </div>
+          )}
 
           <div className="space-y-2">
             <Label>Transcrição (texto, PDF/Word ou importar do tl;dv)</Label>
