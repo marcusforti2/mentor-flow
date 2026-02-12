@@ -334,8 +334,20 @@ Deno.serve(async (req) => {
       // Memberships
       await admin.from('memberships').delete().eq('tenant_id', T)
 
-      // Profiles & auth users
+      // Profiles & auth users — ONLY delete users that have NO memberships in other tenants
       for (const uid of uIds) {
+        const { data: otherMemberships } = await admin.from('memberships')
+          .select('id')
+          .eq('user_id', uid)
+          .neq('tenant_id', T)
+          .limit(1)
+        
+        // Skip users that belong to real tenants
+        if (otherMemberships && otherMemberships.length > 0) {
+          console.log(`[seed] Skipping user ${uid} — has memberships in other tenants`)
+          continue
+        }
+        
         await admin.from('profiles').delete().eq('user_id', uid)
         try { await admin.auth.admin.deleteUser(uid) } catch (_) {}
       }
