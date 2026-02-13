@@ -1,122 +1,51 @@
 
+# Otimizacao de Performance - Carregamento de Paginas
 
-# Jornada CS - Sincronizacao e Etapas Editaveis
+## Problema Identificado
 
-## Problemas Encontrados
+O sistema carrega **todas as 30+ paginas de uma vez** quando o app inicia, mesmo que o usuario so visite uma. Alem disso, cada pagina faz varias consultas ao banco **em sequencia** (waterfall), e nao ha cache configurado — entao toda navegacao repete as mesmas queries do zero.
 
-Existem **dois conjuntos diferentes** de etapas da jornada hardcoded no codigo, completamente desconectados:
+## Solucao em 3 Frentes
 
-| Etapa | JornadaCS.tsx | Mentorados.tsx |
-|-------|--------------|----------------|
-| Onboarding | 0-7 dias | 0-7 dias |
-| Aprendizado | 8-30 dias | 8-30 dias |
-| Aplicacao | 31-**60** dias | 31-**90** dias |
-| Escala | 61-**90** dias | 91-**180** dias |
-| Maestria | 91-365 dias | 181-365 dias |
+### 1. Lazy Loading de Paginas (impacto maior)
 
-Ou seja, um mentorado pode aparecer em "Escala" na Jornada CS mas em "Aplicacao" na pagina de Mentorados. Alem disso, as etapas nao sao editaveis e o card do mentorado na Jornada CS nao abre o perfil dele.
+Atualmente todas as paginas sao importadas com `import` estatico no `App.tsx`. Isso significa que o bundle inicial inclui TODO o codigo de todas as paginas.
 
----
+**Mudanca:** Trocar os imports estaticos por `React.lazy()` + `Suspense`, para que cada pagina so seja carregada quando o usuario navegar ate ela.
 
-## Plano de Implementacao
+Exemplo da mudanca:
+- Antes: `import AdminDashboard from "./pages/admin/AdminDashboard";`
+- Depois: `const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));`
 
-### 1. Criar tabela `cs_journey_stages` no banco de dados
+Isso sera aplicado a todas as ~25 paginas (exceto Auth e Index que sao as de entrada). Um componente `Suspense` com um spinner sera adicionado envolvendo as `Routes`.
 
-Nova tabela para persistir as etapas editaveis por tenant:
+### 2. Cache do React Query (impacto medio)
 
-- `id` (UUID, PK)
-- `tenant_id` (UUID, FK tenants)
-- `name` (text) - ex: "Onboarding"
-- `stage_key` (text) - identificador unico
-- `day_start` (integer)
-- `day_end` (integer)
-- `color` (text) - classe Tailwind
-- `position` (integer) - ordem
-- `created_at`, `updated_at`
+O `QueryClient` atual nao tem configuracao de cache. Cada vez que voce navega, os dados sao buscados novamente.
 
-RLS: leitura para membros do tenant, escrita para staff (admin/mentor/ops).
+**Mudanca:** Configurar `staleTime` e `gcTime` no QueryClient para que dados recentes sejam reutilizados:
+- `staleTime: 5 minutos` — dados sao considerados "frescos" por 5 min, evitando re-fetch ao voltar para uma pagina
+- `gcTime: 10 minutos` — dados ficam em cache por 10 min antes de serem removidos
 
-### 2. Criar hook `useJourneyStages`
+### 3. Paralelizar Queries do Dashboard (impacto medio)
 
-Similar ao padrao ja existente em `usePipelineStages.tsx`:
+O hook `useDashboardStats` faz varias rodadas de consultas sequenciais (busca memberships, depois trails, depois rankings, depois profiles...). Algumas dessas rodadas podem ser combinadas ou ja estao em `Promise.all`, mas ha consultas adicionais que rodam em sequencia apos o primeiro batch.
 
-- Busca etapas do banco por `tenant_id`
-- Se nao houver customizacao, retorna os defaults padrao
-- Exporta `stages`, `isLoading`, `reload`, `getStageForDay()`
-- Funcao helper `getStageForDay(joinedAt)` centralizada
-
-### 3. Criar componente `JourneyStageEditor`
-
-Editor visual no estilo do `PipelineStageEditor` que ja existe no projeto:
-
-- Arrastar para reordenar (drag & drop)
-- Editar nome, cor, dia inicio e dia fim
-- Adicionar / remover etapas
-- Botao "Restaurar padrao"
-- Salvar no banco
-
-Acessivel dentro da pagina Jornada CS como um botao de engrenagem/configuracao no header.
-
-### 4. Sincronizar TUDO com o hook compartilhado
-
-Substituir os hardcoded `JOURNEY_STAGES` e `defaultJourneyStages` em:
-
-- **JornadaCS.tsx** - view kanban por jornada
-- **Mentorados.tsx** - filtros por etapa + badge no card + etapa no perfil detail
-
-Ambos passam a usar `useJourneyStages(tenantId)`, garantindo consistencia total.
-
-### 5. Melhorias de UX/UI
-
-**Card do mentorado na Jornada CS:**
-- Clicar no card abre o perfil do mentorado (navegar para `/mentor/mentorados` com o sheet aberto, ou abrir um sheet direto)
-- Adicionar mini-indicadores no card: icone se tem leads, se completou onboarding
-- Progress bar sutil mostrando % de progresso dentro da etapa atual
-
-**Header da Jornada CS:**
-- Botao "Configurar Etapas" com icone de engrenagem ao lado do seletor de filtro
-- Ao abrir, exibe o editor de etapas em um Sheet lateral
-
-**Perfil do mentorado (aba Perfil):**
-- A etapa exibida passa a ser a do banco (sincronizada)
-- Adicionar uma barra de progresso visual mostrando em que ponto da etapa o mentorado esta (ex: "Dia 45 de 90 na etapa Aplicacao")
-
-**Visual dos cards:**
-- Bordas com glow sutil na cor da etapa ao hover
-- Indicador de "alerta" para mentorados sem atividade recente (mais de 7 dias)
+**Mudanca:** Reorganizar as queries dependentes para maximizar paralelismo e reduzir o tempo total de carregamento do dashboard.
 
 ---
 
-## Detalhes Tecnicos
+## Resumo Tecnico
 
-**Migracao SQL:**
-```text
-CREATE TABLE cs_journey_stages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
-  name TEXT NOT NULL,
-  stage_key TEXT NOT NULL,
-  day_start INTEGER NOT NULL DEFAULT 0,
-  day_end INTEGER NOT NULL DEFAULT 7,
-  color TEXT NOT NULL DEFAULT 'bg-blue-500',
-  position INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/App.tsx` | Trocar ~25 imports estaticos por `React.lazy()`, adicionar `Suspense` com fallback de loading |
+| `src/App.tsx` | Configurar `QueryClient` com `defaultOptions.queries.staleTime` e `gcTime` |
+| `src/hooks/useDashboardStats.tsx` | Reorganizar queries sequenciais em blocos paralelos com `Promise.all` |
 
--- RLS
-ALTER TABLE cs_journey_stages ENABLE ROW LEVEL SECURITY;
--- Leitura: membros do tenant
--- Escrita: staff do tenant (is_tenant_staff)
-```
+## Resultado Esperado
 
-**Arquivos a criar:**
-- `src/hooks/useJourneyStages.tsx`
-- `src/components/admin/JourneyStageEditor.tsx`
-
-**Arquivos a modificar:**
-- `src/pages/admin/JornadaCS.tsx` - usar hook + adicionar botao editor + link card ao perfil
-- `src/pages/admin/Mentorados.tsx` - usar hook + sincronizar filtros e badges
-
-**Padrao seguido:** Mesmo padrao de `usePipelineStages` + `PipelineStageEditor` que ja existe no projeto para o CRM pipeline.
-
+- Navegacao entre paginas sera praticamente instantanea para paginas ja visitadas (cache)
+- Carregamento inicial do app sera mais rapido (menos codigo para baixar)
+- Dashboard carregara mais rapido (menos tempo esperando queries sequenciais)
+- O spinner de "Carregando..." aparecera brevemente apenas na primeira vez que uma pagina for acessada
