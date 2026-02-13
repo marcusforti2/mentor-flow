@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -20,10 +19,12 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
-  X,
-  MessageCircle,
-  Copy,
-  Check,
+  Calendar,
+  Instagram,
+  Linkedin,
+  Globe,
+  Building2,
+  StickyNote,
 } from "lucide-react";
 
 interface ParsedRow {
@@ -31,6 +32,11 @@ interface ParsedRow {
   email: string;
   phone?: string;
   business_name?: string;
+  joined_at?: string;
+  instagram?: string;
+  linkedin?: string;
+  website?: string;
+  notes?: string;
   selected?: boolean;
 }
 
@@ -169,6 +175,12 @@ export function MentoradoUploadModal({
             phone: row.phone?.trim() || undefined,
             role: 'mentee',
             mentor_membership_id: mentorMembershipId,
+            joined_at: row.joined_at || undefined,
+            business_name: row.business_name?.trim() || undefined,
+            instagram: row.instagram?.trim() || undefined,
+            linkedin: row.linkedin?.trim() || undefined,
+            website: row.website?.trim() || undefined,
+            notes: row.notes?.trim() || undefined,
           },
         });
 
@@ -207,6 +219,28 @@ export function MentoradoUploadModal({
   };
 
   const selectedCount = parsedData.filter(r => r.selected).length;
+
+  // Mapping badges for display
+  const mappingBadges = [
+    { key: 'full_name', label: 'Nome', icon: null },
+    { key: 'email', label: 'Email', icon: null },
+    { key: 'phone', label: 'Telefone', icon: null },
+    { key: 'business_name', label: 'Empresa', icon: Building2 },
+    { key: 'joined_at', label: 'Data Entrada', icon: Calendar },
+    { key: 'instagram', label: 'Instagram', icon: Instagram },
+    { key: 'linkedin', label: 'LinkedIn', icon: Linkedin },
+    { key: 'website', label: 'Site', icon: Globe },
+    { key: 'notes', label: 'Observações', icon: StickyNote },
+  ];
+
+  const formatDate = (isoStr?: string) => {
+    if (!isoStr) return null;
+    try {
+      return new Date(isoStr).toLocaleDateString('pt-BR');
+    } catch {
+      return isoStr;
+    }
+  };
 
   return (
     <Dialog
@@ -253,17 +287,16 @@ export function MentoradoUploadModal({
                 {isLoading ? 'Processando...' : 'Arraste ou clique para selecionar'}
               </p>
               <p className="text-sm text-muted-foreground">
-                Arquivos CSV com colunas: Nome, Email, Telefone, Empresa
+                Arquivos CSV com colunas: Nome, Email, Telefone, Empresa, Data Entrada, Redes Sociais...
               </p>
             </div>
 
             <div className="bg-secondary/50 rounded-lg p-4 text-sm text-muted-foreground">
-              <p className="font-medium mb-2">💡 Dicas para sua planilha:</p>
+              <p className="font-medium mb-2">💡 Importação Inteligente:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>A primeira linha deve ser o cabeçalho</li>
-                <li>As colunas "Nome" e "Email" são obrigatórias</li>
-                <li>Telefone e Empresa são opcionais</li>
-                <li>O sistema identifica as colunas automaticamente</li>
+                <li>A IA detecta automaticamente as colunas disponíveis</li>
+                <li>Colunas reconhecidas: Nome, Email, Telefone, Empresa, Data de Entrada, Instagram, LinkedIn, Site, Observações</li>
                 <li>Cada mentorado será criado com acesso via OTP (código por email)</li>
               </ul>
             </div>
@@ -273,28 +306,18 @@ export function MentoradoUploadModal({
         {/* Preview Step */}
         {step === 'preview' && (
           <div className="flex-1 min-h-0 space-y-4">
-            {/* Mapping Info */}
+            {/* Mapping Badges */}
             <div className="flex flex-wrap gap-2 text-xs">
-              {mapping.full_name && (
-                <span className="bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                  Nome: {mapping.full_name}
-                </span>
-              )}
-              {mapping.email && (
-                <span className="bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                  Email: {mapping.email}
-                </span>
-              )}
-              {mapping.phone && (
-                <span className="bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                  Telefone: {mapping.phone}
-                </span>
-              )}
-              {mapping.business_name && (
-                <span className="bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded">
-                  Empresa: {mapping.business_name}
-                </span>
-              )}
+              {mappingBadges.map(({ key, label, icon: Icon }) => {
+                const detected = mapping[key];
+                if (!detected) return null;
+                return (
+                  <span key={key} className="bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded flex items-center gap-1">
+                    {Icon && <Icon className="h-3 w-3" />}
+                    {label}: {detected}
+                  </span>
+                );
+              })}
             </div>
 
             {/* Errors */}
@@ -326,27 +349,33 @@ export function MentoradoUploadModal({
               </div>
             </div>
 
-            {/* Data Table */}
+            {/* Data Cards */}
             <ScrollArea className="h-[300px] border rounded-lg">
               <div className="p-4 space-y-2">
                 {parsedData.map((row, index) => (
                   <div
                     key={index}
-                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
                       row.selected ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-transparent'
                     }`}
                   >
                     <Checkbox
                       checked={row.selected}
                       onCheckedChange={() => toggleRowSelection(index)}
+                      className="mt-1"
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{row.full_name}</p>
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
                         {row.email && <span>{row.email}</span>}
                         {!row.email && <span className="text-destructive">⚠ Sem email</span>}
-                        {row.phone && <span>• {row.phone}</span>}
-                        {row.business_name && <span>• {row.business_name}</span>}
+                        {row.phone && <span>📱 {row.phone}</span>}
+                        {row.business_name && <span>🏢 {row.business_name}</span>}
+                        {row.joined_at && <span>📅 {formatDate(row.joined_at)}</span>}
+                        {row.instagram && <span>📸 {row.instagram}</span>}
+                        {row.linkedin && <span>💼 {row.linkedin}</span>}
+                        {row.website && <span>🌐 {row.website}</span>}
+                        {row.notes && <span className="truncate max-w-[200px]">📝 {row.notes}</span>}
                       </div>
                     </div>
                   </div>
@@ -398,7 +427,6 @@ export function MentoradoUploadModal({
               </div>
             </div>
 
-            {/* Errors from creation */}
             {errors.length > 0 && (
               <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">
                 <div className="flex items-center gap-2 font-medium mb-1">

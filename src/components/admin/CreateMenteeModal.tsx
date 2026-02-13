@@ -6,6 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -20,8 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, UserPlus, MessageCircle, Copy, Check } from 'lucide-react';
+import { Loader2, UserPlus, MessageCircle, Copy, Check, CalendarIcon, ChevronDown, Instagram, Linkedin, Globe, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface MentorOption {
   membership_id: string;
@@ -33,7 +40,6 @@ interface CreateMenteeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
-  /** If provided, tenant selector will be hidden and this tenant will be used */
   tenantId?: string;
 }
 
@@ -49,6 +55,14 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [joinedAt, setJoinedAt] = useState<Date | undefined>(undefined);
+  const [businessName, setBusinessName] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [website, setWebsite] = useState('');
+  const [notes, setNotes] = useState('');
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [businessOpen, setBusinessOpen] = useState(false);
   const [showWhatsAppMessage, setShowWhatsAppMessage] = useState(false);
   const [copied, setCopied] = useState(false);
   
@@ -59,20 +73,18 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     login_url: string;
   } | null>(null);
 
-  // Determine effective tenant for mentor lookup - master admin must select tenant explicitly
   const effectiveTenantForMentors = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
   // Fetch mentors when tenant changes or modal opens
   useEffect(() => {
     const fetchMentors = async () => {
       if (!effectiveTenantForMentors || !open) {
-        if (!open) return; // Don't clear when closed
+        if (!open) return;
         setMentorOptions([]);
         return;
       }
       
       setMentorsLoading(true);
-      console.log('[CreateMenteeModal] Fetching mentors for tenant:', effectiveTenantForMentors);
       try {
         const { data, error } = await supabase
           .from('memberships')
@@ -80,8 +92,6 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
           .eq('tenant_id', effectiveTenantForMentors)
           .eq('role', 'mentor')
           .eq('status', 'active');
-        
-        console.log('[CreateMenteeModal] Mentors query result:', { data, error });
         
         if (error) throw error;
         
@@ -100,15 +110,12 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
               email: profile?.email || '',
             };
           });
-          console.log('[CreateMenteeModal] Mentor options:', options);
           setMentorOptions(options);
           
-          // Auto-select if only one mentor
           if (options.length === 1) {
             setSelectedMentorId(options[0].membership_id);
           }
         } else {
-          console.log('[CreateMenteeModal] No mentors found');
           setMentorOptions([]);
         }
       } catch (err) {
@@ -122,10 +129,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     fetchMentors();
   }, [effectiveTenantForMentors, open]);
 
-  // Master admin should ALWAYS see tenant selector (they manage all tenants)
   const showTenantSelector = isMasterAdmin && !propTenantId;
-  
-  // Get effective tenant_id
   const effectiveTenantId = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
   const resetForm = () => {
@@ -134,6 +138,14 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     setFullName('');
     setEmail('');
     setPhone('');
+    setJoinedAt(undefined);
+    setBusinessName('');
+    setInstagram('');
+    setLinkedin('');
+    setWebsite('');
+    setNotes('');
+    setSocialOpen(false);
+    setBusinessOpen(false);
     setShowWhatsAppMessage(false);
     setCreatedInvite(null);
     setCopied(false);
@@ -152,7 +164,6 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
       return;
     }
 
-    // Get tenant name for the message
     const selectedTenant = tenants.find(t => t.id === effectiveTenantId);
     const tenantName = selectedTenant?.name || 'Learning Brand';
 
@@ -164,9 +175,14 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
         phone: phone.trim() || undefined,
         role: 'mentee',
         mentor_membership_id: selectedMentorId,
+        joined_at: joinedAt ? joinedAt.toISOString() : undefined,
+        business_name: businessName.trim() || undefined,
+        instagram: instagram.trim() || undefined,
+        linkedin: linkedin.trim() || undefined,
+        website: website.trim() || undefined,
+        notes: notes.trim() || undefined,
       });
 
-      // Use local data for WhatsApp message (more secure - backend returns minimal data)
       setCreatedInvite({
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
@@ -182,7 +198,6 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
 
   const getWhatsAppMessage = () => {
     if (!createdInvite) return '';
-    
     return `Olá, ${createdInvite.full_name}! 🎉
 
 Seu acesso ao programa *${createdInvite.tenant_name}* está liberado!
@@ -222,7 +237,7 @@ Estou aqui para ajudar! 🚀`;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md bg-slate-900 border-slate-700">
+      <DialogContent className="sm:max-w-md bg-slate-900 border-slate-700 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-slate-100">
             <UserPlus className="h-5 w-5 text-primary" />
@@ -258,7 +273,6 @@ Estou aqui para ajudar! 🚀`;
               </div>
             )}
 
-            {/* Mentor selector - always shown for master admin */}
             <div className="space-y-2">
               <Label htmlFor="mentor" className="text-slate-200">Mentor Responsável *</Label>
               <Select value={selectedMentorId} onValueChange={setSelectedMentorId} required>
@@ -306,17 +320,120 @@ Estou aqui para ajudar! 🚀`;
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-slate-200">Telefone WhatsApp</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="11999999999"
-                className="bg-slate-800 border-slate-700 text-slate-100"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-slate-200">WhatsApp</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="11999999999"
+                  className="bg-slate-800 border-slate-700 text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-200">Data de Início</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-slate-800 border-slate-700",
+                        !joinedAt && "text-slate-500"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {joinedAt ? format(joinedAt, 'dd/MM/yyyy', { locale: ptBR }) : 'Hoje'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={joinedAt}
+                      onSelect={setJoinedAt}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
+
+            {/* Collapsible: Redes Sociais */}
+            <Collapsible open={socialOpen} onOpenChange={setSocialOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" type="button" className="w-full justify-between text-slate-300 hover:text-slate-100 px-2 h-9">
+                  <span className="flex items-center gap-2 text-sm">
+                    <Instagram className="h-4 w-4" />
+                    Redes Sociais
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", socialOpen && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                <div className="space-y-2">
+                  <Label className="text-slate-200 text-xs">Instagram</Label>
+                  <Input
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="@usuario"
+                    className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-200 text-xs">LinkedIn</Label>
+                  <Input
+                    value={linkedin}
+                    onChange={(e) => setLinkedin(e.target.value)}
+                    placeholder="linkedin.com/in/usuario"
+                    className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-200 text-xs">Site / Portfolio</Label>
+                  <Input
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    placeholder="https://meusite.com"
+                    className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Collapsible: Negócio */}
+            <Collapsible open={businessOpen} onOpenChange={setBusinessOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" type="button" className="w-full justify-between text-slate-300 hover:text-slate-100 px-2 h-9">
+                  <span className="flex items-center gap-2 text-sm">
+                    <Building2 className="h-4 w-4" />
+                    Negócio
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", businessOpen && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                <div className="space-y-2">
+                  <Label className="text-slate-200 text-xs">Empresa / Negócio</Label>
+                  <Input
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Nome da empresa"
+                    className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-200 text-xs">Observações</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Anotações sobre o mentorado..."
+                    className="bg-slate-800 border-slate-700 text-slate-100 min-h-[60px]"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             <div className="flex gap-3 pt-4">
               <Button
@@ -350,12 +467,8 @@ Estou aqui para ajudar! 🚀`;
           <div className="space-y-4 mt-4">
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
               <Check className="h-8 w-8 text-green-500 mx-auto mb-2" />
-              <p className="text-green-400 font-medium">
-                Convite criado com sucesso!
-              </p>
-              <p className="text-sm text-slate-400 mt-1">
-                {createdInvite?.email}
-              </p>
+              <p className="text-green-400 font-medium">Convite criado com sucesso!</p>
+              <p className="text-sm text-slate-400 mt-1">{createdInvite?.email}</p>
             </div>
 
             <div className="space-y-2">
@@ -366,39 +479,15 @@ Estou aqui para ajudar! 🚀`;
             </div>
 
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={handleCopyMessage}
-                className="flex-1 border-slate-700 text-slate-300"
-              >
-                {copied ? (
-                  <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Copiado!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copiar
-                  </>
-                )}
+              <Button variant="outline" onClick={handleCopyMessage} className="flex-1 border-slate-700 text-slate-300">
+                {copied ? <><Check className="mr-2 h-4 w-4" />Copiado!</> : <><Copy className="mr-2 h-4 w-4" />Copiar</>}
               </Button>
-              <Button
-                onClick={handleOpenWhatsApp}
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                WhatsApp
+              <Button onClick={handleOpenWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700">
+                <MessageCircle className="mr-2 h-4 w-4" />WhatsApp
               </Button>
             </div>
 
-            <Button
-              variant="ghost"
-              onClick={handleClose}
-              className="w-full text-slate-400"
-            >
-              Fechar
-            </Button>
+            <Button variant="ghost" onClick={handleClose} className="w-full text-slate-400">Fechar</Button>
           </div>
         )}
       </DialogContent>

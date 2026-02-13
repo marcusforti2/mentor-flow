@@ -10,6 +10,11 @@ interface CreateMembershipParams {
   role: 'mentor' | 'mentee';
   mentor_membership_id?: string;
   joined_at?: string;
+  business_name?: string;
+  instagram?: string;
+  linkedin?: string;
+  website?: string;
+  notes?: string;
 }
 
 interface CreateMembershipResult {
