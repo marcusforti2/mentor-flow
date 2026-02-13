@@ -82,6 +82,7 @@ interface FlowEditorProps {
   flow: {
     id: string;
     name: string;
+    description?: string | null;
     nodes: any[];
     edges: any[];
     audience_type?: string;
@@ -89,7 +90,7 @@ interface FlowEditorProps {
   };
   templates: any[];
   tenantId?: string;
-  onSave: (nodes: any[], edges: any[], audienceType: string, audienceMembershipIds: string[]) => void;
+  onSave: (nodes: any[], edges: any[], audienceType: string, audienceMembershipIds: string[], name?: string, description?: string) => void;
   onClose: () => void;
 }
 
@@ -120,6 +121,10 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
   const [mentees, setMentees] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [menteesLoading, setMenteesLoading] = useState(false);
   const [audiencePanelOpen, setAudiencePanelOpen] = useState(false);
+  const [flowName, setFlowName] = useState(flow.name);
+  const [flowDescription, setFlowDescription] = useState(flow.description || '');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [showVariablesPanel, setShowVariablesPanel] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Load mentees when audience panel opens for "specific" mode
@@ -244,8 +249,17 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
   };
 
   const handleSave = () => {
-    onSave(nodes, edges, audienceType, audienceMembershipIds);
+    onSave(nodes, edges, audienceType, audienceMembershipIds, flowName, flowDescription);
   };
+
+  const AVAILABLE_VARIABLES = [
+    { tag: '{{nome}}', desc: 'Nome do mentorado' },
+    { tag: '{{email}}', desc: 'Email do mentorado' },
+    { tag: '{{business_name}}', desc: 'Nome do negócio' },
+    { tag: '{{mentor_name}}', desc: 'Nome do mentor' },
+    { tag: '{{dias_na_jornada}}', desc: 'Dias desde entrada' },
+    { tag: '{{trilhas_concluidas}}', desc: 'Trilhas concluídas' },
+  ];
 
   const toggleMenteeSelection = (menteeId: string) => {
     setAudienceMembershipIds(prev =>
@@ -264,7 +278,22 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-xl font-bold">{flow.name}</h2>
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={flowName}
+                  onChange={(e) => setFlowName(e.target.value)}
+                  onBlur={() => setIsEditingName(false)}
+                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
+                  className="h-8 text-lg font-bold w-64"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <h2 className="text-xl font-bold cursor-pointer hover:text-primary transition-colors" onClick={() => setIsEditingName(true)} title="Clique para renomear">
+                {flowName}
+              </h2>
+            )}
             <p className="text-sm text-muted-foreground">Editor de Fluxo</p>
           </div>
         </div>
@@ -421,6 +450,27 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                 ))}
               </div>
             </div>
+          </Panel>
+
+          {/* Variables Panel */}
+          <Panel position="bottom-left" className="bg-card/95 backdrop-blur-sm border border-border rounded-2xl p-3 shadow-xl max-w-[260px]">
+            <button
+              onClick={() => setShowVariablesPanel(!showVariablesPanel)}
+              className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1 hover:text-foreground transition-colors"
+            >
+              <Zap className="h-3 w-3" />
+              Variáveis Dinâmicas {showVariablesPanel ? '▾' : '▸'}
+            </button>
+            {showVariablesPanel && (
+              <div className="mt-2 space-y-1">
+                {AVAILABLE_VARIABLES.map(v => (
+                  <div key={v.tag} className="flex items-center justify-between gap-2 text-xs p-1.5 rounded-md hover:bg-muted/50">
+                    <code className="font-mono text-primary text-[10px]">{v.tag}</code>
+                    <span className="text-muted-foreground text-[10px]">{v.desc}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Panel>
         </ReactFlow>
       </div>
