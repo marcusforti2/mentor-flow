@@ -133,9 +133,9 @@
        {/* Top bar with logo and user - only on dashboard */}
        {isDashboard && (
           <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0">
-           <Link to="/mentor" className="ml-28">
-             <BrandLogo variant="full" size="sm" />
-           </Link>
+            <Link to="/mentor" className="md:ml-28">
+              <BrandLogo variant="full" size="sm" />
+            </Link>
  
            <div className="flex items-center gap-3">
              <Tooltip>
@@ -182,10 +182,10 @@
         <main className={cn(
           "min-h-screen transition-all duration-300",
           isDashboard 
-            ? "ml-28 pt-20 px-6 pb-6" 
+            ? "md:ml-28 pt-20 px-4 md:px-6 pb-24 md:pb-6" 
             : "pt-20 px-4 md:px-6 pb-6"
         )}>
-         <Outlet />
+          <Outlet />
        </main>
  
        <SOSNotificationAlert />
