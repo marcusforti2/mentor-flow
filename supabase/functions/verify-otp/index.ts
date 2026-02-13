@@ -115,10 +115,13 @@ serve(async (req) => {
     // ============================================
     // STEP 2: CHECK IF USER EXISTS
     // ============================================
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
+    // Use getUserByEmail instead of listUsers to avoid NULL scan errors on auth.users
+    let existingUser = null;
+    const { data: userByEmail, error: userLookupError } = await supabase.auth.admin.getUserByEmail(normalizedEmail);
+    if (!userLookupError && userByEmail?.user) {
+      existingUser = userByEmail.user;
+    }
+    console.log("verify-otp: User lookup result:", { found: !!existingUser, error: userLookupError?.message });
 
     // ============================================
     // STEP 3A: EXISTING USER - BOOTSTRAP LOGIN
