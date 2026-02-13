@@ -36,20 +36,20 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
         <div>
-          <h1 className="text-4xl font-display font-bold text-foreground">
+          <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground">
             Olá, {profile?.full_name?.split(' ')[0] || 'Mentor'}
           </h1>
-          <p className="text-muted-foreground mt-2 text-lg">
+          <p className="text-muted-foreground mt-2 text-base sm:text-lg">
             {hasData 
               ? 'Aqui está o resumo da sua mentoria hoje.'
               : 'Sua mentoria está pronta para começar!'}
           </p>
         </div>
-        <div className="glass-card px-4 py-2 rounded-full flex items-center gap-2">
+        <div className="glass-card px-3 py-1.5 rounded-full flex items-center gap-2 shrink-0">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-sm text-muted-foreground">Todos os sistemas operacionais</span>
+          <span className="text-xs sm:text-sm text-muted-foreground">Sistemas operacionais</span>
         </div>
       </div>
 
@@ -121,21 +121,21 @@ export default function AdminDashboard() {
 
         {/* Quick Actions - Wide card */}
         <BentoCard size="wide" className="!p-0 overflow-hidden">
-          <div className="h-full flex">
-            <Link to="/mentor/jornada-cs" className="flex-1 p-6 group hover:bg-primary/5 transition-colors border-r border-border">
-              <Target className="h-8 w-8 text-primary mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="font-semibold text-foreground text-lg">Gerenciar Jornada</h3>
-              <p className="text-muted-foreground text-sm mt-1">Etapas e sucesso do cliente</p>
+          <div className="h-full flex flex-col sm:flex-row">
+            <Link to="/mentor/jornada-cs" className="flex-1 p-4 sm:p-6 group hover:bg-primary/5 transition-colors border-b sm:border-b-0 sm:border-r border-border">
+              <Target className="h-6 sm:h-8 w-6 sm:w-8 text-primary mb-2 sm:mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="font-semibold text-foreground text-base sm:text-lg">Gerenciar Jornada</h3>
+              <p className="text-muted-foreground text-xs sm:text-sm mt-1">Etapas e sucesso do cliente</p>
             </Link>
-            <Link to="/mentor/mentorados" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
-              <Users className="h-8 w-8 text-accent mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="font-semibold text-foreground text-lg">Ver Mentorados</h3>
-              <p className="text-muted-foreground text-sm mt-1">Gestão e progresso</p>
+            <Link to="/mentor/mentorados" className="flex-1 p-4 sm:p-6 group hover:bg-accent/5 transition-colors border-b sm:border-b-0 sm:border-r border-border">
+              <Users className="h-6 sm:h-8 w-6 sm:w-8 text-accent mb-2 sm:mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="font-semibold text-foreground text-base sm:text-lg">Ver Mentorados</h3>
+              <p className="text-muted-foreground text-xs sm:text-sm mt-1">Gestão e progresso</p>
             </Link>
-            <Link to="/mentor/trilhas" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors">
-              <BookOpen className="h-8 w-8 text-emerald-500 mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="font-semibold text-foreground text-lg">Criar Trilha</h3>
-              <p className="text-muted-foreground text-sm mt-1">Novos conteúdos</p>
+            <Link to="/mentor/trilhas" className="flex-1 p-4 sm:p-6 group hover:bg-emerald-500/5 transition-colors">
+              <BookOpen className="h-6 sm:h-8 w-6 sm:w-8 text-emerald-500 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="font-semibold text-foreground text-base sm:text-lg">Criar Trilha</h3>
+              <p className="text-muted-foreground text-xs sm:text-sm mt-1">Novos conteúdos</p>
             </Link>
           </div>
         </BentoCard>

@@ -316,11 +316,28 @@
   }
 
   .floating-dock-vertical {
-    left: 1.5rem;
-    top: 50%;
-    transform: translateY(-50%) translateX(0);
-    flex-direction: column;
-    padding: 0.75rem 0.5rem;
+    /* Mobile: bottom horizontal dock */
+    left: 50%;
+    bottom: 1rem;
+    top: auto;
+    transform: translateX(-50%);
+    flex-direction: row;
+    padding: 0.5rem;
+    overflow-x: auto;
+    max-width: calc(100vw - 2rem);
+  }
+
+  @media (min-width: 768px) {
+    .floating-dock-vertical {
+      left: 1.5rem;
+      top: 50%;
+      bottom: auto;
+      transform: translateY(-50%) translateX(0);
+      flex-direction: column;
+      padding: 0.75rem 0.5rem;
+      overflow-x: visible;
+      max-width: none;
+    }
   }
 
   .floating-dock-vertical::before {
