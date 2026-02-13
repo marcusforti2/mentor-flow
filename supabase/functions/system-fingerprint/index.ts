@@ -138,6 +138,24 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+    // Auth check - only admins should generate fingerprints
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const { createClient: createAuthClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const supabaseAuth = createAuthClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { error: authError } = await supabaseAuth.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (authError) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 

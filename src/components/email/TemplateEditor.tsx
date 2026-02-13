@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,7 +153,7 @@ export default function TemplateEditor({ template, mentorId, onSave, onClose }: 
               <p className="text-sm"><strong>Assunto:</strong> {subject.replace(/\{\{nome\}\}/g, 'João Silva')}</p>
             </div>
             <div className="p-4 border rounded-lg bg-white">
-              <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml()) }} />
             </div>
           </div>
         </DialogContent>

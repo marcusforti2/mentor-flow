@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -285,9 +286,11 @@ export default function FlowTestModal({
                     <div 
                       className="text-sm text-gray-800 email-preview-content"
                       dangerouslySetInnerHTML={{ 
-                        __html: previewContent.body
-                          .replace(/\{\{nome\}\}/g, '<strong>João Silva</strong>')
-                      }} 
+                        __html: DOMPurify.sanitize(
+                          previewContent.body
+                            .replace(/\{\{nome\}\}/g, '<strong>João Silva</strong>')
+                        )
+                      }}
                     />
                   ) : (
                     <p className="text-sm text-gray-400 text-center py-8">
