@@ -118,7 +118,7 @@ export default function MemberDashboard() {
             {displayName?.split(' ')[0] || 'Mentorado'} <span className="text-gradient-gold">🚀</span>
           </h1>
         </div>
-        <Link to="/app/trilhas">
+        <Link to="/mentorado/trilhas">
           <Button className="btn-premium px-6 py-5 text-base">
             <Play className="mr-2 h-5 w-5" />
             <span>{hasTrailProgress ? 'Continuar Trilha' : 'Iniciar Trilha'}</span>
@@ -149,11 +149,11 @@ export default function MemberDashboard() {
                 </div>
               ) : (
                 <EmptyState icon={<BookOpen className="h-12 w-12 text-muted-foreground/50" />} title="Nenhuma trilha iniciada" description="Comece sua jornada de aprendizado agora"
-                  action={<Link to="/app/trilhas"><Button><Play className="h-4 w-4 mr-2" />Explorar Trilhas</Button></Link>} />
+                  action={<Link to="/mentorado/trilhas"><Button><Play className="h-4 w-4 mr-2" />Explorar Trilhas</Button></Link>} />
               )}
             </div>
             {hasTrailProgress && (
-              <Link to="/app/trilhas" className="mt-6"><Button variant="outline" className="w-full">Ver Todas as Trilhas<ArrowUpRight className="ml-2 h-4 w-4" /></Button></Link>
+              <Link to="/mentorado/trilhas" className="mt-6"><Button variant="outline" className="w-full">Ver Todas as Trilhas<ArrowUpRight className="ml-2 h-4 w-4" /></Button></Link>
             )}
           </div>
         </BentoCard>
@@ -218,17 +218,17 @@ export default function MemberDashboard() {
         {/* Quick Actions */}
         <BentoCard size="wide" className="!p-0">
           <div className="h-full flex">
-            <Link to="/app/meu-crm" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
+            <Link to="/mentorado/meu-crm" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
               <div className="h-12 w-12 rounded-2xl bg-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Target className="h-6 w-6 text-accent" /></div>
               <h3 className="font-semibold text-foreground text-lg">Registrar Prospecção</h3>
               <p className="text-muted-foreground text-sm mt-1">Ganhe pontos no ranking</p>
             </Link>
-            <Link to="/app/ferramentas" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors border-r border-border">
+            <Link to="/mentorado/ferramentas" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors border-r border-border">
               <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><TrendingUp className="h-6 w-6 text-emerald-500" /></div>
               <h3 className="font-semibold text-foreground text-lg">Ferramentas IA</h3>
               <p className="text-muted-foreground text-sm mt-1">IA analisa sua performance</p>
             </Link>
-            <Link to="/app/meus-arquivos" className="flex-1 p-6 group hover:bg-primary/5 transition-colors">
+            <Link to="/mentorado/meus-arquivos" className="flex-1 p-6 group hover:bg-primary/5 transition-colors">
               <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><FolderOpen className="h-6 w-6 text-primary" /></div>
               <h3 className="font-semibold text-foreground text-lg">Meus Arquivos</h3>
               <p className="text-muted-foreground text-sm mt-1">Acesse seus documentos</p>
@@ -244,7 +244,7 @@ export default function MemberDashboard() {
               {isLoadingStats ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : avgScore !== null ? (
                 <div className="text-center"><p className={`stat-value ${getScoreColor(avgScore)}`}>{avgScore}</p><p className="text-xs text-muted-foreground mt-1">{totalAnalyses} análise{totalAnalyses !== 1 ? 's' : ''} de treinamento</p></div>
               ) : (
-                <Link to="/app/ferramentas" className="text-center"><p className="text-muted-foreground text-sm">Nenhuma análise</p><p className="text-xs text-primary mt-1 hover:underline">Usar ferramentas IA →</p></Link>
+                <Link to="/mentorado/ferramentas" className="text-center"><p className="text-muted-foreground text-sm">Nenhuma análise</p><p className="text-xs text-primary mt-1 hover:underline">Usar ferramentas IA →</p></Link>
               )}
             </div>
           </div>
