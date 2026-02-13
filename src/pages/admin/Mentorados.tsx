@@ -4,6 +4,8 @@ import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useJourneyStages } from "@/hooks/useJourneyStages";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,15 +119,9 @@ interface Mentorado {
 }
 
 type JourneyFilter = 'all' | 'week' | 'month' | 'stage';
-type StageFilter = 'all' | 'onboarding' | 'aprendizado' | 'aplicacao' | 'escala' | 'maestria';
+type StageFilter = 'all' | string;
 
-const JOURNEY_STAGES = [
-  { id: 'onboarding', name: 'Onboarding', minDay: 0, maxDay: 7, color: 'bg-blue-500' },
-  { id: 'aprendizado', name: 'Aprendizado', minDay: 8, maxDay: 30, color: 'bg-purple-500' },
-  { id: 'aplicacao', name: 'Aplicação', minDay: 31, maxDay: 90, color: 'bg-amber-500' },
-  { id: 'escala', name: 'Escala', minDay: 91, maxDay: 180, color: 'bg-green-500' },
-  { id: 'maestria', name: 'Maestria', minDay: 181, maxDay: 365, color: 'bg-rose-500' },
-];
+// JOURNEY_STAGES removed - now uses useJourneyStages hook
 
 const Mentorados = () => {
   const [mentorados, setMentorados] = useState<Mentorado[]>([]);
@@ -176,6 +172,8 @@ const Mentorados = () => {
   const { activeMembership } = useTenant();
   const { toast } = useToast();
   const createMembership = useCreateMembership();
+  const tenantId = activeMembership?.tenant_id;
+  const { stages: journeyStages, getStageForDay, getJourneyDay: getJourneyDayFromHook } = useJourneyStages(tenantId);
 
   const handleDeleteMentorado = async (mentorado: Mentorado) => {
     setIsDeleting(true);
@@ -325,8 +323,7 @@ const Mentorados = () => {
   };
 
   const getJourneyStage = (joinedAt: string | null) => {
-    const days = getJourneyDay(joinedAt);
-    return JOURNEY_STAGES.find(s => days >= s.minDay && days <= s.maxDay) || JOURNEY_STAGES[4];
+    return getStageForDay(joinedAt);
   };
 
   const handleManualAdd = async () => {
@@ -414,7 +411,7 @@ const Mentorados = () => {
     
     if (journeyFilter === 'stage' && stageFilter !== 'all') {
       const stage = getJourneyStage(m.joined_at);
-      if (stage.id !== stageFilter) return false;
+      if (stage.stage_key !== stageFilter) return false;
     }
     
     return true;
@@ -787,8 +784,8 @@ const Mentorados = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
-              {JOURNEY_STAGES.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+              {journeyStages.map((stage) => (
+                <SelectItem key={stage.stage_key} value={stage.stage_key}>{stage.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -955,22 +952,42 @@ const Mentorados = () => {
                   </div>
 
                   {/* Journey Stats */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card>
-                      <CardContent className="pt-4">
-                        <p className="text-sm text-muted-foreground">Dia na Jornada</p>
-                        <p className="text-2xl font-bold">{getJourneyDay(selectedMentorado.joined_at)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-4">
-                        <p className="text-sm text-muted-foreground">Etapa</p>
-                        <Badge className={`mt-1 text-white border-0 ${getJourneyStage(selectedMentorado.joined_at).color}`}>
-                          {getJourneyStage(selectedMentorado.joined_at).name}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  {(() => {
+                    const stage = getJourneyStage(selectedMentorado.joined_at);
+                    const day = getJourneyDay(selectedMentorado.joined_at);
+                    const progress = stage.day_end > stage.day_start
+                      ? Math.min(100, Math.round(((day - stage.day_start) / (stage.day_end - stage.day_start)) * 100))
+                      : 100;
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Card>
+                            <CardContent className="pt-4">
+                              <p className="text-sm text-muted-foreground">Dia na Jornada</p>
+                              <p className="text-2xl font-bold">{day}</p>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="pt-4">
+                              <p className="text-sm text-muted-foreground">Etapa</p>
+                              <Badge className={`mt-1 text-white border-0 ${stage.color}`}>
+                                {stage.name}
+                              </Badge>
+                            </CardContent>
+                          </Card>
+                        </div>
+                        <Card>
+                          <CardContent className="pt-4 space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Progresso na etapa</span>
+                              <span className="font-medium">Dia {day} de {stage.day_end} ({progress}%)</span>
+                            </div>
+                            <Progress value={progress} className="h-2" />
+                          </CardContent>
+                        </Card>
+                      </>
+                    );
+                  })()}
 
                   {/* KPIs */}
                   <MentoradoProfileStats
