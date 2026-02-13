@@ -41,6 +41,7 @@ import EmailMarketing from "./pages/admin/EmailMarketing";
 import Calendario from "./pages/admin/Calendario";
 import CRMMentorados from "./pages/admin/CRMMentorados";
 import Relatorios from "./pages/admin/Relatorios";
+import MentorPerfil from "./pages/admin/MentorPerfil";
 // Formularios is now embedded within Mentorados page
 
 // Member Pages
@@ -116,6 +117,7 @@ const App = () => (
                
                <Route path="emails" element={<EmailMarketing />} />
                <Route path="relatorios" element={<Relatorios />} />
+               <Route path="perfil" element={<MentorPerfil />} />
                <Route path="devtools" element={<DevTools />} />
                <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
             </Route>

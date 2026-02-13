@@ -5,7 +5,7 @@
  import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
  import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
  import { Button } from '@/components/ui/button';
- import { LogOut, Settings, ArrowLeft } from 'lucide-react';
+ import { LogOut, Settings, ArrowLeft, UserCircle } from 'lucide-react';
  import { BrandLogo } from '@/components/BrandLogo';
   import {
     LayoutDashboard,
@@ -37,6 +37,7 @@
     
     { icon: Mail, label: 'Emails', path: '/mentor/emails' },
     { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
+    { icon: UserCircle, label: 'Meu Perfil', path: '/mentor/perfil' },
   ];
  
   export function MentorLayout() {

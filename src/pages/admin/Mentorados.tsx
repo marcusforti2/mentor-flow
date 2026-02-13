@@ -63,7 +63,8 @@ import {
   ExternalLink,
   ClipboardList,
   FolderOpen,
-  Trash2
+  Trash2,
+  Brain
 } from "lucide-react";
 import {
   AlertDialog,
@@ -89,6 +90,7 @@ import { MentoradoProfileStats } from "@/components/admin/MentoradoProfileStats"
 import { MentoradoAIScore } from "@/components/admin/MentoradoAIScore";
 import { MentoradoBusinessSummary } from "@/components/admin/MentoradoBusinessSummary";
 import { MentoradoActivityTimeline } from "@/components/admin/MentoradoActivityTimeline";
+import { MentoradoBehavioralAnalysis } from "@/components/admin/MentoradoBehavioralAnalysis";
 
 interface Mentorado {
   id: string;
@@ -892,8 +894,12 @@ const Mentorados = () => {
               </SheetHeader>
               
               <Tabs defaultValue="info" className="mt-4">
-                <TabsList className="w-full grid grid-cols-3">
+                <TabsList className="w-full grid grid-cols-4">
                   <TabsTrigger value="info" className="text-xs">Perfil</TabsTrigger>
+                  <TabsTrigger value="analysis" className="text-xs">
+                    <Brain className="h-3 w-3 mr-1" />
+                    Análise IA
+                  </TabsTrigger>
                   <TabsTrigger value="meetings" className="text-xs">
                     <Video className="h-3 w-3 mr-1" />
                     Reuniões
@@ -1032,6 +1038,18 @@ const Mentorados = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
+                </TabsContent>
+
+                {/* === TAB: Análise IA === */}
+                <TabsContent value="analysis" className="space-y-3 mt-4">
+                  {activeMembership && (
+                    <MentoradoBehavioralAnalysis
+                      menteeMembershipId={selectedMentorado.membership_id}
+                      mentorMembershipId={activeMembership.id}
+                      tenantId={activeMembership.tenant_id}
+                      menteeName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                    />
+                  )}
                 </TabsContent>
 
                 {/* === TAB: Reuniões === */}
