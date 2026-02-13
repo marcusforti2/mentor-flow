@@ -1,147 +1,122 @@
 
-# Analise Comportamental Profunda do Mentorado + Perfil do Mentor
 
-## Resumo
+# Jornada CS - Sincronizacao e Etapas Editaveis
 
-Criar um sistema de analise comportamental/psicologica profunda do mentorado, alimentada pelo scraping de redes sociais (Piloterr) e cruzada com o contexto da mentoria do mentor. O resultado e um relatorio estrategico que ajuda o mentor a entender profundamente cada aluno e saber exatamente como potencializa-lo.
+## Problemas Encontrados
 
----
+Existem **dois conjuntos diferentes** de etapas da jornada hardcoded no codigo, completamente desconectados:
 
-## Parte 1: Perfil da Mentoria (visao do Mentor)
+| Etapa | JornadaCS.tsx | Mentorados.tsx |
+|-------|--------------|----------------|
+| Onboarding | 0-7 dias | 0-7 dias |
+| Aprendizado | 8-30 dias | 8-30 dias |
+| Aplicacao | 31-**60** dias | 31-**90** dias |
+| Escala | 61-**90** dias | 91-**180** dias |
+| Maestria | 91-365 dias | 181-365 dias |
 
-Adicionar uma nova aba/secao no perfil do mentor onde ele descreve **o que faz na mentoria**. Esses dados serao cruzados com o perfil do mentorado pela IA.
-
-**Campos a capturar (salvos em `mentor_profiles.settings` JSONB):**
-- Descricao da mentoria (o que voce faz, qual transformacao entrega)
-- Metodologia principal (como funciona o processo)
-- Perfil ideal do mentorado (quem se encaixa melhor)
-- Principais resultados que entrega
-- O que espera do mentorado (comprometimento, dedicacao)
-
-**Onde aparece:** Nova rota `/mentor/perfil` com formulario dedicado, adicionada ao menu lateral do mentor.
+Ou seja, um mentorado pode aparecer em "Escala" na Jornada CS mas em "Aplicacao" na pagina de Mentorados. Alem disso, as etapas nao sao editaveis e o card do mentorado na Jornada CS nao abre o perfil dele.
 
 ---
 
-## Parte 2: Analise Comportamental IA (visao do Mentor sobre o Mentorado)
+## Plano de Implementacao
 
-Dentro do perfil de cada mentorado (Sheet lateral em `/mentor/mentorados`), adicionar uma nova aba **"Analise IA"** com botao "Gerar Analise".
+### 1. Criar tabela `cs_journey_stages` no banco de dados
 
-### Fluxo:
-1. Mentor clica "Gerar Analise" no perfil do mentorado
-2. Sistema puxa redes sociais do mentorado (Instagram/LinkedIn via Piloterr - dados ja salvos no cadastro)
-3. Sistema puxa o contexto da mentoria do mentor (`mentor_profiles.settings`)
-4. Edge Function cruza TUDO e gera o relatorio via Gemini
+Nova tabela para persistir as etapas editaveis por tenant:
 
-### Conteudo do Relatorio:
+- `id` (UUID, PK)
+- `tenant_id` (UUID, FK tenants)
+- `name` (text) - ex: "Onboarding"
+- `stage_key` (text) - identificador unico
+- `day_start` (integer)
+- `day_end` (integer)
+- `color` (text) - classe Tailwind
+- `position` (integer) - ordem
+- `created_at`, `updated_at`
 
-| Secao | Descricao |
-|-------|-----------|
-| Perfil Comportamental | Estilo de comunicacao, como prefere ser abordado, linguagem que ressoa |
-| Medos Ocultos | O que ele teme mas nao fala - bloqueios inconscientes |
-| Vicios Emocionais | Padroes repetitivos que sabotam resultados (procrastinacao, perfeccionismo, etc) |
-| Bloqueios de Execucao | O que pode impedir o mentorado de fazer o que precisa fazer |
-| Estrategia de Potencializacao | Como trazê-lo para o recurso emocional e tira-lo da dor |
-| Linguagem Ideal | Qual tom, palavras e abordagem usar com esse perfil |
-| Erros que o Mentor Pode Cometer | O que NAO fazer com esse tipo de pessoa |
-| Como Acertar | Estrategias especificas para maximizar resultados |
-| Gatilhos de Motivacao | O que faz essa pessoa agir |
-| Sinais de Alerta | Comportamentos que indicam que o mentorado esta desengajando |
+RLS: leitura para membros do tenant, escrita para staff (admin/mentor/ops).
 
-### Armazenamento:
-Nova tabela `mentee_behavioral_analyses` para persistir os relatorios gerados, permitindo historico e comparacao ao longo do tempo.
+### 2. Criar hook `useJourneyStages`
+
+Similar ao padrao ja existente em `usePipelineStages.tsx`:
+
+- Busca etapas do banco por `tenant_id`
+- Se nao houver customizacao, retorna os defaults padrao
+- Exporta `stages`, `isLoading`, `reload`, `getStageForDay()`
+- Funcao helper `getStageForDay(joinedAt)` centralizada
+
+### 3. Criar componente `JourneyStageEditor`
+
+Editor visual no estilo do `PipelineStageEditor` que ja existe no projeto:
+
+- Arrastar para reordenar (drag & drop)
+- Editar nome, cor, dia inicio e dia fim
+- Adicionar / remover etapas
+- Botao "Restaurar padrao"
+- Salvar no banco
+
+Acessivel dentro da pagina Jornada CS como um botao de engrenagem/configuracao no header.
+
+### 4. Sincronizar TUDO com o hook compartilhado
+
+Substituir os hardcoded `JOURNEY_STAGES` e `defaultJourneyStages` em:
+
+- **JornadaCS.tsx** - view kanban por jornada
+- **Mentorados.tsx** - filtros por etapa + badge no card + etapa no perfil detail
+
+Ambos passam a usar `useJourneyStages(tenantId)`, garantindo consistencia total.
+
+### 5. Melhorias de UX/UI
+
+**Card do mentorado na Jornada CS:**
+- Clicar no card abre o perfil do mentorado (navegar para `/mentor/mentorados` com o sheet aberto, ou abrir um sheet direto)
+- Adicionar mini-indicadores no card: icone se tem leads, se completou onboarding
+- Progress bar sutil mostrando % de progresso dentro da etapa atual
+
+**Header da Jornada CS:**
+- Botao "Configurar Etapas" com icone de engrenagem ao lado do seletor de filtro
+- Ao abrir, exibe o editor de etapas em um Sheet lateral
+
+**Perfil do mentorado (aba Perfil):**
+- A etapa exibida passa a ser a do banco (sincronizada)
+- Adicionar uma barra de progresso visual mostrando em que ponto da etapa o mentorado esta (ex: "Dia 45 de 90 na etapa Aplicacao")
+
+**Visual dos cards:**
+- Bordas com glow sutil na cor da etapa ao hover
+- Indicador de "alerta" para mentorados sem atividade recente (mais de 7 dias)
 
 ---
 
 ## Detalhes Tecnicos
 
-### Banco de Dados
+**Migracao SQL:**
+```text
+CREATE TABLE cs_journey_stages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  name TEXT NOT NULL,
+  stage_key TEXT NOT NULL,
+  day_start INTEGER NOT NULL DEFAULT 0,
+  day_end INTEGER NOT NULL DEFAULT 7,
+  color TEXT NOT NULL DEFAULT 'bg-blue-500',
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
 
-**Nova tabela: `mentee_behavioral_analyses`**
-- `id` (uuid, PK)
-- `membership_id` (FK -> memberships) - mentorado analisado
-- `tenant_id` (FK -> tenants)
-- `generated_by` (FK -> memberships) - mentor que gerou
-- `social_data_source` (text) - "instagram", "linkedin", "both"
-- `behavioral_profile` (jsonb) - perfil comportamental
-- `hidden_fears` (jsonb) - medos ocultos (array)
-- `emotional_patterns` (jsonb) - vicios emocionais (array)
-- `execution_blockers` (jsonb) - bloqueios de execucao (array)
-- `potentiation_strategy` (jsonb) - como potencializar
-- `ideal_language` (jsonb) - linguagem e tom ideal
-- `mentor_mistakes` (jsonb) - erros a evitar
-- `how_to_succeed` (jsonb) - como acertar
-- `motivation_triggers` (jsonb) - gatilhos de motivacao
-- `alert_signals` (jsonb) - sinais de alerta
-- `full_report` (text) - relatorio completo em markdown
-- `created_at` (timestamptz)
-
-RLS: Staff do tenant pode ler/criar; mentorado pode ler as proprias.
-
-### Arquivos a criar/modificar
-
-1. **`src/pages/admin/MentorPerfil.tsx`** (NOVO)
-   - Formulario para o mentor descrever sua mentoria
-   - Salva em `mentor_profiles.settings` (JSONB)
-   - Campos: descricao, metodologia, perfil ideal, resultados, expectativas
-
-2. **`src/components/layouts/MentorLayout.tsx`**
-   - Adicionar item de menu "Meu Perfil" apontando para `/mentor/perfil`
-
-3. **`src/App.tsx`**
-   - Adicionar rota `/mentor/perfil` -> MentorPerfil
-
-4. **`supabase/functions/analyze-mentee-behavioral/index.ts`** (NOVO)
-   - Recebe: `mentee_membership_id`, `mentor_membership_id`
-   - Busca redes sociais do mentorado (mentee_profiles.business_profile)
-   - Faz scraping via Piloterr (Instagram + LinkedIn)
-   - Busca contexto da mentoria do mentor (mentor_profiles.settings)
-   - Chama Gemini com prompt especializado em psicologia comportamental
-   - Salva resultado em `mentee_behavioral_analyses`
-   - Retorna relatorio completo
-
-5. **`src/components/admin/MentoradoBehavioralAnalysis.tsx`** (NOVO)
-   - Componente que renderiza o relatorio completo
-   - Botao "Gerar Analise" com loading
-   - Cards visuais para cada secao (medos, vicios, bloqueios, etc)
-   - Historico de analises anteriores
-
-6. **`src/pages/admin/Mentorados.tsx`**
-   - Adicionar aba "Analise IA" na Sheet do mentorado
-   - Integrar o componente MentoradoBehavioralAnalysis
-
-### Fluxo Tecnico
-
-```
-Mentor clica "Gerar Analise"
-    |
-    v
-Frontend envia mentee_membership_id + mentor_membership_id
-    |
-    v
-Edge Function "analyze-mentee-behavioral"
-    |-- Busca mentee_profiles.business_profile (instagram, linkedin)
-    |-- Busca mentor_profiles.settings (metodologia, contexto)
-    |-- Scraping Piloterr (Instagram bio/posts + LinkedIn perfil)
-    |-- Monta prompt cruzando: dados sociais + contexto mentoria
-    |-- Chama Gemini (google/gemini-3-flash-preview)
-    |-- Salva em mentee_behavioral_analyses
-    |-- Retorna relatorio
-    |
-    v
-Frontend renderiza cards visuais do relatorio
+-- RLS
+ALTER TABLE cs_journey_stages ENABLE ROW LEVEL SECURITY;
+-- Leitura: membros do tenant
+-- Escrita: staff do tenant (is_tenant_staff)
 ```
 
-### Prompt da IA (resumo)
+**Arquivos a criar:**
+- `src/hooks/useJourneyStages.tsx`
+- `src/components/admin/JourneyStageEditor.tsx`
 
-A IA recebera:
-- Dados publicos das redes sociais do mentorado (bio, posts, experiencia)
-- Descricao completa da mentoria do mentor (o que faz, metodologia, expectativas)
-- Dados do negocio do mentorado (se preenchido no Governo do Negocio)
+**Arquivos a modificar:**
+- `src/pages/admin/JornadaCS.tsx` - usar hook + adicionar botao editor + link card ao perfil
+- `src/pages/admin/Mentorados.tsx` - usar hook + sincronizar filtros e badges
 
-E gerara uma analise comportamental focada em:
-- Como esse mentorado funciona emocionalmente
-- O que o bloqueia silenciosamente
-- Qual linguagem usar para ativa-lo
-- Como o mentor pode errar e como acertar
-- Estrategias personalizadas de potencializacao
+**Padrao seguido:** Mesmo padrao de `usePipelineStages` + `PipelineStageEditor` que ja existe no projeto para o CRM pipeline.
 
