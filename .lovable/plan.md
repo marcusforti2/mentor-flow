@@ -1,66 +1,161 @@
 
 
-# Mobile Funcional - Otimizar UI para Telas Pequenas
+# Relatorio e Correcao de RLS - Visibilidade Tenant-Centrica
 
-Todos os componentes dentro do Sheet lateral do mentorado precisam de ajustes para funcionar bem em telas de celular (390px). Os problemas principais sao: grids de 2 colunas que espremem campos, botoes amontoados em linhas horizontais, e textos truncados.
+## Diagnostico Atual
+
+O sistema tem duas camadas de controle de acesso que coexistem:
+
+1. **Sistema LEGADO** (tabela `mentors` + `mentorados.mentor_id`): Mentor so ve dados vinculados diretamente a ele via `mentor_id`
+2. **Sistema NOVO** (tabela `memberships` + `tenant_id`): Staff ve tudo do mesmo tenant
+
+O problema: varias tabelas so tem politicas do sistema legado. Um mentor novo (como Marcus) que nao tem registro na tabela `mentors` ou nao tem mentorados vinculados via `mentor_id` nao consegue ver nada.
 
 ---
 
-## Mudancas por Componente
+## Tabelas com Problema (so tem politica legada)
 
-### 1. MeetingRegistrar.tsx - Formulario de Registrar Reuniao
+| Tabela | Politica Atual | Problema |
+|--------|---------------|----------|
+| `community_posts` | `mentors.user_id = auth.uid()` | Mentor novo nao ve posts |
+| `community_comments` | `mentors.user_id = auth.uid()` | Mentor novo nao ve comentarios |
+| `community_messages` | `mentors.user_id = auth.uid()` | Mentor novo nao ve/modera mensagens |
+| `community_likes` | `mentors.user_id = auth.uid()` | Mentor novo nao ve likes |
+| `email_flows` | `mentors.user_id = auth.uid()` | Mentor novo nao cria/ve fluxos |
+| `calendar_events` | `mentors.user_id = auth.uid()` | Mentor novo nao gerencia eventos |
+| `training_analyses` | `mentorados.mentor_id JOIN mentors` | Mentor novo nao ve analises |
+| `sos_requests` | `mentorados.mentor_id JOIN mentors` | Mentor novo nao ve SOS |
+| `sos_responses` | via `sos_requests.mentor_id` | Idem |
+| `call_transcripts` | `has_role('mentor')` (OK pra SELECT) | Mas nao filtra por tenant |
+| `call_analyses` | `has_role('mentor')` (OK pra SELECT) | Mas nao filtra por tenant |
+| `behavioral_reports` | `has_role('mentor')` | Sem filtro tenant |
+| `behavioral_responses` | `has_role('mentor')` | Sem filtro tenant |
+| `certificates` | `has_role('mentor')` | Sem filtro tenant |
+| `roleplay_simulations` | `has_role('mentor')` | Sem filtro tenant |
+| `user_badges` | `has_role('mentor')` | Sem filtro tenant |
+| `user_streaks` | `has_role('mentor')` | Sem filtro tenant |
+| `reward_catalog` | `has_role('mentor')` | Sem filtro tenant |
+| `reward_redemptions` | `has_role('mentor')` | Sem filtro tenant |
+| `ranking_entries` | public SELECT | OK mas sem tenant scope |
 
-**Problema**: Grid de 2 colunas (Titulo + Data) fica apertado no mobile.
+## Tabelas JA Corretas (tem politica tenant)
 
-- Trocar `grid grid-cols-2` por `grid grid-cols-1 sm:grid-cols-2` para empilhar titulo e data no mobile
-- Botoes de acao (Cancelar/Salvar) ja estao ok com `flex gap-2`
+| Tabela | Status |
+|--------|--------|
+| `campan_tasks` | `is_tenant_staff()` |
+| `meeting_transcripts` | `is_tenant_staff()` |
+| `memberships` | `is_tenant_staff()` |
+| `trails` / `trail_modules` / `trail_lessons` | tenant staff policies |
+| `crm_prospections` | tenant staff policy |
+| `activity_logs` | tenant membership check |
+| `mentee_profiles` | tenant membership check |
+| `mentorado_files` | `is_tenant_staff()` |
+| `trail_progress` | tenant staff view |
+| `badges` | tenant staff manage |
+| `crm_pipeline_stages` | `is_tenant_staff()` |
+| `crm_leads` | tenant staff policy |
+| `email_templates` | tenant staff policy |
+| `ai_tool_usage` | tenant staff view |
+| `invites` | tenant staff manage |
 
-### 2. MeetingHistoryList.tsx - Cards de Reunioes
+---
 
-**Problema**: Titulo truncado ("R..."), botoes (Editar, Excluir, Gerar Tarefas) amontoados na mesma linha.
+## Plano de Correcao
 
-- Separar o layout do card em duas linhas no mobile:
-  - Linha 1: titulo completo (sem truncate no mobile) + badge de fonte
-  - Linha 2: metadados (data, status, contagem de tarefas) com flex-wrap
-  - Linha 3: botoes de acao empilhados horizontalmente com mais espaco
-- Usar `flex-col sm:flex-row` no container principal do card
-- Mover os botoes de acao para uma linha propria abaixo dos metadados
+### Fase 1 - Adicionar `tenant_id` onde falta
 
-### 3. TranscriptionTaskExtractor.tsx - Extrator de Tarefas com IA
+Algumas tabelas nao tem coluna `tenant_id`, o que impede filtros por tenant. Precisa adicionar:
 
-**Problema**: Botoes de upload (PDF/Word, tl;dv) e acoes (Gerar IA, Manual) ficam apertados.
+- `email_flows` - tem `mentor_id` mas nao `tenant_id`
+- `calendar_events` - tem `mentor_id` e `tenant_id` (verificar se esta populado)
 
-- Botoes de upload: ja usam `flex-wrap`, ok
-- Botoes de acao: ja usam `flex-wrap`, ok
-- Arquivo selecionado: truncar nome do arquivo com `max-w-[150px]` no mobile
-- Card de review de tarefas: garantir que checkboxes e campos de edicao nao quebrem
+### Fase 2 - Criar politicas tenant-based para tabelas criticas
 
-### 4. TaskListView.tsx - Lista de Tarefas
+Para cada tabela com problema, adicionar uma politica SELECT para staff do tenant, seguindo o padrao ja estabelecido:
 
-**Problema**: Select de status (90px) + botao editar + botao excluir ficam apertados ao lado do titulo.
+```sql
+-- Padrao: staff do mesmo tenant pode ver
+CREATE POLICY "staff_view_[tabela]" ON public.[tabela]
+FOR SELECT TO public
+USING (
+  tenant_id IN (
+    SELECT m.tenant_id FROM memberships m
+    WHERE m.user_id = auth.uid()
+    AND m.role IN ('admin','ops','mentor','master_admin')
+    AND m.status = 'active'
+  )
+);
+```
 
-- Reorganizar o card da tarefa para empilhar no mobile:
-  - Linha 1: titulo + descricao + badges
-  - Linha 2: controles (select de status, editar, excluir) em linha separada
-- Usar `flex-col sm:flex-row` no container principal
-- Dialog de edicao: trocar `grid grid-cols-2` por `grid grid-cols-1 sm:grid-cols-2` nos campos Prioridade/Status
+Para tabelas sem `tenant_id`, usar join via `mentorado_id` -> `memberships`:
+
+```sql
+-- Para tabelas que referenciam mentorado_id (legado)
+USING (
+  EXISTS (
+    SELECT 1 FROM mentorados mn
+    JOIN memberships mem ON mem.user_id = mn.user_id
+    JOIN memberships viewer ON viewer.tenant_id = mem.tenant_id
+    WHERE mn.id = [tabela].mentorado_id
+    AND viewer.user_id = auth.uid()
+    AND viewer.role IN ('admin','ops','mentor','master_admin')
+    AND viewer.status = 'active'
+  )
+);
+```
+
+### Fase 3 - Tabelas a corrigir (em ordem de prioridade)
+
+**Prioridade Alta** (afetam funcionalidades do mentor diretamente):
+
+1. **`community_posts`** - ja tem `community_posts_tenant` ALL policy, esta OK
+2. **`community_comments`** - adicionar policy tenant-based para staff view
+3. **`community_messages`** - ja tem `community_messages_tenant_read`, esta OK
+4. **`community_likes`** - adicionar policy tenant-based para staff view
+5. **`email_flows`** - ja tem `email_flows_staff` ALL policy, esta OK
+6. **`calendar_events`** - ja tem `calendar_events_tenant` ALL policy, esta OK
+7. **`sos_requests`** - ja tem `sos_requests_staff_view`, esta OK
+8. **`training_analyses`** - adicionar policy tenant-based (precisa join via mentorado -> membership)
+9. **`mentorado_business_profiles`** - adicionar policy tenant-based (precisa join)
+
+**Prioridade Media** (gamificacao e extras):
+
+10. **`call_transcripts`** - adicionar filtro por tenant
+11. **`call_analyses`** - adicionar filtro por tenant
+12. **`behavioral_reports`** - adicionar filtro por tenant
+13. **`behavioral_responses`** - adicionar filtro por tenant
+14. **`roleplay_simulations`** - adicionar filtro por tenant
+15. **`certificates`** - adicionar filtro por tenant
+16. **`user_badges`** - adicionar filtro por tenant
+17. **`user_streaks`** - adicionar filtro por tenant
+18. **`reward_catalog`** / **`reward_redemptions`** - adicionar filtro por tenant
 
 ---
 
 ## Detalhes Tecnicos
 
-### Arquivos alterados:
-- `src/components/campan/MeetingRegistrar.tsx` - grid responsivo
-- `src/components/campan/MeetingHistoryList.tsx` - layout de card empilhado
-- `src/components/campan/TranscriptionTaskExtractor.tsx` - ajustes menores
-- `src/components/campan/TaskListView.tsx` - layout de card + dialog responsivos
+### Migracao SQL
 
-### Padrao utilizado:
-- Classes Tailwind responsivas (`sm:` breakpoint)
-- `flex-col sm:flex-row` para empilhar no mobile e alinhar no desktop
-- `grid-cols-1 sm:grid-cols-2` para grids adaptativos
-- Remover `truncate` de titulos no mobile ou usar `line-clamp-2`
+Uma unica migracao que:
+1. Adiciona `tenant_id` nas tabelas que nao tem (com backfill via mentorado -> membership -> tenant)
+2. Cria as novas politicas RLS tenant-based
+3. Mantem as politicas legadas para nao quebrar nada existente (abordagem aditiva)
 
-### Nenhuma migracao ou novo componente necessario
-Todas as mudancas sao de CSS/classes Tailwind nos componentes existentes.
+### Tabelas que precisam de `tenant_id` adicionado
+
+Verificar quais dessas tabelas ja tem `tenant_id`:
+- `training_analyses`
+- `call_transcripts` / `call_analyses`
+- `behavioral_reports` / `behavioral_responses`
+- `roleplay_simulations`
+- `certificates`
+- `user_badges` / `user_streaks`
+- `reward_redemptions`
+- `community_comments` / `community_likes`
+
+Para as que nao tem, a abordagem sera usar JOIN via `mentorado_id` -> `mentorados.user_id` -> `memberships.tenant_id` nas politicas RLS, sem alterar schema.
+
+### Nenhuma alteracao no frontend necessaria
+
+O frontend ja usa `activeMembership.tenant_id` para filtrar dados. O problema e puramente nas politicas RLS que bloqueiam o acesso no banco.
 
