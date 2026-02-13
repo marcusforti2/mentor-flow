@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient } from '@/App';
 
 type AppRole = 'mentor' | 'mentorado' | 'admin_master';
 
@@ -43,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Invalidate all cached queries on auth state change (login/logout/token refresh)
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          queryClient.invalidateQueries();
+        }
         
         // Defer data fetching with setTimeout to avoid deadlock
         if (session?.user) {
