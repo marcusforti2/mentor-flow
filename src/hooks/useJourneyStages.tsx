@@ -21,7 +21,7 @@ export const DEFAULT_JOURNEY_STAGES: JourneyStage[] = [
   { name: "Maestria", stage_key: "mastery", day_start: 181, day_end: 365, color: "bg-rose-500", position: 4 },
 ];
 
-export function useJourneyStages(tenantId?: string) {
+export function useJourneyStages(tenantId?: string, journeyId?: string) {
   const [stages, setStages] = useState<JourneyStage[]>(DEFAULT_JOURNEY_STAGES);
   const [isLoading, setIsLoading] = useState(true);
   const [isCustom, setIsCustom] = useState(false);
@@ -33,11 +33,16 @@ export function useJourneyStages(tenantId?: string) {
       return;
     }
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("cs_journey_stages" as any)
         .select("*")
-        .eq("tenant_id", tenantId)
-        .order("position", { ascending: true });
+        .eq("tenant_id", tenantId);
+
+      if (journeyId) {
+        query = query.eq("journey_id", journeyId);
+      }
+
+      const { data, error } = await query.order("position", { ascending: true });
 
       if (error) throw error;
 
@@ -64,7 +69,7 @@ export function useJourneyStages(tenantId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, journeyId]);
 
   useEffect(() => {
     loadStages();

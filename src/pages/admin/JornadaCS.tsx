@@ -16,8 +16,10 @@ import { differenceInDays, differenceInWeeks, differenceInMonths, format } from 
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useJourneyStages } from "@/hooks/useJourneyStages";
+import { useJourneys } from "@/hooks/useJourneys";
 import { JourneyStageEditor } from "@/components/admin/JourneyStageEditor";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Mentorado {
   id: string;
@@ -54,7 +56,17 @@ export default function JornadaCS() {
   const navigate = useNavigate();
   
   const tenantId = activeMembership?.tenant_id;
-  const { stages, isLoading: stagesLoading, reload: reloadStages, getStageForDay, getJourneyDay } = useJourneyStages(tenantId);
+  const { journeys, isLoading: journeysLoading, reload: reloadJourneys } = useJourneys(tenantId);
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
+  const { stages, isLoading: stagesLoading, reload: reloadStages, getStageForDay, getJourneyDay } = useJourneyStages(tenantId, selectedJourneyId || undefined);
+
+  // Auto-select first journey
+  useEffect(() => {
+    if (journeys.length > 0 && !selectedJourneyId) {
+      const defaultJ = journeys.find(j => j.is_default) || journeys[0];
+      setSelectedJourneyId(defaultJ.id);
+    }
+  }, [journeys, selectedJourneyId]);
 
   const fetchMentorados = async () => {
     if (!activeMembership) return;
@@ -229,7 +241,7 @@ export default function JornadaCS() {
     navigate(`/mentor/mentorados?open=${mentorado.id}`);
   };
 
-  if (isLoading || stagesLoading) {
+  if (isLoading || stagesLoading || journeysLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -334,6 +346,19 @@ export default function JornadaCS() {
           );
         })}
       </div>
+
+      {/* Journey Tabs */}
+      {journeys.length > 1 && (
+        <Tabs value={selectedJourneyId || ""} onValueChange={setSelectedJourneyId}>
+          <TabsList className="bg-secondary/50">
+            {journeys.map((j) => (
+              <TabsTrigger key={j.id} value={j.id} className="text-sm">
+                {j.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
 
       {/* Pagination for week/month - only in kanban */}
       {viewMode === "kanban" && filterMode !== "journey" && maxPages > 1 && (
@@ -485,8 +510,8 @@ export default function JornadaCS() {
       <Sheet open={isEditorOpen} onOpenChange={setIsEditorOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Configurar Etapas da Jornada</SheetTitle>
-            <SheetDescription>Personalize as etapas da jornada CS do seu programa de mentoria.</SheetDescription>
+            <SheetTitle>Configurar Jornadas</SheetTitle>
+            <SheetDescription>Gerencie suas jornadas e personalize as etapas de cada uma.</SheetDescription>
           </SheetHeader>
           <div className="mt-4">
             {tenantId && (
@@ -494,6 +519,7 @@ export default function JornadaCS() {
                 tenantId={tenantId}
                 onSaved={() => {
                   reloadStages();
+                  reloadJourneys();
                   setIsEditorOpen(false);
                 }}
               />

@@ -1105,6 +1105,7 @@ export type Database = {
           day_end: number
           day_start: number
           id: string
+          journey_id: string | null
           name: string
           position: number
           stage_key: string
@@ -1117,6 +1118,7 @@ export type Database = {
           day_end?: number
           day_start?: number
           id?: string
+          journey_id?: string | null
           name: string
           position?: number
           stage_key: string
@@ -1129,6 +1131,7 @@ export type Database = {
           day_end?: number
           day_start?: number
           id?: string
+          journey_id?: string | null
           name?: string
           position?: number
           stage_key?: string
@@ -1137,7 +1140,52 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "cs_journey_stages_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "cs_journeys"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cs_journey_stages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cs_journeys: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          tenant_id: string
+          total_days: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          tenant_id: string
+          total_days?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          tenant_id?: string
+          total_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cs_journeys_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1945,6 +1993,55 @@ export type Database = {
           },
           {
             foreignKeyName: "mentee_behavioral_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentee_journey_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          journey_id: string
+          membership_id: string
+          started_at: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          journey_id: string
+          membership_id: string
+          started_at?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          journey_id?: string
+          membership_id?: string
+          started_at?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentee_journey_assignments_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "cs_journeys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_journey_assignments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_journey_assignments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
