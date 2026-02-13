@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -145,7 +147,11 @@ const Mentorados = () => {
     business_name: '',
     business_type: '',
     maturity_level: '',
-    notes: ''
+    notes: '',
+    joined_at: '',
+    instagram: '',
+    linkedin: '',
+    website: '',
   });
   
   // Detail sheet
@@ -339,6 +345,12 @@ const Mentorados = () => {
         phone: manualForm.phone || undefined,
         role: 'mentee',
         mentor_membership_id: mentorId,
+        joined_at: manualForm.joined_at || undefined,
+        business_name: manualForm.business_name || undefined,
+        instagram: manualForm.instagram || undefined,
+        linkedin: manualForm.linkedin || undefined,
+        website: manualForm.website || undefined,
+        notes: manualForm.notes || undefined,
       });
       
       setIsAddDialogOpen(false);
@@ -349,7 +361,11 @@ const Mentorados = () => {
         business_name: '',
         business_type: '',
         maturity_level: '',
-        notes: ''
+        notes: '',
+        joined_at: '',
+        instagram: '',
+        linkedin: '',
+        website: '',
       });
       await fetchData();
     } catch (error: any) {
@@ -524,7 +540,7 @@ const Mentorados = () => {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="full_name">Nome Completo *</Label>
@@ -558,7 +574,19 @@ const Mentorados = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="business_name">Nome do Negócio</Label>
+                    <Label htmlFor="joined_at">Data de Início</Label>
+                    <Input
+                      id="joined_at"
+                      type="date"
+                      value={manualForm.joined_at}
+                      onChange={(e) => setManualForm({...manualForm, joined_at: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="business_name">Empresa / Negócio</Label>
                     <Input
                       id="business_name"
                       value={manualForm.business_name}
@@ -566,6 +594,47 @@ const Mentorados = () => {
                       placeholder="Empresa XYZ"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram">Instagram</Label>
+                    <Input
+                      id="instagram"
+                      value={manualForm.instagram}
+                      onChange={(e) => setManualForm({...manualForm, instagram: e.target.value})}
+                      placeholder="@usuario"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedin">LinkedIn</Label>
+                    <Input
+                      id="linkedin"
+                      value={manualForm.linkedin}
+                      onChange={(e) => setManualForm({...manualForm, linkedin: e.target.value})}
+                      placeholder="linkedin.com/in/usuario"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Site / Portfolio</Label>
+                    <Input
+                      id="website"
+                      value={manualForm.website}
+                      onChange={(e) => setManualForm({...manualForm, website: e.target.value})}
+                      placeholder="https://meusite.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    value={manualForm.notes}
+                    onChange={(e) => setManualForm({...manualForm, notes: e.target.value})}
+                    placeholder="Anotações sobre o mentorado..."
+                    className="min-h-[60px]"
+                  />
                 </div>
                 
                 <div className="flex gap-2">
