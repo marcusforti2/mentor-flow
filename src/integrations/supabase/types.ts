@@ -1823,6 +1823,88 @@ export type Database = {
           },
         ]
       }
+      mentee_behavioral_analyses: {
+        Row: {
+          alert_signals: Json | null
+          behavioral_profile: Json | null
+          created_at: string
+          emotional_patterns: Json | null
+          execution_blockers: Json | null
+          full_report: string | null
+          generated_by: string
+          hidden_fears: Json | null
+          how_to_succeed: Json | null
+          id: string
+          ideal_language: Json | null
+          membership_id: string
+          mentor_mistakes: Json | null
+          motivation_triggers: Json | null
+          potentiation_strategy: Json | null
+          social_data_source: string | null
+          tenant_id: string
+        }
+        Insert: {
+          alert_signals?: Json | null
+          behavioral_profile?: Json | null
+          created_at?: string
+          emotional_patterns?: Json | null
+          execution_blockers?: Json | null
+          full_report?: string | null
+          generated_by: string
+          hidden_fears?: Json | null
+          how_to_succeed?: Json | null
+          id?: string
+          ideal_language?: Json | null
+          membership_id: string
+          mentor_mistakes?: Json | null
+          motivation_triggers?: Json | null
+          potentiation_strategy?: Json | null
+          social_data_source?: string | null
+          tenant_id: string
+        }
+        Update: {
+          alert_signals?: Json | null
+          behavioral_profile?: Json | null
+          created_at?: string
+          emotional_patterns?: Json | null
+          execution_blockers?: Json | null
+          full_report?: string | null
+          generated_by?: string
+          hidden_fears?: Json | null
+          how_to_succeed?: Json | null
+          id?: string
+          ideal_language?: Json | null
+          membership_id?: string
+          mentor_mistakes?: Json | null
+          motivation_triggers?: Json | null
+          potentiation_strategy?: Json | null
+          social_data_source?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentee_behavioral_analyses_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_behavioral_analyses_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_behavioral_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentee_profiles: {
         Row: {
           business_name: string | null

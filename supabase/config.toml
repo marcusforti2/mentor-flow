@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.fetch-tldv-meetings]
 verify_jwt = false
+
+[functions.analyze-mentee-behavioral]
+verify_jwt = false
