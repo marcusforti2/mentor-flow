@@ -110,26 +110,15 @@ export function useMentorDashboardStats() {
     setError(null);
 
     try {
-      // Fetch mentee memberships
-      const { data: menteeMemberships, error: membershipsError } = await supabase
-        .from('memberships')
-        .select('id, status, user_id')
-        .eq('tenant_id', tenantId)
-        .eq('role', 'mentee');
-
-      if (membershipsError) throw membershipsError;
-
-      const mentoradosCount = menteeMemberships?.length || 0;
-      const activeMentoradosCount = menteeMemberships?.filter(m => m.status === 'active').length || 0;
-
-      // Fetch trails, meetings, SOS in parallel
       const startOfWeek = new Date();
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
       startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(endOfWeek.getDate() + 7);
 
-      const [trailsRes, meetingsRes, sosRes, sosDetailsRes, activityRes, winsRes] = await Promise.all([
+      // BATCH 1: All independent queries in parallel
+      const [membershipsRes, trailsRes, meetingsRes, sosRes, sosDetailsRes, activityRes, winsRes] = await Promise.all([
+        supabase.from('memberships').select('id, status, user_id').eq('tenant_id', tenantId).eq('role', 'mentee'),
         supabase.from('trails').select('id, title').eq('tenant_id', tenantId),
         supabase.from('meetings').select('id').eq('tenant_id', tenantId)
           .gte('scheduled_at', startOfWeek.toISOString()).lt('scheduled_at', endOfWeek.toISOString()),
@@ -146,44 +135,15 @@ export function useMentorDashboardStats() {
           .order('created_at', { ascending: false }).limit(5),
       ]);
 
+      if (membershipsRes.error) throw membershipsRes.error;
+      const menteeMemberships = membershipsRes.data || [];
+      const mentoradosCount = menteeMemberships.length;
+      const activeMentoradosCount = menteeMemberships.filter(m => m.status === 'active').length;
       const trailsCount = trailsRes.error ? 0 : (trailsRes.data?.length || 0);
       const meetingsThisWeek = meetingsRes.data?.length || 0;
+      const engagementRate = mentoradosCount > 0 ? Math.round((activeMentoradosCount / mentoradosCount) * 100) : 0;
 
-      // Build ranking from memberships
-      let topRanking: RankingItem[] = [];
-      if (menteeMemberships && menteeMemberships.length > 0) {
-        const membershipIds = menteeMemberships.map(m => m.id);
-        const { data: rankingData } = await supabase
-          .from('ranking_entries')
-          .select('id, membership_id, mentorado_id, points')
-          .or(`membership_id.in.(${membershipIds.join(',')}),mentorado_id.in.(${membershipIds.join(',')})`)
-          .order('points', { ascending: false })
-          .limit(5);
-
-        if (rankingData && rankingData.length > 0) {
-          const userIds = menteeMemberships.map(m => m.user_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, full_name')
-            .in('user_id', userIds);
-
-          const membershipToUser = new Map(menteeMemberships.map(m => [m.id, m.user_id]));
-          const profileMap = new Map((profiles || []).map(p => [p.user_id, p.full_name]));
-
-          topRanking = rankingData.map((r, idx) => {
-            const userId = membershipToUser.get(r.membership_id || r.mentorado_id || '') || '';
-            return {
-              position: idx + 1,
-              name: profileMap.get(userId) || 'Sem nome',
-              points: r.points || 0,
-              mentoradoId: r.membership_id || r.mentorado_id || '',
-            };
-          });
-        }
-      }
-
-      // Recent activity
-      // Map activity types from action_type
+      // Map activity
       const mapActivityType = (actionType: string): ActivityItem['type'] => {
         if (actionType.includes('closed_won') || actionType.includes('trail_completed')) return 'trail_completed';
         if (actionType.includes('lead') || actionType.includes('prospection')) return 'prospection';
@@ -194,152 +154,124 @@ export function useMentorDashboardStats() {
       };
 
       const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => ({
-        id: a.id,
-        type: mapActivityType(a.action_type),
-        title: a.action_description || a.action_type,
-        timestamp: a.created_at,
+        id: a.id, type: mapActivityType(a.action_type),
+        title: a.action_description || a.action_type, timestamp: a.created_at,
       }));
 
-      const engagementRate = mentoradosCount > 0 
-        ? Math.round((activeMentoradosCount / mentoradosCount) * 100) : 0;
+      // BATCH 2: Dependent queries - ranking, trail progress, SOS details, at-risk, wins - ALL in parallel
+      const membershipIds = menteeMemberships.map(m => m.id);
+      const activeMembershipIds = menteeMemberships.filter(m => m.status === 'active').map(m => m.id);
+      const allUserIds = menteeMemberships.map(m => m.user_id);
+      const trailIds = (trailsRes.data || []).map(t => t.id);
+      const sosMembershipIds = (sosDetailsRes.data || []).map(s => s.membership_id).filter(Boolean) as string[];
+      const winMembershipIds = (winsRes.data || []).map(w => w.membership_id).filter(Boolean) as string[];
 
-      // Calculate real trail progress from trail_progress table
-      let trailProgress: TrailProgressItem[] = [];
-      if (trailsRes.data && trailsRes.data.length > 0) {
-        const trailIds = trailsRes.data.map(t => t.id);
-        const { data: allModules } = await supabase
-          .from('trail_modules').select('id, trail_id').in('trail_id', trailIds);
-        
-        if (allModules && allModules.length > 0) {
-          const moduleIds = allModules.map(m => m.id);
-          const { data: allLessons } = await supabase
-            .from('trail_lessons').select('id, module_id').in('module_id', moduleIds);
-          
-          const { data: allProgress } = await supabase
-            .from('trail_progress').select('lesson_id, completed')
-            .eq('tenant_id', tenantId);
-          
-          const completedSet = new Set(
-            (allProgress || []).filter(p => p.completed).map(p => p.lesson_id)
-          );
+      // Fetch all profiles at once (needed by ranking, SOS, at-risk, wins)
+      const [profilesRes, rankingRes, trailModulesRes, atRiskActivityRes] = await Promise.all([
+        allUserIds.length > 0
+          ? supabase.from('profiles').select('user_id, full_name').in('user_id', allUserIds)
+          : Promise.resolve({ data: [] as { user_id: string; full_name: string }[] }),
+        membershipIds.length > 0
+          ? supabase.from('ranking_entries').select('id, membership_id, mentorado_id, points')
+              .or(`membership_id.in.(${membershipIds.join(',')}),mentorado_id.in.(${membershipIds.join(',')})`)
+              .order('points', { ascending: false }).limit(5)
+          : Promise.resolve({ data: [] as any[] }),
+        trailIds.length > 0
+          ? supabase.from('trail_modules').select('id, trail_id').in('trail_id', trailIds)
+          : Promise.resolve({ data: [] as any[] }),
+        activeMembershipIds.length > 0
+          ? supabase.from('activity_logs').select('membership_id, created_at')
+              .eq('tenant_id', tenantId).in('membership_id', activeMembershipIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
 
-          trailProgress = trailsRes.data.slice(0, 3).map(trail => {
-            const trailModuleIds = (allModules || []).filter(m => m.trail_id === trail.id).map(m => m.id);
-            const trailLessons = (allLessons || []).filter(l => trailModuleIds.includes(l.module_id));
-            const totalLessons = trailLessons.length;
-            const completedLessons = trailLessons.filter(l => completedSet.has(l.id)).length;
-            const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-            return { id: trail.id, name: trail.title, progress };
-          });
-        } else {
-          trailProgress = trailsRes.data.slice(0, 3).map(t => ({ id: t.id, name: t.title, progress: 0 }));
-        }
+      const profileMap = new Map<string, string>(((profilesRes as any).data || []).map((p: any) => [p.user_id, p.full_name]));
+      const membershipToUser = new Map(menteeMemberships.map(m => [m.id, m.user_id]));
+
+      // Build ranking
+      let topRanking: RankingItem[] = [];
+      const rankingData = (rankingRes as any).data || [];
+      if (rankingData.length > 0) {
+        topRanking = rankingData.map((r: any, idx: number) => {
+          const userId = membershipToUser.get(r.membership_id || r.mentorado_id || '') || '';
+          return {
+            position: idx + 1, name: profileMap.get(userId) || 'Sem nome',
+            points: r.points || 0, mentoradoId: r.membership_id || r.mentorado_id || '',
+          };
+        });
       }
 
-      // Build SOS details with mentorado names
+      // Trail progress - BATCH 3: lessons query depends on modules
+      let trailProgress: TrailProgressItem[] = [];
+      const allModules = (trailModulesRes as any).data || [];
+      if (allModules.length > 0) {
+        const moduleIds = allModules.map((m: any) => m.id);
+        const [lessonsRes, progressRes] = await Promise.all([
+          supabase.from('trail_lessons').select('id, module_id').in('module_id', moduleIds),
+          supabase.from('trail_progress').select('lesson_id, completed').eq('tenant_id', tenantId),
+        ]);
+        const allLessons = lessonsRes.data || [];
+        const completedSet = new Set((progressRes.data || []).filter((p: any) => p.completed).map((p: any) => p.lesson_id));
+
+        trailProgress = (trailsRes.data || []).slice(0, 3).map(trail => {
+          const trailModuleIds = allModules.filter((m: any) => m.trail_id === trail.id).map((m: any) => m.id);
+          const trailLessons = allLessons.filter((l: any) => trailModuleIds.includes(l.module_id));
+          const totalLessons = trailLessons.length;
+          const completedLessons = trailLessons.filter((l: any) => completedSet.has(l.id)).length;
+          return { id: trail.id, name: trail.title, progress: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0 };
+        });
+      } else if (trailsRes.data) {
+        trailProgress = trailsRes.data.slice(0, 3).map(t => ({ id: t.id, name: t.title, progress: 0 }));
+      }
+
+      // SOS details
       let sosDetails: SOSDetail[] = [];
       if (sosDetailsRes.data && sosDetailsRes.data.length > 0) {
-        const sosMembershipIds = sosDetailsRes.data.map(s => s.membership_id).filter(Boolean) as string[];
-        const { data: sosProfiles } = sosMembershipIds.length > 0
-          ? await supabase.from('memberships').select('id, user_id').in('id', sosMembershipIds)
-          : { data: [] };
-        const sosUserIds = (sosProfiles || []).map(m => m.user_id);
-        const { data: sosNames } = sosUserIds.length > 0
-          ? await supabase.from('profiles').select('user_id, full_name').in('user_id', sosUserIds)
-          : { data: [] };
-        const memberToUser = new Map((sosProfiles || []).map(m => [m.id, m.user_id]));
-        const userToName = new Map((sosNames || []).map(p => [p.user_id, p.full_name]));
-
         sosDetails = sosDetailsRes.data.map(s => ({
-          id: s.id,
-          title: s.title,
-          priority: s.priority || 'medium',
+          id: s.id, title: s.title, priority: s.priority || 'medium',
           category: s.category || '',
-          mentoradoName: userToName.get(memberToUser.get(s.membership_id || '') || '') || 'Mentorado',
+          mentoradoName: profileMap.get(membershipToUser.get(s.membership_id || '') || '') || 'Mentorado',
           createdAt: s.created_at,
         }));
       }
 
-      // Calculate at-risk mentorados (no activity in 3+ days)
+      // At-risk
       let atRiskDetails: AtRiskDetail[] = [];
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-
-      if (menteeMemberships && menteeMemberships.length > 0) {
-        const membershipIds = menteeMemberships.filter(m => m.status === 'active').map(m => m.id);
-        
-        // Get last activity per membership
-        const { data: lastActivities } = membershipIds.length > 0
-          ? await supabase.from('activity_logs')
-              .select('membership_id, created_at')
-              .eq('tenant_id', tenantId)
-              .in('membership_id', membershipIds)
-              .order('created_at', { ascending: false })
-          : { data: [] };
-
-        const lastActivityMap = new Map<string, string>();
-        (lastActivities || []).forEach(a => {
-          if (a.membership_id && !lastActivityMap.has(a.membership_id)) {
-            lastActivityMap.set(a.membership_id, a.created_at);
-          }
-        });
-
-        // Find members with no activity or old activity
-        const atRiskMembershipIds = membershipIds.filter(id => {
-          const last = lastActivityMap.get(id);
-          return !last || new Date(last) < threeDaysAgo;
-        });
-
-        if (atRiskMembershipIds.length > 0) {
-          const riskUserIds = menteeMemberships
-            .filter(m => atRiskMembershipIds.includes(m.id))
-            .map(m => m.user_id);
-          const { data: riskProfiles } = await supabase
-            .from('profiles').select('user_id, full_name').in('user_id', riskUserIds);
-          const riskProfileMap = new Map((riskProfiles || []).map(p => [p.user_id, p.full_name]));
-          const userIdMap = new Map(menteeMemberships.map(m => [m.id, m.user_id]));
-
-          atRiskDetails = atRiskMembershipIds.slice(0, 5).map(mid => {
-            const lastAt = lastActivityMap.get(mid) || null;
-            const days = lastAt 
-              ? Math.floor((Date.now() - new Date(lastAt).getTime()) / (1000 * 60 * 60 * 24))
-              : 999;
-            return {
-              membershipId: mid,
-              name: riskProfileMap.get(userIdMap.get(mid) || '') || 'Sem nome',
-              lastActivityAt: lastAt,
-              daysSinceActivity: days,
-            };
-          }).sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
+      const lastActivityMap = new Map<string, string>();
+      ((atRiskActivityRes as any).data || []).forEach((a: any) => {
+        if (a.membership_id && !lastActivityMap.has(a.membership_id)) {
+          lastActivityMap.set(a.membership_id, a.created_at);
         }
-      }
+      });
+      const atRiskMembershipIds = activeMembershipIds.filter(id => {
+        const last = lastActivityMap.get(id);
+        return !last || new Date(last) < threeDaysAgo;
+      });
+      atRiskDetails = atRiskMembershipIds.slice(0, 5).map(mid => {
+        const lastAt = lastActivityMap.get(mid) || null;
+        const days = lastAt ? Math.floor((Date.now() - new Date(lastAt).getTime()) / (1000 * 60 * 60 * 24)) : 999;
+        return {
+          membershipId: mid,
+          name: profileMap.get(membershipToUser.get(mid) || '') || 'Sem nome',
+          lastActivityAt: lastAt, daysSinceActivity: days,
+        };
+      }).sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
 
       // Recent wins
       let recentWins: RecentWin[] = [];
       if (winsRes.data && winsRes.data.length > 0) {
-        const winMembershipIds = winsRes.data.map(w => w.membership_id).filter(Boolean) as string[];
-        const { data: winMemberships } = winMembershipIds.length > 0
-          ? await supabase.from('memberships').select('id, user_id').in('id', winMembershipIds)
-          : { data: [] };
-        const winUserIds = (winMemberships || []).map(m => m.user_id);
-        const { data: winProfiles } = winUserIds.length > 0
-          ? await supabase.from('profiles').select('user_id, full_name').in('user_id', winUserIds)
-          : { data: [] };
-        const winMemberToUser = new Map((winMemberships || []).map(m => [m.id, m.user_id]));
-        const winUserToName = new Map((winProfiles || []).map(p => [p.user_id, p.full_name]));
-
         recentWins = winsRes.data.map(w => ({
-          id: w.id,
-          description: w.action_description || w.action_type,
-          mentoradoName: winUserToName.get(winMemberToUser.get(w.membership_id || '') || '') || 'Mentorado',
+          id: w.id, description: w.action_description || w.action_type,
+          mentoradoName: profileMap.get(membershipToUser.get(w.membership_id || '') || '') || 'Mentorado',
           timestamp: w.created_at,
         }));
       }
 
-      const atRiskCount = atRiskDetails.length;
-
       setStats({
-        mentoradosCount, activeMentoradosCount, atRiskCount,
+        mentoradosCount, activeMentoradosCount, atRiskCount: atRiskDetails.length,
         sosCount: sosRes.count || 0, meetingsThisWeek, engagementRate,
         trailsCount, recentActivity, topRanking, trailProgress,
         sosDetails, atRiskDetails, recentWins,
@@ -377,107 +309,78 @@ export function useMenteeDashboardStats() {
     setError(null);
 
     try {
-      let totalPoints = 0;
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      // BATCH 1: All independent queries in parallel
+      const [rankingEntryRes, allMenteeIdsRes, totalProspRes, monthlyProspRes, nextMeetingRes, progressRes] = await Promise.all([
+        supabase.from('ranking_entries').select('points')
+          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
+          .order('points', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('memberships').select('id').eq('tenant_id', tenantId).eq('role', 'mentee'),
+        supabase.from('crm_prospections').select('*', { count: 'exact', head: true })
+          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`),
+        supabase.from('crm_prospections').select('*', { count: 'exact', head: true })
+          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
+          .gte('created_at', startOfMonth.toISOString()),
+        supabase.from('meetings').select('id, title, scheduled_at, meeting_url')
+          .eq('tenant_id', tenantId).gte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('trail_progress').select('id, lesson_id, completed')
+          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`),
+      ]);
+
+      const totalPoints = rankingEntryRes.data?.points || 0;
+      const totalProspections = totalProspRes.count || 0;
+      const monthlyProspections = monthlyProspRes.count || 0;
+      const nextMeeting = nextMeetingRes.data ? {
+        id: nextMeetingRes.data.id, title: nextMeetingRes.data.title,
+        scheduledAt: nextMeetingRes.data.scheduled_at,
+        meetingUrl: nextMeetingRes.data.meeting_url || undefined,
+      } : null;
+
+      // Ranking position
       let rankingPosition: number | null = null;
-
-      // Try to get ranking from ranking_entries (check both membership_id and mentorado_id)
-      const { data: rankingEntry } = await supabase
-        .from('ranking_entries')
-        .select('points')
-        .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
-        .order('points', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      totalPoints = rankingEntry?.points || 0;
-
-      // Calculate ranking position among all mentees in tenant
-      const { data: allMenteeIds } = await supabase
-        .from('memberships')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('role', 'mentee');
-
-      if (allMenteeIds && allMenteeIds.length > 0) {
+      const allMenteeIds = allMenteeIdsRes.data || [];
+      if (allMenteeIds.length > 0) {
         const ids = allMenteeIds.map(m => m.id);
         const { data: allRankings } = await supabase
-          .from('ranking_entries')
-          .select('membership_id, mentorado_id, points')
+          .from('ranking_entries').select('membership_id, mentorado_id, points')
           .or(`membership_id.in.(${ids.join(',')}),mentorado_id.in.(${ids.join(',')})`)
           .order('points', { ascending: false });
-
         if (allRankings) {
           const idx = allRankings.findIndex(r => r.membership_id === membershipId || r.mentorado_id === membershipId);
           if (idx >= 0) rankingPosition = idx + 1;
         }
       }
 
-      // Fetch prospections (check both membership_id and mentorado_id)
-      const { count: totalProspections } = await supabase
-        .from('crm_prospections')
-        .select('*', { count: 'exact', head: true })
-        .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`);
-
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const { count: monthlyProspections } = await supabase
-        .from('crm_prospections')
-        .select('*', { count: 'exact', head: true })
-        .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
-        .gte('created_at', startOfMonth.toISOString());
-
-      // Fetch next meeting
-      const { data: nextMeetingData } = await supabase
-        .from('meetings')
-        .select('id, title, scheduled_at, meeting_url')
-        .eq('tenant_id', tenantId)
-        .gte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      const nextMeeting = nextMeetingData ? {
-        id: nextMeetingData.id, title: nextMeetingData.title,
-        scheduledAt: nextMeetingData.scheduled_at,
-        meetingUrl: nextMeetingData.meeting_url || undefined,
-      } : null;
-
-      // Trail progress - calculate real percentages
+      // Trail progress
       let trailProgress: TrailProgressItem[] = [];
-      const { data: progressData } = await supabase
-        .from('trail_progress')
-        .select('id, lesson_id, completed')
-        .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`);
-
-      if (progressData && progressData.length > 0) {
+      const progressData = progressRes.data || [];
+      if (progressData.length > 0) {
         const lessonIds = progressData.map(p => p.lesson_id);
         const { data: lessonsData } = await supabase.from('trail_lessons').select('id, module_id').in('id', lessonIds);
         if (lessonsData && lessonsData.length > 0) {
           const moduleIds = [...new Set(lessonsData.map(l => l.module_id))];
-          const { data: modulesData } = await supabase.from('trail_modules').select('id, trail_id').in('id', moduleIds);
-          if (modulesData && modulesData.length > 0) {
+          const [modulesRes, allTrailLessonsRes] = await Promise.all([
+            supabase.from('trail_modules').select('id, trail_id').in('id', moduleIds),
+            supabase.from('trail_lessons').select('id, module_id').in('module_id', moduleIds),
+          ]);
+          const modulesData = modulesRes.data || [];
+          if (modulesData.length > 0) {
             const trailIds = [...new Set(modulesData.map(m => m.trail_id))];
             const { data: trailsData } = await supabase.from('trails').select('id, title').in('id', trailIds).eq('tenant_id', tenantId);
-            
-            // Get ALL lessons for these trails to calculate real progress
-            const { data: allTrailLessons } = await supabase
-              .from('trail_lessons').select('id, module_id')
-              .in('module_id', moduleIds);
-
-            const completedSet = new Set(
-              progressData.filter(p => p.completed).map(p => p.lesson_id)
-            );
+            const completedSet = new Set(progressData.filter(p => p.completed).map(p => p.lesson_id));
+            const allTrailLessons = allTrailLessonsRes.data || [];
 
             if (trailsData) {
               trailProgress = trailsData.map(trail => {
-                const trailModuleIds = (modulesData || []).filter(m => m.trail_id === trail.id).map(m => m.id);
-                const trailLessons = (allTrailLessons || []).filter(l => trailModuleIds.includes(l.module_id));
+                const trailModuleIds = modulesData.filter(m => m.trail_id === trail.id).map(m => m.id);
+                const trailLessons = allTrailLessons.filter(l => trailModuleIds.includes(l.module_id));
                 const totalLessons = trailLessons.length;
                 const completedLessons = trailLessons.filter(l => completedSet.has(l.id)).length;
-                const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-                return { id: trail.id, name: trail.title, progress };
+                return { id: trail.id, name: trail.title, progress: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0 };
               });
             }
           }
@@ -485,8 +388,7 @@ export function useMenteeDashboardStats() {
       }
 
       setStats({
-        rankingPosition, totalProspections: totalProspections || 0,
-        monthlyProspections: monthlyProspections || 0, totalPoints,
+        rankingPosition, totalProspections, monthlyProspections, totalPoints,
         nextMeeting, trailProgress,
       });
     } catch (err) {
