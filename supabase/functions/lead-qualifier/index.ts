@@ -11,6 +11,7 @@ const PILOTERR_API_KEYS = [
   Deno.env.get('PILOTERR_API_KEY_2'),
   Deno.env.get('PILOTERR_API_KEY_3'),
   Deno.env.get('PILOTERR_API_KEY_4'),
+  Deno.env.get('PILOTERR_API_KEY_5'),
 ].filter(Boolean) as string[];
 
 function detectPlatform(url: string): string | null {
