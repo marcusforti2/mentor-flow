@@ -57,61 +57,46 @@ export default function JornadaCS() {
     
     try {
       const tid = activeMembership.tenant_id;
-      const effectiveUserId = activeMembership.user_id;
-      const role = activeMembership.role;
       
-      let mentoradosData: any[] = [];
+      // Fetch mentee memberships for this tenant (same source as Mentorados.tsx)
+      const { data: menteeMemberships, error: membershipsError } = await supabase
+        .from('memberships')
+        .select('id, user_id, status, created_at')
+        .eq('tenant_id', tid)
+        .eq('role', 'mentee')
+        .eq('status', 'active');
       
-      if (role === 'mentor') {
-        const { data: mentorData } = await supabase
-          .from('mentors')
-          .select('id')
-          .eq('user_id', effectiveUserId)
-          .single();
-        
-        if (mentorData) {
-          const { data, error } = await supabase
-            .from('mentorados')
-            .select('id, user_id, status, joined_at')
-            .eq('mentor_id', mentorData.id)
-            .eq('status', 'active');
-          if (error) throw error;
-          mentoradosData = data || [];
-        }
-      } else {
-        const { data: menteeMemberships } = await supabase
-          .from('memberships')
-          .select('user_id')
-          .eq('tenant_id', tid)
-          .eq('role', 'mentee')
-          .eq('status', 'active');
-        
-        if (menteeMemberships && menteeMemberships.length > 0) {
-          const userIds = menteeMemberships.map(m => m.user_id);
-          const { data, error } = await supabase
-            .from('mentorados')
-            .select('id, user_id, status, joined_at')
-            .in('user_id', userIds)
-            .eq('status', 'active');
-          if (error) throw error;
-          mentoradosData = data || [];
-        }
-      }
+      if (membershipsError) throw membershipsError;
       
-      if (mentoradosData.length > 0) {
-        const userIds = mentoradosData.map(m => m.user_id);
-        const [profilesResult, activityResult] = await Promise.all([
-          supabase.from('profiles').select('user_id, full_name, email, avatar_url').in('user_id', userIds),
-          supabase.from('activity_logs').select('membership_id, created_at').in('membership_id', userIds).order('created_at', { ascending: false }).limit(500),
-        ]);
-        
-        setMentorados(mentoradosData.map(m => ({
-          ...m,
-          profile: profilesResult.data?.find(p => p.user_id === m.user_id) || null,
-        })));
-      } else {
+      if (!menteeMemberships || menteeMemberships.length === 0) {
         setMentorados([]);
+        setIsLoading(false);
+        return;
       }
+      
+      const userIds = menteeMemberships.map(m => m.user_id);
+      const membershipIds = menteeMemberships.map(m => m.id);
+      
+      // Fetch profiles and mentee_profiles in parallel
+      const [profilesResult, menteeProfilesResult] = await Promise.all([
+        supabase.from('profiles').select('user_id, full_name, email, avatar_url').in('user_id', userIds),
+        supabase.from('mentee_profiles').select('membership_id, joined_at').in('membership_id', membershipIds),
+      ]);
+      
+      const result: Mentorado[] = menteeMemberships.map(m => {
+        const profile = profilesResult.data?.find(p => p.user_id === m.user_id) || null;
+        const menteeProfile = menteeProfilesResult.data?.find(mp => mp.membership_id === m.id);
+        
+        return {
+          id: m.id,
+          user_id: m.user_id,
+          status: m.status,
+          joined_at: menteeProfile?.joined_at || m.created_at,
+          profile,
+        };
+      });
+      
+      setMentorados(result);
     } catch (error) {
       console.error('Error fetching mentorados:', error);
       toast({ title: "Erro ao carregar", description: "Não foi possível carregar os mentorados.", variant: "destructive" });
@@ -189,8 +174,8 @@ export default function JornadaCS() {
   const maxPages = filterMode === "week" ? Math.ceil(52 / 8) : filterMode === "month" ? Math.ceil(12 / 6) : 0;
 
   const handleCardClick = (mentorado: Mentorado) => {
-    // Navigate to mentorados page - the detail sheet will open there
-    navigate('/mentor/mentorados');
+    // Navigate to mentorados page with the mentorado ID to auto-open their profile
+    navigate(`/mentor/mentorados?open=${mentorado.id}`);
   };
 
   if (isLoading || stagesLoading) {

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
@@ -124,6 +125,7 @@ type StageFilter = 'all' | string;
 // JOURNEY_STAGES removed - now uses useJourneyStages hook
 
 const Mentorados = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mentorados, setMentorados] = useState<Mentorado[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -174,6 +176,20 @@ const Mentorados = () => {
   const createMembership = useCreateMembership();
   const tenantId = activeMembership?.tenant_id;
   const { stages: journeyStages, getStageForDay, getJourneyDay: getJourneyDayFromHook } = useJourneyStages(tenantId);
+
+  // Auto-open mentorado profile from query param (e.g. from JornadaCS click)
+  const autoOpenId = searchParams.get('open');
+  
+  const handleAutoOpen = useCallback((list: Mentorado[]) => {
+    if (autoOpenId && list.length > 0) {
+      const found = list.find(m => m.id === autoOpenId || m.membership_id === autoOpenId);
+      if (found) {
+        setSelectedMentorado(found);
+        // Clear the param so it doesn't re-trigger
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [autoOpenId, setSearchParams]);
 
   const handleDeleteMentorado = async (mentorado: Mentorado) => {
     setIsDeleting(true);
@@ -291,6 +307,7 @@ const Mentorados = () => {
       });
       
       setMentorados(mentoradosWithData);
+      handleAutoOpen(mentoradosWithData);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
