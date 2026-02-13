@@ -323,7 +323,7 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-3 pt-0">
+          <CardContent className="space-y-2 pt-0">
             {editStages.map((stage, index) => (
               <div
                 key={`${stage.stage_key}-${index}`}
@@ -332,50 +332,54 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
                 className={cn(
-                  "flex items-center gap-2 p-3 rounded-lg border bg-card transition-all",
+                  "p-3 rounded-lg border bg-card transition-all space-y-2",
                   dragIndex === index && "opacity-50 border-primary"
                 )}
               >
-                <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
-                <div className={cn("w-4 h-4 rounded-full shrink-0", stage.color)} />
-                <Input
-                  value={stage.name}
-                  onChange={(e) => updateStage(index, "name", e.target.value)}
-                  className="flex-1 h-8"
-                  placeholder="Nome da etapa"
-                />
-                <Input
-                  type="number"
-                  value={stage.day_start}
-                  onChange={(e) => updateStage(index, "day_start", parseInt(e.target.value) || 0)}
-                  className="w-20 h-8 text-center"
-                  placeholder="Início"
-                />
-                <span className="text-xs text-muted-foreground">a</span>
-                <Input
-                  type="number"
-                  value={stage.day_end}
-                  onChange={(e) => updateStage(index, "day_end", parseInt(e.target.value) || 0)}
-                  className="w-20 h-8 text-center"
-                  placeholder="Fim"
-                />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">dias</span>
-                <div className="flex gap-1 shrink-0">
-                  {AVAILABLE_COLORS.slice(0, 6).map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => updateStage(index, "color", color)}
-                      className={cn(
-                        "w-4 h-4 rounded-full transition-all",
-                        color,
-                        stage.color === color ? "ring-2 ring-offset-1 ring-primary" : "opacity-40 hover:opacity-100"
-                      )}
-                    />
-                  ))}
+                {/* Row 1: Drag + Name */}
+                <div className="flex items-center gap-2">
+                  <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
+                  <div className={cn("w-3 h-3 rounded-full shrink-0", stage.color)} />
+                  <Input
+                    value={stage.name}
+                    onChange={(e) => updateStage(index, "name", e.target.value)}
+                    className="flex-1 h-8 font-medium"
+                    placeholder="Nome da etapa"
+                  />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeStage(index)}>
+                    <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeStage(index)}>
-                  <Trash2 className="w-4 h-4 text-muted-foreground" />
-                </Button>
+                {/* Row 2: Days + Colors */}
+                <div className="flex items-center gap-2 pl-8">
+                  <span className="text-xs text-muted-foreground">Dia</span>
+                  <Input
+                    type="number"
+                    value={stage.day_start}
+                    onChange={(e) => updateStage(index, "day_start", parseInt(e.target.value) || 0)}
+                    className="w-16 h-7 text-center text-xs"
+                  />
+                  <span className="text-xs text-muted-foreground">a</span>
+                  <Input
+                    type="number"
+                    value={stage.day_end}
+                    onChange={(e) => updateStage(index, "day_end", parseInt(e.target.value) || 0)}
+                    className="w-16 h-7 text-center text-xs"
+                  />
+                  <div className="flex gap-1 ml-auto shrink-0">
+                    {AVAILABLE_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => updateStage(index, "color", color)}
+                        className={cn(
+                          "w-4 h-4 rounded-full transition-all",
+                          color,
+                          stage.color === color ? "ring-2 ring-offset-1 ring-primary" : "opacity-30 hover:opacity-100"
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             ))}
 

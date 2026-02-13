@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Search, Users, Calendar, Filter, ChevronLeft, ChevronRight, Settings2, AlertTriangle, LayoutGrid, List, ArrowUpDown } from "lucide-react";
@@ -506,14 +506,14 @@ export default function JornadaCS() {
         </Card>
       )}
 
-      {/* Stage Editor Sheet */}
-      <Sheet open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Configurar Jornadas</SheetTitle>
-            <SheetDescription>Gerencie suas jornadas e personalize as etapas de cada uma.</SheetDescription>
-          </SheetHeader>
-          <div className="mt-4">
+      {/* Stage Editor Dialog */}
+      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configurar Jornadas</DialogTitle>
+            <DialogDescription>Gerencie suas jornadas e personalize as etapas de cada uma.</DialogDescription>
+          </DialogHeader>
+          <div className="mt-2">
             {tenantId && (
               <JourneyStageEditor
                 tenantId={tenantId}
@@ -525,8 +525,8 @@ export default function JornadaCS() {
               />
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
