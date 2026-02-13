@@ -1098,6 +1098,53 @@ export type Database = {
           },
         ]
       }
+      cs_journey_stages: {
+        Row: {
+          color: string
+          created_at: string
+          day_end: number
+          day_start: number
+          id: string
+          name: string
+          position: number
+          stage_key: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          day_end?: number
+          day_start?: number
+          id?: string
+          name: string
+          position?: number
+          stage_key: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          day_end?: number
+          day_start?: number
+          id?: string
+          name?: string
+          position?: number
+          stage_key?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cs_journey_stages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_automations: {
         Row: {
           created_at: string | null
