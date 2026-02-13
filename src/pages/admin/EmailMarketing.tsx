@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DOMPurify from 'dompurify';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
@@ -543,7 +544,7 @@ export default function EmailMarketing() {
                       <strong>Assunto:</strong> {template.subject}
                     </p>
                     <div className="p-3 bg-muted/50 rounded-lg text-xs text-muted-foreground line-clamp-3"
-                      dangerouslySetInnerHTML={{ __html: template.body_html.substring(0, 200) + '...' }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(template.body_html.substring(0, 200) + '...') }}
                     />
                   </CardContent>
                 </Card>

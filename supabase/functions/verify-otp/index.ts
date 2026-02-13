@@ -68,8 +68,9 @@ serve(async (req) => {
     // ============================================
     let otpData = null;
     
-    if (devMode && normalizedCode === '000000') {
-      console.log("verify-otp: DEV MODE bypassing OTP validation");
+    if (false) {
+      // DEV MODE REMOVED FOR SECURITY - never bypass OTP validation in production
+      console.log("verify-otp: DEV MODE disabled");
       otpData = { id: 'dev-mode', devMode: true };
     } else {
       // Find valid OTP
