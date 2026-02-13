@@ -91,6 +91,7 @@ import { MentoradoAIScore } from "@/components/admin/MentoradoAIScore";
 import { MentoradoBusinessSummary } from "@/components/admin/MentoradoBusinessSummary";
 import { MentoradoActivityTimeline } from "@/components/admin/MentoradoActivityTimeline";
 import { MentoradoBehavioralAnalysis } from "@/components/admin/MentoradoBehavioralAnalysis";
+import { EditMenteeModal } from "@/components/admin/EditMenteeModal";
 
 interface Mentorado {
   id: string;
@@ -112,6 +113,7 @@ interface Mentorado {
     business_type: string | null;
     maturity_level: string | null;
   } | null;
+  business_profile_full: Record<string, unknown> | null;
 }
 
 type JourneyFilter = 'all' | 'week' | 'month' | 'stage';
@@ -168,6 +170,7 @@ const Mentorados = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [campanRefreshKey, setCampanRefreshKey] = useState(0);
   const [meetingRefreshKey, setMeetingRefreshKey] = useState(0);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { user } = useAuth();
   const { activeMembership } = useTenant();
@@ -285,6 +288,7 @@ const Mentorados = () => {
             business_type: (bp.business_type as string) || null,
             maturity_level: (bp.maturity_level as string) || null,
           } : null,
+          business_profile_full: bp || null,
         };
       });
       
@@ -914,6 +918,15 @@ const Mentorados = () => {
                 <TabsContent value="info" className="space-y-5 mt-4">
                   {/* Quick Actions */}
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setIsEditModalOpen(true)}
+                    >
+                      <Edit3 className="h-3.5 w-3.5 mr-1.5" />
+                      Editar Perfil
+                    </Button>
                     {selectedMentorado.profile?.phone && (
                       <Button
                         size="sm"
@@ -1097,6 +1110,22 @@ const Mentorados = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Edit Mentee Modal */}
+      {selectedMentorado && (
+        <EditMenteeModal
+          open={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          menteeData={{
+            membership_id: selectedMentorado.membership_id,
+            user_id: selectedMentorado.user_id,
+            profile: selectedMentorado.profile,
+            joined_at: selectedMentorado.joined_at,
+            business_profile_full: selectedMentorado.business_profile_full,
+          }}
+          onSuccess={fetchData}
+        />
+      )}
 
       {/* Upload Modal */}
       {activeMembership && (
