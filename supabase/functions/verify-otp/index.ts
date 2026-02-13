@@ -115,13 +115,42 @@ serve(async (req) => {
     // ============================================
     // STEP 2: CHECK IF USER EXISTS
     // ============================================
-    // Use getUserByEmail instead of listUsers to avoid NULL scan errors on auth.users
+    // Use profiles table to find user_id by email, then getUserById
+    // This avoids the auth.admin.listUsers() NULL scan bug on confirmation_token
     let existingUser = null;
-    const { data: userByEmail, error: userLookupError } = await supabase.auth.admin.getUserByEmail(normalizedEmail);
-    if (!userLookupError && userByEmail?.user) {
-      existingUser = userByEmail.user;
+    const { data: profileMatch } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle();
+    
+    if (profileMatch?.user_id) {
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(profileMatch.user_id);
+      if (!userError && userData?.user) {
+        existingUser = userData.user;
+      }
     }
-    console.log("verify-otp: User lookup result:", { found: !!existingUser, error: userLookupError?.message });
+    
+    // Fallback: check memberships table if profile has no email
+    if (!existingUser) {
+      const { data: membershipUsers } = await supabase
+        .from('memberships')
+        .select('user_id')
+        .eq('status', 'active');
+      
+      if (membershipUsers && membershipUsers.length > 0) {
+        for (const m of membershipUsers) {
+          const { data: uData } = await supabase.auth.admin.getUserById(m.user_id);
+          if (uData?.user?.email?.toLowerCase() === normalizedEmail) {
+            existingUser = uData.user;
+            break;
+          }
+        }
+      }
+    }
+    
+    console.log("verify-otp: User lookup result:", { found: !!existingUser });
 
     // ============================================
     // STEP 3A: EXISTING USER - BOOTSTRAP LOGIN
