@@ -3,11 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useJourneyStages, DEFAULT_JOURNEY_STAGES, type JourneyStage } from "@/hooks/useJourneyStages";
-import { GripVertical, Plus, Trash2, Save, RotateCcw, Loader2, Wand2 } from "lucide-react";
+import { useJourneys, type Journey } from "@/hooks/useJourneys";
+import { GripVertical, Plus, Trash2, Save, RotateCcw, Loader2, Wand2, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const AVAILABLE_COLORS = [
   "bg-blue-500", "bg-purple-500", "bg-amber-500", "bg-green-500",
@@ -22,19 +35,69 @@ interface JourneyStageEditorProps {
 
 export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProps) {
   const { toast } = useToast();
-  const { stages: currentStages, isLoading, reload } = useJourneyStages(tenantId);
+  const { journeys, isLoading: journeysLoading, reload: reloadJourneys, createJourney, updateJourney, deleteJourney } = useJourneys(tenantId);
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string | null>(null);
+  const { stages: currentStages, isLoading: stagesLoading, reload: reloadStages } = useJourneyStages(tenantId, selectedJourneyId || undefined);
+  
   const [editStages, setEditStages] = useState<JourneyStage[]>([]);
   const [journeyName, setJourneyName] = useState("Jornada CS");
   const [totalDays, setTotalDays] = useState(365);
   const [isSaving, setIsSaving] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
+  // Select first journey when loaded
+  useEffect(() => {
+    if (journeys.length > 0 && !selectedJourneyId) {
+      setSelectedJourneyId(journeys[0].id);
+    }
+  }, [journeys, selectedJourneyId]);
+
+  // Update form when journey or stages change
   useEffect(() => {
     setEditStages(currentStages.map((s, i) => ({ ...s, position: i })));
     if (currentStages.length > 0) {
       setTotalDays(currentStages[currentStages.length - 1].day_end);
     }
   }, [currentStages]);
+
+  useEffect(() => {
+    const j = journeys.find(j => j.id === selectedJourneyId);
+    if (j) {
+      setJourneyName(j.name);
+      setTotalDays(j.total_days);
+    }
+  }, [selectedJourneyId, journeys]);
+
+  const handleCreateJourney = async () => {
+    const newJourney = await createJourney(`Nova Jornada ${journeys.length + 1}`);
+    if (newJourney) {
+      setSelectedJourneyId(newJourney.id);
+      // Add default stages for the new journey
+      const defaultStages = DEFAULT_JOURNEY_STAGES.map((s, i) => ({
+        tenant_id: tenantId,
+        journey_id: newJourney.id,
+        name: s.name,
+        stage_key: s.stage_key,
+        day_start: s.day_start,
+        day_end: s.day_end,
+        color: s.color,
+        position: i,
+      }));
+      await (supabase.from("cs_journey_stages" as any) as any).insert(defaultStages);
+      await reloadStages();
+      toast({ title: "Nova jornada criada!" });
+    }
+  };
+
+  const handleDeleteJourney = async () => {
+    if (!selectedJourneyId) return;
+    await deleteJourney(selectedJourneyId);
+    setSelectedJourneyId(journeys.find(j => j.id !== selectedJourneyId)?.id || null);
+    setDeleteConfirm(false);
+    toast({ title: "Jornada excluída!" });
+    onSaved?.();
+  };
 
   const addStage = () => {
     const last = editStages[editStages.length - 1];
@@ -57,8 +120,7 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
       toast({ title: "Mínimo de 2 etapas", variant: "destructive" });
       return;
     }
-    const updated = editStages.filter((_, i) => i !== index).map((s, i) => ({ ...s, position: i }));
-    setEditStages(updated);
+    setEditStages(editStages.filter((_, i) => i !== index).map((s, i) => ({ ...s, position: i })));
   };
 
   const updateStage = (index: number, field: keyof JourneyStage, value: string | number) => {
@@ -80,19 +142,14 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
   const resetToDefault = () => {
     setEditStages(DEFAULT_JOURNEY_STAGES.map((s, i) => ({ ...s, position: i })));
     setTotalDays(365);
-    setJourneyName("Jornada CS");
   };
 
   const redistributeDays = () => {
     if (editStages.length === 0) return;
     const count = editStages.length;
     const total = totalDays;
-
-    // Smart distribution: earlier stages are shorter, later stages are longer
-    // Weight: 1, 2, 3, ... n
     const weights = editStages.map((_, i) => i + 1);
     const totalWeight = weights.reduce((a, b) => a + b, 0);
-
     let currentDay = 0;
     const redistributed = editStages.map((stage, i) => {
       const allocation = Math.round((weights[i] / totalWeight) * total);
@@ -101,7 +158,6 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
       currentDay = dayEnd + 1;
       return { ...stage, day_start: dayStart, day_end: dayEnd, position: i };
     });
-
     setEditStages(redistributed);
     toast({ title: "Dias redistribuídos automaticamente!" });
   };
@@ -115,36 +171,42 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
 
     setIsSaving(true);
     try {
-      await (supabase.from("cs_journey_stages" as any) as any).delete().eq("tenant_id", tenantId);
-
-      const isDefault =
-        editStages.length === DEFAULT_JOURNEY_STAGES.length &&
-        editStages.every(
-          (s, i) =>
-            s.name === DEFAULT_JOURNEY_STAGES[i].name &&
-            s.day_start === DEFAULT_JOURNEY_STAGES[i].day_start &&
-            s.day_end === DEFAULT_JOURNEY_STAGES[i].day_end &&
-            s.color === DEFAULT_JOURNEY_STAGES[i].color
-        );
-
-      if (!isDefault) {
-        const { error } = await (supabase.from("cs_journey_stages" as any) as any).insert(
-          editStages.map((s, i) => ({
-            tenant_id: tenantId,
-            name: s.name.trim(),
-            stage_key: s.stage_key,
-            day_start: s.day_start,
-            day_end: s.day_end,
-            color: s.color,
-            position: i,
-          }))
-        );
-        if (error) throw error;
+      // Ensure journey exists
+      let journeyId = selectedJourneyId;
+      if (!journeyId) {
+        const newJ = await createJourney(journeyName, totalDays);
+        if (!newJ) throw new Error("Failed to create journey");
+        journeyId = newJ.id;
+        setSelectedJourneyId(journeyId);
+      } else {
+        await updateJourney(journeyId, { name: journeyName, total_days: totalDays });
       }
 
-      await reload();
+      // Delete existing stages for this journey
+      await (supabase.from("cs_journey_stages" as any) as any)
+        .delete()
+        .eq("tenant_id", tenantId)
+        .eq("journey_id", journeyId);
+
+      // Insert new stages
+      const { error } = await (supabase.from("cs_journey_stages" as any) as any).insert(
+        editStages.map((s, i) => ({
+          tenant_id: tenantId,
+          journey_id: journeyId,
+          name: s.name.trim(),
+          stage_key: s.stage_key,
+          day_start: s.day_start,
+          day_end: s.day_end,
+          color: s.color,
+          position: i,
+        }))
+      );
+      if (error) throw error;
+
+      await reloadStages();
+      await reloadJourneys();
       onSaved?.();
-      toast({ title: "Etapas da jornada salvas!" });
+      toast({ title: "Jornada salva com sucesso!" });
     } catch (error) {
       console.error("Error saving journey stages:", error);
       toast({ title: "Erro ao salvar etapas", variant: "destructive" });
@@ -153,7 +215,7 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
     }
   };
 
-  if (isLoading) {
+  if (journeysLoading || stagesLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -163,129 +225,200 @@ export function JourneyStageEditor({ tenantId, onSaved }: JourneyStageEditorProp
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Configurar Jornada</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Personalize as etapas e os intervalos da sua jornada de mentoria.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={resetToDefault}>
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  Padrão
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-                  Salvar
-                </Button>
-              </div>
-            </div>
+      {/* Journey Tabs */}
+      {journeys.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Tabs value={selectedJourneyId || ""} onValueChange={setSelectedJourneyId} className="flex-1">
+            <TabsList className="w-full justify-start h-auto flex-wrap gap-1 bg-transparent p-0">
+              {journeys.map((j) => (
+                <TabsTrigger
+                  key={j.id}
+                  value={j.id}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs px-3 py-1.5 rounded-full"
+                >
+                  {j.name}
+                  {j.is_default && <Badge variant="outline" className="ml-1.5 text-[10px] px-1 py-0 h-4">padrão</Badge>}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <Button variant="ghost" size="icon" onClick={handleCreateJourney} title="Criar nova jornada" className="shrink-0">
+            <PlusCircle className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
 
-            {/* Journey Name & Total Days */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="journey-name" className="text-xs text-muted-foreground">Nome da Jornada</Label>
-                <Input
-                  id="journey-name"
-                  value={journeyName}
-                  onChange={(e) => setJourneyName(e.target.value)}
-                  placeholder="Ex: Jornada de Vendas"
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="total-days" className="text-xs text-muted-foreground">Duração Total (dias)</Label>
+      {/* No journeys state */}
+      {journeys.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground mb-3">Nenhuma jornada configurada</p>
+            <Button onClick={handleCreateJourney} className="gap-2">
+              <PlusCircle className="w-4 h-4" />
+              Criar primeira jornada
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stage Editor */}
+      {selectedJourneyId && (
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Configurar Etapas</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Personalize as etapas e os intervalos desta jornada.
+                  </p>
+                </div>
                 <div className="flex gap-2">
-                  <Input
-                    id="total-days"
-                    type="number"
-                    value={totalDays}
-                    onChange={(e) => setTotalDays(parseInt(e.target.value) || 365)}
-                    className="h-9 flex-1"
-                    min={30}
-                  />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={redistributeDays}
-                    className="gap-1.5 whitespace-nowrap h-9"
-                    title="Redistribuir dias automaticamente entre as etapas"
-                  >
-                    <Wand2 className="w-3.5 h-3.5" />
-                    Reorganizar
+                  <Button variant="outline" size="sm" onClick={resetToDefault}>
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    Padrão
+                  </Button>
+                  <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                    Salvar
                   </Button>
                 </div>
               </div>
-            </div>
-          </div>
-        </CardHeader>
 
-        <CardContent className="space-y-3 pt-0">
-          {editStages.map((stage, index) => (
-            <div
-              key={`${stage.stage_key}-${index}`}
-              draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragEnd={handleDragEnd}
-              className={cn(
-                "flex items-center gap-2 p-3 rounded-lg border bg-card transition-all",
-                dragIndex === index && "opacity-50 border-primary"
-              )}
-            >
-              <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
-              <div className={cn("w-4 h-4 rounded-full shrink-0", stage.color)} />
-              <Input
-                value={stage.name}
-                onChange={(e) => updateStage(index, "name", e.target.value)}
-                className="flex-1 h-8"
-                placeholder="Nome da etapa"
-              />
-              <Input
-                type="number"
-                value={stage.day_start}
-                onChange={(e) => updateStage(index, "day_start", parseInt(e.target.value) || 0)}
-                className="w-20 h-8 text-center"
-                placeholder="Início"
-              />
-              <span className="text-xs text-muted-foreground">a</span>
-              <Input
-                type="number"
-                value={stage.day_end}
-                onChange={(e) => updateStage(index, "day_end", parseInt(e.target.value) || 0)}
-                className="w-20 h-8 text-center"
-                placeholder="Fim"
-              />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">dias</span>
-              <div className="flex gap-1 shrink-0">
-                {AVAILABLE_COLORS.slice(0, 6).map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => updateStage(index, "color", color)}
-                    className={cn(
-                      "w-4 h-4 rounded-full transition-all",
-                      color,
-                      stage.color === color ? "ring-2 ring-offset-1 ring-primary" : "opacity-40 hover:opacity-100"
-                    )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="journey-name" className="text-xs text-muted-foreground">Nome da Jornada</Label>
+                  <Input
+                    id="journey-name"
+                    value={journeyName}
+                    onChange={(e) => setJourneyName(e.target.value)}
+                    placeholder="Ex: Jornada de Vendas"
+                    className="h-9"
                   />
-                ))}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="total-days" className="text-xs text-muted-foreground">Duração Total (dias)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="total-days"
+                      type="number"
+                      value={totalDays}
+                      onChange={(e) => setTotalDays(parseInt(e.target.value) || 365)}
+                      className="h-9 flex-1"
+                      min={30}
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={redistributeDays}
+                      className="gap-1.5 whitespace-nowrap h-9"
+                      title="Redistribuir dias automaticamente entre as etapas"
+                    >
+                      <Wand2 className="w-3.5 h-3.5" />
+                      Reorganizar
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeStage(index)}>
-                <Trash2 className="w-4 h-4 text-muted-foreground" />
-              </Button>
             </div>
-          ))}
+          </CardHeader>
 
-          <Button variant="outline" className="w-full" onClick={addStage}>
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Etapa
-          </Button>
-        </CardContent>
-      </Card>
+          <CardContent className="space-y-3 pt-0">
+            {editStages.map((stage, index) => (
+              <div
+                key={`${stage.stage_key}-${index}`}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  "flex items-center gap-2 p-3 rounded-lg border bg-card transition-all",
+                  dragIndex === index && "opacity-50 border-primary"
+                )}
+              >
+                <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
+                <div className={cn("w-4 h-4 rounded-full shrink-0", stage.color)} />
+                <Input
+                  value={stage.name}
+                  onChange={(e) => updateStage(index, "name", e.target.value)}
+                  className="flex-1 h-8"
+                  placeholder="Nome da etapa"
+                />
+                <Input
+                  type="number"
+                  value={stage.day_start}
+                  onChange={(e) => updateStage(index, "day_start", parseInt(e.target.value) || 0)}
+                  className="w-20 h-8 text-center"
+                  placeholder="Início"
+                />
+                <span className="text-xs text-muted-foreground">a</span>
+                <Input
+                  type="number"
+                  value={stage.day_end}
+                  onChange={(e) => updateStage(index, "day_end", parseInt(e.target.value) || 0)}
+                  className="w-20 h-8 text-center"
+                  placeholder="Fim"
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">dias</span>
+                <div className="flex gap-1 shrink-0">
+                  {AVAILABLE_COLORS.slice(0, 6).map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => updateStage(index, "color", color)}
+                      className={cn(
+                        "w-4 h-4 rounded-full transition-all",
+                        color,
+                        stage.color === color ? "ring-2 ring-offset-1 ring-primary" : "opacity-40 hover:opacity-100"
+                      )}
+                    />
+                  ))}
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeStage(index)}>
+                  <Trash2 className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+
+            <Button variant="outline" className="w-full" onClick={addStage}>
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Etapa
+            </Button>
+
+            {/* Delete journey button */}
+            {journeys.length > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteConfirm(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir esta jornada
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Jornada</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta jornada? Todas as etapas e vínculos com mentorados serão removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteJourney}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
