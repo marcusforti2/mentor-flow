@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Search, Users, Calendar, Filter, ChevronLeft, ChevronRight, Settings2, AlertTriangle } from "lucide-react";
+import { Loader2, Search, Users, Calendar, Filter, ChevronLeft, ChevronRight, Settings2, AlertTriangle, LayoutGrid, List, ArrowUpDown } from "lucide-react";
 import { differenceInDays, differenceInWeeks, differenceInMonths, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,9 @@ interface Mentorado {
 }
 
 type FilterMode = "week" | "month" | "journey";
+type ViewMode = "kanban" | "table";
+type SortField = "name" | "day" | "week" | "month" | "stage" | "joined_at";
+type SortDir = "asc" | "desc";
 
 export default function JornadaCS() {
   const [mentorados, setMentorados] = useState<Mentorado[]>([]);
@@ -41,6 +44,9 @@ export default function JornadaCS() {
   const [filterMode, setFilterMode] = useState<FilterMode>("journey");
   const [currentPage, setCurrentPage] = useState(0);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [sortField, setSortField] = useState<SortField>("day");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   
   const { user } = useAuth();
   const { activeMembership } = useTenant();
@@ -173,8 +179,53 @@ export default function JornadaCS() {
 
   const maxPages = filterMode === "week" ? Math.ceil(52 / 8) : filterMode === "month" ? Math.ceil(12 / 6) : 0;
 
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
+
+  const sortedMentorados = useMemo(() => {
+    const list = [...filteredMentorados];
+    list.sort((a, b) => {
+      let va: number | string = 0, vb: number | string = 0;
+      switch (sortField) {
+        case "name":
+          va = a.profile?.full_name?.toLowerCase() || "";
+          vb = b.profile?.full_name?.toLowerCase() || "";
+          break;
+        case "day":
+          va = getJourneyDay(a.joined_at);
+          vb = getJourneyDay(b.joined_at);
+          break;
+        case "week":
+          va = getWeekInJourney(a.joined_at);
+          vb = getWeekInJourney(b.joined_at);
+          break;
+        case "month":
+          va = getMonthInJourney(a.joined_at);
+          vb = getMonthInJourney(b.joined_at);
+          break;
+        case "stage":
+          va = getStageForDay(a.joined_at).position;
+          vb = getStageForDay(b.joined_at).position;
+          break;
+        case "joined_at":
+          va = a.joined_at || "";
+          vb = b.joined_at || "";
+          break;
+      }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [filteredMentorados, sortField, sortDir]);
+
   const handleCardClick = (mentorado: Mentorado) => {
-    // Navigate to mentorados page with the mentorado ID to auto-open their profile
     navigate(`/mentor/mentorados?open=${mentorado.id}`);
   };
 
@@ -217,6 +268,27 @@ export default function JornadaCS() {
               <SelectItem value="month">Por Mês</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="flex items-center rounded-lg border border-border/50 overflow-hidden">
+            <Button 
+              variant={viewMode === "kanban" ? "default" : "ghost"} 
+              size="icon" 
+              onClick={() => setViewMode("kanban")} 
+              title="Visão Kanban"
+              className="rounded-none"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant={viewMode === "table" ? "default" : "ghost"} 
+              size="icon" 
+              onClick={() => setViewMode("table")} 
+              title="Visão Lista"
+              className="rounded-none"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
 
           <Button variant="outline" size="icon" onClick={() => setIsEditorOpen(true)} title="Configurar Etapas">
             <Settings2 className="w-4 h-4" />
@@ -263,8 +335,8 @@ export default function JornadaCS() {
         })}
       </div>
 
-      {/* Pagination for week/month */}
-      {filterMode !== "journey" && maxPages > 1 && (
+      {/* Pagination for week/month - only in kanban */}
+      {viewMode === "kanban" && filterMode !== "journey" && maxPages > 1 && (
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
@@ -280,44 +352,134 @@ export default function JornadaCS() {
         </div>
       )}
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {columns.map((column: any) => (
-          <Card key={column.id} className="glass-card">
-            <div className="flex items-center gap-3 p-4 border-b border-border/50">
-              <div className={cn("w-3 h-3 rounded-full", column.color)} />
-              <h3 className="font-semibold">{column.title}</h3>
-              {column.dayStart !== undefined && (
-                <span className="text-xs text-muted-foreground">
-                  {column.dayStart}-{column.dayEnd}d
-                </span>
-              )}
-              <Badge variant="secondary" className="ml-auto">
-                {column.mentorados.length}
-              </Badge>
-            </div>
+      {viewMode === "kanban" ? (
+        /* Kanban Board */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {columns.map((column: any) => (
+            <Card key={column.id} className="glass-card">
+              <div className="flex items-center gap-3 p-4 border-b border-border/50">
+                <div className={cn("w-3 h-3 rounded-full", column.color)} />
+                <h3 className="font-semibold">{column.title}</h3>
+                {column.dayStart !== undefined && (
+                  <span className="text-xs text-muted-foreground">
+                    {column.dayStart}-{column.dayEnd}d
+                  </span>
+                )}
+                <Badge variant="secondary" className="ml-auto">
+                  {column.mentorados.length}
+                </Badge>
+              </div>
 
-            <CardContent className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
-              {column.mentorados.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Nenhum mentorado</p>
-                </div>
-              ) : (
-                column.mentorados.map((mentorado: Mentorado) => (
-                  <MentoradoCard
-                    key={mentorado.id}
-                    mentorado={mentorado}
-                    stage={getStageForDay(mentorado.joined_at)}
-                    journeyDay={getJourneyDay(mentorado.joined_at)}
-                    onClick={() => handleCardClick(mentorado)}
-                  />
-                ))
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <CardContent className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
+                {column.mentorados.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nenhum mentorado</p>
+                  </div>
+                ) : (
+                  column.mentorados.map((mentorado: Mentorado) => (
+                    <MentoradoCard
+                      key={mentorado.id}
+                      mentorado={mentorado}
+                      stage={getStageForDay(mentorado.joined_at)}
+                      journeyDay={getJourneyDay(mentorado.joined_at)}
+                      onClick={() => handleCardClick(mentorado)}
+                    />
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Table View */
+        <Card className="glass-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <SortHeader field="name" label="Mentorado" current={sortField} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader field="joined_at" label="Início" current={sortField} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader field="day" label="Dia" current={sortField} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader field="week" label="Semana" current={sortField} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader field="month" label="Mês" current={sortField} dir={sortDir} onSort={toggleSort} />
+                  <SortHeader field="stage" label="Etapa" current={sortField} dir={sortDir} onSort={toggleSort} />
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Progresso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedMentorados.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nenhum mentorado encontrado</p>
+                    </td>
+                  </tr>
+                ) : (
+                  sortedMentorados.map((mentorado) => {
+                    const stage = getStageForDay(mentorado.joined_at);
+                    const day = getJourneyDay(mentorado.joined_at);
+                    const week = getWeekInJourney(mentorado.joined_at);
+                    const month = getMonthInJourney(mentorado.joined_at);
+                    const progress = stage.day_end > stage.day_start
+                      ? Math.min(100, Math.round(((day - stage.day_start) / (stage.day_end - stage.day_start)) * 100))
+                      : 100;
+
+                    return (
+                      <tr
+                        key={mentorado.id}
+                        onClick={() => handleCardClick(mentorado)}
+                        className="border-b border-border/30 hover:bg-white/5 cursor-pointer transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8 border border-primary/20">
+                              <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                {mentorado.profile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm text-foreground">{mentorado.profile?.full_name || "Sem nome"}</p>
+                              <p className="text-xs text-muted-foreground">{mentorado.profile?.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {mentorado.joined_at ? format(new Date(mentorado.joined_at), "dd/MM/yy", { locale: ptBR }) : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className="text-xs font-mono">{day}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-muted-foreground">{week}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-muted-foreground">{month}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge className={cn("text-xs text-white border-0", stage.color)}>{stage.name}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 min-w-[120px]">
+                            <Progress value={progress} className="h-1.5 flex-1" />
+                            <span className="text-xs text-muted-foreground w-8 text-right">{progress}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 py-3 border-t border-border/50 text-xs text-muted-foreground">
+            {sortedMentorados.length} mentorado{sortedMentorados.length !== 1 ? "s" : ""} • Ordenado por {
+              { name: "nome", day: "dia", week: "semana", month: "mês", stage: "etapa", joined_at: "data de início" }[sortField]
+            } ({sortDir === "asc" ? "crescente" : "decrescente"})
+          </div>
+        </Card>
+      )}
 
       {/* Stage Editor Sheet */}
       <Sheet open={isEditorOpen} onOpenChange={setIsEditorOpen}>
@@ -421,7 +583,28 @@ function MentoradoCard({
     </div>
   );
 }
-
+// Sortable table header
+function SortHeader({ field, label, current, dir, onSort }: {
+  field: SortField;
+  label: string;
+  current: SortField;
+  dir: SortDir;
+  onSort: (f: SortField) => void;
+}) {
+  const isActive = current === field;
+  return (
+    <th
+      className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase cursor-pointer hover:text-foreground transition-colors select-none"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <ArrowUpDown className={cn("w-3 h-3", isActive ? "text-primary" : "opacity-40")} />
+        {isActive && <span className="text-[10px]">{dir === "asc" ? "↑" : "↓"}</span>}
+      </div>
+    </th>
+  );
+}
 function getWeekColor(week: number): string {
   if (week <= 4) return "bg-blue-500";
   if (week <= 8) return "bg-purple-500";
