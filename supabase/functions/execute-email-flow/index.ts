@@ -12,18 +12,6 @@ const FROM_EMAIL = "Learning Brand <noreply@equipe.aceleracaoforti.online>";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-interface EmailNode {
-  id: string;
-  type: string;
-  data: {
-    subject?: string;
-    body?: string;
-    templateId?: string;
-    duration?: number;
-    unit?: string;
-  };
-}
-
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -61,6 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
     const audienceType = flow.audience_type || 'all';
     const audienceMembershipIds: string[] = flow.audience_membership_ids || [];
     const tenantId = flow.tenant_id;
+    const mentorId = flow.mentor_id;
 
     // 2. Resolve recipients
     let memberships: { id: string; user_id: string }[] = [];
@@ -74,7 +63,6 @@ const handler = async (req: Request): Promise<Response> => {
       if (error) throw error;
       memberships = data || [];
     } else {
-      // All mentees in tenant
       const { data, error } = await supabase
         .from('memberships')
         .select('id, user_id')
@@ -101,13 +89,54 @@ const handler = async (req: Request): Promise<Response> => {
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
+    // Get mentor name
+    let mentorName = 'Seu Mentor';
+    if (mentorId) {
+      const { data: mentorData } = await supabase
+        .from('mentors')
+        .select('user_id')
+        .eq('id', mentorId)
+        .single();
+      if (mentorData) {
+        const { data: mentorProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', mentorData.user_id)
+          .single();
+        if (mentorProfile?.full_name) mentorName = mentorProfile.full_name;
+      }
+    }
+
+    // Get business profiles for all recipients
+    const { data: businessProfiles } = await supabase
+      .from('mentorado_business_profiles')
+      .select('mentorado_id, business_name')
+      .in('mentorado_id', userIds);
+    const businessMap = new Map(businessProfiles?.map(bp => [bp.mentorado_id, bp]) || []);
+
+    // Get membership created_at for journey days
+    const { data: membershipDetails } = await supabase
+      .from('memberships')
+      .select('id, created_at')
+      .in('id', memberships.map(m => m.id));
+    const membershipDateMap = new Map(membershipDetails?.map(m => [m.id, m.created_at]) || []);
+
     // Build recipient list
     const recipients = memberships
-      .map(m => ({
-        membershipId: m.id,
-        email: profileMap.get(m.user_id)?.email,
-        fullName: profileMap.get(m.user_id)?.full_name || 'Mentorado',
-      }))
+      .map(m => {
+        const profile = profileMap.get(m.user_id);
+        const biz = businessMap.get(m.user_id);
+        const joinedAt = membershipDateMap.get(m.id);
+        const diasNaJornada = joinedAt ? Math.floor((Date.now() - new Date(joinedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        return {
+          membershipId: m.id,
+          userId: m.user_id,
+          email: profile?.email,
+          fullName: profile?.full_name || 'Mentorado',
+          businessName: biz?.business_name || '',
+          diasNaJornada,
+        };
+      })
       .filter(r => r.email);
 
     if (recipients.length === 0) {
@@ -131,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
       templateMap = new Map(templates?.map(t => [t.id, t]) || []);
     }
 
-    // 4. Get email nodes in order (from the flow)
+    // 4. Get email nodes in order
     const emailNodes = nodes.filter((n: any) => n.type === 'email');
 
     if (emailNodes.length === 0) {
@@ -141,7 +170,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // 5. Send emails
+    // 5. Replace all variables helper
+    const replaceVars = (text: string, recipient: typeof recipients[0]) => {
+      return text
+        .replace(/\{\{nome\}\}/g, recipient.fullName)
+        .replace(/\{\{email\}\}/g, recipient.email || '')
+        .replace(/\{\{business_name\}\}/g, recipient.businessName)
+        .replace(/\{\{mentor_name\}\}/g, mentorName)
+        .replace(/\{\{dias_na_jornada\}\}/g, String(recipient.diasNaJornada))
+        .replace(/\{\{trilhas_concluidas\}\}/g, '0'); // TODO: query trail_progress when available
+    };
+
+    // 6. Send emails
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
@@ -152,7 +192,6 @@ const handler = async (req: Request): Promise<Response> => {
         let subject = node.data.subject || '';
         let body = node.data.body || '';
 
-        // Use template if configured
         if (node.data.templateId && templateMap.has(node.data.templateId)) {
           const tpl = templateMap.get(node.data.templateId);
           subject = tpl.subject;
@@ -161,9 +200,8 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (!subject && !body) continue;
 
-        // Replace variables
-        const personalizedBody = body.replace(/\{\{nome\}\}/g, recipient.fullName);
-        const personalizedSubject = subject.replace(/\{\{nome\}\}/g, recipient.fullName);
+        const personalizedBody = replaceVars(body, recipient);
+        const personalizedSubject = replaceVars(subject, recipient);
 
         const htmlContent = `
           <!DOCTYPE html>
@@ -191,7 +229,7 @@ const handler = async (req: Request): Promise<Response> => {
                 ${personalizedBody}
               </div>
               <div class="footer">
-                <p style="margin-bottom:10px;color:#4b5563;">Com carinho,<br/><strong>Seu Mentor</strong></p>
+                <p style="margin-bottom:10px;color:#4b5563;">Com carinho,<br/><strong>${mentorName}</strong></p>
                 <p>© ${new Date().getFullYear()} Learning Brand. Todos os direitos reservados.</p>
               </div>
             </div>
@@ -199,7 +237,6 @@ const handler = async (req: Request): Promise<Response> => {
           </html>
         `;
 
-        // Rate limit: 600ms between sends
         if (successCount > 0 || errorCount > 0) {
           await delay(600);
         }
@@ -233,7 +270,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Update flow as active if not immediate
     if (!immediate) {
       await supabase
         .from('email_flows')

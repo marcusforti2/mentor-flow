@@ -55,7 +55,7 @@ O JSON deve ter esta estrutura:
     {
       "type": "email",
       "subject": "Assunto do email",
-      "body": "Corpo do email em HTML simples. Use {{nome}} para o nome do mentorado."
+      "body": "Corpo do email em HTML simples. Use as variáveis dinâmicas disponíveis."
     },
     {
       "type": "wait",
@@ -65,8 +65,17 @@ O JSON deve ter esta estrutura:
   ]
 }
 
+Variáveis dinâmicas disponíveis para uso nos emails:
+- {{nome}} - Nome completo do mentorado
+- {{email}} - Email do mentorado
+- {{business_name}} - Nome do negócio do mentorado
+- {{mentor_name}} - Nome do mentor
+- {{dias_na_jornada}} - Quantos dias o mentorado está na jornada
+- {{trilhas_concluidas}} - Número de trilhas concluídas
+
 Crie emails persuasivos, empáticos e profissionais. Use técnicas de copywriting.
-Os emails devem ter CTAs claros e criar conexão emocional.`;
+Os emails devem ter CTAs claros e criar conexão emocional.
+Use as variáveis dinâmicas para personalizar os emails ao máximo.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

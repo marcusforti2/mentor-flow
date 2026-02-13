@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -34,9 +35,16 @@ import {
   Clock,
   Users,
   TrendingUp,
+  Copy,
+  History,
+  CheckCircle2,
+  XCircle,
+  Send,
 } from "lucide-react";
 import FlowEditor from "@/components/email/FlowEditor";
 import TemplateEditor from "@/components/email/TemplateEditor";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface EmailFlow {
   id: string;
@@ -59,12 +67,34 @@ interface EmailTemplate {
   created_at: string;
 }
 
+interface FlowStats {
+  flow_id: string;
+  total_executions: number;
+  last_sent: string | null;
+  success_count: number;
+  error_count: number;
+}
+
+interface ExecutionRecord {
+  id: string;
+  flow_id: string;
+  mentorado_id: string;
+  status: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+}
+
 export default function EmailMarketing() {
   const [flows, setFlows] = useState<EmailFlow[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mentorId, setMentorId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("flows");
+  
+  // Stats
+  const [totalEmailsSent, setTotalEmailsSent] = useState(0);
+  const [flowStatsMap, setFlowStatsMap] = useState<Map<string, FlowStats>>(new Map());
   
   // Flow editor state
   const [selectedFlow, setSelectedFlow] = useState<EmailFlow | null>(null);
@@ -84,6 +114,12 @@ export default function EmailMarketing() {
   const [newFlowName, setNewFlowName] = useState("");
   const [newFlowDescription, setNewFlowDescription] = useState("");
 
+  // History dialog
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyFlowId, setHistoryFlowId] = useState<string | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<ExecutionRecord[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
   const { user } = useAuth();
   const { activeMembership } = useTenant();
   const { toast } = useToast();
@@ -97,9 +133,8 @@ export default function EmailMarketing() {
     setIsLoading(true);
     try {
       const tenantId = activeMembership.tenant_id;
-      const realUserId = user.id; // Always use the REAL logged-in user, not impersonated
+      const realUserId = user.id;
 
-      // Get mentor id — try the real logged-in user first (works for admin who is also a mentor)
       let foundMentorId: string | null = null;
 
       const { data: mentorData } = await supabase
@@ -111,7 +146,6 @@ export default function EmailMarketing() {
       if (mentorData) {
         foundMentorId = mentorData.id;
       } else {
-        // Fallback: find first mentor in the tenant (now works with new RLS policy)
         const { data: mentorMemberships } = await supabase
           .from('memberships')
           .select('user_id')
@@ -136,7 +170,6 @@ export default function EmailMarketing() {
         return;
       }
       setMentorId(foundMentorId);
-      console.log('Mentor resolved:', foundMentorId);
 
       // Fetch flows
       const { data: flowsData } = await supabase
@@ -155,6 +188,40 @@ export default function EmailMarketing() {
         .order('created_at', { ascending: false });
       
       setTemplates(templatesData || []);
+
+      // Fetch execution stats
+      if (flowsData && flowsData.length > 0) {
+        const flowIds = flowsData.map(f => f.id);
+        const { data: executions } = await supabase
+          .from('email_flow_executions')
+          .select('id, flow_id, status, started_at')
+          .in('flow_id', flowIds);
+
+        if (executions) {
+          setTotalEmailsSent(executions.length);
+          const statsMap = new Map<string, FlowStats>();
+          for (const exec of executions) {
+            const existing = statsMap.get(exec.flow_id);
+            if (existing) {
+              existing.total_executions++;
+              if (exec.status === 'completed') existing.success_count++;
+              else if (exec.status === 'failed') existing.error_count++;
+              if (exec.started_at && (!existing.last_sent || exec.started_at > existing.last_sent)) {
+                existing.last_sent = exec.started_at;
+              }
+            } else {
+              statsMap.set(exec.flow_id, {
+                flow_id: exec.flow_id,
+                total_executions: 1,
+                last_sent: exec.started_at,
+                success_count: exec.status === 'completed' ? 1 : 0,
+                error_count: exec.status === 'failed' ? 1 : 0,
+              });
+            }
+          }
+          setFlowStatsMap(statsMap);
+        }
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -186,13 +253,39 @@ export default function EmailMarketing() {
       setNewFlowName("");
       setNewFlowDescription("");
       
-      // Open the editor for the new flow
       setSelectedFlow(data);
       setIsFlowEditorOpen(true);
       
       toast({ title: "Fluxo criado!" });
     } catch (error: any) {
       toast({ title: "Erro ao criar fluxo", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDuplicateFlow = async (flow: EmailFlow) => {
+    if (!mentorId) return;
+    try {
+      const { data, error } = await supabase
+        .from('email_flows')
+        .insert({
+          mentor_id: mentorId,
+          tenant_id: activeMembership.tenant_id,
+          name: `Cópia de ${flow.name}`,
+          description: flow.description,
+          nodes: flow.nodes,
+          edges: flow.edges,
+          audience_type: flow.audience_type,
+          audience_membership_ids: flow.audience_membership_ids,
+          is_active: false,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setFlows([data, ...flows]);
+      toast({ title: "Fluxo duplicado!" });
+    } catch (error: any) {
+      toast({ title: "Erro ao duplicar", description: error.message, variant: "destructive" });
     }
   };
 
@@ -228,39 +321,48 @@ export default function EmailMarketing() {
     }
   };
 
+  const handleOpenHistory = async (flowId: string) => {
+    setHistoryFlowId(flowId);
+    setIsHistoryOpen(true);
+    setIsHistoryLoading(true);
+    try {
+      const { data } = await supabase
+        .from('email_flow_executions')
+        .select('*')
+        .eq('flow_id', flowId)
+        .order('started_at', { ascending: false })
+        .limit(50);
+      setHistoryRecords(data || []);
+    } catch (e) {
+      console.error('Error loading history:', e);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
   const handleGenerateWithAI = async () => {
     if (!aiPrompt.trim()) {
       toast({ title: "Digite uma descrição para a campanha", variant: "destructive" });
       return;
     }
     if (!mentorId) {
-      toast({ title: "Erro: Mentor não encontrado", description: "Não foi possível identificar o mentor para criar a campanha. Verifique se você está logado corretamente.", variant: "destructive" });
-      console.error('handleGenerateWithAI: mentorId is null. activeMembership:', activeMembership);
+      toast({ title: "Erro: Mentor não encontrado", variant: "destructive" });
       return;
     }
     
     setIsGenerating(true);
     try {
-      console.log('Generating campaign with mentorId:', mentorId, 'prompt:', aiPrompt);
       const { data, error } = await supabase.functions.invoke('generate-email-campaign', {
         body: { prompt: aiPrompt, mentorId }
       });
       
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-
-      if (data?.error) {
-        console.error('Campaign generation error:', data.error);
-        throw new Error(data.error);
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       
       if (data?.flow) {
         setFlows([data.flow, ...flows]);
         toast({ title: "Campanha gerada com sucesso!", description: data.flow.name });
       }
-      
       if (data?.template) {
         setTemplates([data.template, ...templates]);
       }
@@ -268,18 +370,19 @@ export default function EmailMarketing() {
       setIsAIDialogOpen(false);
       setAiPrompt("");
     } catch (error: any) {
-      console.error('handleGenerateWithAI error:', error);
       toast({ title: "Erro ao gerar campanha", description: error.message || "Tente novamente", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSaveFlow = async (flowId: string, nodes: any[], edges: any[], audienceType?: string, audienceMembershipIds?: string[]) => {
+  const handleSaveFlow = async (flowId: string, nodes: any[], edges: any[], audienceType?: string, audienceMembershipIds?: string[], name?: string, description?: string) => {
     try {
       const updateData: any = { nodes, edges };
       if (audienceType !== undefined) updateData.audience_type = audienceType;
       if (audienceMembershipIds !== undefined) updateData.audience_membership_ids = audienceMembershipIds;
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
 
       const { error } = await supabase
         .from('email_flows')
@@ -288,7 +391,7 @@ export default function EmailMarketing() {
       
       if (error) throw error;
       
-      setFlows(flows.map(f => f.id === flowId ? { ...f, nodes, edges, audience_type: audienceType || f.audience_type, audience_membership_ids: audienceMembershipIds || f.audience_membership_ids } : f));
+      setFlows(flows.map(f => f.id === flowId ? { ...f, nodes, edges, audience_type: audienceType || f.audience_type, audience_membership_ids: audienceMembershipIds || f.audience_membership_ids, name: name || f.name, description: description !== undefined ? description : f.description } : f));
       toast({ title: "Fluxo salvo!" });
     } catch (error: any) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
@@ -310,7 +413,7 @@ export default function EmailMarketing() {
         flow={selectedFlow}
         templates={templates}
         tenantId={activeMembership?.tenant_id}
-        onSave={(nodes, edges, audienceType, audienceMembershipIds) => handleSaveFlow(selectedFlow.id, nodes, edges, audienceType, audienceMembershipIds)}
+        onSave={(nodes, edges, audienceType, audienceMembershipIds, name, description) => handleSaveFlow(selectedFlow.id, nodes, edges, audienceType, audienceMembershipIds, name, description)}
         onClose={() => {
           setIsFlowEditorOpen(false);
           setSelectedFlow(null);
@@ -338,6 +441,10 @@ export default function EmailMarketing() {
     );
   }
 
+  const successRate = totalEmailsSent > 0
+    ? Math.round(([...flowStatsMap.values()].reduce((acc, s) => acc + s.success_count, 0) / totalEmailsSent) * 100)
+    : 0;
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -359,8 +466,8 @@ export default function EmailMarketing() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* Stats - Responsive Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
@@ -391,11 +498,11 @@ export default function EmailMarketing() {
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                <LayoutTemplate className="h-5 w-5 text-accent" />
+                <Send className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{templates.length}</p>
-                <p className="text-xs text-muted-foreground">Templates</p>
+                <p className="text-2xl font-bold">{totalEmailsSent}</p>
+                <p className="text-xs text-muted-foreground">Emails Enviados</p>
               </div>
             </div>
           </CardContent>
@@ -407,8 +514,8 @@ export default function EmailMarketing() {
                 <TrendingUp className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">0</p>
-                <p className="text-xs text-muted-foreground">Emails Enviados</p>
+                <p className="text-2xl font-bold">{successRate}%</p>
+                <p className="text-xs text-muted-foreground">Taxa de Sucesso</p>
               </div>
             </div>
           </CardContent>
@@ -451,60 +558,92 @@ export default function EmailMarketing() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {flows.map(flow => (
-                <Card key={flow.id} className="group hover:border-primary/50 transition-all">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{flow.name}</CardTitle>
-                        {flow.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{flow.description}</p>
+              {flows.map(flow => {
+                const stats = flowStatsMap.get(flow.id);
+                return (
+                  <Card key={flow.id} className="group hover:border-primary/50 transition-all">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{flow.name}</CardTitle>
+                          {flow.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{flow.description}</p>
+                          )}
+                        </div>
+                        <Badge variant={flow.is_active ? "default" : "secondary"}>
+                          {flow.is_active ? "Ativo" : "Pausado"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {flow.nodes?.length || 0} etapas
+                        </span>
+                        {stats && (
+                          <>
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-4 w-4" />
+                              {stats.total_executions} envios
+                            </span>
+                          </>
                         )}
                       </div>
-                      <Badge variant={flow.is_active ? "default" : "secondary"}>
-                        {flow.is_active ? "Ativo" : "Pausado"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {flow.nodes?.length || 0} etapas
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => {
-                          setSelectedFlow(flow);
-                          setIsFlowEditorOpen(true);
-                        }}
-                      >
-                        <Edit3 className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant={flow.is_active ? "secondary" : "default"}
-                        size="sm"
-                        onClick={() => handleToggleFlowActive(flow.id, flow.is_active)}
-                      >
-                        {flow.is_active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:text-destructive"
-                        onClick={() => handleDeleteFlow(flow.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      {stats?.last_sent && (
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Último envio: {format(new Date(stats.last_sent), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setSelectedFlow(flow);
+                            setIsFlowEditorOpen(true);
+                          }}
+                        >
+                          <Edit3 className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Histórico"
+                          onClick={() => handleOpenHistory(flow.id)}
+                        >
+                          <History className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Duplicar"
+                          onClick={() => handleDuplicateFlow(flow)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={flow.is_active ? "secondary" : "default"}
+                          size="sm"
+                          onClick={() => handleToggleFlowActive(flow.id, flow.is_active)}
+                        >
+                          {flow.is_active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:text-destructive"
+                          onClick={() => handleDeleteFlow(flow.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -559,27 +698,16 @@ export default function EmailMarketing() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Novo Fluxo</DialogTitle>
-            <DialogDescription>
-              Dê um nome para seu fluxo de automação
-            </DialogDescription>
+            <DialogDescription>Dê um nome para seu fluxo de automação</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nome do Fluxo *</Label>
-              <Input
-                value={newFlowName}
-                onChange={(e) => setNewFlowName(e.target.value)}
-                placeholder="Ex: Boas-vindas Novos Mentorados"
-              />
+              <Input value={newFlowName} onChange={(e) => setNewFlowName(e.target.value)} placeholder="Ex: Boas-vindas Novos Mentorados" />
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
-              <Textarea
-                value={newFlowDescription}
-                onChange={(e) => setNewFlowDescription(e.target.value)}
-                placeholder="Descreva o objetivo deste fluxo"
-                rows={2}
-              />
+              <Textarea value={newFlowDescription} onChange={(e) => setNewFlowDescription(e.target.value)} placeholder="Descreva o objetivo deste fluxo" rows={2} />
             </div>
           </div>
           <DialogFooter>
@@ -597,35 +725,15 @@ export default function EmailMarketing() {
               <Sparkles className="h-5 w-5 text-primary" />
               Criar Campanha com IA
             </DialogTitle>
-            <DialogDescription>
-              Descreva a campanha que você quer criar e a IA irá gerar o fluxo completo
-            </DialogDescription>
+            <DialogDescription>Descreva a campanha que você quer criar e a IA irá gerar o fluxo completo</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Textarea
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Ex: Quero criar uma campanha de boas-vindas para novos mentorados com 5 emails ao longo de 15 dias, focando em engajamento e apresentação das trilhas disponíveis."
-              rows={5}
-              className="resize-none"
-            />
+            <Textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="Ex: Quero criar uma campanha de boas-vindas para novos mentorados com 5 emails ao longo de 15 dias..." rows={5} className="resize-none" />
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-sm font-medium mb-2">Sugestões de campanhas:</p>
               <div className="flex flex-wrap gap-2">
-                {[
-                  "Boas-vindas para novos mentorados",
-                  "Reengajamento de inativos",
-                  "Parabéns por conclusão de trilha",
-                  "Lembrete de encontro ao vivo",
-                  "Campanha de renovação"
-                ].map(suggestion => (
-                  <Button
-                    key={suggestion}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => setAiPrompt(suggestion)}
-                  >
+                {["Boas-vindas para novos mentorados", "Reengajamento de inativos", "Parabéns por conclusão de trilha", "Lembrete de encontro ao vivo", "Campanha de renovação"].map(suggestion => (
+                  <Button key={suggestion} variant="outline" size="sm" className="text-xs" onClick={() => setAiPrompt(suggestion)}>
                     {suggestion}
                   </Button>
                 ))}
@@ -635,19 +743,59 @@ export default function EmailMarketing() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsAIDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleGenerateWithAI} disabled={!aiPrompt.trim() || isGenerating}>
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Gerar Campanha
-                </>
-              )}
+              {isGenerating ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Gerando...</>) : (<><Sparkles className="h-4 w-4 mr-2" />Gerar Campanha</>)}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Histórico de Envios
+            </DialogTitle>
+            <DialogDescription>
+              {historyFlowId && flows.find(f => f.id === historyFlowId)?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[360px]">
+            {isHistoryLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : historyRecords.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Nenhum envio registrado</p>
+              </div>
+            ) : (
+              <div className="space-y-2 pr-4">
+                {historyRecords.map(record => (
+                  <div key={record.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                    {record.status === 'completed' ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : record.status === 'failed' ? (
+                      <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-amber-500 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{record.mentorado_id.slice(0, 8)}...</p>
+                      <p className="text-xs text-muted-foreground">
+                        {record.started_at ? format(new Date(record.started_at), "dd/MM/yy HH:mm", { locale: ptBR }) : '—'}
+                      </p>
+                    </div>
+                    <Badge variant={record.status === 'completed' ? 'default' : record.status === 'failed' ? 'destructive' : 'secondary'} className="text-xs">
+                      {record.status === 'completed' ? 'Enviado' : record.status === 'failed' ? 'Falhou' : record.status || 'Pendente'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
