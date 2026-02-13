@@ -51,6 +51,7 @@ export default function CentroSOS() {
   const { user } = useAuth();
   const { activeMembership } = useTenant();
   const [mentoradoId, setMentoradoId] = useState<string | null>(null);
+  const [legacyMentoradoId, setLegacyMentoradoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("novo");
   const [problemDescription, setProblemDescription] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -67,7 +68,18 @@ export default function CentroSOS() {
     if (activeMembership?.id) {
       setMentoradoId(activeMembership.id);
     }
-  }, [activeMembership]);
+    // Resolve legacy mentorado_id for business profile queries
+    if (user?.id) {
+      supabase
+        .from('mentorados')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setLegacyMentoradoId(data.id);
+        });
+    }
+  }, [activeMembership, user]);
 
   useEffect(() => {
     if (mentoradoId) {
@@ -107,12 +119,13 @@ export default function CentroSOS() {
     setTriageStarted(true);
 
     try {
-      // Get full business context
-      const { data: businessProfile } = await supabase
+      // Get full business context using legacy mentorado_id
+      const bpId = legacyMentoradoId || mentoradoId;
+      const { data: businessProfile } = bpId ? await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .eq("mentorado_id", mentoradoId)
-        .maybeSingle();
+        .eq("mentorado_id", bpId)
+        .maybeSingle() : { data: null };
 
       const businessContext = businessProfile ? {
         businessName: businessProfile.business_name,
@@ -167,11 +180,12 @@ export default function CentroSOS() {
     setChatHistory(newHistory);
 
     try {
-      const { data: businessProfile } = await supabase
+      const bpId = legacyMentoradoId || mentoradoId;
+      const { data: businessProfile } = bpId ? await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .eq("mentorado_id", mentoradoId)
-        .maybeSingle();
+        .eq("mentorado_id", bpId)
+        .maybeSingle() : { data: null };
 
       const businessContext = businessProfile ? {
         businessName: businessProfile.business_name,
