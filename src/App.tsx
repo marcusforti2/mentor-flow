@@ -68,6 +68,9 @@ const queryClient = new QueryClient({
   },
 });
 
+// Export for use in auth hooks to invalidate cache on login/logout
+export { queryClient };
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-screen bg-background">
