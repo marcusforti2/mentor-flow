@@ -172,7 +172,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tenant_id, email, full_name, phone, role, mentor_membership_id, joined_at } = await req.json();
+    const { tenant_id, email, full_name, phone, role, mentor_membership_id, joined_at, business_name, instagram, linkedin, website, notes } = await req.json();
 
     // ========== VALIDATION ==========
     if (!tenant_id || !email || !role) {
@@ -552,6 +552,13 @@ serve(async (req) => {
 
     // ========== CREATE SPECIALIZED PROFILE ==========
     if (role === 'mentee') {
+      // Build business_profile JSONB with extra fields
+      const businessProfile: Record<string, any> = {};
+      if (instagram) businessProfile.instagram = instagram;
+      if (linkedin) businessProfile.linkedin = linkedin;
+      if (website) businessProfile.website = website;
+      if (notes) businessProfile.notes = notes;
+
       const { error: menteeProfileError } = await supabaseAdmin
         .from("mentee_profiles")
         .insert({
@@ -559,8 +566,8 @@ serve(async (req) => {
           joined_at: effectiveJoinedAt,
           onboarding_completed: false,
           onboarding_step: 0,
-          business_name: full_name || null,
-          business_profile: {},
+          business_name: business_name || full_name || null,
+          business_profile: businessProfile,
         });
 
       if (menteeProfileError) {
