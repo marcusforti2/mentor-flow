@@ -48,33 +48,7 @@ export default function CalendarioMembro() {
 
       if (tenantError) throw tenantError;
 
-      // If no events found by tenant_id, fallback to mentor_id for legacy data
-      if (!tenantEvents || tenantEvents.length === 0) {
-        const tenantId = activeMembership.tenant_id;
-        // Find mentor for this tenant using raw rpc-style query to avoid deep type
-        const mentorRes: any = await supabase
-          .from('mentors' as any)
-          .select('id')
-          .eq('tenant_id', tenantId)
-          .limit(1)
-          .maybeSingle();
-
-        const tenantMentor = mentorRes?.data;
-
-        if (tenantMentor?.id) {
-          const { data: mentorEvents, error: mErr } = await supabase
-            .from('calendar_events')
-            .select('id, title, description, event_date, event_time, event_type, meeting_url')
-            .eq('mentor_id', tenantMentor.id)
-            .gte('event_date', format(new Date(), 'yyyy-MM-dd'))
-            .order('event_date', { ascending: true });
-
-          if (mErr) throw mErr;
-          setEvents(mentorEvents || []);
-          return;
-        }
-      }
-
+      // No legacy fallback needed - calendar_events now uses tenant_id only
       setEvents(tenantEvents || []);
     } catch (error) {
       console.error('Error fetching events:', error);

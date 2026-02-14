@@ -21,7 +21,6 @@ export type Database = {
           created_at: string
           id: string
           membership_id: string | null
-          mentorado_id: string | null
           metadata: Json | null
           points_earned: number | null
           tenant_id: string | null
@@ -32,7 +31,6 @@ export type Database = {
           created_at?: string
           id?: string
           membership_id?: string | null
-          mentorado_id?: string | null
           metadata?: Json | null
           points_earned?: number | null
           tenant_id?: string | null
@@ -43,7 +41,6 @@ export type Database = {
           created_at?: string
           id?: string
           membership_id?: string | null
-          mentorado_id?: string | null
           metadata?: Json | null
           points_earned?: number | null
           tenant_id?: string | null
@@ -54,13 +51,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "activity_logs_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -77,7 +67,6 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string | null
           tenant_id: string | null
           tool_type: string
         }
@@ -85,7 +74,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string | null
           tenant_id?: string | null
           tool_type: string
         }
@@ -93,7 +81,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string | null
           tenant_id?: string | null
           tool_type?: string
         }
@@ -103,13 +90,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_tool_usage_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -175,7 +155,6 @@ export type Database = {
           description: string | null
           icon_url: string | null
           id: string
-          mentor_id: string
           name: string
           owner_membership_id: string | null
           points_required: number | null
@@ -187,7 +166,6 @@ export type Database = {
           description?: string | null
           icon_url?: string | null
           id?: string
-          mentor_id: string
           name: string
           owner_membership_id?: string | null
           points_required?: number | null
@@ -199,20 +177,12 @@ export type Database = {
           description?: string | null
           icon_url?: string | null
           id?: string
-          mentor_id?: string
           name?: string
           owner_membership_id?: string | null
           points_required?: number | null
           tenant_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "badges_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "badges_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -235,7 +205,6 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_required: boolean | null
-          mentor_id: string
           options: Json
           order_index: number | null
           owner_membership_id: string | null
@@ -247,7 +216,6 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_required?: boolean | null
-          mentor_id: string
           options: Json
           order_index?: number | null
           owner_membership_id?: string | null
@@ -259,7 +227,6 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_required?: boolean | null
-          mentor_id?: string
           options?: Json
           order_index?: number | null
           owner_membership_id?: string | null
@@ -267,13 +234,6 @@ export type Database = {
           question_type?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "behavioral_questions_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "behavioral_questions_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -293,7 +253,6 @@ export type Database = {
           generated_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           sales_recommendations: Json | null
           strengths: Json | null
           updated_at: string | null
@@ -307,7 +266,6 @@ export type Database = {
           generated_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           sales_recommendations?: Json | null
           strengths?: Json | null
           updated_at?: string | null
@@ -321,7 +279,6 @@ export type Database = {
           generated_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           sales_recommendations?: Json | null
           strengths?: Json | null
           updated_at?: string | null
@@ -334,13 +291,6 @@ export type Database = {
             referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "behavioral_reports_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: true
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
         ]
       }
       behavioral_responses: {
@@ -348,7 +298,6 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           question_id: string
           selected_option: Json
           tenant_id: string | null
@@ -357,7 +306,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           question_id: string
           selected_option: Json
           tenant_id?: string | null
@@ -366,7 +314,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           question_id?: string
           selected_option?: Json
           tenant_id?: string | null
@@ -377,13 +324,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "behavioral_responses_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -412,7 +352,6 @@ export type Database = {
           id: string
           is_recurring: boolean | null
           meeting_url: string | null
-          mentor_id: string | null
           owner_membership_id: string | null
           tenant_id: string | null
           title: string
@@ -427,7 +366,6 @@ export type Database = {
           id?: string
           is_recurring?: boolean | null
           meeting_url?: string | null
-          mentor_id?: string | null
           owner_membership_id?: string | null
           tenant_id?: string | null
           title: string
@@ -442,20 +380,12 @@ export type Database = {
           id?: string
           is_recurring?: boolean | null
           meeting_url?: string | null
-          mentor_id?: string | null
           owner_membership_id?: string | null
           tenant_id?: string | null
           title?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "calendar_events_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "calendar_events_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -526,7 +456,6 @@ export type Database = {
           duration_minutes: number | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           status: string | null
           title: string | null
           transcript_text: string
@@ -538,7 +467,6 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           status?: string | null
           title?: string | null
           transcript_text: string
@@ -550,7 +478,6 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           status?: string | null
           title?: string | null
           transcript_text?: string
@@ -562,13 +489,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "call_transcripts_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
@@ -659,7 +579,6 @@ export type Database = {
           id: string
           issued_at: string | null
           membership_id: string | null
-          mentorado_id: string
           trail_id: string
         }
         Insert: {
@@ -667,7 +586,6 @@ export type Database = {
           id?: string
           issued_at?: string | null
           membership_id?: string | null
-          mentorado_id: string
           trail_id: string
         }
         Update: {
@@ -675,7 +593,6 @@ export type Database = {
           id?: string
           issued_at?: string | null
           membership_id?: string | null
-          mentorado_id?: string
           trail_id?: string
         }
         Relationships: [
@@ -684,13 +601,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "certificates_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -708,7 +618,6 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           post_id: string
         }
         Insert: {
@@ -716,7 +625,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           post_id: string
         }
         Update: {
@@ -724,7 +632,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           post_id?: string
         }
         Relationships: [
@@ -733,13 +640,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_comments_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -756,21 +656,18 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           post_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           post_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           post_id?: string
         }
         Relationships: [
@@ -779,13 +676,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_likes_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -803,8 +693,6 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
-          mentor_id: string
-          mentorado_id: string
           tenant_id: string | null
         }
         Insert: {
@@ -812,8 +700,6 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
-          mentor_id: string
-          mentorado_id: string
           tenant_id?: string | null
         }
         Update: {
@@ -821,8 +707,6 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
-          mentor_id?: string
-          mentorado_id?: string
           tenant_id?: string | null
         }
         Relationships: [
@@ -831,20 +715,6 @@ export type Database = {
             columns: ["author_membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_messages_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_messages_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -865,8 +735,6 @@ export type Database = {
           id: string
           image_url: string | null
           likes_count: number | null
-          mentor_id: string
-          mentorado_id: string
           tags: string[] | null
           tenant_id: string | null
           updated_at: string | null
@@ -879,8 +747,6 @@ export type Database = {
           id?: string
           image_url?: string | null
           likes_count?: number | null
-          mentor_id: string
-          mentorado_id: string
           tags?: string[] | null
           tenant_id?: string | null
           updated_at?: string | null
@@ -893,8 +759,6 @@ export type Database = {
           id?: string
           image_url?: string | null
           likes_count?: number | null
-          mentor_id?: string
-          mentorado_id?: string
           tags?: string[] | null
           tenant_id?: string | null
           updated_at?: string | null
@@ -905,20 +769,6 @@ export type Database = {
             columns: ["author_membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_posts_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "community_posts_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -981,7 +831,6 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
-          mentor_id: string
           name: string
           notes: string | null
           owner_membership_id: string | null
@@ -997,7 +846,6 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
-          mentor_id: string
           name: string
           notes?: string | null
           owner_membership_id?: string | null
@@ -1013,7 +861,6 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
-          mentor_id?: string
           name?: string
           notes?: string | null
           owner_membership_id?: string | null
@@ -1025,13 +872,6 @@ export type Database = {
           value?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "crm_leads_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "crm_leads_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -1106,7 +946,6 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string | null
           notes: string | null
           points: number | null
           profile_url: string | null
@@ -1125,7 +964,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string | null
           notes?: string | null
           points?: number | null
           profile_url?: string | null
@@ -1144,7 +982,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string | null
           notes?: string | null
           points?: number | null
           profile_url?: string | null
@@ -1160,13 +997,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "crm_prospections_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -1278,7 +1108,6 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
-          mentor_id: string
           owner_membership_id: string | null
           template_id: string
           trigger_config: Json | null
@@ -1289,7 +1118,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
-          mentor_id: string
           owner_membership_id?: string | null
           template_id: string
           trigger_config?: Json | null
@@ -1300,7 +1128,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
-          mentor_id?: string
           owner_membership_id?: string | null
           template_id?: string
           trigger_config?: Json | null
@@ -1308,13 +1135,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "email_automations_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "email_automations_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -1339,7 +1159,6 @@ export type Database = {
           flow_id: string
           id: string
           membership_id: string | null
-          mentorado_id: string
           started_at: string | null
           status: string | null
         }
@@ -1350,7 +1169,6 @@ export type Database = {
           flow_id: string
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           started_at?: string | null
           status?: string | null
         }
@@ -1361,7 +1179,6 @@ export type Database = {
           flow_id?: string
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           started_at?: string | null
           status?: string | null
         }
@@ -1378,13 +1195,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_flow_executions_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
@@ -1430,7 +1240,6 @@ export type Database = {
           edges: Json | null
           id: string
           is_active: boolean | null
-          mentor_id: string
           name: string
           nodes: Json | null
           owner_membership_id: string | null
@@ -1445,7 +1254,6 @@ export type Database = {
           edges?: Json | null
           id?: string
           is_active?: boolean | null
-          mentor_id: string
           name: string
           nodes?: Json | null
           owner_membership_id?: string | null
@@ -1460,7 +1268,6 @@ export type Database = {
           edges?: Json | null
           id?: string
           is_active?: boolean | null
-          mentor_id?: string
           name?: string
           nodes?: Json | null
           owner_membership_id?: string | null
@@ -1468,13 +1275,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "email_flows_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "email_flows_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -1498,7 +1298,6 @@ export type Database = {
           id: string
           opened_at: string | null
           recipient_email: string
-          recipient_id: string
           recipient_membership_id: string | null
           sent_at: string | null
           status: string | null
@@ -1511,7 +1310,6 @@ export type Database = {
           id?: string
           opened_at?: string | null
           recipient_email: string
-          recipient_id: string
           recipient_membership_id?: string | null
           sent_at?: string | null
           status?: string | null
@@ -1524,7 +1322,6 @@ export type Database = {
           id?: string
           opened_at?: string | null
           recipient_email?: string
-          recipient_id?: string
           recipient_membership_id?: string | null
           sent_at?: string | null
           status?: string | null
@@ -1537,13 +1334,6 @@ export type Database = {
             columns: ["automation_id"]
             isOneToOne: false
             referencedRelation: "email_automations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_recipient_id_fkey"
-            columns: ["recipient_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -1568,7 +1358,6 @@ export type Database = {
           body_text: string | null
           created_at: string | null
           id: string
-          mentor_id: string
           merge_tags: Json | null
           name: string
           owner_membership_id: string | null
@@ -1581,7 +1370,6 @@ export type Database = {
           body_text?: string | null
           created_at?: string | null
           id?: string
-          mentor_id: string
           merge_tags?: Json | null
           name: string
           owner_membership_id?: string | null
@@ -1594,7 +1382,6 @@ export type Database = {
           body_text?: string | null
           created_at?: string | null
           id?: string
-          mentor_id?: string
           merge_tags?: Json | null
           name?: string
           owner_membership_id?: string | null
@@ -1603,13 +1390,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "email_templates_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "email_templates_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -1799,7 +1579,6 @@ export type Database = {
           id: string
           meeting_id: string
           membership_id: string | null
-          mentorado_id: string
         }
         Insert: {
           attended?: boolean | null
@@ -1809,7 +1588,6 @@ export type Database = {
           id?: string
           meeting_id: string
           membership_id?: string | null
-          mentorado_id: string
         }
         Update: {
           attended?: boolean | null
@@ -1819,7 +1597,6 @@ export type Database = {
           id?: string
           meeting_id?: string
           membership_id?: string | null
-          mentorado_id?: string
         }
         Relationships: [
           {
@@ -1834,13 +1611,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "meeting_attendees_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
@@ -1965,7 +1735,6 @@ export type Database = {
           id: string
           meeting_type: string | null
           meeting_url: string | null
-          mentor_id: string
           owner_membership_id: string | null
           scheduled_at: string
           status: string | null
@@ -1980,7 +1749,6 @@ export type Database = {
           id?: string
           meeting_type?: string | null
           meeting_url?: string | null
-          mentor_id: string
           owner_membership_id?: string | null
           scheduled_at: string
           status?: string | null
@@ -1995,7 +1763,6 @@ export type Database = {
           id?: string
           meeting_type?: string | null
           meeting_url?: string | null
-          mentor_id?: string
           owner_membership_id?: string | null
           scheduled_at?: string
           status?: string | null
@@ -2004,13 +1771,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "meetings_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "meetings_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -2255,7 +2015,6 @@ export type Database = {
           id: string
           link_title: string | null
           link_url: string | null
-          mentor_id: string
           mime_type: string | null
           note_content: string | null
           note_title: string | null
@@ -2273,7 +2032,6 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
-          mentor_id: string
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
@@ -2291,22 +2049,13 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
-          mentor_id?: string
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
           tags?: string[] | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "mentor_library_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       mentor_mentee_assignments: {
         Row: {
@@ -2431,7 +2180,6 @@ export type Database = {
           main_offer: string | null
           maturity_level: string | null
           membership_id: string | null
-          mentorado_id: string
           monthly_leads_volume: string | null
           monthly_revenue: string | null
           owner_dependency_level: string | null
@@ -2462,7 +2210,6 @@ export type Database = {
           main_offer?: string | null
           maturity_level?: string | null
           membership_id?: string | null
-          mentorado_id: string
           monthly_leads_volume?: string | null
           monthly_revenue?: string | null
           owner_dependency_level?: string | null
@@ -2493,7 +2240,6 @@ export type Database = {
           main_offer?: string | null
           maturity_level?: string | null
           membership_id?: string | null
-          mentorado_id?: string
           monthly_leads_volume?: string | null
           monthly_revenue?: string | null
           owner_dependency_level?: string | null
@@ -2516,13 +2262,6 @@ export type Database = {
             referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "mentorado_business_profiles_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: true
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
         ]
       }
       mentorado_files: {
@@ -2536,8 +2275,6 @@ export type Database = {
           id: string
           link_title: string | null
           link_url: string | null
-          mentor_id: string | null
-          mentorado_id: string | null
           mime_type: string | null
           note_content: string | null
           note_title: string | null
@@ -2556,8 +2293,6 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
-          mentor_id?: string | null
-          mentorado_id?: string | null
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
@@ -2576,8 +2311,6 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
-          mentor_id?: string | null
-          mentorado_id?: string | null
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
@@ -2587,20 +2320,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "mentorado_files_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mentorado_files_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "mentorado_files_owner_membership_id_fkey"
             columns: ["owner_membership_id"]
@@ -2627,8 +2346,6 @@ export type Database = {
           full_name: string
           id: string
           invite_token: string
-          mentor_id: string
-          mentorado_id: string | null
           phone: string | null
           status: string
           welcome_message: string | null
@@ -2642,8 +2359,6 @@ export type Database = {
           full_name: string
           id?: string
           invite_token: string
-          mentor_id: string
-          mentorado_id?: string | null
           phone?: string | null
           status?: string
           welcome_message?: string | null
@@ -2657,109 +2372,9 @@ export type Database = {
           full_name?: string
           id?: string
           invite_token?: string
-          mentor_id?: string
-          mentorado_id?: string | null
           phone?: string | null
           status?: string
           welcome_message?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mentorado_invites_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mentorado_invites_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mentorados: {
-        Row: {
-          created_at: string | null
-          id: string
-          joined_at: string | null
-          mentor_id: string
-          onboarding_completed: boolean | null
-          onboarding_step: number | null
-          status: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          joined_at?: string | null
-          mentor_id: string
-          onboarding_completed?: boolean | null
-          onboarding_step?: number | null
-          status?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          joined_at?: string | null
-          mentor_id?: string
-          onboarding_completed?: boolean | null
-          onboarding_step?: number | null
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mentorados_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mentors: {
-        Row: {
-          bio: string | null
-          business_name: string | null
-          created_at: string | null
-          id: string
-          logo_url: string | null
-          primary_color: string | null
-          secondary_color: string | null
-          updated_at: string | null
-          user_id: string
-          website: string | null
-        }
-        Insert: {
-          bio?: string | null
-          business_name?: string | null
-          created_at?: string | null
-          id?: string
-          logo_url?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          updated_at?: string | null
-          user_id: string
-          website?: string | null
-        }
-        Update: {
-          bio?: string | null
-          business_name?: string | null
-          created_at?: string | null
-          id?: string
-          logo_url?: string | null
-          primary_color?: string | null
-          secondary_color?: string | null
-          updated_at?: string | null
-          user_id?: string
-          website?: string | null
         }
         Relationships: []
       }
@@ -2831,7 +2446,6 @@ export type Database = {
           created_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           period_end: string | null
           period_start: string | null
           period_type: string | null
@@ -2842,7 +2456,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           period_end?: string | null
           period_start?: string | null
           period_type?: string | null
@@ -2853,7 +2466,6 @@ export type Database = {
           created_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           period_end?: string | null
           period_start?: string | null
           period_type?: string | null
@@ -2866,13 +2478,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ranking_entries_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
@@ -2921,7 +2526,6 @@ export type Database = {
           fulfilled_at: string | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           notes: string | null
           points_spent: number
           redeemed_at: string | null
@@ -2933,7 +2537,6 @@ export type Database = {
           fulfilled_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           notes?: string | null
           points_spent: number
           redeemed_at?: string | null
@@ -2945,7 +2548,6 @@ export type Database = {
           fulfilled_at?: string | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           notes?: string | null
           points_spent?: number
           redeemed_at?: string | null
@@ -2959,13 +2561,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reward_redemptions_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -2984,7 +2579,6 @@ export type Database = {
           id: string
           lead_id: string | null
           lead_name: string | null
-          mentorado_id: string
           messages: Json
           negotiation_phase: string
           score: number | null
@@ -2996,7 +2590,6 @@ export type Database = {
           id?: string
           lead_id?: string | null
           lead_name?: string | null
-          mentorado_id: string
           messages?: Json
           negotiation_phase?: string
           score?: number | null
@@ -3008,7 +2601,6 @@ export type Database = {
           id?: string
           lead_id?: string | null
           lead_name?: string | null
-          mentorado_id?: string
           messages?: Json
           negotiation_phase?: string
           score?: number | null
@@ -3020,13 +2612,6 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "crm_prospections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "roleplay_simulations_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
@@ -3042,7 +2627,6 @@ export type Database = {
           initial_guidance: string | null
           meeting_id: string | null
           membership_id: string | null
-          mentorado_id: string | null
           priority: string | null
           resolved_at: string | null
           status: string | null
@@ -3060,7 +2644,6 @@ export type Database = {
           initial_guidance?: string | null
           meeting_id?: string | null
           membership_id?: string | null
-          mentorado_id?: string | null
           priority?: string | null
           resolved_at?: string | null
           status?: string | null
@@ -3078,7 +2661,6 @@ export type Database = {
           initial_guidance?: string | null
           meeting_id?: string | null
           membership_id?: string | null
-          mentorado_id?: string | null
           priority?: string | null
           resolved_at?: string | null
           status?: string | null
@@ -3099,13 +2681,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sos_requests_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
           {
@@ -3329,7 +2904,6 @@ export type Database = {
           id: string
           lesson_id: string
           membership_id: string | null
-          mentorado_id: string
           progress_percent: number | null
           tenant_id: string | null
           updated_at: string | null
@@ -3341,7 +2915,6 @@ export type Database = {
           id?: string
           lesson_id: string
           membership_id?: string | null
-          mentorado_id: string
           progress_percent?: number | null
           tenant_id?: string | null
           updated_at?: string | null
@@ -3353,7 +2926,6 @@ export type Database = {
           id?: string
           lesson_id?: string
           membership_id?: string | null
-          mentorado_id?: string
           progress_percent?: number | null
           tenant_id?: string | null
           updated_at?: string | null
@@ -3374,13 +2946,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "trail_progress_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "trail_progress_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -3397,7 +2962,6 @@ export type Database = {
           id: string
           is_featured: boolean | null
           is_published: boolean | null
-          mentor_id: string | null
           order_index: number | null
           tenant_id: string | null
           thumbnail_url: string | null
@@ -3411,7 +2975,6 @@ export type Database = {
           id?: string
           is_featured?: boolean | null
           is_published?: boolean | null
-          mentor_id?: string | null
           order_index?: number | null
           tenant_id?: string | null
           thumbnail_url?: string | null
@@ -3425,7 +2988,6 @@ export type Database = {
           id?: string
           is_featured?: boolean | null
           is_published?: boolean | null
-          mentor_id?: string | null
           order_index?: number | null
           tenant_id?: string | null
           thumbnail_url?: string | null
@@ -3438,13 +3000,6 @@ export type Database = {
             columns: ["creator_membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trails_mentor_id_fkey"
-            columns: ["mentor_id"]
-            isOneToOne: false
-            referencedRelation: "mentors"
             referencedColumns: ["id"]
           },
           {
@@ -3464,7 +3019,6 @@ export type Database = {
           errou_feio: Json | null
           id: string
           membership_id: string | null
-          mentorado_id: string
           muda_urgente: Json | null
           nota_geral: number | null
           ouro_nao_mude: Json | null
@@ -3479,7 +3033,6 @@ export type Database = {
           errou_feio?: Json | null
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           muda_urgente?: Json | null
           nota_geral?: number | null
           ouro_nao_mude?: Json | null
@@ -3494,7 +3047,6 @@ export type Database = {
           errou_feio?: Json | null
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           muda_urgente?: Json | null
           nota_geral?: number | null
           ouro_nao_mude?: Json | null
@@ -3510,13 +3062,6 @@ export type Database = {
             referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "training_analyses_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_badges: {
@@ -3524,21 +3069,18 @@ export type Database = {
           badge_id: string
           id: string
           membership_id: string | null
-          mentorado_id: string
           unlocked_at: string | null
         }
         Insert: {
           badge_id: string
           id?: string
           membership_id?: string | null
-          mentorado_id: string
           unlocked_at?: string | null
         }
         Update: {
           badge_id?: string
           id?: string
           membership_id?: string | null
-          mentorado_id?: string
           unlocked_at?: string | null
         }
         Relationships: [
@@ -3556,13 +3098,6 @@ export type Database = {
             referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_badges_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: false
-            referencedRelation: "mentorados"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_streaks: {
@@ -3572,7 +3107,6 @@ export type Database = {
           last_access_date: string | null
           longest_streak: number | null
           membership_id: string | null
-          mentorado_id: string
           updated_at: string | null
         }
         Insert: {
@@ -3581,7 +3115,6 @@ export type Database = {
           last_access_date?: string | null
           longest_streak?: number | null
           membership_id?: string | null
-          mentorado_id: string
           updated_at?: string | null
         }
         Update: {
@@ -3590,7 +3123,6 @@ export type Database = {
           last_access_date?: string | null
           longest_streak?: number | null
           membership_id?: string | null
-          mentorado_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -3599,13 +3131,6 @@ export type Database = {
             columns: ["membership_id"]
             isOneToOne: false
             referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_streaks_mentorado_id_fkey"
-            columns: ["mentorado_id"]
-            isOneToOne: true
-            referencedRelation: "mentorados"
             referencedColumns: ["id"]
           },
         ]
@@ -3671,10 +3196,6 @@ export type Database = {
         Returns: boolean
       }
       is_master_admin: { Args: { _user_id?: string }; Returns: boolean }
-      is_mentorado_owner: {
-        Args: { _mentorado_id: string; _user_id: string }
-        Returns: boolean
-      }
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id?: string }
         Returns: boolean

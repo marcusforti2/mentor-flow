@@ -112,13 +112,12 @@ export function ObjectionSimulator({ mentoradoId }: ObjectionSimulatorProps) {
           supabase
             .from('crm_prospections')
             .select('id, contact_name, company, contact_email, temperature, status, ai_insights, notes')
-            .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
+            .eq('membership_id', mentoradoId)
             .order('updated_at', { ascending: false })
             .limit(50),
           supabase
             .from('roleplay_simulations')
             .select('*')
-            .eq('mentorado_id', mentoradoId)
             .order('created_at', { ascending: false })
             .limit(20)
         ]);

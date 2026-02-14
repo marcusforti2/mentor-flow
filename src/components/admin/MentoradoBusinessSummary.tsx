@@ -26,7 +26,7 @@ export function MentoradoBusinessSummary({ legacyMentoradoId }: Props) {
       const { data } = await supabase
         .from('mentorado_business_profiles')
         .select('*')
-        .eq('mentorado_id', legacyMentoradoId)
+        .eq('membership_id', legacyMentoradoId)
         .maybeSingle();
       setProfile(data);
       setLoading(false);

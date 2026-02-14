@@ -110,7 +110,7 @@ const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
       const { data, error } = await supabase
         .from('behavioral_questions')
         .select('*')
-        .eq('mentor_id', mentorId)
+        .eq('owner_membership_id', mentorId)
         .order('order_index', { ascending: true });
       
       if (error) throw error;

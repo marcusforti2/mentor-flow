@@ -84,8 +84,8 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
         const { data: profileData } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
-          .eq('mentorado_id', mentoradoId)
-          .single();
+          .eq('membership_id', mentoradoId)
+          .maybeSingle();
 
         if (profileData) {
           setBusinessProfile(profileData);
@@ -95,7 +95,7 @@ export function ColdMessageGenerator({ mentoradoId }: ColdMessageGeneratorProps)
         const { data: leadsData } = await supabase
           .from('crm_prospections')
           .select('id, contact_name, company, temperature, ai_insights, notes, updated_at')
-          .eq('mentorado_id', mentoradoId)
+          .eq('membership_id', mentoradoId)
           .order('updated_at', { ascending: false })
           .limit(20);
 

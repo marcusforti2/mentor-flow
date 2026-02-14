@@ -86,11 +86,11 @@ const Onboarding = () => {
   const [mentorInfo, setMentorInfo] = useState<{ business_name: string | null } | null>(null);
   const [inviteData, setInviteData] = useState<{
     id: string;
-    mentor_id: string;
     full_name: string;
     email: string | null;
     phone: string | null;
     business_name: string | null;
+    tenant_id: string;
   } | null>(null);
   const [resolvedMentorId, setResolvedMentorId] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -120,11 +120,12 @@ const Onboarding = () => {
     let targetMembershipId = mentorId;
     
     if (inviteToken) {
+      // Use the new invites table instead of legacy mentorado_invites
       const { data: invite, error: inviteError } = await supabase
-        .from('mentorado_invites')
-        .select('id, mentor_id, full_name, email, phone, business_name, status, expires_at')
-        .eq('invite_token', inviteToken)
-        .single();
+        .from('invites')
+        .select('id, tenant_id, email, status, expires_at, metadata, role, created_by_membership_id')
+        .eq('id', inviteToken)
+        .maybeSingle();
       
       if (inviteError || !invite) {
         toast({ title: "Convite inválido", description: "Este link de convite não é válido ou já foi utilizado.", variant: "destructive" });
@@ -138,21 +139,29 @@ const Onboarding = () => {
         return;
       }
       
-      if (new Date(invite.expires_at) < new Date()) {
+      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
         toast({ title: "Convite expirado", description: "Este convite expirou. Solicite um novo convite ao seu mentor.", variant: "destructive" });
         setIsLoading(false);
         return;
       }
-      
-      setInviteData(invite);
-      targetMembershipId = invite.mentor_id;
+
+      const meta = invite.metadata as Record<string, any> | null;
+      setInviteData({
+        id: invite.id,
+        full_name: meta?.full_name || '',
+        email: invite.email || null,
+        phone: meta?.phone || null,
+        business_name: meta?.business_name || null,
+        tenant_id: invite.tenant_id,
+      });
+      targetMembershipId = invite.created_by_membership_id;
       
       setFormData(prev => ({
         ...prev,
-        full_name: invite.full_name || prev.full_name,
+        full_name: meta?.full_name || prev.full_name,
         email: invite.email || prev.email,
-        phone: invite.phone || prev.phone,
-        business_name: invite.business_name || prev.business_name,
+        phone: meta?.phone || prev.phone,
+        business_name: meta?.business_name || prev.business_name,
       }));
     }
     
@@ -195,25 +204,15 @@ const Onboarding = () => {
           setMentorInfo({ business_name: tenant?.name || 'Mentoria' });
         }
       } else {
-        // Fallback for legacy mentor IDs - try mentors table
-        const { data: legacyMentor } = await supabase
-          .from('mentors')
-          .select('business_name')
-          .eq('id', targetMembershipId)
-          .single();
-        
-        if (!legacyMentor) {
-          toast({ title: "Mentor não encontrado", description: "Este link de onboarding não é válido.", variant: "destructive" });
-          return;
-        }
-        setMentorInfo(legacyMentor);
+        toast({ title: "Mentor não encontrado", description: "Este link de onboarding não é válido.", variant: "destructive" });
+        return;
       }
 
-      // Fetch behavioral questions - try owner_membership_id first, then mentor_id fallback
+      // Fetch behavioral questions via owner_membership_id
       const { data: questionsData } = await supabase
         .from('behavioral_questions')
         .select('id, question_text, question_type, options, order_index, is_required')
-        .or(`owner_membership_id.eq.${targetMembershipId},mentor_id.eq.${targetMembershipId}`)
+        .eq('owner_membership_id', targetMembershipId)
         .eq('is_active', true)
         .order('order_index', { ascending: true });
 

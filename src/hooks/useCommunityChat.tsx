@@ -53,9 +53,8 @@ export function useCommunityChat() {
 
       if (error) throw error;
 
-      // Resolve authors via author_membership_id or legacy mentorado_id
+      // Resolve authors via author_membership_id
       const authorMembershipIds = [...new Set(messagesData.map(m => m.author_membership_id).filter(Boolean))];
-      const legacyMentoradoIds = [...new Set(messagesData.filter(m => !m.author_membership_id).map(m => m.mentorado_id).filter(Boolean))];
 
       let membershipToUser = new Map<string, string>();
       if (authorMembershipIds.length > 0) {
@@ -63,13 +62,7 @@ export function useCommunityChat() {
         membershipToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
       }
 
-      let mentoradoToUser = new Map<string, string>();
-      if (legacyMentoradoIds.length > 0) {
-        const { data } = await supabase.from('mentorados').select('id, user_id').in('id', legacyMentoradoIds);
-        mentoradoToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
-      }
-
-      const allUserIds = [...new Set([...membershipToUser.values(), ...mentoradoToUser.values()])];
+      const allUserIds = [...new Set([...membershipToUser.values()])];
       let userToProfile = new Map<string, { full_name: string | null; avatar_url: string | null }>();
       if (allUserIds.length > 0) {
         const { data } = await supabase.from('profiles').select('user_id, full_name, avatar_url').in('user_id', allUserIds);
@@ -80,13 +73,10 @@ export function useCommunityChat() {
         let userId: string | undefined;
         if (message.author_membership_id) {
           userId = membershipToUser.get(message.author_membership_id);
-        } else if (message.mentorado_id) {
-          userId = mentoradoToUser.get(message.mentorado_id);
         }
         const msgProfile = userId ? userToProfile.get(userId) : null;
         
-        const isOwn = message.author_membership_id === membershipId || 
-                      (mentorado && message.mentorado_id === mentorado.id);
+        const isOwn = message.author_membership_id === membershipId;
 
         return {
           ...message,
