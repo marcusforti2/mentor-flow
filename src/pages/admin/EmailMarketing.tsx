@@ -89,7 +89,7 @@ export default function EmailMarketing() {
   const [flows, setFlows] = useState<EmailFlow[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [mentorId, setMentorId] = useState<string | null>(null);
+  const [ownerMembershipId, setOwnerMembershipId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("flows");
   
   // Stats
@@ -134,8 +134,8 @@ export default function EmailMarketing() {
     try {
       const tenantId = activeMembership.tenant_id;
       // Use membership ID as the owner reference
-      const ownerMembershipId = activeMembership.id;
-      setMentorId(ownerMembershipId);
+      const ownerId = activeMembership.id;
+      setOwnerMembershipId(ownerId);
 
       // Fetch flows by tenant_id (covers all flows for this tenant)
       const { data: flowsData } = await supabase
@@ -196,13 +196,13 @@ export default function EmailMarketing() {
   };
 
   const handleCreateFlow = async () => {
-    if (!mentorId || !newFlowName.trim()) return;
+    if (!ownerMembershipId || !newFlowName.trim()) return;
     
     try {
       const { data, error } = await supabase
         .from('email_flows')
         .insert({
-          owner_membership_id: mentorId,
+          owner_membership_id: ownerMembershipId,
           tenant_id: activeMembership.tenant_id,
           name: newFlowName,
           description: newFlowDescription || null,
@@ -229,12 +229,12 @@ export default function EmailMarketing() {
   };
 
   const handleDuplicateFlow = async (flow: EmailFlow) => {
-    if (!mentorId) return;
+    if (!ownerMembershipId) return;
     try {
       const { data, error } = await supabase
         .from('email_flows')
         .insert({
-          owner_membership_id: mentorId,
+          owner_membership_id: ownerMembershipId,
           tenant_id: activeMembership.tenant_id,
           name: `Cópia de ${flow.name}`,
           description: flow.description,
@@ -311,15 +311,15 @@ export default function EmailMarketing() {
       toast({ title: "Digite uma descrição para a campanha", variant: "destructive" });
       return;
     }
-    if (!mentorId) {
-      toast({ title: "Erro: Mentor não encontrado", variant: "destructive" });
+    if (!ownerMembershipId) {
+      toast({ title: "Erro: Usuário não identificado", variant: "destructive" });
       return;
     }
     
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-email-campaign', {
-        body: { prompt: aiPrompt, mentorId }
+        body: { prompt: aiPrompt, mentorId: ownerMembershipId }
       });
       
       if (error) throw error;
@@ -393,7 +393,7 @@ export default function EmailMarketing() {
     return (
       <TemplateEditor
         template={selectedTemplate}
-        mentorId={mentorId!}
+        mentorId={ownerMembershipId!}
         onSave={() => {
           fetchData();
           setIsTemplateEditorOpen(false);

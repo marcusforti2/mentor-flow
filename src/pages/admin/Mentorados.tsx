@@ -162,8 +162,7 @@ const Mentorados = () => {
   // Upload modal
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   
-  // Legacy mentor ID from mentors table (needed for mentorado_files, mentorado_invites)
-  const [legacyMentorId, setLegacyMentorId] = useState<string | null>(null);
+  // Legacy mentor ID removed — system uses activeMembership.id
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [campanRefreshKey, setCampanRefreshKey] = useState(0);
@@ -436,7 +435,7 @@ const Mentorados = () => {
     return (
       <div className="max-w-[1200px] mx-auto">
         <Formularios 
-          mentorId={legacyMentorId || activeMembership.id} 
+          mentorId={activeMembership.id} 
           onBack={() => setShowFormEditor(false)} 
         />
       </div>
