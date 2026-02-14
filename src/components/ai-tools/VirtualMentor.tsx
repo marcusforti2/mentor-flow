@@ -66,7 +66,7 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
         const { data, error } = await supabase
           .from('crm_prospections')
           .select('id, contact_name, company, contact_email, contact_phone, temperature, status, ai_insights, notes, updated_at')
-          .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
+          .eq('membership_id', mentoradoId)
           .order('updated_at', { ascending: false })
           .limit(50);
         

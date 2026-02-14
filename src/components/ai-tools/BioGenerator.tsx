@@ -68,7 +68,7 @@ export function BioGenerator({ mentoradoId }: BioGeneratorProps) {
         const { data } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
-          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+          .eq('membership_id', mentoradoId)
           .maybeSingle();
 
         if (data) {
