@@ -1,7 +1,6 @@
-import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Eye, X, ArrowLeft } from 'lucide-react';
+import { Eye, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const roleLabels: Record<string, string> = {
@@ -13,16 +12,14 @@ const roleLabels: Record<string, string> = {
 };
 
 export function ImpersonationBanner() {
-  const { isImpersonating, impersonatedMembership, stopImpersonation } = useImpersonation();
+  const { isImpersonating, activeMembership, endImpersonation, tenant } = useTenant();
 
-  if (!isImpersonating || !impersonatedMembership) {
+  if (!isImpersonating || !activeMembership) {
     return null;
   }
 
-  const userName = impersonatedMembership.profile?.full_name || 'Usuário';
-  const userEmail = impersonatedMembership.profile?.email || '';
-  const tenantName = impersonatedMembership.tenant?.name || '';
-  const roleLabel = roleLabels[impersonatedMembership.role] || impersonatedMembership.role;
+  const roleLabel = roleLabels[activeMembership.role] || activeMembership.role;
+  const tenantName = tenant?.name || activeMembership.tenant_name || '';
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white shadow-lg">
@@ -35,18 +32,6 @@ export function ImpersonationBanner() {
             </div>
             
             <div className="hidden sm:flex items-center gap-3">
-              <Avatar className="h-7 w-7 border-2 border-white/30">
-                <AvatarImage src={impersonatedMembership.profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-white/20 text-white text-xs">
-                  {userName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold leading-tight">{userName}</span>
-                <span className="text-xs text-white/80 leading-tight">{userEmail}</span>
-              </div>
-
               <Badge variant="outline" className="border-white/30 text-white bg-white/10 text-xs">
                 {roleLabel}
               </Badge>
@@ -60,7 +45,7 @@ export function ImpersonationBanner() {
           </div>
 
           <Button
-            onClick={stopImpersonation}
+            onClick={endImpersonation}
             size="sm"
             className="bg-white/20 hover:bg-white/30 text-white border-0 gap-2"
           >

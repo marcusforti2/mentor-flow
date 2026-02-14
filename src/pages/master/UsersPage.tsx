@@ -3,7 +3,7 @@ import { useMemberships, MembershipWithDetails } from '@/hooks/useMemberships';
 import { useInvites, InviteWithDetails } from '@/hooks/useInvites';
 import { useTenants } from '@/hooks/useTenants';
 import { useTenant } from '@/contexts/TenantContext';
-import { useImpersonation } from '@/contexts/ImpersonationContext';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +67,7 @@ export default function UsersPage() {
   
   const { tenants } = useTenants();
   const { realMembership } = useTenant();
-  const { startImpersonation, isImpersonating } = useImpersonation();
+  const { switchMembership, isImpersonating } = useTenant();
   const { memberships, isLoading, updateMembershipRole, updateMembershipStatus, toggleImpersonation, deleteMembership } = useMemberships(
     tenantFilter !== 'all' ? tenantFilter : undefined
   );
@@ -140,7 +140,7 @@ export default function UsersPage() {
       return;
     }
 
-    await startImpersonation(membership, realMembership.id);
+    await switchMembership(membership.id);
   };
 
   const handleInviteMentor = (membership: MembershipWithDetails) => {

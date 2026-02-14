@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/contexts/TenantContext";
-import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
+
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SwitchContextPanel } from "@/components/SwitchContextPanel";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
@@ -87,7 +87,6 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <TenantProvider>
-            <ImpersonationProvider>
               <ImpersonationBanner />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
@@ -168,7 +167,6 @@ const App = () => (
                 </Routes>
               </Suspense>
               <SwitchContextPanel />
-            </ImpersonationProvider>
           </TenantProvider>
         </AuthProvider>
       </BrowserRouter>
