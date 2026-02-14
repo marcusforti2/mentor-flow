@@ -236,17 +236,6 @@ const Mentorados = () => {
     try {
       const tenantId = activeMembership.tenant_id;
       
-      // Fetch the legacy mentor ID from mentors table
-      const { data: mentorRecord } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (mentorRecord) {
-        setLegacyMentorId(mentorRecord.id);
-      }
-      
       // Fetch mentee memberships for this tenant
       const { data: menteeMemberships, error: membershipsError } = await supabase
         .from('memberships')
@@ -265,8 +254,8 @@ const Mentorados = () => {
       const userIds = menteeMemberships.map(m => m.user_id);
       const membershipIds = menteeMemberships.map(m => m.id);
       
-      // Fetch profiles, mentee_profiles, and legacy mentorados in parallel
-      const [profilesResult, menteeProfilesResult, legacyMentoradosResult] = await Promise.all([
+      // Fetch profiles and mentee_profiles in parallel
+      const [profilesResult, menteeProfilesResult] = await Promise.all([
         supabase
           .from('profiles')
           .select('user_id, full_name, email, avatar_url, phone')
@@ -275,24 +264,19 @@ const Mentorados = () => {
           .from('mentee_profiles')
           .select('membership_id, onboarding_completed, joined_at, business_profile')
           .in('membership_id', membershipIds),
-        supabase
-          .from('mentorados')
-          .select('id, user_id, mentor_id')
-          .in('user_id', userIds)
       ]);
       
       const mentoradosWithData: Mentorado[] = menteeMemberships.map(m => {
         const profile = profilesResult.data?.find(p => p.user_id === m.user_id) || null;
         const menteeProfile = menteeProfilesResult.data?.find(mp => mp.membership_id === m.id);
-        const legacyMentorado = legacyMentoradosResult.data?.find(lm => lm.user_id === m.user_id);
         const bp = menteeProfile?.business_profile as Record<string, unknown> | null;
         
         return {
           id: m.id,
           membership_id: m.id,
           user_id: m.user_id,
-          legacy_mentorado_id: legacyMentorado?.id || null,
-          legacy_mentor_id: legacyMentorado?.mentor_id || null,
+          legacy_mentorado_id: null,
+          legacy_mentor_id: null,
           status: m.status,
           joined_at: menteeProfile?.joined_at || m.created_at,
           onboarding_completed: menteeProfile?.onboarding_completed || false,

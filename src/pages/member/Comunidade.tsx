@@ -5,11 +5,13 @@ import { PostComposer } from '@/components/community/PostComposer';
 import { PostCard } from '@/components/community/PostCard';
 import { ChatPanel } from '@/components/community/ChatPanel';
 import { useCommunityPosts } from '@/hooks/useCommunityPosts';
+import { useTenant } from '@/contexts/TenantContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Comunidade() {
   const [activeTab, setActiveTab] = useState('feed');
-  const { posts, isLoading, createPost, deletePost, toggleLike, mentorado } = useCommunityPosts();
+  const { posts, isLoading, createPost, deletePost, toggleLike } = useCommunityPosts();
+  const { activeMembership } = useTenant();
 
   const handleCreatePost = (content: string, tags: string[]) => {
     createPost.mutate({ content, tags });
@@ -92,7 +94,7 @@ export default function Comunidade() {
                 <PostCard
                   key={post.id}
                   post={post}
-                  currentMentoradoId={mentorado?.id}
+                  currentMembershipId={activeMembership?.id}
                   onLike={handleLike}
                   onDelete={handleDelete}
                 />

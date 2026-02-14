@@ -28,6 +28,7 @@ export interface CommunityComment {
   id: string;
   post_id: string;
   mentorado_id: string;
+  membership_id?: string | null;
   content: string;
   created_at: string;
   author?: {
@@ -36,13 +37,7 @@ export interface CommunityComment {
   };
 }
 
-interface Mentorado {
-  id: string;
-  user_id: string;
-  mentor_id: string;
-}
-
-// Hook to get current user's mentorado record (legacy compat)
+// Legacy compat hook - still used by useCommunityChat for presence
 export function useMentorado() {
   const { user } = useAuth();
 
@@ -62,16 +57,15 @@ export function useMentorado() {
         return null;
       }
 
-      return data as Mentorado;
+      return data as { id: string; user_id: string; mentor_id: string };
     },
     enabled: !!user,
   });
 }
 
 export function useCommunityPosts() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { activeMembership } = useTenant();
-  const { data: mentorado } = useMentorado();
   const queryClient = useQueryClient();
 
   const tenantId = activeMembership?.tenant_id;
@@ -105,7 +99,7 @@ export function useCommunityPosts() {
         membershipToUser = new Map(membershipsData?.map(m => [m.id, m.user_id]) || []);
       }
 
-      // Fetch legacy mentorado user_ids
+      // Fetch legacy mentorado user_ids (for old posts without author_membership_id)
       let mentoradoToUser = new Map<string, string>();
       if (legacyMentoradoIds.length > 0) {
         const { data: mentoradosData } = await supabase
@@ -126,13 +120,13 @@ export function useCommunityPosts() {
         userToProfile = new Map(profilesData?.map(p => [p.user_id, p]) || []);
       }
 
-      // Get user's likes (by membership_id or legacy mentorado_id)
+      // Get user's likes by membership_id
       let likedPostIds = new Set<string>();
-      if (mentorado?.id) {
+      if (membershipId) {
         const { data: userLikes } = await supabase
           .from('community_likes')
           .select('post_id')
-          .eq('mentorado_id', mentorado.id);
+          .eq('membership_id', membershipId);
         likedPostIds = new Set(userLikes?.map(l => l.post_id) || []);
       }
 
@@ -158,25 +152,23 @@ export function useCommunityPosts() {
     enabled: !!tenantId,
   });
 
-  // Create post mutation - uses tenant_id + membership_id
+  // Create post mutation - uses tenant_id + membership_id only
   const createPost = useMutation({
     mutationFn: async ({ content, tags, imageUrl }: { content: string; tags?: string[]; imageUrl?: string }) => {
       if (!tenantId || !membershipId) throw new Error('Não autenticado');
 
-      const insertData: any = {
-        content,
-        tags: tags || [],
-        image_url: imageUrl || null,
-        tenant_id: tenantId,
-        author_membership_id: membershipId,
-        // Legacy fields - populate if available
-        mentor_id: mentorado?.mentor_id || membershipId,
-        mentorado_id: mentorado?.id || membershipId,
-      };
-
       const { data, error } = await supabase
         .from('community_posts')
-        .insert(insertData)
+        .insert({
+          content,
+          tags: tags || [],
+          image_url: imageUrl || null,
+          tenant_id: tenantId,
+          author_membership_id: membershipId,
+          // Legacy fields - use membershipId as placeholder for NOT NULL constraints
+          mentor_id: membershipId,
+          mentorado_id: membershipId,
+        })
         .select()
         .single();
 
@@ -212,17 +204,17 @@ export function useCommunityPosts() {
     },
   });
 
-  // Toggle like mutation
+  // Toggle like mutation - uses membership_id
   const toggleLike = useMutation({
     mutationFn: async ({ postId, isLiked }: { postId: string; isLiked: boolean }) => {
-      if (!mentorado) throw new Error('Não autenticado');
+      if (!membershipId) throw new Error('Não autenticado');
 
       if (isLiked) {
         const { error } = await supabase
           .from('community_likes')
           .delete()
           .eq('post_id', postId)
-          .eq('mentorado_id', mentorado.id);
+          .eq('membership_id', membershipId);
         if (error) throw error;
 
         const { data: currentPost } = await supabase
@@ -242,7 +234,9 @@ export function useCommunityPosts() {
           .from('community_likes')
           .insert({
             post_id: postId,
-            mentorado_id: mentorado.id,
+            membership_id: membershipId,
+            // Legacy field - NOT NULL constraint
+            mentorado_id: membershipId,
           });
         if (error) throw error;
 
@@ -275,12 +269,12 @@ export function useCommunityPosts() {
     createPost,
     deletePost,
     toggleLike,
-    mentorado,
   };
 }
 
 export function usePostComments(postId: string) {
-  const { data: mentorado } = useMentorado();
+  const { activeMembership } = useTenant();
+  const membershipId = activeMembership?.id;
   const queryClient = useQueryClient();
 
   const { data: comments, isLoading } = useQuery({
@@ -294,25 +288,36 @@ export function usePostComments(postId: string) {
 
       if (error) throw error;
 
-      const mentoradoIds = [...new Set(commentsData.map(c => c.mentorado_id))];
-      
-      const { data: mentoradosData } = await supabase
-        .from('mentorados')
-        .select('id, user_id')
-        .in('id', mentoradoIds);
+      // Resolve authors: prefer membership_id, fallback to mentorado_id for old comments
+      const commentMembershipIds = [...new Set(commentsData.map(c => (c as any).membership_id).filter(Boolean))];
+      const legacyMentoradoIds = [...new Set(commentsData.filter(c => !(c as any).membership_id).map(c => c.mentorado_id).filter(Boolean))];
 
-      const userIds = mentoradosData?.map(m => m.user_id) || [];
-      
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url')
-        .in('user_id', userIds);
+      let membershipToUser = new Map<string, string>();
+      if (commentMembershipIds.length > 0) {
+        const { data } = await supabase.from('memberships').select('id, user_id').in('id', commentMembershipIds);
+        membershipToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
+      }
 
-      const mentoradoToUser = new Map(mentoradosData?.map(m => [m.id, m.user_id]));
-      const userToProfile = new Map(profilesData?.map(p => [p.user_id, p]));
+      let mentoradoToUser = new Map<string, string>();
+      if (legacyMentoradoIds.length > 0) {
+        const { data } = await supabase.from('mentorados').select('id, user_id').in('id', legacyMentoradoIds);
+        mentoradoToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
+      }
+
+      const allUserIds = [...new Set([...membershipToUser.values(), ...mentoradoToUser.values()])];
+      let userToProfile = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+      if (allUserIds.length > 0) {
+        const { data } = await supabase.from('profiles').select('user_id, full_name, avatar_url').in('user_id', allUserIds);
+        userToProfile = new Map(data?.map(p => [p.user_id, p]) || []);
+      }
 
       return commentsData.map(comment => {
-        const userId = mentoradoToUser.get(comment.mentorado_id);
+        let userId: string | undefined;
+        if ((comment as any).membership_id) {
+          userId = membershipToUser.get((comment as any).membership_id);
+        } else {
+          userId = mentoradoToUser.get(comment.mentorado_id);
+        }
         const commentProfile = userId ? userToProfile.get(userId) : null;
         
         return {
@@ -329,13 +334,15 @@ export function usePostComments(postId: string) {
 
   const addComment = useMutation({
     mutationFn: async (content: string) => {
-      if (!mentorado) throw new Error('Não autenticado');
+      if (!membershipId) throw new Error('Não autenticado');
 
       const { error } = await supabase
         .from('community_comments')
         .insert({
           post_id: postId,
-          mentorado_id: mentorado.id,
+          membership_id: membershipId,
+          // Legacy field - NOT NULL constraint
+          mentorado_id: membershipId,
           content,
         });
 
@@ -396,6 +403,5 @@ export function usePostComments(postId: string) {
     isLoading,
     addComment,
     deleteComment,
-    mentorado,
   };
 }

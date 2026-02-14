@@ -91,77 +91,60 @@ export default function PreviewPage() {
       const mentorMember = members.find(m => m.role === 'mentor') || null;
       const menteeMemberships = members.filter(m => m.role === 'mentee');
       
-      // Enrich mentees with CRM data
+      // Enrich mentees with CRM data using membership_id
       if (menteeMemberships.length > 0) {
-        const menteeUserIds = menteeMemberships.map(m => m.user_id);
+        const menteeIds = menteeMemberships.map(m => m.id);
         
-        // Get mentorado records for these users
-        const { data: mentorados } = await supabase
-          .from('mentorados')
-          .select('id, user_id, status')
-          .in('user_id', menteeUserIds);
-        
-        if (mentorados && mentorados.length > 0) {
-          const mentoradoIds = mentorados.map(m => m.id);
-          
-          // Get leads count per mentorado
-          const { data: prospections } = await supabase
+        // Get leads count per membership
+        const [prospectionsRes, activitiesRes, pointsRes] = await Promise.all([
+          supabase
             .from('crm_prospections')
-            .select('mentorado_id, temperature')
-            .in('mentorado_id', mentoradoIds);
-          
-          // Get activity logs count
-          const { data: activities } = await supabase
+            .select('membership_id, temperature')
+            .in('membership_id', menteeIds),
+          supabase
             .from('activity_logs')
-            .select('mentorado_id')
-            .in('mentorado_id', mentoradoIds);
-          
-          // Get gamification points
-          const { data: pointsData } = await supabase
+            .select('membership_id')
+            .in('membership_id', menteeIds),
+          supabase
             .from('activity_logs')
-            .select('mentorado_id, points_earned')
-            .in('mentorado_id', mentoradoIds);
-          
-          const mentoradoByUser = new Map(mentorados.map(m => [m.user_id, m.id]));
-          
-          // Count leads per mentorado
-          const leadsPerMentorado = new Map<string, number>();
-          const tempPerMentorado = new Map<string, string>();
-          prospections?.forEach(p => {
-            if (p.mentorado_id) {
-              leadsPerMentorado.set(p.mentorado_id, (leadsPerMentorado.get(p.mentorado_id) || 0) + 1);
-              if (p.temperature) tempPerMentorado.set(p.mentorado_id, p.temperature);
-            }
-          });
-          
-          // Count activities per mentorado
-          const actPerMentorado = new Map<string, number>();
-          activities?.forEach(a => {
-            if (a.mentorado_id) {
-              actPerMentorado.set(a.mentorado_id, (actPerMentorado.get(a.mentorado_id) || 0) + 1);
-            }
-          });
-          
-          // Sum points per mentorado
-          const ptsPerMentorado = new Map<string, number>();
-          pointsData?.forEach(p => {
-            if (p.mentorado_id && p.points_earned) {
-              ptsPerMentorado.set(p.mentorado_id, (ptsPerMentorado.get(p.mentorado_id) || 0) + p.points_earned);
-            }
-          });
-          
-          // Enrich mentee data
-          menteeMemberships.forEach(m => {
-            const mentoradoId = mentoradoByUser.get(m.user_id);
-            if (mentoradoId) {
-              m.leads_count = leadsPerMentorado.get(mentoradoId) || 0;
-              m.temperature = tempPerMentorado.get(mentoradoId);
-              m.points = ptsPerMentorado.get(mentoradoId) || 0;
-              const actCount = actPerMentorado.get(mentoradoId) || 0;
-              m.activity_level = actCount > 15 ? 'alta' : actCount > 5 ? 'media' : actCount > 0 ? 'baixa' : 'inativa';
-            }
-          });
-        }
+            .select('membership_id, points_earned')
+            .in('membership_id', menteeIds),
+        ]);
+        
+        // Count leads per membership
+        const leadsPerMembership = new Map<string, number>();
+        const tempPerMembership = new Map<string, string>();
+        prospectionsRes.data?.forEach(p => {
+          if (p.membership_id) {
+            leadsPerMembership.set(p.membership_id, (leadsPerMembership.get(p.membership_id) || 0) + 1);
+            if (p.temperature) tempPerMembership.set(p.membership_id, p.temperature);
+          }
+        });
+        
+        // Count activities per membership
+        const actPerMembership = new Map<string, number>();
+        activitiesRes.data?.forEach(a => {
+          if (a.membership_id) {
+            actPerMembership.set(a.membership_id, (actPerMembership.get(a.membership_id) || 0) + 1);
+          }
+        });
+        
+        // Sum points per membership
+        const ptsPerMembership = new Map<string, number>();
+        pointsRes.data?.forEach(p => {
+          if (p.membership_id && p.points_earned) {
+            ptsPerMembership.set(p.membership_id, (ptsPerMembership.get(p.membership_id) || 0) + p.points_earned);
+          }
+        });
+        
+        // Enrich mentee data
+        menteeMemberships.forEach(m => {
+          m.leads_count = leadsPerMembership.get(m.id) || 0;
+          m.temperature = tempPerMembership.get(m.id);
+          m.points = ptsPerMembership.get(m.id) || 0;
+          const actCount = actPerMembership.get(m.id) || 0;
+          m.activity_level = actCount > 15 ? 'alta' : actCount > 5 ? 'media' : actCount > 0 ? 'baixa' : 'inativa';
+        });
       }
 
       setMentor(mentorMember);
