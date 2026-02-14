@@ -417,21 +417,8 @@ serve(async (req) => {
           }
 
           // BACKWARD COMPATIBILITY: Legacy mentorado record
-          const { data: legacyMentor } = await supabase
-            .from("mentors")
-            .select("id")
-            .limit(1)
-            .single();
-
-          if (legacyMentor) {
-            void supabase.from("mentorados").insert({
-              user_id: userId,
-              mentor_id: legacyMentor.id,
-              status: 'active',
-              onboarding_completed: devMode || false,
-            });
-            console.log("verify-otp: Queued legacy mentorado creation");
-          }
+          // Legacy mentorado table removed - mentee_profiles is created above
+          console.log("verify-otp: Mentee profile created via membership system");
         } else if (['mentor', 'admin'].includes(invite.role)) {
           void supabase.from("mentor_profiles").insert({
             membership_id: membership.id,

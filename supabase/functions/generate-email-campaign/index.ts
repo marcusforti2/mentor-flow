@@ -29,6 +29,7 @@ serve(async (req) => {
       });
     }
 
+    // mentorId is now the membership ID (owner_membership_id)
     const { prompt, mentorId } = await req.json();
 
     if (!prompt || !mentorId) {
@@ -120,7 +121,6 @@ Use as variáveis dinâmicas para personalizar os emails ao máximo.`;
     // Parse the JSON from AI response
     let campaignData;
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         campaignData = JSON.parse(jsonMatch[0]);
@@ -132,7 +132,7 @@ Use as variáveis dinâmicas para personalizar os emails ao máximo.`;
       throw new Error("Failed to parse AI response as JSON");
     }
 
-    // Create Supabase client
+    // Create Supabase client with service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -183,7 +183,6 @@ Use as variáveis dinâmicas para personalizar os emails ao máximo.`;
         });
       }
 
-      // Add edge from previous node
       flowEdges.push({
         id: `e-${previousNodeId}-${nodeId}`,
         source: previousNodeId,
@@ -195,22 +194,20 @@ Use as variáveis dinâmicas para personalizar os emails ao máximo.`;
       yPosition += 150;
     });
 
-    // Look up mentor's tenant_id
-    let tenantId: string | null = null;
-    const { data: mentorMembership } = await supabase
+    // Resolve tenant_id from the membership
+    const { data: membership } = await supabase
       .from('memberships')
       .select('tenant_id')
-      .eq('user_id', (await supabase.from('mentors').select('user_id').eq('id', mentorId).single()).data?.user_id || '')
-      .eq('role', 'mentor')
-      .eq('status', 'active')
-      .maybeSingle();
-    if (mentorMembership) tenantId = mentorMembership.tenant_id;
+      .eq('id', mentorId)
+      .single();
+
+    const tenantId = membership?.tenant_id || null;
 
     // Save the flow to database
     const { data: flowData, error: flowError } = await supabase
       .from("email_flows")
       .insert({
-        mentor_id: mentorId,
+        owner_membership_id: mentorId,
         tenant_id: tenantId,
         name: campaignData.flowName || "Campanha Gerada por IA",
         description: campaignData.flowDescription || prompt,

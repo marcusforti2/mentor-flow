@@ -49,7 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
     const audienceType = flow.audience_type || 'all';
     const audienceMembershipIds: string[] = flow.audience_membership_ids || [];
     const tenantId = flow.tenant_id;
-    const mentorId = flow.mentor_id;
+    const ownerMembershipId = flow.owner_membership_id;
 
     // 2. Resolve recipients
     let memberships: { id: string; user_id: string }[] = [];
@@ -89,30 +89,31 @@ const handler = async (req: Request): Promise<Response> => {
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
-    // Get mentor name
+    // Get mentor name from owner membership
     let mentorName = 'Seu Mentor';
-    if (mentorId) {
-      const { data: mentorData } = await supabase
-        .from('mentors')
+    if (ownerMembershipId) {
+      const { data: ownerMembership } = await supabase
+        .from('memberships')
         .select('user_id')
-        .eq('id', mentorId)
+        .eq('id', ownerMembershipId)
         .single();
-      if (mentorData) {
+      if (ownerMembership) {
         const { data: mentorProfile } = await supabase
           .from('profiles')
           .select('full_name')
-          .eq('user_id', mentorData.user_id)
+          .eq('user_id', ownerMembership.user_id)
           .single();
         if (mentorProfile?.full_name) mentorName = mentorProfile.full_name;
       }
     }
 
-    // Get business profiles for all recipients
-    const { data: businessProfiles } = await supabase
-      .from('mentorado_business_profiles')
-      .select('mentorado_id, business_name')
-      .in('mentorado_id', userIds);
-    const businessMap = new Map(businessProfiles?.map(bp => [bp.mentorado_id, bp]) || []);
+    // Get business profiles for all recipients via mentee_profiles
+    const membershipIds = memberships.map(m => m.id);
+    const { data: menteeProfiles } = await supabase
+      .from('mentee_profiles')
+      .select('membership_id, business_name')
+      .in('membership_id', membershipIds);
+    const businessMap = new Map(menteeProfiles?.map(bp => [bp.membership_id, bp]) || []);
 
     // Get membership created_at for journey days
     const { data: membershipDetails } = await supabase
@@ -125,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
     const recipients = memberships
       .map(m => {
         const profile = profileMap.get(m.user_id);
-        const biz = businessMap.get(m.user_id);
+        const biz = businessMap.get(m.id);
         const joinedAt = membershipDateMap.get(m.id);
         const diasNaJornada = joinedAt ? Math.floor((Date.now() - new Date(joinedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0;
         return {
@@ -260,7 +261,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await supabase.from('email_flow_executions').insert({
           flow_id: flowId,
-          mentorado_id: recipient.membershipId,
+          membership_id: recipient.membershipId,
           status: 'completed',
           started_at: new Date().toISOString(),
           completed_at: new Date().toISOString(),

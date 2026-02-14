@@ -31,22 +31,21 @@ async function getOrCreateUser(admin: any, email: string, name: string) {
 }
 
 // ─── Mentee Personas ──────────────────────────────────────
-// Each mentee has a "persona" that defines their behavior pattern
 interface Persona {
   name: string
   email: string
   business: string
   segment: string
-  leadsCount: number      // CRM leads
+  leadsCount: number
   activityLevel: 'high' | 'medium' | 'low' | 'inactive'
-  trailProgress: number   // 0-100 target %
+  trailProgress: number
   hasSOS: boolean
   sosCategory?: string
   sosTitle?: string
   sosDesc?: string
   temperature: 'hot' | 'warm' | 'cold'
   points: number
-  joinDaysAgo: number     // how many days ago the mentee joined (controls Jornada CS week)
+  joinDaysAgo: number
   businessProfile: {
     business_type: string
     monthly_revenue: string
@@ -153,10 +152,9 @@ function generateLeads(count: number, persona: Persona) {
     const firstName = pick(FIRST_NAMES)
     const lastName = pick(LAST_NAMES)
     const company = pick(COMPANIES)
-    // Distribute statuses based on persona temperature
     let statusWeights: number[]
     if (persona.temperature === 'hot') {
-      statusWeights = [10, 15, 25, 25, 20, 5] // more in negotiation/won
+      statusWeights = [10, 15, 25, 25, 20, 5]
     } else if (persona.temperature === 'warm') {
       statusWeights = [20, 25, 20, 20, 10, 5]
     } else {
@@ -311,25 +309,25 @@ Deno.serve(async (req) => {
         await admin.from('trails').delete().eq('tenant_id', T)
       }
 
-      // Mentee/mentor profiles & assignments
+      // Profiles & assignments
       await admin.from('mentor_mentee_assignments').delete().eq('tenant_id', T)
       await admin.from('mentee_profiles').delete().in('membership_id', mIds)
       await admin.from('mentor_profiles').delete().in('membership_id', mIds)
 
-      // Mentorado-related deep cleanup
-      const { data: mentorados } = await admin.from('mentorados').select('id').in('user_id', uIds)
-      if (mentorados?.length) {
-        const mdIds = mentorados.map(m => m.id)
-        await admin.from('ranking_entries').delete().in('mentorado_id', mdIds)
-        await admin.from('mentorado_business_profiles').delete().in('mentorado_id', mdIds)
-        await admin.from('mentorado_files').delete().in('mentorado_id', mdIds)
-        await admin.from('behavioral_responses').delete().in('mentorado_id', mdIds)
-        await admin.from('behavioral_reports').delete().in('mentorado_id', mdIds)
-        await admin.from('mentorados').delete().in('id', mdIds)
-      }
+      // Business profiles, ranking, files
+      await admin.from('ranking_entries').delete().in('membership_id', mIds)
+      await admin.from('mentorado_business_profiles').delete().in('membership_id', mIds)
+      await admin.from('mentorado_files').delete().eq('tenant_id', T)
+      await admin.from('mentor_library').delete().match({})  // no tenant_id, clean all sandbox entries
 
-      // Legacy mentors
-      await admin.from('mentors').delete().in('user_id', uIds)
+      // Email flows
+      const { data: flowExecs } = await admin.from('email_flows').select('id').eq('tenant_id', T)
+      if (flowExecs?.length) {
+        await admin.from('email_flow_executions').delete().in('flow_id', flowExecs.map(f => f.id))
+        await admin.from('email_flow_triggers').delete().in('flow_id', flowExecs.map(f => f.id))
+      }
+      await admin.from('email_flows').delete().eq('tenant_id', T)
+      await admin.from('email_templates').delete().eq('tenant_id', T)
 
       // Memberships
       await admin.from('memberships').delete().eq('tenant_id', T)
@@ -342,7 +340,6 @@ Deno.serve(async (req) => {
           .neq('tenant_id', T)
           .limit(1)
         
-        // Skip users that belong to real tenants
         if (otherMemberships && otherMemberships.length > 0) {
           console.log(`[seed] Skipping user ${uid} — has memberships in other tenants`)
           continue
@@ -380,19 +377,11 @@ Deno.serve(async (req) => {
       website: 'https://atlassalesinvest.com.br',
     })
 
-    // Legacy mentor record (for tables that reference mentors.id)
-    const { data: legacyMentor } = await admin.from('mentors').insert({
-      user_id: mentorUserId,
-      business_name: 'Atlas Sales Invest (Demo)',
-      bio: 'Mentora especialista em vendas B2B',
-    }).select('id').single()
-    if (!legacyMentor) throw new Error('Failed to create legacy mentor')
-
     console.log('[seed] Mentor created:', mentorMembership.id)
 
     // ━━━ PHASE 3: CREATE MENTEES ━━━━━━━━━━━━━━━━━━━━━━━━━
     console.log('[seed] Phase 3: Creating mentees...')
-    const menteeResults: { uid: string; memId: string; mentoradoId: string; persona: Persona }[] = []
+    const menteeResults: { uid: string; memId: string; persona: Persona }[] = []
 
     for (const persona of PERSONAS) {
       const uid = await getOrCreateUser(admin, persona.email, persona.name)
@@ -426,19 +415,11 @@ Deno.serve(async (req) => {
         created_by_membership_id: mentorMembership.id,
       })
 
-      // Legacy mentorado
-      const { data: mentorado } = await admin.from('mentorados').insert({
-        user_id: uid, mentor_id: legacyMentor.id,
-        status: persona.activityLevel === 'inactive' ? 'inactive' : 'active',
-        onboarding_completed: true, joined_at: joinedAt,
-      }).select('id').single()
-      if (!mentorado) continue
-
-      menteeResults.push({ uid, memId: mem.id, mentoradoId: mentorado.id, persona })
+      menteeResults.push({ uid, memId: mem.id, persona })
 
       // Ranking
       await admin.from('ranking_entries').insert({
-        mentorado_id: mentorado.id,
+        membership_id: mem.id,
         points: persona.points,
         period_type: 'monthly',
         period_start: periodStart(),
@@ -447,7 +428,7 @@ Deno.serve(async (req) => {
 
       // Business profile
       await admin.from('mentorado_business_profiles').insert({
-        mentorado_id: mentorado.id,
+        membership_id: mem.id,
         business_name: persona.business,
         ...persona.businessProfile,
       })
@@ -456,7 +437,7 @@ Deno.serve(async (req) => {
       const leads = generateLeads(persona.leadsCount, persona)
       for (const lead of leads) {
         await admin.from('crm_prospections').insert({
-          membership_id: mem.id, tenant_id: T, mentorado_id: mentorado.id,
+          membership_id: mem.id, tenant_id: T,
           ...lead,
         })
       }
@@ -465,7 +446,7 @@ Deno.serve(async (req) => {
       const activities = generateActivities(persona)
       for (const act of activities) {
         await admin.from('activity_logs').insert({
-          membership_id: mem.id, tenant_id: T, mentorado_id: mentorado.id,
+          membership_id: mem.id, tenant_id: T,
           ...act,
         })
       }
@@ -474,7 +455,7 @@ Deno.serve(async (req) => {
       const aiUsage = generateAIUsage(persona)
       for (const usage of aiUsage) {
         await admin.from('ai_tool_usage').insert({
-          membership_id: mem.id, tenant_id: T, mentorado_id: mentorado.id,
+          membership_id: mem.id, tenant_id: T,
           ...usage,
         })
       }
@@ -482,7 +463,6 @@ Deno.serve(async (req) => {
       // SOS Requests
       if (persona.hasSOS) {
         await admin.from('sos_requests').insert({
-          mentorado_id: mentorado.id,
           membership_id: mem.id,
           tenant_id: T,
           title: persona.sosTitle!,
@@ -571,12 +551,11 @@ Deno.serve(async (req) => {
     ]
 
     const allLessonIds: string[] = []
-    const trailLessonMap: Map<string, string[]> = new Map() // trailId -> lessonIds
+    const trailLessonMap: Map<string, string[]> = new Map()
 
     for (let i = 0; i < TRAILS_DATA.length; i++) {
       const td = TRAILS_DATA[i]
       const { data: trail } = await admin.from('trails').insert({
-        mentor_id: legacyMentor.id,
         tenant_id: T,
         creator_membership_id: mentorMembership.id,
         title: td.title,
@@ -629,7 +608,6 @@ Deno.serve(async (req) => {
           const progress = completed ? 100 : (i === completedCount ? rand(10, 80) : 0)
           if (progress > 0) {
             await admin.from('trail_progress').insert({
-              mentorado_id: mr.mentoradoId,
               membership_id: mr.memId,
               tenant_id: T,
               lesson_id: lessonIds[i],
@@ -648,7 +626,6 @@ Deno.serve(async (req) => {
     console.log('[seed] Phase 5: Creating meetings...')
 
     const MEETINGS = [
-      // Future meetings
       { title: 'Mentoria em Grupo - Pipeline', d: 2, h: 10, type: 'group' },
       { title: 'Workshop: LinkedIn para Vendas', d: 4, h: 14, type: 'group' },
       { title: 'Encontro Semanal - Sprint de Prospecção', d: 7, h: 9, type: 'group' },
@@ -657,7 +634,6 @@ Deno.serve(async (req) => {
       { title: 'Live Q&A - Tirando Dúvidas', d: 15, h: 19, type: 'group' },
       { title: 'Hotset 1:1 com Top Performers', d: 18, h: 11, type: 'individual' },
       { title: 'Sprint Prospecção - Dia D', d: 21, h: 10, type: 'group' },
-      // Past meetings (completed)
       { title: 'Kick-off da Mentoria', d: -30, h: 10, type: 'group' },
       { title: 'Workshop: Cold Calling', d: -21, h: 14, type: 'group' },
       { title: 'Review Pipeline - Semana 2', d: -14, h: 9, type: 'group' },
@@ -672,7 +648,7 @@ Deno.serve(async (req) => {
     for (const m of MEETINGS) {
       const isPast = m.d < 0
       const { data: meeting } = await admin.from('meetings').insert({
-        mentor_id: legacyMentor.id,
+        owner_membership_id: mentorMembership.id,
         tenant_id: T,
         title: m.title,
         scheduled_at: future(m.d, m.h),
@@ -688,14 +664,13 @@ Deno.serve(async (req) => {
       if (meeting) {
         createdMeetings.push({ id: meeting.id, isPast })
 
-        // Add attendees (past meetings have more attendees)
         const attendeeCount = m.type === 'individual' ? 1 : rand(3, Math.min(menteeResults.length, 8))
         const shuffled = [...menteeResults].sort(() => Math.random() - 0.5).slice(0, attendeeCount)
         
         for (const mr of shuffled) {
           await admin.from('meeting_attendees').insert({
             meeting_id: meeting.id,
-            mentorado_id: mr.mentoradoId,
+            membership_id: mr.memId,
             confirmed: isPast || rand(0, 1) === 1,
             confirmed_at: (isPast || rand(0, 1)) ? ago(rand(1, 5)) : null,
             attended: isPast ? rand(0, 1) === 1 : null,
@@ -720,7 +695,6 @@ Deno.serve(async (req) => {
     for (const file of MENTOR_LIBRARY_FILES) {
       if (file.type === 'note') {
         await admin.from('mentor_library').insert({
-          mentor_id: legacyMentor.id,
           file_type: 'note',
           note_title: file.title,
           note_content: file.content,
@@ -729,7 +703,6 @@ Deno.serve(async (req) => {
         })
       } else {
         await admin.from('mentor_library').insert({
-          mentor_id: legacyMentor.id,
           file_type: 'link',
           link_title: file.title,
           link_url: file.url,
@@ -743,8 +716,6 @@ Deno.serve(async (req) => {
     const fileMentees = menteeResults.filter(m => m.persona.activityLevel === 'high' || m.persona.activityLevel === 'medium')
     for (const mr of fileMentees.slice(0, 5)) {
       await admin.from('mentorado_files').insert({
-        mentor_id: legacyMentor.id,
-        mentorado_id: mr.mentoradoId,
         owner_membership_id: mentorMembership.id,
         tenant_id: T,
         file_type: 'note',
@@ -771,8 +742,6 @@ Deno.serve(async (req) => {
     for (let i = 0; i < COMMUNITY_POSTS.length; i++) {
       const mr = activeMentees[i % activeMentees.length]
       const { data: post } = await admin.from('community_posts').insert({
-        mentor_id: legacyMentor.id,
-        mentorado_id: mr.mentoradoId,
         author_membership_id: mr.memId,
         tenant_id: T,
         content: COMMUNITY_POSTS[i].content,
@@ -783,13 +752,12 @@ Deno.serve(async (req) => {
       }).select('id').single()
 
       if (post) {
-        // Add some comments
         const commentCount = rand(1, 3)
         for (let c = 0; c < commentCount; c++) {
           const commenter = activeMentees[(i + c + 1) % activeMentees.length]
           await admin.from('community_comments').insert({
             post_id: post.id,
-            mentorado_id: commenter.mentoradoId,
+            membership_id: commenter.memId,
             content: pick([
               'Muito bom! Parabéns! 🎉',
               'Excelente dica, vou aplicar!',
@@ -808,9 +776,8 @@ Deno.serve(async (req) => {
     // ━━━ PHASE 8: EMAIL MARKETING ━━━━━━━━━━━━━━━━━━━━━━━━━
     console.log('[seed] Phase 8: Creating email flows & templates...')
 
-    // Create email template
     const { data: emailTemplate } = await admin.from('email_templates').insert({
-      mentor_id: legacyMentor.id,
+      owner_membership_id: mentorMembership.id,
       tenant_id: T,
       name: 'Boas-vindas Mentorado',
       subject: 'Bem-vindo(a) à mentoria, {{nome}}! 🚀',
@@ -820,7 +787,7 @@ Deno.serve(async (req) => {
     }).select('id').single()
 
     const { data: emailTemplate2 } = await admin.from('email_templates').insert({
-      mentor_id: legacyMentor.id,
+      owner_membership_id: mentorMembership.id,
       tenant_id: T,
       name: 'Follow-up Semana 1',
       subject: '{{nome}}, como foi sua primeira semana? 📊',
@@ -830,7 +797,7 @@ Deno.serve(async (req) => {
     }).select('id').single()
 
     const { data: emailTemplate3 } = await admin.from('email_templates').insert({
-      mentor_id: legacyMentor.id,
+      owner_membership_id: mentorMembership.id,
       tenant_id: T,
       name: 'Reengajamento Inativo',
       subject: '{{nome}}, sentimos sua falta! 💛',
@@ -859,7 +826,7 @@ Deno.serve(async (req) => {
     ]
 
     await admin.from('email_flows').insert({
-      mentor_id: legacyMentor.id,
+      owner_membership_id: mentorMembership.id,
       tenant_id: T,
       name: 'Sequência de Onboarding',
       description: 'Fluxo automático de boas-vindas e acompanhamento das primeiras semanas do mentorado',
@@ -882,7 +849,7 @@ Deno.serve(async (req) => {
     ]
 
     await admin.from('email_flows').insert({
-      mentor_id: legacyMentor.id,
+      owner_membership_id: mentorMembership.id,
       tenant_id: T,
       name: 'Reengajamento de Inativos',
       description: 'Dispara automaticamente quando o mentorado fica 5+ dias sem acessar a plataforma',
@@ -895,10 +862,6 @@ Deno.serve(async (req) => {
 
     // ━━━ SUMMARY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const totalLeads = PERSONAS.reduce((s, p) => s + p.leadsCount, 0)
-    const totalActivities = menteeResults.reduce((s, mr) => {
-      const acts = generateActivities(mr.persona)
-      return s + acts.length
-    }, 0)
 
     const summary = {
       success: true,
