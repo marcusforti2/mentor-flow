@@ -171,15 +171,31 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Get completed trails count per membership
+    const { data: certificates } = await supabase
+      .from('certificates')
+      .select('membership_id')
+      .in('membership_id', membershipIds);
+
+    const trailCountMap = new Map<string, number>();
+    if (certificates) {
+      for (const cert of certificates) {
+        if (cert.membership_id) {
+          trailCountMap.set(cert.membership_id, (trailCountMap.get(cert.membership_id) || 0) + 1);
+        }
+      }
+    }
+
     // 5. Replace all variables helper
     const replaceVars = (text: string, recipient: typeof recipients[0]) => {
+      const trilhasConcluidas = trailCountMap.get(recipient.membershipId) || 0;
       return text
         .replace(/\{\{nome\}\}/g, recipient.fullName)
         .replace(/\{\{email\}\}/g, recipient.email || '')
         .replace(/\{\{business_name\}\}/g, recipient.businessName)
         .replace(/\{\{mentor_name\}\}/g, mentorName)
         .replace(/\{\{dias_na_jornada\}\}/g, String(recipient.diasNaJornada))
-        .replace(/\{\{trilhas_concluidas\}\}/g, '0'); // TODO: query trail_progress when available
+        .replace(/\{\{trilhas_concluidas\}\}/g, String(trilhasConcluidas));
     };
 
     // 6. Send emails
