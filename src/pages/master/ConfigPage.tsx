@@ -318,6 +318,7 @@ const KNOWN_SECRETS = [
 ];
 
 function SecretsSection() {
+  // Secrets are managed via Cloud Settings — this is a read-only display
   const configuredSecrets = [
     'APIFY_API_KEY', 'FIRECRAWL_API_KEY', 'LOVABLE_API_KEY',
     'PILOTERR_API_KEY', 'PILOTERR_API_KEY_2', 'PILOTERR_API_KEY_3',

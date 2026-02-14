@@ -45,6 +45,7 @@ export default function PropriedadeIntelectual() {
 
   const fetchFingerprints = async () => {
     try {
+      // Note: system_fingerprints is a global/admin table, no tenant_id filter needed
       const { data, error } = await supabase
         .from("system_fingerprints")
         .select("*")

@@ -61,7 +61,7 @@ const workingHours = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:0
 export default function Calendario() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [mentorId, setMentorId] = useState<string | null>(null);
+  // mentorId removed — using activeMembership.id and tenant_id
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
@@ -175,7 +175,7 @@ export default function Calendario() {
               : addMonths(newEvent.event_date, i);
             
             eventsToCreate.push({
-              ...(mentorId ? { mentor_id: mentorId } : {}),
+              owner_membership_id: activeMembership?.id || null,
               tenant_id: activeMembership?.tenant_id || null,
               title: newEvent.title,
               description: newEvent.description || null,
@@ -184,11 +184,11 @@ export default function Calendario() {
               event_type: newEvent.event_type,
               meeting_url: newEvent.meeting_url || null,
               is_recurring: true,
-            } as any);
+            });
           }
         } else {
           eventsToCreate.push({
-            ...(mentorId ? { mentor_id: mentorId } : {}),
+            owner_membership_id: activeMembership?.id || null,
             tenant_id: activeMembership?.tenant_id || null,
             title: newEvent.title,
             description: newEvent.description || null,
@@ -197,7 +197,7 @@ export default function Calendario() {
             event_type: newEvent.event_type,
             meeting_url: newEvent.meeting_url || null,
             is_recurring: false,
-          } as any);
+          });
         }
         
         const { error } = await supabase

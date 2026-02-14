@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -60,11 +59,11 @@ export default function MemberDashboard() {
         const membershipId = activeMembership?.id;
         if (!membershipId) { setIsLoadingStats(false); return; }
         
-        // Try membership_id first, fallback to mentorado_id
-        const { data: analyses } = await supabase
-          .from("training_analyses")
+        // Use membership_id for training analyses
+        const { data: analyses } = await supabaseClient
+          .from("training_analyses" as any)
           .select("nota_geral")
-          .or(`mentorado_id.eq.${membershipId},mentorado_id.eq.${mentoradoId || membershipId}`);
+          .eq("mentorado_id", membershipId) as { data: { nota_geral: number | null }[] | null };
         
         if (analyses && analyses.length > 0) {
           const avg = Math.round(analyses.reduce((acc, a) => acc + (a.nota_geral || 0), 0) / analyses.length);
