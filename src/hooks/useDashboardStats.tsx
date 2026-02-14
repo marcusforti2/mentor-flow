@@ -172,8 +172,8 @@ export function useMentorDashboardStats() {
           ? supabase.from('profiles').select('user_id, full_name').in('user_id', allUserIds)
           : Promise.resolve({ data: [] as { user_id: string; full_name: string }[] }),
         membershipIds.length > 0
-          ? supabase.from('ranking_entries').select('id, membership_id, mentorado_id, points')
-              .or(`membership_id.in.(${membershipIds.join(',')}),mentorado_id.in.(${membershipIds.join(',')})`)
+          ? supabase.from('ranking_entries').select('id, membership_id, points')
+              .in('membership_id', membershipIds)
               .order('points', { ascending: false }).limit(5)
           : Promise.resolve({ data: [] as any[] }),
         trailIds.length > 0
@@ -194,10 +194,10 @@ export function useMentorDashboardStats() {
       const rankingData = (rankingRes as any).data || [];
       if (rankingData.length > 0) {
         topRanking = rankingData.map((r: any, idx: number) => {
-          const userId = membershipToUser.get(r.membership_id || r.mentorado_id || '') || '';
+          const userId = membershipToUser.get(r.membership_id || '') || '';
           return {
             position: idx + 1, name: profileMap.get(userId) || 'Sem nome',
-            points: r.points || 0, mentoradoId: r.membership_id || r.mentorado_id || '',
+            points: r.points || 0, mentoradoId: r.membership_id || '',
           };
         });
       }
@@ -316,19 +316,19 @@ export function useMenteeDashboardStats() {
       // BATCH 1: All independent queries in parallel
       const [rankingEntryRes, allMenteeIdsRes, totalProspRes, monthlyProspRes, nextMeetingRes, progressRes] = await Promise.all([
         supabase.from('ranking_entries').select('points')
-          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
+          .eq('membership_id', membershipId)
           .order('points', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('memberships').select('id').eq('tenant_id', tenantId).eq('role', 'mentee'),
         supabase.from('crm_prospections').select('*', { count: 'exact', head: true })
-          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`),
+          .eq('membership_id', membershipId),
         supabase.from('crm_prospections').select('*', { count: 'exact', head: true })
-          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`)
+          .eq('membership_id', membershipId)
           .gte('created_at', startOfMonth.toISOString()),
         supabase.from('meetings').select('id, title, scheduled_at, meeting_url')
           .eq('tenant_id', tenantId).gte('scheduled_at', new Date().toISOString())
           .order('scheduled_at', { ascending: true }).limit(1).maybeSingle(),
         supabase.from('trail_progress').select('id, lesson_id, completed')
-          .or(`membership_id.eq.${membershipId},mentorado_id.eq.${membershipId}`),
+          .eq('membership_id', membershipId),
       ]);
 
       const totalPoints = rankingEntryRes.data?.points || 0;
