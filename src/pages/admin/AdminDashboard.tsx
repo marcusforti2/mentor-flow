@@ -301,7 +301,7 @@ export default function AdminDashboard() {
                   title="Nenhuma trilha criada"
                   description="Crie trilhas para acompanhar o progresso"
                   action={
-                    <Link to="/admin/trilhas">
+                    <Link to="/mentor/trilhas">
                       <Button size="sm" variant="outline">
                         <Plus className="h-4 w-4 mr-1" />
                         Criar Trilha

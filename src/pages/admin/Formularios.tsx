@@ -149,7 +149,7 @@ const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
       const { error } = await supabase
         .from('behavioral_questions')
         .insert({
-          mentor_id: mentorId,
+          owner_membership_id: mentorId,
           question_text: newQuestion.question_text,
           question_type: newQuestion.question_type,
           options: newQuestion.question_type === 'multiple_choice' ? newQuestion.options : [],
