@@ -84,15 +84,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       
       setProfile(profileData);
 
-      // Fetch role using RPC to avoid RLS issues
-      const { data: roleData } = await supabase
-        .rpc('get_user_role', { _user_id: userId });
+      // Derive role from memberships (replaces legacy user_roles query)
+      const { data: membershipData } = await supabase
+        .from('memberships')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
       
-      setRole(roleData as AppRole | null);
+      if (membershipData) {
+        // Map membership roles to legacy AppRole type
+        const roleMap: Record<string, AppRole> = {
+          master_admin: 'admin_master',
+          admin: 'mentor',
+          mentor: 'mentor',
+          ops: 'mentor',
+          mentee: 'mentorado',
+        };
+        setRole(roleMap[membershipData.role] || null);
+      } else {
+        setRole(null);
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
