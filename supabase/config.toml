@@ -12,8 +12,6 @@ verify_jwt = false
 [functions.analyze-lead-screenshots]
 verify_jwt = false
 
-[functions.ensure-mentorado]
-verify_jwt = false
 
 [functions.sos-triage]
 verify_jwt = false
@@ -63,8 +61,6 @@ verify_jwt = false
 [functions.create-membership]
 verify_jwt = false
 
-[functions.create-test-mentorados]
-verify_jwt = false
 
 [functions.seed-sandbox]
 verify_jwt = false
