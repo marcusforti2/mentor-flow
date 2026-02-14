@@ -17,7 +17,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 
 // Lazy-loaded pages
-const Setup = lazy(() => import("./pages/Setup"));
+// Setup page removed — legacy initial configuration no longer needed
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ShowcasePage = lazy(() => import("./pages/ShowcasePage"));
@@ -95,7 +95,7 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/setup" element={<Setup />} />
+                  <Route path="/setup" element={<Navigate to="/auth" replace />} />
                   <Route path="/showcase" element={<ShowcasePage />} />
 
                   {/* Master Admin Routes */}
