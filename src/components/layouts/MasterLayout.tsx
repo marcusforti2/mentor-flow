@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/contexts/TenantContext';
-import { useImpersonation } from '@/contexts/ImpersonationContext';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Presentation } from 'lucide-react';
@@ -26,7 +26,7 @@ import { FloatingDock } from '@/components/FloatingDock';
 export function MasterLayout() {
   const { profile, signOut } = useAuth();
   const { realMembership } = useTenant();
-  const { isImpersonating } = useImpersonation();
+  const { isImpersonating } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
 
