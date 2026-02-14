@@ -7,7 +7,7 @@ import { TrendingUp, Sparkles, RefreshCw, BarChart3, Target, AlertTriangle } fro
 import ReactMarkdown from 'react-markdown';
 
 interface ConversionAnalyzerProps {
-  mentoradoId: string;
+  mentoradoId: string | null;
 }
 
 export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {

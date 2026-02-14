@@ -10,7 +10,7 @@ import { Pen, Sparkles, Copy, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface ContentGeneratorProps {
-  mentoradoId: string;
+  mentoradoId: string | null;
 }
 
 const contentTypes = [
