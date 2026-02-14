@@ -118,13 +118,7 @@ export function UserDetailModal({
       // Fetch times this user was impersonated
       const { data: asTarget } = await supabase
         .from('impersonation_logs')
-        .select(`
-          *,
-          admin_membership:memberships!impersonation_logs_admin_membership_id_fkey(
-            id,
-            profiles:user_id(full_name, email)
-          )
-        `)
+        .select('*')
         .eq('target_membership_id', membership.id)
         .order('started_at', { ascending: false })
         .limit(10);
