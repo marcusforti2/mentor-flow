@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarUpload } from "@/components/AvatarUpload";
 import { toast } from "sonner";
 import { Loader2, User, Briefcase, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -76,7 +77,11 @@ export default function Perfil() {
             <CardHeader><CardTitle className="flex items-center gap-2"><User className="w-5 h-5 text-primary" />Informações Pessoais</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
-                <Avatar className="w-20 h-20"><AvatarImage src={profile?.avatar_url || ""} /><AvatarFallback className="bg-primary/10 text-primary text-2xl">{formData.full_name?.charAt(0) || "U"}</AvatarFallback></Avatar>
+                <AvatarUpload
+                  currentUrl={profile?.avatar_url}
+                  fallbackText={formData.full_name?.charAt(0) || "U"}
+                  size="lg"
+                />
                 <div><p className="font-medium">{formData.full_name || "Sem nome"}</p><p className="text-sm text-muted-foreground">{formData.email}</p></div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
