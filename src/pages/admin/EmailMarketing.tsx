@@ -202,7 +202,7 @@ export default function EmailMarketing() {
       const { data, error } = await supabase
         .from('email_flows')
         .insert({
-          mentor_id: mentorId,
+          owner_membership_id: mentorId,
           tenant_id: activeMembership.tenant_id,
           name: newFlowName,
           description: newFlowDescription || null,
@@ -234,7 +234,7 @@ export default function EmailMarketing() {
       const { data, error } = await supabase
         .from('email_flows')
         .insert({
-          mentor_id: mentorId,
+          owner_membership_id: mentorId,
           tenant_id: activeMembership.tenant_id,
           name: `Cópia de ${flow.name}`,
           description: flow.description,
