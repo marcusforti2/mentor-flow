@@ -3415,21 +3415,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      accept_invite: {
-        Args: { p_token: string; p_user_id: string }
-        Returns: Json
-      }
-      approve_mentorado: {
-        Args: { _mentor_id: string; _user_id: string }
-        Returns: undefined
-      }
-      assign_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: undefined
-      }
       can_receive_otp: {
         Args: { _email: string; _tenant_hint?: string }
         Returns: {
@@ -3458,16 +3443,6 @@ export type Database = {
           role: Database["public"]["Enums"]["membership_role"]
         }[]
       }
-      get_pending_users: {
-        Args: never
-        Returns: {
-          avatar_url: string
-          created_at: string
-          email: string
-          full_name: string
-          user_id: string
-        }[]
-      }
       get_user_memberships: {
         Args: { _tenant_id?: string; _user_id: string }
         Returns: {
@@ -3478,10 +3453,6 @@ export type Database = {
           tenant_name: string
           tenant_slug: string
         }[]
-      }
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
       }
       get_user_tenant_ids: { Args: { _user_id?: string }; Returns: string[] }
       has_membership_role: {
@@ -3499,7 +3470,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_first_mentor: { Args: never; Returns: boolean }
       is_master_admin: { Args: { _user_id?: string }; Returns: boolean }
       is_mentorado_owner: {
         Args: { _mentorado_id: string; _user_id: string }
