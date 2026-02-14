@@ -30,6 +30,7 @@ export interface OnlineUser {
 export function useCommunityChat() {
   const { profile } = useAuth();
   const { activeMembership } = useTenant();
+  // Legacy mentorado still needed for old message author resolution
   const { data: mentorado } = useMentorado();
   const queryClient = useQueryClient();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
@@ -177,9 +178,9 @@ export function useCommunityChat() {
         content,
         tenant_id: tenantId,
         author_membership_id: membershipId,
-        // Legacy fields
-        mentor_id: mentorado?.mentor_id || membershipId,
-        mentorado_id: mentorado?.id || membershipId,
+        // Legacy fields - use membershipId as placeholder for NOT NULL constraints
+        mentor_id: membershipId,
+        mentorado_id: membershipId,
       };
 
       const { error } = await supabase

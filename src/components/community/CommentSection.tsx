@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePostComments } from '@/hooks/useCommunityPosts';
+import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/hooks/useAuth';
 
 interface CommentSectionProps {
@@ -13,8 +14,9 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ postId }: CommentSectionProps) {
+  const { activeMembership } = useTenant();
   const { profile } = useAuth();
-  const { comments, isLoading, addComment, deleteComment, mentorado } = usePostComments(postId);
+  const { comments, isLoading, addComment, deleteComment } = usePostComments(postId);
   const [newComment, setNewComment] = useState('');
 
   const handleSubmit = () => {
@@ -92,7 +94,7 @@ export function CommentSection({ postId }: CommentSectionProps) {
                 </div>
                 <p className="text-sm text-foreground/90">{comment.content}</p>
               </div>
-              {mentorado?.id === comment.mentorado_id && (
+              {activeMembership?.id && (activeMembership.id === (comment as any).membership_id) && (
                 <Button
                   variant="ghost"
                   size="icon"

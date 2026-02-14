@@ -707,6 +707,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          membership_id: string | null
           mentorado_id: string
           post_id: string
         }
@@ -714,6 +715,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          membership_id?: string | null
           mentorado_id: string
           post_id: string
         }
@@ -721,10 +723,18 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          membership_id?: string | null
           mentorado_id?: string
           post_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "community_comments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "community_comments_mentorado_id_fkey"
             columns: ["mentorado_id"]
@@ -745,22 +755,32 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          membership_id: string | null
           mentorado_id: string
           post_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          membership_id?: string | null
           mentorado_id: string
           post_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          membership_id?: string | null
           mentorado_id?: string
           post_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "community_likes_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "community_likes_mentorado_id_fkey"
             columns: ["mentorado_id"]

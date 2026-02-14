@@ -593,57 +593,9 @@ serve(async (req) => {
       }
     }
 
-    // ========== CREATE LEGACY BRIDGE DATA ==========
-    // Many pages still query mentors/mentorados tables via FK references
-    if (role === 'mentee') {
-      // Find mentor's legacy mentor_id for the FK
-      let legacyMentorId: string | null = null;
-      if (mentor_membership_id) {
-        const { data: mentorMembership } = await supabaseAdmin
-          .from("memberships")
-          .select("user_id")
-          .eq("id", mentor_membership_id)
-          .single();
-        if (mentorMembership) {
-          const { data: legacyMentor } = await supabaseAdmin
-            .from("mentors")
-            .select("id")
-            .eq("user_id", mentorMembership.user_id)
-            .maybeSingle();
-          legacyMentorId = legacyMentor?.id || null;
-        }
-      }
-      if (legacyMentorId) {
-        const { error: legacyErr } = await supabaseAdmin
-          .from("mentorados")
-          .insert({
-            user_id: targetUserId,
-            mentor_id: legacyMentorId,
-            status: "active",
-            onboarding_completed: false,
-          })
-          .select("id")
-          .maybeSingle();
-        if (legacyErr) {
-          console.log("create-membership: Legacy mentorados bridge skipped:", legacyErr.message);
-        } else {
-          console.log("create-membership: Created legacy mentorados bridge for:", targetUserId);
-        }
-      }
-    }
-
-    if (role === 'mentor') {
-      const { error: legacyMentorErr } = await supabaseAdmin
-        .from("mentors")
-        .insert({ user_id: targetUserId })
-        .select("id")
-        .maybeSingle();
-      if (legacyMentorErr) {
-        console.log("create-membership: Legacy mentors bridge skipped:", legacyMentorErr.message);
-      } else {
-        console.log("create-membership: Created legacy mentors bridge for:", targetUserId);
-      }
-    }
+    // ========== LEGACY BRIDGE DATA REMOVED ==========
+    // Bridge data creation for mentors/mentorados tables has been removed.
+    // All new memberships use the memberships table exclusively.
 
     // ========== AUDIT LOG ==========
     await createAuditLog(supabaseAdmin, {

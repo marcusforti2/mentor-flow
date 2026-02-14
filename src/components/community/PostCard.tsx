@@ -17,14 +17,14 @@ import type { CommunityPost } from '@/hooks/useCommunityPosts';
 
 interface PostCardProps {
   post: CommunityPost;
-  currentMentoradoId?: string;
+  currentMembershipId?: string;
   onLike: (postId: string, isLiked: boolean) => void;
   onDelete: (postId: string) => void;
 }
 
-export function PostCard({ post, currentMentoradoId, onLike, onDelete }: PostCardProps) {
+export function PostCard({ post, currentMembershipId, onLike, onDelete }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
-  const isOwner = currentMentoradoId === post.mentorado_id;
+  const isOwner = currentMembershipId ? currentMembershipId === post.author_membership_id : false;
 
   const timeAgo = formatDistanceToNow(new Date(post.created_at), {
     addSuffix: true,
