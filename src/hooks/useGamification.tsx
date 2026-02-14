@@ -53,23 +53,13 @@ interface RewardRedemption {
 export function useGamification() {
   const { user } = useAuth();
   const { activeMembership } = useTenant();
-  const [mentoradoId, setMentoradoId] = useState<string | null>(null);
+  const mentoradoId = activeMembership?.id ?? null;
   const [badges, setBadges] = useState<Badge[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Use membership ID directly — no legacy resolution needed
-  useEffect(() => {
-    if (!user) return;
-    if (activeMembership?.id && activeMembership.role === 'mentee') {
-      setMentoradoId(activeMembership.id);
-    } else if (activeMembership?.id) {
-      setMentoradoId(activeMembership.id);
-    }
-  }, [user, activeMembership]);
 
   // Fetch all data
   useEffect(() => {
@@ -93,25 +83,21 @@ export function useGamification() {
         const { data: allBadges } = await supabase.from("badges").select("*").order("points_required", { ascending: true });
         if (allBadges) setBadges(allBadges);
 
-        // Query user_badges by membership_id (new column)
         const { data: unlockedBadges } = await supabase
           .from("user_badges")
           .select(`id, badge_id, unlocked_at, badge:badges(*)`)
-          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`);
+          .eq("membership_id", mentoradoId);
 
         if (unlockedBadges) setUserBadges(unlockedBadges as unknown as UserBadge[]);
 
-        // Single filter for tables with membership_id
-        const idFilter = `membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`;
-
-        // Fetch user stats
+        // Fetch user stats — membership_id only
         const [prospectionsRes, progressRes, streakRes, aiUsageRes, rankingRes] = await Promise.all([
-          supabase.from("crm_prospections").select("id", { count: "exact" }).or(idFilter),
-          supabase.from("trail_progress").select("id, completed").or(idFilter).eq("completed", true),
+          supabase.from("crm_prospections").select("id", { count: "exact" }).eq("membership_id", mentoradoId),
+          supabase.from("trail_progress").select("id, completed").eq("membership_id", mentoradoId).eq("completed", true),
           supabase.from("user_streaks").select("current_streak, longest_streak")
-            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`).maybeSingle(),
-          supabase.from("ai_tool_usage").select("tool_type").or(idFilter),
-          supabase.from("ranking_entries").select("points").or(idFilter)
+            .eq("membership_id", mentoradoId).maybeSingle(),
+          supabase.from("ai_tool_usage").select("tool_type").eq("membership_id", mentoradoId),
+          supabase.from("ranking_entries").select("points").eq("membership_id", mentoradoId)
             .eq("period_type", "weekly").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
 
@@ -135,7 +121,7 @@ export function useGamification() {
         const { data: redemptionsData } = await supabase
           .from("reward_redemptions")
           .select(`id, reward_id, points_spent, status, redeemed_at, reward:reward_catalog(*)`)
-          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+          .eq("membership_id", mentoradoId)
           .order("redeemed_at", { ascending: false });
         if (redemptionsData) setRedemptions(redemptionsData as unknown as RewardRedemption[]);
       } catch (error) {
@@ -154,7 +140,7 @@ export function useGamification() {
 
     const { data: existingStreak } = await supabase
       .from("user_streaks").select("*")
-      .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+      .eq("membership_id", mentoradoId)
       .maybeSingle();
 
     if (existingStreak) {
@@ -189,7 +175,7 @@ export function useGamification() {
     if (!mentoradoId) return;
     await supabase.from("ai_tool_usage").insert({ membership_id: mentoradoId, tool_type: toolType });
     const { data: aiUsage } = await supabase.from("ai_tool_usage").select("tool_type")
-      .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`);
+      .eq("membership_id", mentoradoId);
     const uniqueTools = new Set(aiUsage?.map((u) => u.tool_type) || []);
     setStats((prev) => prev ? { ...prev, aiToolsUsed: uniqueTools.size } : null);
   }, [mentoradoId]);
@@ -202,7 +188,7 @@ export function useGamification() {
     if (reward.stock !== null && reward.stock <= 0) return { success: false, error: "Prêmio esgotado" };
 
     const { data, error } = await supabase.from("reward_redemptions")
-      .insert({ membership_id: mentoradoId, mentorado_id: mentoradoId, reward_id: rewardId, points_spent: reward.points_cost, shipping_address: shippingAddress, status: "pending" })
+      .insert({ membership_id: mentoradoId, reward_id: rewardId, points_spent: reward.points_cost, shipping_address: shippingAddress, status: "pending" })
       .select().single();
 
     if (error) return { success: false, error: error.message };
