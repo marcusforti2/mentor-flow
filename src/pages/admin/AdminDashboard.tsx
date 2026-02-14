@@ -56,68 +56,76 @@ export default function AdminDashboard() {
       {/* Bento Grid */}
       <BentoGrid>
         {/* Stats Row */}
-        <BentoCard size="sm" glow>
-          <div className="flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <Users className="h-6 w-6 text-primary" />
-              {stats.activeMentoradosCount > 0 && (
-                <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
-                  {stats.activeMentoradosCount} ativos
-                </span>
-              )}
+        <Link to="/mentor/mentorados" className="contents">
+          <BentoCard size="sm" glow className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between">
+                <Users className="h-6 w-6 text-primary" />
+                {stats.activeMentoradosCount > 0 && (
+                  <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                    {stats.activeMentoradosCount} ativos
+                  </span>
+                )}
+              </div>
+              <div className="mt-4">
+                <p className="stat-value text-gradient-gold">{stats.mentoradosCount}</p>
+                <p className="stat-label mt-1">Mentorados</p>
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="stat-value text-gradient-gold">{stats.mentoradosCount}</p>
-              <p className="stat-label mt-1">Mentorados</p>
-            </div>
-          </div>
-        </BentoCard>
+          </BentoCard>
+        </Link>
 
-        <BentoCard size="sm">
-          <div className="flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <TrendingUp className="h-6 w-6 text-emerald-500" />
-              {stats.engagementRate > 0 && (
-                <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
-                  Engajamento
-                </span>
-              )}
+        <Link to="/mentor/relatorios" className="contents">
+          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between">
+                <TrendingUp className="h-6 w-6 text-emerald-500" />
+                {stats.engagementRate > 0 && (
+                  <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                    Engajamento
+                  </span>
+                )}
+              </div>
+              <div className="mt-4">
+                <p className="stat-value">{stats.engagementRate}%</p>
+                <p className="stat-label mt-1">Taxa de Engajamento</p>
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="stat-value">{stats.engagementRate}%</p>
-              <p className="stat-label mt-1">Taxa de Engajamento</p>
-            </div>
-          </div>
-        </BentoCard>
+          </BentoCard>
+        </Link>
 
-        <BentoCard size="sm">
-          <div className="flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <Calendar className="h-6 w-6 text-accent" />
+        <Link to="/mentor/calendario" className="contents">
+          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all">
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between">
+                <Calendar className="h-6 w-6 text-accent" />
+              </div>
+              <div className="mt-4">
+                <p className="stat-value">{stats.meetingsThisWeek}</p>
+                <p className="stat-label mt-1">Encontros Esta Semana</p>
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="stat-value">{stats.meetingsThisWeek}</p>
-              <p className="stat-label mt-1">Encontros Esta Semana</p>
-            </div>
-          </div>
-        </BentoCard>
+          </BentoCard>
+        </Link>
 
-        <BentoCard size="sm">
-          <div className="flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <AlertTriangle className="h-6 w-6 text-amber-500" />
-              {stats.sosCount > 0 && (
-                <span className="text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-1 rounded-full">
-                  Urgente
-                </span>
-              )}
+        <Link to="/mentor/sos" className="contents">
+          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-amber-500/30 transition-all">
+            <div className="flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between">
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
+                {stats.sosCount > 0 && (
+                  <span className="text-xs text-amber-500 font-medium bg-amber-500/10 px-2 py-1 rounded-full">
+                    Urgente
+                  </span>
+                )}
+              </div>
+              <div className="mt-4">
+                <p className="stat-value text-amber-500">{stats.sosCount}</p>
+                <p className="stat-label mt-1">SOS Pendentes</p>
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="stat-value text-amber-500">{stats.sosCount}</p>
-              <p className="stat-label mt-1">SOS Pendentes</p>
-            </div>
-          </div>
-        </BentoCard>
+          </BentoCard>
+        </Link>
 
         {/* Quick Actions - Wide card */}
         <BentoCard size="wide" className="!p-0 overflow-hidden">
@@ -332,6 +340,15 @@ function EmptyState({
   );
 }
 
+const activityColorMap: Record<string, { bg: string; border: string; iconBg: string }> = {
+  emerald: { bg: 'bg-emerald-500/5', border: 'border-emerald-500/10', iconBg: 'bg-emerald-500/20' },
+  accent: { bg: 'bg-accent/5', border: 'border-accent/10', iconBg: 'bg-accent/20' },
+  primary: { bg: 'bg-primary/5', border: 'border-primary/10', iconBg: 'bg-primary/20' },
+  purple: { bg: 'bg-purple-500/5', border: 'border-purple-500/10', iconBg: 'bg-purple-500/20' },
+  cyan: { bg: 'bg-cyan-500/5', border: 'border-cyan-500/10', iconBg: 'bg-cyan-500/20' },
+  muted: { bg: 'bg-muted/5', border: 'border-muted/10', iconBg: 'bg-muted/20' },
+};
+
 function ActivityItem({ 
   icon, 
   title, 
@@ -343,9 +360,10 @@ function ActivityItem({
   time: string; 
   color: string;
 }) {
+  const colors = activityColorMap[color] || activityColorMap.muted;
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl bg-${color}-500/5 border border-${color}-500/10`}>
-      <div className={`h-8 w-8 rounded-lg bg-${color}-500/20 flex items-center justify-center shrink-0`}>
+    <div className={`flex items-center gap-3 p-3 rounded-xl ${colors.bg} border ${colors.border}`}>
+      <div className={`h-8 w-8 rounded-lg ${colors.iconBg} flex items-center justify-center shrink-0`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">

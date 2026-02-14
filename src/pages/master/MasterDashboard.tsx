@@ -56,25 +56,27 @@
        </div>
  
        {/* Stats */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         {stats.map((stat) => (
-           <Card key={stat.label} className="bg-slate-800/50 border-slate-700/50">
-             <CardContent className="p-6">
-               <div className="flex items-center justify-between">
-                 <div>
-                   <p className="text-sm text-slate-400">{stat.label}</p>
-                     {isLoading ? (
-                       <Skeleton className="h-9 w-16 mt-1 bg-slate-700" />
-                     ) : (
-                       <p className="text-3xl font-bold text-slate-100 mt-1">{stat.value ?? 0}</p>
-                     )}
-                 </div>
-                 <stat.icon className={`h-10 w-10 ${stat.color}`} />
-               </div>
-             </CardContent>
-           </Card>
-         ))}
-       </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {stats.map((stat) => (
+            <Link key={stat.label} to={stat.label === 'Tenants Ativos' ? '/master/tenants' : '/master/users'}>
+              <Card className="bg-slate-800/50 border-slate-700/50 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-400">{stat.label}</p>
+                        {isLoading ? (
+                          <Skeleton className="h-9 w-16 mt-1 bg-slate-700" />
+                        ) : (
+                          <p className="text-3xl font-bold text-slate-100 mt-1">{stat.value ?? 0}</p>
+                        )}
+                    </div>
+                    <stat.icon className={`h-10 w-10 ${stat.color}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
  
        {/* Quick Actions */}
        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
