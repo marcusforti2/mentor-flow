@@ -205,30 +205,26 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
 
   const resolveMentoradoId = async () => {
     try {
-      // Use auth.uid() directly to find the mentorado record - this is more reliable
-      // than going through membership, especially with impersonation or multi-tenant contexts
+      // Use activeMembership if available, otherwise fall back to auth user
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-
       if (authError || !user) {
         console.error("Could not get authenticated user:", authError);
         setIsLoading(false);
         return;
       }
 
-      const { data: mentorado, error: mentError } = await supabase
-        .from("mentorados")
+      // Get the membership ID for this user
+      const { data: membership } = await supabase
+        .from("memberships")
         .select("id")
         .eq("user_id", user.id)
+        .eq("role", "mentee")
+        .eq("status", "active")
         .maybeSingle();
 
-      if (mentError || !mentorado) {
-        console.error("Could not find mentorado for user:", mentError);
-        setIsLoading(false);
-        return;
-      }
-
-      setResolvedMentoradoId(mentorado.id);
-      loadProfile(mentorado.id);
+      const effectiveId = membership?.id || user.id;
+      setResolvedMentoradoId(effectiveId);
+      loadProfile(effectiveId);
     } catch (error) {
       console.error("Error resolving mentorado id:", error);
       setIsLoading(false);
@@ -240,8 +236,8 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
       const { data, error } = await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .eq("mentorado_id", mentoradoId)
-        .single();
+        .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+        .maybeSingle();
 
       if (data && !error) {
         setProfile({
@@ -288,6 +284,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
     try {
       const payload = {
         mentorado_id: resolvedMentoradoId,
+        membership_id: resolvedMentoradoId,
         business_name: profile.business_name || null,
         business_type: profile.business_type || null,
         target_audience: profile.target_audience || null,

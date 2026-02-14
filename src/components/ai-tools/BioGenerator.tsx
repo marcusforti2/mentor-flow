@@ -64,36 +64,12 @@ export function BioGenerator({ mentoradoId }: BioGeneratorProps) {
       if (!mentoradoId) return;
 
       try {
-        // Try legacy mentorado_id first
-        let { data } = await supabase
+        // Query by membership_id or mentorado_id (dual-ID for backward compat)
+        const { data } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
-          .eq('mentorado_id', mentoradoId)
+          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
           .maybeSingle();
-
-        // If not found, resolve via memberships (mentoradoId might be membership ID)
-        if (!data) {
-          const { data: membership } = await supabase
-            .from('memberships')
-            .select('user_id')
-            .eq('id', mentoradoId)
-            .maybeSingle();
-          if (membership) {
-            const { data: mentorado } = await supabase
-              .from('mentorados')
-              .select('id')
-              .eq('user_id', membership.user_id)
-              .maybeSingle();
-            if (mentorado) {
-              const { data: resolved } = await supabase
-                .from('mentorado_business_profiles')
-                .select('*')
-                .eq('mentorado_id', mentorado.id)
-                .maybeSingle();
-              data = resolved;
-            }
-          }
-        }
 
         if (data) {
           setBusinessProfile(data);

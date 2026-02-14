@@ -89,31 +89,12 @@ export default function Calendario() {
     
     setIsLoading(true);
     try {
-      // Try to resolve legacy mentor_id for backward compat
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      const legacyMentorId = mentorData?.id || null;
-      setMentorId(legacyMentorId);
-
-      // Always fetch events by tenant_id (primary), with legacy fallback
+      // Use tenant_id directly (owner_membership_id available but tenant_id is primary filter)
       if (activeMembership?.tenant_id) {
         const { data: eventsData, error } = await supabase
           .from('calendar_events')
           .select('*')
-          .or(`tenant_id.eq.${activeMembership.tenant_id}${legacyMentorId ? `,mentor_id.eq.${legacyMentorId}` : ''}`)
-          .order('event_date', { ascending: true });
-        
-        if (error) throw error;
-        setEvents(eventsData || []);
-      } else if (legacyMentorId) {
-        const { data: eventsData, error } = await supabase
-          .from('calendar_events')
-          .select('*')
-          .eq('mentor_id', legacyMentorId)
+          .eq('tenant_id', activeMembership.tenant_id)
           .order('event_date', { ascending: true });
         
         if (error) throw error;
