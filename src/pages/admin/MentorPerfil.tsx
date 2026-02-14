@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
+import { AvatarUpload } from "@/components/AvatarUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,7 +31,7 @@ const MentorPerfil = () => {
   const [settings, setSettings] = useState<MentorSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { activeMembership } = useTenant();
   const { toast } = useToast();
 
@@ -156,11 +157,18 @@ const MentorPerfil = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-foreground">Perfil da Mentoria</h1>
-        <p className="text-muted-foreground mt-1">
-          Descreva sua mentoria para que a IA possa cruzar com o perfil dos mentorados e gerar análises comportamentais personalizadas.
-        </p>
+      <div className="flex items-center gap-4">
+        <AvatarUpload
+          currentUrl={profile?.avatar_url}
+          fallbackText={profile?.full_name?.charAt(0) || 'M'}
+          size="lg"
+        />
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground">Perfil da Mentoria</h1>
+          <p className="text-muted-foreground mt-1">
+            Descreva sua mentoria para que a IA personalize análises comportamentais.
+          </p>
+        </div>
       </div>
 
       <div className="space-y-4">
