@@ -121,6 +121,12 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
   const [mentees, setMentees] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [menteesLoading, setMenteesLoading] = useState(false);
   const [audiencePanelOpen, setAudiencePanelOpen] = useState(false);
+  // Dynamic segmentation filters
+  const [journeyStages, setJourneyStages] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedJourneyStage, setSelectedJourneyStage] = useState<string>('');
+  const [inactiveDaysFilter, setInactiveDaysFilter] = useState<number>(7);
+  const [trails, setTrails] = useState<Array<{ id: string; title: string }>>([]);
+  const [selectedTrailFilter, setSelectedTrailFilter] = useState<string>('');
   const [flowName, setFlowName] = useState(flow.name);
   const [flowDescription, setFlowDescription] = useState(flow.description || '');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -132,7 +138,132 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
     if (audienceType === 'specific' && mentees.length === 0 && tenantId) {
       loadMentees();
     }
+    if (['journey_stage', 'inactive', 'trail_completed'].includes(audienceType) && tenantId) {
+      loadSegmentationData();
+    }
   }, [audienceType, tenantId]);
+
+  const loadSegmentationData = async () => {
+    if (!tenantId) return;
+    try {
+      // Load journey stages
+      const { data: stages } = await supabase
+        .from('cs_journey_stages')
+        .select('id, name')
+        .eq('tenant_id', tenantId)
+        .order('position');
+      setJourneyStages(stages || []);
+
+      // Load trails
+      const { data: trailsData } = await supabase
+        .from('trails')
+        .select('id, title')
+        .eq('tenant_id', tenantId)
+        .order('title');
+      setTrails(trailsData || []);
+    } catch (e) {
+      console.error('Error loading segmentation data:', e);
+    }
+  };
+
+  const applySegmentationFilter = async () => {
+    if (!tenantId) return;
+    setMenteesLoading(true);
+    try {
+      let filteredIds: string[] = [];
+
+      if (audienceType === 'journey_stage' && selectedJourneyStage) {
+        // Get mentees assigned to journeys at the selected stage
+        const { data: stage } = await supabase
+          .from('cs_journey_stages')
+          .select('journey_id, day_start, day_end')
+          .eq('id', selectedJourneyStage)
+          .single();
+
+        if (stage) {
+          const { data: assignments } = await supabase
+            .from('mentee_journey_assignments')
+            .select('membership_id, started_at')
+            .eq('journey_id', stage.journey_id)
+            .eq('tenant_id', tenantId);
+
+          if (assignments) {
+            const now = Date.now();
+            filteredIds = assignments
+              .filter(a => {
+                const daysSinceStart = Math.floor((now - new Date(a.started_at).getTime()) / (1000 * 60 * 60 * 24));
+                return daysSinceStart >= stage.day_start && daysSinceStart <= stage.day_end;
+              })
+              .map(a => a.membership_id);
+          }
+        }
+      } else if (audienceType === 'inactive') {
+        // Get mentees inactive for X days (no activity_logs)
+        const cutoffDate = new Date(Date.now() - inactiveDaysFilter * 24 * 60 * 60 * 1000).toISOString();
+        const { data: allMentees } = await supabase
+          .from('memberships')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('role', 'mentee')
+          .eq('status', 'active');
+
+        if (allMentees) {
+          const { data: activeLogs } = await supabase
+            .from('activity_logs')
+            .select('membership_id')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', cutoffDate)
+            .in('membership_id', allMentees.map(m => m.id));
+
+          const activeIds = new Set(activeLogs?.map(l => l.membership_id) || []);
+          filteredIds = allMentees.filter(m => !activeIds.has(m.id)).map(m => m.id);
+        }
+      } else if (audienceType === 'trail_completed' && selectedTrailFilter) {
+        // Get mentees who completed a specific trail
+        const { data: certs } = await supabase
+          .from('certificates')
+          .select('membership_id')
+          .eq('trail_id', selectedTrailFilter);
+
+        filteredIds = [...new Set(certs?.map(c => c.membership_id).filter(Boolean) as string[])];
+      }
+
+      setAudienceMembershipIds(filteredIds);
+
+      // Load profiles for display
+      if (filteredIds.length > 0) {
+        const { data: memberships } = await supabase
+          .from('memberships')
+          .select('id, user_id')
+          .in('id', filteredIds);
+
+        if (memberships && memberships.length > 0) {
+          const userIds = memberships.map(m => m.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, email')
+            .in('user_id', userIds);
+
+          const profileMap = new Map(profiles?.map((p: any) => [p.user_id, p]) || []);
+          setMentees(
+            memberships.map(m => ({
+              id: m.id,
+              name: (profileMap.get(m.user_id) as any)?.full_name || 'Sem nome',
+              email: (profileMap.get(m.user_id) as any)?.email || '',
+            }))
+          );
+        } else {
+          setMentees([]);
+        }
+      } else {
+        setMentees([]);
+      }
+    } catch (e) {
+      console.error('Error applying filter:', e);
+    } finally {
+      setMenteesLoading(false);
+    }
+  };
 
   const loadMentees = async () => {
     if (!tenantId) return;
@@ -313,7 +444,7 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                   value={audienceType}
                   onValueChange={(v) => {
                     setAudienceType(v);
-                    if (v === 'all') setAudienceMembershipIds([]);
+                    if (v === 'all') { setAudienceMembershipIds([]); setMentees([]); }
                     if (v === 'specific' && mentees.length === 0) loadMentees();
                   }}
                 >
@@ -323,28 +454,89 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                   <SelectContent>
                     <SelectItem value="all">Todos os mentorados</SelectItem>
                     <SelectItem value="specific">Mentorados específicos</SelectItem>
+                    <SelectItem value="journey_stage">Por estágio da jornada</SelectItem>
+                    <SelectItem value="inactive">Inativos há X dias</SelectItem>
+                    <SelectItem value="trail_completed">Completaram trilha</SelectItem>
                   </SelectContent>
                 </Select>
 
-                {audienceType === 'specific' && (
+                {/* Journey Stage Filter */}
+                {audienceType === 'journey_stage' && (
+                  <div className="space-y-2">
+                    <Select value={selectedJourneyStage} onValueChange={setSelectedJourneyStage}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o estágio" /></SelectTrigger>
+                      <SelectContent>
+                        {journeyStages.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="w-full" onClick={applySegmentationFilter} disabled={!selectedJourneyStage}>
+                      Filtrar
+                    </Button>
+                  </div>
+                )}
+
+                {/* Inactive Days Filter */}
+                {audienceType === 'inactive' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min={1} value={inactiveDaysFilter} onChange={(e) => setInactiveDaysFilter(parseInt(e.target.value) || 7)} className="w-20" />
+                      <span className="text-xs text-muted-foreground">dias sem atividade</span>
+                    </div>
+                    <div className="flex gap-1">
+                      {[3, 7, 14, 30].map(d => (
+                        <Badge key={d} variant={inactiveDaysFilter === d ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setInactiveDaysFilter(d)}>{d}d</Badge>
+                      ))}
+                    </div>
+                    <Button size="sm" className="w-full" onClick={applySegmentationFilter}>Filtrar</Button>
+                  </div>
+                )}
+
+                {/* Trail Completed Filter */}
+                {audienceType === 'trail_completed' && (
+                  <div className="space-y-2">
+                    <Select value={selectedTrailFilter} onValueChange={setSelectedTrailFilter}>
+                      <SelectTrigger><SelectValue placeholder="Selecione a trilha" /></SelectTrigger>
+                      <SelectContent>
+                        {trails.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="w-full" onClick={applySegmentationFilter} disabled={!selectedTrailFilter}>
+                      Filtrar
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show filtered/selected mentees */}
+                {(audienceType === 'specific' || ((['journey_stage', 'inactive', 'trail_completed'].includes(audienceType)) && mentees.length > 0)) && (
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {menteesLoading ? (
                       <p className="text-xs text-muted-foreground text-center py-3">Carregando...</p>
                     ) : mentees.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-3">Nenhum mentorado encontrado</p>
                     ) : (
-                      mentees.map(m => (
-                        <label key={m.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
-                          <Checkbox
-                            checked={audienceMembershipIds.includes(m.id)}
-                            onCheckedChange={() => toggleMenteeSelection(m.id)}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm truncate">{m.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{m.email}</p>
-                          </div>
-                        </label>
-                      ))
+                      <>
+                        {['journey_stage', 'inactive', 'trail_completed'].includes(audienceType) && (
+                          <p className="text-xs font-medium text-primary">{mentees.length} mentorado(s) encontrado(s)</p>
+                        )}
+                        {mentees.map(m => (
+                          <label key={m.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                            {audienceType === 'specific' && (
+                              <Checkbox
+                                checked={audienceMembershipIds.includes(m.id)}
+                                onCheckedChange={() => toggleMenteeSelection(m.id)}
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm truncate">{m.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{m.email}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </>
                     )}
                   </div>
                 )}
