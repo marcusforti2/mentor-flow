@@ -13,7 +13,8 @@ type ToolType =
   | "content_generator"
   | "proposal_creator"
   | "conversion_analyzer"
-  | "virtual_mentor";
+  | "virtual_mentor"
+  | "communication_hub";
 
 interface BusinessProfile {
   business_name: string | null;
@@ -447,6 +448,18 @@ serve(async (req) => {
       .maybeSingle();
 
     const businessContext = buildBusinessContext(businessProfile);
+
+    // Resolve tenant_id from membership for tracking
+    let tenantId: string | null = null;
+    if (mentorado_id) {
+      const { data: membership } = await supabase
+        .from("memberships")
+        .select("tenant_id")
+        .eq("id", mentorado_id)
+        .maybeSingle();
+      tenantId = membership?.tenant_id || null;
+    }
+
     let systemPrompt = "";
     let userMessage = "";
     let messages: Array<{role: string; content: string}> = [];
@@ -593,6 +606,17 @@ serve(async (req) => {
         throw new Error("AI Gateway error");
       }
 
+      // Track usage for streaming requests too
+      try {
+        await supabase.from("ai_tool_usage").insert({
+          tool_type: tool,
+          membership_id: mentorado_id || null,
+          tenant_id: tenantId,
+        });
+      } catch (trackErr) {
+        console.warn("Failed to track AI tool usage:", trackErr);
+      }
+
       return new Response(response.body, {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
@@ -646,6 +670,17 @@ serve(async (req) => {
       } catch (e) {
         console.log("Could not parse correction JSON, using raw response");
       }
+    }
+
+    // Track usage in ai_tool_usage table
+    try {
+      await supabase.from("ai_tool_usage").insert({
+        tool_type: tool,
+        membership_id: mentorado_id || null,
+        tenant_id: tenantId,
+      });
+    } catch (trackErr) {
+      console.warn("Failed to track AI tool usage:", trackErr);
     }
 
     console.log(`AI Tools - Success for tool: ${tool}`);
