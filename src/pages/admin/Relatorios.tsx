@@ -1,17 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useMentorReports } from "@/hooks/useMentorReports";
-import { 
-  Users, 
-  Target, 
-  Activity, 
-  TrendingUp, 
-  Award,
-  BarChart3,
+import { MenteeRanking } from "@/components/admin/MenteeRanking";
+import { PerformanceChart } from "@/components/admin/PerformanceChart";
+import {
+  Users,
+  Target,
+  Activity,
+  TrendingUp,
   PieChart,
-  Calendar
+  BarChart3,
 } from "lucide-react";
 import {
   BarChart,
@@ -44,12 +43,12 @@ export default function Relatorios() {
   const {
     stats,
     statsLoading,
-    activityByDay,
-    activityByDayLoading,
     leadsByStatus,
     leadsByStatusLoading,
-    topPerformers,
-    topPerformersLoading,
+    menteeScores,
+    menteeScoresLoading,
+    weeklyEvolution,
+    weeklyEvolutionLoading,
   } = useMentorReports();
 
   return (
@@ -143,53 +142,15 @@ export default function Relatorios() {
         </Card>
       </div>
 
+      {/* Weekly Evolution Chart */}
+      <PerformanceChart data={weeklyEvolution} isLoading={weeklyEvolutionLoading} />
+
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Activity Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Atividades por Dia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activityByDayLoading ? (
-              <Skeleton className="h-[250px] w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={activityByDay}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="date" 
-                    tickFormatter={(val) => format(parseISO(val), 'EEE', { locale: ptBR })}
-                    className="text-xs"
-                  />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    labelFormatter={(val) => format(parseISO(val as string), "dd 'de' MMM", { locale: ptBR })}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar 
-                    dataKey="count" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]}
-                    name="Atividades"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Leads by Status Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <PieChart className="h-5 w-5" />
               Leads por Status
             </CardTitle>
@@ -198,7 +159,7 @@ export default function Relatorios() {
             {leadsByStatusLoading ? (
               <Skeleton className="h-[250px] w-full" />
             ) : leadsByStatus.length === 0 ? (
-              <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
                 Nenhum lead encontrado
               </div>
             ) : (
@@ -221,11 +182,11 @@ export default function Relatorios() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
+                  <Tooltip
+                    contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
+                      borderRadius: '8px',
                     }}
                   />
                   <Legend />
@@ -234,58 +195,57 @@ export default function Relatorios() {
             )}
           </CardContent>
         </Card>
+
+        {/* Score summary card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-5 w-5" />
+              Distribuição de Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {menteeScoresLoading ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : menteeScores.length === 0 ? (
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+                Nenhum mentorado encontrado
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[
+                  { label: 'Excelente (80+)', min: 80, max: 101, color: 'bg-emerald-500' },
+                  { label: 'Bom (60-79)', min: 60, max: 80, color: 'bg-primary' },
+                  { label: 'Regular (40-59)', min: 40, max: 60, color: 'bg-accent' },
+                  { label: 'Atenção (0-39)', min: 0, max: 40, color: 'bg-destructive' },
+                ].map(tier => {
+                  const count = menteeScores.filter(m => m.score >= tier.min && m.score < tier.max).length;
+                  const pct = menteeScores.length > 0 ? (count / menteeScores.length) * 100 : 0;
+                  return (
+                    <div key={tier.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{tier.label}</span>
+                        <Badge variant="secondary" className="font-mono text-xs">{count}</Badge>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full ${tier.color} transition-all`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="pt-2 text-center text-xs text-muted-foreground">
+                  Score médio: <span className="font-bold text-foreground">
+                    {(menteeScores.reduce((sum, m) => sum + m.score, 0) / menteeScores.length).toFixed(0)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Top Performers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5" />
-            Top 5 Mentorados
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {topPerformersLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : topPerformers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhum mentorado encontrado
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {topPerformers.map((performer, index) => (
-                <div
-                  key={performer.mentoradoId}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/30"
-                >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
-                    {index + 1}
-                  </div>
-                  <Avatar>
-                    <AvatarImage src={performer.avatar || undefined} />
-                    <AvatarFallback>
-                      {performer.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{performer.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {performer.leadsCount} leads • {performer.activitiesCount} atividades
-                    </p>
-                  </div>
-                  <Badge variant="secondary" className="font-mono">
-                    {performer.points} pts
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Mentee Ranking */}
+      <MenteeRanking mentees={menteeScores} isLoading={menteeScoresLoading} />
     </div>
   );
 }
