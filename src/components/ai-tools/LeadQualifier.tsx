@@ -118,8 +118,8 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       const { data: profileData } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
-          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
-          .maybeSingle();
+           .eq('membership_id', mentoradoId)
+           .maybeSingle();
         
       if (profileData) {
         setBusinessProfile(profileData);
@@ -138,7 +138,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       const { data, error } = await supabase
         .from('crm_prospections')
         .select('id, contact_name, company, contact_email, contact_phone, notes, screenshot_urls')
-        .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
+        .eq('membership_id', mentoradoId)
         .order('updated_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -178,7 +178,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       const { data, error } = await supabase
         .from('crm_prospections')
         .select('id, contact_name, company, temperature, ai_insights, updated_at, profile_url')
-        .or(`mentorado_id.eq.${mentoradoId},membership_id.eq.${mentoradoId}`)
+        .eq('membership_id', mentoradoId)
         .not('ai_insights', 'is', null)
         .order('updated_at', { ascending: false })
         .limit(50);
@@ -334,7 +334,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           const { data: existingByUrl } = await supabase
             .from('crm_prospections')
             .select('id, contact_name')
-            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+            .eq('membership_id', mentoradoId)
             .eq('profile_url', profileUrl)
             .maybeSingle();
           
@@ -352,7 +352,6 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
         const { error: insertError } = await supabase
           .from('crm_prospections')
           .insert([{
-            mentorado_id: mentoradoId,
             membership_id: mentoradoId,
             tenant_id: effectiveTenantId,
             contact_name: leadName,
