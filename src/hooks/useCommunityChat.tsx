@@ -3,13 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from '@/contexts/TenantContext';
-import { useMentorado } from './useCommunityPosts';
+
 import { toast } from 'sonner';
 
 export interface ChatMessage {
   id: string;
-  mentor_id: string;
-  mentorado_id: string;
   content: string;
   created_at: string;
   tenant_id?: string | null;
@@ -30,8 +28,6 @@ export interface OnlineUser {
 export function useCommunityChat() {
   const { profile } = useAuth();
   const { activeMembership } = useTenant();
-  // Legacy mentorado still needed for old message author resolution
-  const { data: mentorado } = useMentorado();
   const queryClient = useQueryClient();
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
 
@@ -164,13 +160,10 @@ export function useCommunityChat() {
     mutationFn: async (content: string) => {
       if (!tenantId || !membershipId) throw new Error('Não autenticado');
 
-      const insertData: any = {
+      const insertData = {
         content,
         tenant_id: tenantId,
         author_membership_id: membershipId,
-        // Legacy fields - use membershipId as placeholder for NOT NULL constraints
-        mentor_id: membershipId,
-        mentorado_id: membershipId,
       };
 
       const { error } = await supabase
@@ -205,6 +198,5 @@ export function useCommunityChat() {
     sendMessage,
     deleteMessage,
     onlineUsers,
-    mentorado,
   };
 }

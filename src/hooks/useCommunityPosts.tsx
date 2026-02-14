@@ -6,8 +6,6 @@ import { toast } from 'sonner';
 
 export interface CommunityPost {
   id: string;
-  mentorado_id: string;
-  mentor_id: string;
   content: string;
   image_url: string | null;
   tags: string[];
@@ -27,7 +25,6 @@ export interface CommunityPost {
 export interface CommunityComment {
   id: string;
   post_id: string;
-  mentorado_id: string;
   membership_id?: string | null;
   content: string;
   created_at: string;
@@ -37,18 +34,6 @@ export interface CommunityComment {
   };
 }
 
-// Legacy compat hook - still used by useCommunityChat for presence
-export function useMentorado() {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: ['current-mentorado', user?.id],
-    queryFn: async () => {
-      return null;
-    },
-    enabled: false,
-  });
-}
 
 export function useCommunityPosts() {
   const { user } = useAuth();
@@ -74,7 +59,7 @@ export function useCommunityPosts() {
 
       // Resolve author profiles via author_membership_id -> memberships -> profiles
       const authorMembershipIds = [...new Set(postsData.map(p => p.author_membership_id).filter(Boolean))];
-      const legacyMentoradoIds: string[] = [];
+      
 
       // Fetch membership user_ids
       let membershipToUser = new Map<string, string>();
@@ -140,9 +125,6 @@ export function useCommunityPosts() {
           image_url: imageUrl || null,
           tenant_id: tenantId,
           author_membership_id: membershipId,
-          // Legacy fields - use membershipId as placeholder for NOT NULL constraints
-          mentor_id: membershipId,
-          mentorado_id: membershipId,
         })
         .select()
         .single();
@@ -210,8 +192,6 @@ export function useCommunityPosts() {
           .insert({
             post_id: postId,
             membership_id: membershipId,
-            // Legacy field - NOT NULL constraint
-            mentorado_id: membershipId,
           });
         if (error) throw error;
 
@@ -307,8 +287,6 @@ export function usePostComments(postId: string) {
         .insert({
           post_id: postId,
           membership_id: membershipId,
-          // Legacy field - NOT NULL constraint
-          mentorado_id: membershipId,
           content,
         });
 

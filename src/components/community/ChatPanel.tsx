@@ -71,7 +71,7 @@ export function ChatPanel() {
             {messages.map((message, index) => {
               const showAvatar =
                 index === 0 ||
-                messages[index - 1].mentorado_id !== message.mentorado_id;
+                messages[index - 1].author_membership_id !== message.author_membership_id;
 
               return (
                 <div
@@ -172,9 +172,9 @@ export function ChatPanel() {
         <div className="px-4 pb-3 border-t border-border/50 pt-3">
           <p className="text-xs text-muted-foreground mb-2">Online agora:</p>
           <div className="flex -space-x-2">
-            {onlineUsers.slice(0, 8).map((user) => (
+            {onlineUsers.slice(0, 8).map((user, idx) => (
               <Avatar
-                key={user.mentorado_id}
+                key={user.mentorado_id || idx}
                 className="h-6 w-6 border-2 border-background"
                 title={user.full_name}
               >
