@@ -175,9 +175,7 @@ Deno.serve(async (req) => {
     await admin.from('invites').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     L('invites deleted: all')
 
-    // user_roles (legacy)
-    await admin.from('user_roles').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-    L('user_roles (legacy) deleted: all')
+    // user_roles (legacy) - table dropped, skip
 
     // ========== STEP 3: Sandbox memberships ==========
     L('--- STEP 3: Sandbox memberships ---')
