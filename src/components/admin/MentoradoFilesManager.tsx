@@ -79,11 +79,9 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Use owner_membership_id as primary identifier, fallback to mentorado_id
+      // Use owner_membership_id as identifier
       if (ownerMembershipId) {
         query = query.eq('owner_membership_id', ownerMembershipId);
-      } else if (mentoradoId) {
-        query = query.eq('mentorado_id', mentoradoId);
       }
 
       const { data, error } = await query;

@@ -44,22 +44,9 @@ export function useMentorado() {
   return useQuery({
     queryKey: ['current-mentorado', user?.id],
     queryFn: async () => {
-      if (!user) return null;
-
-      const { data, error } = await supabase
-        .from('mentorados')
-        .select('id, user_id, mentor_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching mentorado:', error);
-        return null;
-      }
-
-      return data as { id: string; user_id: string; mentor_id: string };
+      return null;
     },
-    enabled: !!user,
+    enabled: false,
   });
 }
 
@@ -87,7 +74,7 @@ export function useCommunityPosts() {
 
       // Resolve author profiles via author_membership_id -> memberships -> profiles
       const authorMembershipIds = [...new Set(postsData.map(p => p.author_membership_id).filter(Boolean))];
-      const legacyMentoradoIds = [...new Set(postsData.filter(p => !p.author_membership_id).map(p => p.mentorado_id).filter(Boolean))];
+      const legacyMentoradoIds: string[] = [];
 
       // Fetch membership user_ids
       let membershipToUser = new Map<string, string>();
@@ -99,18 +86,8 @@ export function useCommunityPosts() {
         membershipToUser = new Map(membershipsData?.map(m => [m.id, m.user_id]) || []);
       }
 
-      // Fetch legacy mentorado user_ids (for old posts without author_membership_id)
-      let mentoradoToUser = new Map<string, string>();
-      if (legacyMentoradoIds.length > 0) {
-        const { data: mentoradosData } = await supabase
-          .from('mentorados')
-          .select('id, user_id')
-          .in('id', legacyMentoradoIds);
-        mentoradoToUser = new Map(mentoradosData?.map(m => [m.id, m.user_id]) || []);
-      }
-
       // Collect all user_ids and fetch profiles
-      const allUserIds = [...new Set([...membershipToUser.values(), ...mentoradoToUser.values()])];
+      const allUserIds = [...new Set([...membershipToUser.values()])];
       let userToProfile = new Map<string, { full_name: string | null; avatar_url: string | null }>();
       if (allUserIds.length > 0) {
         const { data: profilesData } = await supabase
@@ -134,8 +111,6 @@ export function useCommunityPosts() {
         let userId: string | undefined;
         if (post.author_membership_id) {
           userId = membershipToUser.get(post.author_membership_id);
-        } else if (post.mentorado_id) {
-          userId = mentoradoToUser.get(post.mentorado_id);
         }
         const authorProfile = userId ? userToProfile.get(userId) : null;
         
@@ -288,9 +263,8 @@ export function usePostComments(postId: string) {
 
       if (error) throw error;
 
-      // Resolve authors: prefer membership_id, fallback to mentorado_id for old comments
-      const commentMembershipIds = [...new Set(commentsData.map(c => (c as any).membership_id).filter(Boolean))];
-      const legacyMentoradoIds = [...new Set(commentsData.filter(c => !(c as any).membership_id).map(c => c.mentorado_id).filter(Boolean))];
+      // Resolve authors via membership_id
+      const commentMembershipIds = [...new Set(commentsData.map(c => c.membership_id).filter(Boolean))];
 
       let membershipToUser = new Map<string, string>();
       if (commentMembershipIds.length > 0) {
@@ -298,13 +272,7 @@ export function usePostComments(postId: string) {
         membershipToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
       }
 
-      let mentoradoToUser = new Map<string, string>();
-      if (legacyMentoradoIds.length > 0) {
-        const { data } = await supabase.from('mentorados').select('id, user_id').in('id', legacyMentoradoIds);
-        mentoradoToUser = new Map(data?.map(m => [m.id, m.user_id]) || []);
-      }
-
-      const allUserIds = [...new Set([...membershipToUser.values(), ...mentoradoToUser.values()])];
+      const allUserIds = [...new Set([...membershipToUser.values()])];
       let userToProfile = new Map<string, { full_name: string | null; avatar_url: string | null }>();
       if (allUserIds.length > 0) {
         const { data } = await supabase.from('profiles').select('user_id, full_name, avatar_url').in('user_id', allUserIds);
@@ -313,10 +281,8 @@ export function usePostComments(postId: string) {
 
       return commentsData.map(comment => {
         let userId: string | undefined;
-        if ((comment as any).membership_id) {
-          userId = membershipToUser.get((comment as any).membership_id);
-        } else {
-          userId = mentoradoToUser.get(comment.mentorado_id);
+        if (comment.membership_id) {
+          userId = membershipToUser.get(comment.membership_id);
         }
         const commentProfile = userId ? userToProfile.get(userId) : null;
         

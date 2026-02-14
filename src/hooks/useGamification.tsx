@@ -170,22 +170,16 @@ export function useGamification() {
 
       const longestStreak = Math.max(newStreak, existingStreak.longest_streak || 0);
 
-      // Update by the record's own ID column
-      if (existingStreak.membership_id) {
-        await supabase.from("user_streaks")
-          .update({ current_streak: newStreak, longest_streak: longestStreak, last_access_date: today, updated_at: new Date().toISOString() })
-          .eq("membership_id", existingStreak.membership_id);
-      } else {
-        await supabase.from("user_streaks")
-          .update({ current_streak: newStreak, longest_streak: longestStreak, last_access_date: today, updated_at: new Date().toISOString() })
-          .eq("mentorado_id", existingStreak.mentorado_id);
-      }
+      // Update by membership_id
+      await supabase.from("user_streaks")
+        .update({ current_streak: newStreak, longest_streak: longestStreak, last_access_date: today, updated_at: new Date().toISOString() })
+        .eq("membership_id", existingStreak.membership_id);
 
       setStats((prev) => prev ? { ...prev, streakDays: newStreak } : null);
     } else {
       // Insert new streak with membership_id
       await supabase.from("user_streaks").insert({
-        membership_id: mentoradoId, mentorado_id: mentoradoId, current_streak: 1, longest_streak: 1, last_access_date: today,
+        membership_id: mentoradoId, current_streak: 1, longest_streak: 1, last_access_date: today,
       });
       setStats((prev) => (prev ? { ...prev, streakDays: 1 } : null));
     }

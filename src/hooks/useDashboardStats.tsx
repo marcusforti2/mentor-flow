@@ -346,11 +346,11 @@ export function useMenteeDashboardStats() {
       if (allMenteeIds.length > 0) {
         const ids = allMenteeIds.map(m => m.id);
         const { data: allRankings } = await supabase
-          .from('ranking_entries').select('membership_id, mentorado_id, points')
-          .or(`membership_id.in.(${ids.join(',')}),mentorado_id.in.(${ids.join(',')})`)
+          .from('ranking_entries').select('membership_id, points')
+          .in('membership_id', ids)
           .order('points', { ascending: false });
         if (allRankings) {
-          const idx = allRankings.findIndex(r => r.membership_id === membershipId || r.mentorado_id === membershipId);
+          const idx = allRankings.findIndex(r => r.membership_id === membershipId);
           if (idx >= 0) rankingPosition = idx + 1;
         }
       }

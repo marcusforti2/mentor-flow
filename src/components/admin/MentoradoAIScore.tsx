@@ -26,18 +26,18 @@ function jsonToStringArray(val: Json | null): string[] | null {
   return val.filter((v): v is string => typeof v === 'string');
 }
 
-export function MentoradoAIScore({ legacyMentoradoId }: Props) {
+export function MentoradoAIScore({ legacyMentoradoId, membershipId }: Props) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
-      if (!legacyMentoradoId) { setLoading(false); return; }
+      if (!membershipId) { setLoading(false); return; }
       setLoading(true);
       const { data } = await supabase
         .from('training_analyses')
         .select('id, nota_geral, resumo, pontos_fortes, muda_urgente, created_at')
-        .eq('mentorado_id', legacyMentoradoId)
+        .eq('membership_id', membershipId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

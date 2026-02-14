@@ -78,7 +78,7 @@ interface FlowStats {
 interface ExecutionRecord {
   id: string;
   flow_id: string;
-  mentorado_id: string;
+  membership_id: string | null;
   status: string | null;
   started_at: string | null;
   completed_at: string | null;
@@ -749,7 +749,7 @@ export default function EmailMarketing() {
                       <Clock className="h-4 w-4 text-amber-500 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{record.mentorado_id.slice(0, 8)}...</p>
+                      <p className="text-sm font-medium truncate">{record.id.slice(0, 8)}...</p>
                       <p className="text-xs text-muted-foreground">
                         {record.started_at ? format(new Date(record.started_at), "dd/MM/yy HH:mm", { locale: ptBR }) : '—'}
                       </p>
