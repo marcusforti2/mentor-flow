@@ -159,16 +159,18 @@ export default function MemberDashboard() {
         </BentoCard>
 
         {/* Stats Cards */}
-        <BentoCard size="sm">
-          <div className="flex flex-col justify-between h-full">
-            <Target className="h-8 w-8 text-accent" />
-            <div className="mt-auto">
-              <p className="stat-value">{dashboardStats.monthlyProspections}</p>
-              <p className="stat-label mt-1">Prospecções do Mês</p>
-              <span className="text-xs text-muted-foreground mt-2 inline-block">{dashboardStats.totalPoints} pontos acumulados</span>
+        <Link to="/mentorado/meu-crm" className="contents">
+          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all">
+            <div className="flex flex-col justify-between h-full">
+              <Target className="h-8 w-8 text-accent" />
+              <div className="mt-auto">
+                <p className="stat-value">{dashboardStats.monthlyProspections}</p>
+                <p className="stat-label mt-1">Prospecções do Mês</p>
+                <span className="text-xs text-muted-foreground mt-2 inline-block">{dashboardStats.totalPoints} pontos acumulados</span>
+              </div>
             </div>
-          </div>
-        </BentoCard>
+          </BentoCard>
+        </Link>
 
         {/* Next Meeting */}
         <BentoCard size="md">
