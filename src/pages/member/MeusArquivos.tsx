@@ -40,28 +40,7 @@ export default function MeusArquivos() {
           const { data, error } = await supabase
             .from('mentorado_files')
             .select('*')
-            .eq('owner_membership_id', activeMembership.id)
-            .order('created_at', { ascending: false });
-          
-          if (!error && data && data.length > 0) {
-            setFiles(data || []);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        // Fallback: try legacy mentorado_id
-        const { data: mentoradoData } = await supabase
-          .from('mentorados')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (mentoradoData) {
-          const { data, error } = await supabase
-            .from('mentorado_files')
-            .select('*')
-            .eq('mentorado_id', mentoradoData.id)
+            .or(`owner_membership_id.eq.${activeMembership.id},mentorado_id.eq.${activeMembership.id}`)
             .order('created_at', { ascending: false });
           
           if (error) throw error;

@@ -85,31 +85,22 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   
-  // Resolved IDs for dual-ID support (membership vs legacy mentorado)
-  const [resolvedLegacyId, setResolvedLegacyId] = useState<string | null>(null);
+  // Resolved tenant ID from membership
   const [resolvedTenantId, setResolvedTenantId] = useState<string | null>(null);
 
-  // Resolve legacy mentorado_id and tenant_id from membership
+  // Resolve tenant_id from membership
   useEffect(() => {
     const resolveIds = async () => {
       if (!mentoradoId) return;
       try {
-        // Get membership info (tenant_id + user_id)
         const { data: membership } = await supabase
           .from('memberships')
-          .select('user_id, tenant_id')
+          .select('tenant_id')
           .eq('id', mentoradoId)
           .maybeSingle();
         
         if (membership) {
           setResolvedTenantId(membership.tenant_id);
-          // Find legacy mentorado_id from user_id
-          const { data: mentorado } = await supabase
-            .from('mentorados')
-            .select('id')
-            .eq('user_id', membership.user_id)
-            .maybeSingle();
-          if (mentorado) setResolvedLegacyId(mentorado.id);
         }
       } catch (error) {
         console.error('Error resolving IDs:', error);
@@ -123,29 +114,15 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       if (!mentoradoId) return;
       try {
       // Try membership_id first, then legacy mentorado_id
+      // Query business profile by membership_id or mentorado_id
       const { data: profileData } = await supabase
           .from('mentorado_business_profiles')
           .select('*')
-          .eq('mentorado_id', mentoradoId)
+          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
           .maybeSingle();
         
       if (profileData) {
         setBusinessProfile(profileData);
-      } else {
-        // Try resolving legacy mentorado_id via membership
-        const { data: mentorado } = await supabase
-          .from('mentorados')
-          .select('id')
-          .eq('user_id', (await supabase.from('memberships').select('user_id').eq('id', mentoradoId).maybeSingle()).data?.user_id || '')
-          .maybeSingle();
-        if (mentorado) {
-          const { data: legacyProfile } = await supabase
-            .from('mentorado_business_profiles')
-            .select('*')
-            .eq('mentorado_id', mentorado.id)
-            .maybeSingle();
-          if (legacyProfile) setBusinessProfile(legacyProfile);
-        }
       }
       } catch (error) {
         console.error('Error fetching business profile:', error);
@@ -297,45 +274,24 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
       };
       const temperature = temperatureMap[reportData.recommendation] || 'warm';
       
-      // Resolve IDs inline to avoid race conditions with useEffect
-      let effectiveMentoradoId: string | null = resolvedLegacyId;
+      // Resolve tenant_id inline if not yet cached
       let effectiveTenantId: string | null = resolvedTenantId;
       
-      // Always resolve inline if not yet cached (critical for impersonation)
-      if (!effectiveMentoradoId || !effectiveTenantId) {
-        console.log('[LeadQualifier] Resolving IDs inline for mentoradoId:', mentoradoId);
-        const { data: membership, error: membershipError } = await supabase
+      if (!effectiveTenantId) {
+        const { data: membership } = await supabase
           .from('memberships')
-          .select('user_id, tenant_id')
+          .select('tenant_id')
           .eq('id', mentoradoId)
           .maybeSingle();
         
-        if (membershipError) {
-          console.error('[LeadQualifier] Failed to resolve membership:', membershipError);
-        }
-        
         if (membership) {
           effectiveTenantId = membership.tenant_id;
-          const { data: mentorado, error: mentoradoError } = await supabase
-            .from('mentorados')
-            .select('id')
-            .eq('user_id', membership.user_id)
-            .maybeSingle();
-          
-          if (mentoradoError) {
-            console.warn('[LeadQualifier] Failed to resolve legacy mentorado_id (RLS?):', mentoradoError);
-          }
-          
-          effectiveMentoradoId = mentorado?.id || null;
-          // Cache for future calls
-          if (mentorado) setResolvedLegacyId(mentorado.id);
           setResolvedTenantId(membership.tenant_id);
         }
       }
       
       console.log('[LeadQualifier] Save context:', {
         mentoradoId,
-        effectiveMentoradoId,
         effectiveTenantId,
         selectedLeadId: selectedLeadId || 'none'
       });
@@ -378,7 +334,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
           const { data: existingByUrl } = await supabase
             .from('crm_prospections')
             .select('id, contact_name')
-            .or(`mentorado_id.eq.${effectiveMentoradoId},membership_id.eq.${mentoradoId}`)
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
             .eq('profile_url', profileUrl)
             .maybeSingle();
           
@@ -396,7 +352,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
         const { error: insertError } = await supabase
           .from('crm_prospections')
           .insert([{
-            mentorado_id: effectiveMentoradoId,
+            mentorado_id: mentoradoId,
             membership_id: mentoradoId,
             tenant_id: effectiveTenantId,
             contact_name: leadName,

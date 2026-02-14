@@ -27,33 +27,17 @@ export function useLeadsWithQualification(mentoradoId: string | null) {
       setIsLoading(true);
       
       try {
-        // Resolve legacy mentorado_id from membership
-        let legacyMentoradoId = mentoradoId;
-        const { data: membership } = await supabase
-          .from('memberships')
-          .select('user_id')
-          .eq('id', mentoradoId)
-          .maybeSingle();
-        
-        if (membership?.user_id) {
-          const { data: mentorado } = await supabase
-            .from('mentorados')
-            .select('id')
-            .eq('user_id', membership.user_id)
-            .maybeSingle();
-          if (mentorado) legacyMentoradoId = mentorado.id;
-        }
-
         const [profileRes, leadsRes] = await Promise.all([
+          // Query business profile by membership_id (new) or mentorado_id (legacy)
           supabase
             .from('mentorado_business_profiles')
             .select('*')
-            .eq('mentorado_id', legacyMentoradoId)
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
             .maybeSingle(),
           supabase
             .from('crm_prospections')
             .select('id, contact_name, company, contact_email, contact_phone, temperature, status, notes, ai_insights, updated_at')
-            .or(`mentorado_id.eq.${legacyMentoradoId},membership_id.eq.${mentoradoId}`)
+            .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
             .order('updated_at', { ascending: false })
             .limit(50)
         ]);
@@ -98,11 +82,9 @@ export function buildQualificationContext(lead: EnrichedLead): string {
     return parts.join('\n');
   }
 
-  // Score and summary
   if (insights.score) parts.push(`Score: ${insights.score}/100`);
   if (insights.summary) parts.push(`Resumo: ${insights.summary}`);
 
-  // Extracted data
   const extracted = insights.extracted_data;
   if (extracted) {
     if (extracted.headline) parts.push(`Headline: ${extracted.headline}`);
@@ -112,7 +94,6 @@ export function buildQualificationContext(lead: EnrichedLead): string {
     }
   }
 
-  // Behavioral profile
   const behavior = insights.behavioral_profile;
   if (behavior) {
     parts.push(`\n--- PERFIL COMPORTAMENTAL ---`);
@@ -120,54 +101,31 @@ export function buildQualificationContext(lead: EnrichedLead): string {
     if (behavior.personality_summary) parts.push(`Personalidade: ${behavior.personality_summary}`);
     if (behavior.communication_preference) parts.push(`Preferência de comunicação: ${behavior.communication_preference}`);
     if (behavior.decision_making_style) parts.push(`Tomada de decisão: ${behavior.decision_making_style}`);
-    if (behavior.what_motivates?.length) {
-      parts.push(`Motivadores: ${behavior.what_motivates.slice(0, 3).join(', ')}`);
-    }
-    if (behavior.what_frustrates?.length) {
-      parts.push(`Frustrações: ${behavior.what_frustrates.slice(0, 3).join(', ')}`);
-    }
-    if (behavior.buying_triggers?.length) {
-      parts.push(`Gatilhos de compra: ${behavior.buying_triggers.slice(0, 3).join(', ')}`);
-    }
+    if (behavior.what_motivates?.length) parts.push(`Motivadores: ${behavior.what_motivates.slice(0, 3).join(', ')}`);
+    if (behavior.what_frustrates?.length) parts.push(`Frustrações: ${behavior.what_frustrates.slice(0, 3).join(', ')}`);
+    if (behavior.buying_triggers?.length) parts.push(`Gatilhos de compra: ${behavior.buying_triggers.slice(0, 3).join(', ')}`);
   }
 
-  // Lead perspective
   const perspective = insights.lead_perspective;
   if (perspective) {
     parts.push(`\n--- PERSPECTIVA DO LEAD ---`);
-    if (perspective.likely_goals?.length) {
-      parts.push(`Objetivos: ${perspective.likely_goals.slice(0, 3).join(', ')}`);
-    }
-    if (perspective.current_challenges?.length) {
-      parts.push(`Desafios: ${perspective.current_challenges.slice(0, 3).join(', ')}`);
-    }
-    if (perspective.fears_and_concerns?.length) {
-      parts.push(`Medos: ${perspective.fears_and_concerns.slice(0, 2).join(', ')}`);
-    }
-    if (perspective.desires_and_aspirations?.length) {
-      parts.push(`Desejos: ${perspective.desires_and_aspirations.slice(0, 2).join(', ')}`);
-    }
-    if (perspective.hidden_pains?.length) {
-      parts.push(`Dores ocultas: ${perspective.hidden_pains.slice(0, 2).join(', ')}`);
-    }
+    if (perspective.likely_goals?.length) parts.push(`Objetivos: ${perspective.likely_goals.slice(0, 3).join(', ')}`);
+    if (perspective.current_challenges?.length) parts.push(`Desafios: ${perspective.current_challenges.slice(0, 3).join(', ')}`);
+    if (perspective.fears_and_concerns?.length) parts.push(`Medos: ${perspective.fears_and_concerns.slice(0, 2).join(', ')}`);
+    if (perspective.desires_and_aspirations?.length) parts.push(`Desejos: ${perspective.desires_and_aspirations.slice(0, 2).join(', ')}`);
+    if (perspective.hidden_pains?.length) parts.push(`Dores ocultas: ${perspective.hidden_pains.slice(0, 2).join(', ')}`);
   }
 
-  // Approach strategy
   const approach = insights.approach_strategy;
   if (approach) {
     parts.push(`\n--- ESTRATÉGIA DE ABORDAGEM ---`);
     if (approach.opening_hook) parts.push(`Gancho inicial: ${approach.opening_hook}`);
     if (approach.best_channel) parts.push(`Melhor canal: ${approach.best_channel}`);
     if (approach.best_time_to_contact) parts.push(`Melhor horário: ${approach.best_time_to_contact}`);
-    if (approach.key_points_to_touch?.length) {
-      parts.push(`Pontos chave: ${approach.key_points_to_touch.slice(0, 3).join(', ')}`);
-    }
-    if (approach.topics_to_avoid?.length) {
-      parts.push(`Evitar: ${approach.topics_to_avoid.slice(0, 2).join(', ')}`);
-    }
+    if (approach.key_points_to_touch?.length) parts.push(`Pontos chave: ${approach.key_points_to_touch.slice(0, 3).join(', ')}`);
+    if (approach.topics_to_avoid?.length) parts.push(`Evitar: ${approach.topics_to_avoid.slice(0, 2).join(', ')}`);
   }
 
-  // Value anchoring
   const value = insights.value_anchoring;
   if (value) {
     parts.push(`\n--- ANCORAGEM DE VALOR ---`);
@@ -177,7 +135,6 @@ export function buildQualificationContext(lead: EnrichedLead): string {
     if (value.urgency_angle) parts.push(`Urgência: ${value.urgency_angle}`);
   }
 
-  // Expected objections
   const objections = insights.expected_objections;
   if (objections?.length) {
     parts.push(`\n--- OBJEÇÕES ESPERADAS ---`);
@@ -187,16 +144,11 @@ export function buildQualificationContext(lead: EnrichedLead): string {
     });
   }
 
-  // What pushes away
   const pushes = insights.what_pushes_away;
   if (pushes) {
     parts.push(`\n--- O QUE AFASTA ---`);
-    if (pushes.behaviors_to_avoid?.length) {
-      parts.push(`Comportamentos a evitar: ${pushes.behaviors_to_avoid.slice(0, 2).join(', ')}`);
-    }
-    if (pushes.words_to_avoid?.length) {
-      parts.push(`Palavras a evitar: ${pushes.words_to_avoid.slice(0, 3).join(', ')}`);
-    }
+    if (pushes.behaviors_to_avoid?.length) parts.push(`Comportamentos a evitar: ${pushes.behaviors_to_avoid.slice(0, 2).join(', ')}`);
+    if (pushes.words_to_avoid?.length) parts.push(`Palavras a evitar: ${pushes.words_to_avoid.slice(0, 3).join(', ')}`);
   }
 
   return parts.join('\n');

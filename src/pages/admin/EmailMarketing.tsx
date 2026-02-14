@@ -133,58 +133,24 @@ export default function EmailMarketing() {
     setIsLoading(true);
     try {
       const tenantId = activeMembership.tenant_id;
-      const realUserId = user.id;
+      // Use membership ID as the owner reference
+      const ownerMembershipId = activeMembership.id;
+      setMentorId(ownerMembershipId);
 
-      let foundMentorId: string | null = null;
-
-      const { data: mentorData } = await supabase
-        .from('mentors')
-        .select('id')
-        .eq('user_id', realUserId)
-        .maybeSingle();
-
-      if (mentorData) {
-        foundMentorId = mentorData.id;
-      } else {
-        const { data: mentorMemberships } = await supabase
-          .from('memberships')
-          .select('user_id')
-          .eq('tenant_id', tenantId)
-          .eq('role', 'mentor')
-          .eq('status', 'active')
-          .limit(1);
-
-        if (mentorMemberships?.length) {
-          const { data: tenantMentor } = await supabase
-            .from('mentors')
-            .select('id')
-            .eq('user_id', mentorMemberships[0].user_id)
-            .maybeSingle();
-          if (tenantMentor) foundMentorId = tenantMentor.id;
-        }
-      }
-
-      if (!foundMentorId) {
-        console.error('No mentor found for user:', realUserId, 'in tenant:', tenantId);
-        setIsLoading(false);
-        return;
-      }
-      setMentorId(foundMentorId);
-
-      // Fetch flows
+      // Fetch flows by tenant_id (covers all flows for this tenant)
       const { data: flowsData } = await supabase
         .from('email_flows')
         .select('*')
-        .eq('mentor_id', foundMentorId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
       
       setFlows(flowsData || []);
 
-      // Fetch templates
+      // Fetch templates by tenant_id
       const { data: templatesData } = await supabase
         .from('email_templates')
         .select('*')
-        .eq('mentor_id', foundMentorId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
       
       setTemplates(templatesData || []);
