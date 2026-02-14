@@ -29,17 +29,14 @@ interface Question {
 }
 
 interface FormData {
-  // Basic info
   full_name: string;
   email: string;
   phone: string;
-  // Business info
   business_name: string;
   business_type: string;
   main_offer: string;
   target_audience: string;
   monthly_revenue: string;
-  // Question responses
   responses: Record<string, any>;
 }
 
@@ -83,19 +80,20 @@ const Onboarding = () => {
   const { toast } = useToast();
 
   const mentorId = searchParams.get('mentor');
-   const inviteToken = searchParams.get('token');
+  const inviteToken = searchParams.get('token');
 
   const [isLoading, setIsLoading] = useState(true);
   const [mentorInfo, setMentorInfo] = useState<{ business_name: string | null } | null>(null);
-   const [inviteData, setInviteData] = useState<{
-     id: string;
-     mentor_id: string;
-     full_name: string;
-     email: string | null;
-     phone: string | null;
-     business_name: string | null;
-   } | null>(null);
-   const [resolvedMentorId, setResolvedMentorId] = useState<string | null>(null);
+  const [inviteData, setInviteData] = useState<{
+    id: string;
+    mentor_id: string;
+    full_name: string;
+    email: string | null;
+    phone: string | null;
+    business_name: string | null;
+  } | null>(null);
+  const [resolvedMentorId, setResolvedMentorId] = useState<string | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [step, setStep] = useState<Step>('intro');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -104,8 +102,7 @@ const Onboarding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
-  // Calculate total steps and current progress
-  const totalSteps = 3 + questions.length + 1; // intro, basic, business, questions..., otp
+  const totalSteps = 3 + questions.length + 1;
   const getCurrentStepNumber = () => {
     switch (step) {
       case 'intro': return 0;
@@ -119,10 +116,9 @@ const Onboarding = () => {
   };
 
   const fetchMentorAndQuestions = async () => {
-    // Determine mentor ID from direct param or from invite token
-    let targetMentorId = mentorId;
+    // The `mentor` param now refers to a membership_id (admin/mentor membership)
+    let targetMembershipId = mentorId;
     
-    // If we have a token, fetch the invite first
     if (inviteToken) {
       const { data: invite, error: inviteError } = await supabase
         .from('mentorado_invites')
@@ -131,41 +127,26 @@ const Onboarding = () => {
         .single();
       
       if (inviteError || !invite) {
-        toast({
-          title: "Convite inválido",
-          description: "Este link de convite não é válido ou já foi utilizado.",
-          variant: "destructive",
-        });
+        toast({ title: "Convite inválido", description: "Este link de convite não é válido ou já foi utilizado.", variant: "destructive" });
         setIsLoading(false);
         return;
       }
       
-      // Check if invite is expired or already accepted
       if (invite.status !== 'pending') {
-        toast({
-          title: "Convite já utilizado",
-          description: "Este convite já foi aceito anteriormente.",
-          variant: "destructive",
-        });
+        toast({ title: "Convite já utilizado", description: "Este convite já foi aceito anteriormente.", variant: "destructive" });
         setIsLoading(false);
         return;
       }
       
       if (new Date(invite.expires_at) < new Date()) {
-        toast({
-          title: "Convite expirado",
-          description: "Este convite expirou. Solicite um novo convite ao seu mentor.",
-          variant: "destructive",
-        });
+        toast({ title: "Convite expirado", description: "Este convite expirou. Solicite um novo convite ao seu mentor.", variant: "destructive" });
         setIsLoading(false);
         return;
       }
       
-      // Set invite data and pre-fill form
       setInviteData(invite);
-      targetMentorId = invite.mentor_id;
+      targetMembershipId = invite.mentor_id;
       
-      // Pre-fill form with invite data
       setFormData(prev => ({
         ...prev,
         full_name: invite.full_name || prev.full_name,
@@ -175,55 +156,71 @@ const Onboarding = () => {
       }));
     }
     
-    if (!targetMentorId) {
-      toast({
-        title: "Link inválido",
-        description: "Este link de onboarding é inválido.",
-        variant: "destructive",
-      });
+    if (!targetMembershipId) {
+      toast({ title: "Link inválido", description: "Este link de onboarding é inválido.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
-    setResolvedMentorId(targetMentorId);
+    setResolvedMentorId(targetMembershipId);
     setIsLoading(true);
 
     try {
-      // Fetch mentor info
-      const { data: mentor, error: mentorError } = await supabase
-        .from('mentors')
-        .select('business_name')
-        .eq('id', targetMentorId)
+      // Try to resolve mentor info via memberships + mentor_profiles (new arch)
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('id, tenant_id')
+        .eq('id', targetMembershipId)
         .single();
 
-      if (mentorError || !mentor) {
-        toast({
-          title: "Mentor não encontrado",
-          description: "Este link de onboarding não é válido.",
-          variant: "destructive",
-        });
-        return;
+      if (membership) {
+        setTenantId(membership.tenant_id);
+        
+        // Get business name from mentor_profiles
+        const { data: mentorProfile } = await supabase
+          .from('mentor_profiles')
+          .select('business_name')
+          .eq('membership_id', membership.id)
+          .single();
+        
+        if (mentorProfile) {
+          setMentorInfo({ business_name: mentorProfile.business_name });
+        } else {
+          // Fallback: try tenant name
+          const { data: tenant } = await supabase
+            .from('tenants')
+            .select('name')
+            .eq('id', membership.tenant_id)
+            .single();
+          setMentorInfo({ business_name: tenant?.name || 'Mentoria' });
+        }
+      } else {
+        // Fallback for legacy mentor IDs - try mentors table
+        const { data: legacyMentor } = await supabase
+          .from('mentors')
+          .select('business_name')
+          .eq('id', targetMembershipId)
+          .single();
+        
+        if (!legacyMentor) {
+          toast({ title: "Mentor não encontrado", description: "Este link de onboarding não é válido.", variant: "destructive" });
+          return;
+        }
+        setMentorInfo(legacyMentor);
       }
 
-      setMentorInfo(mentor);
-
-      // Fetch questions
-      const { data: questionsData, error: questionsError } = await supabase
+      // Fetch behavioral questions - try owner_membership_id first, then mentor_id fallback
+      const { data: questionsData } = await supabase
         .from('behavioral_questions')
         .select('id, question_text, question_type, options, order_index, is_required')
-        .eq('mentor_id', targetMentorId)
+        .or(`owner_membership_id.eq.${targetMembershipId},mentor_id.eq.${targetMembershipId}`)
         .eq('is_active', true)
         .order('order_index', { ascending: true });
 
-      if (questionsError) throw questionsError;
       setQuestions(questionsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast({
-        title: "Erro ao carregar",
-        description: "Não foi possível carregar o formulário.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao carregar", description: "Não foi possível carregar o formulário.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -268,22 +265,12 @@ const Onboarding = () => {
   const validateCurrentQuestion = () => {
     const currentQuestion = questions[currentQuestionIndex];
     if (!currentQuestion) return true;
-    
-    // Skip validation if question is optional
     if (!currentQuestion.is_required) return true;
-    
     const response = formData.responses[currentQuestion.id];
-    
-    // Check if there's a valid response
     if (response === undefined || response === null || response === '') {
-      toast({ 
-        title: "Resposta obrigatória", 
-        description: "Esta pergunta precisa ser respondida",
-        variant: "destructive" 
-      });
+      toast({ title: "Resposta obrigatória", description: "Esta pergunta precisa ser respondida", variant: "destructive" });
       return false;
     }
-    
     return true;
   };
 
@@ -351,19 +338,13 @@ const Onboarding = () => {
       const { error } = await supabase.functions.invoke('send-otp', {
         body: { email: formData.email },
       });
-
       if (error) throw error;
-
       setOtpSent(true);
       setStep('otp');
       toast({ title: "Código enviado!", description: "Verifique seu email" });
     } catch (error: any) {
       console.error('Error sending OTP:', error);
-      toast({
-        title: "Erro ao enviar código",
-        description: error.message || "Tente novamente",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao enviar código", description: error.message || "Tente novamente", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -377,13 +358,13 @@ const Onboarding = () => {
 
     setIsSubmitting(true);
     try {
-      // Verify OTP and create account
       const { data, error } = await supabase.functions.invoke('process-onboarding', {
         body: {
           email: formData.email,
           otp: otpCode,
           mentorId: resolvedMentorId || mentorId,
           inviteToken: inviteToken || undefined,
+          tenantId: tenantId || undefined,
           fullName: formData.full_name,
           phone: formData.phone,
           businessProfile: {
@@ -400,7 +381,6 @@ const Onboarding = () => {
       if (error) throw error;
 
       if (data?.session) {
-        // Set the session
         await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
@@ -410,17 +390,12 @@ const Onboarding = () => {
       setStep('complete');
       toast({ title: "Conta criada com sucesso!" });
 
-      // Redirect after 2 seconds
       setTimeout(() => {
         navigate('/app');
       }, 2000);
     } catch (error: any) {
       console.error('Error creating account:', error);
-      toast({
-        title: "Erro ao criar conta",
-        description: error.message || "Código inválido ou expirado",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao criar conta", description: error.message || "Código inválido ou expirado", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -462,7 +437,6 @@ const Onboarding = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <div className="animated-gradient-bg" />
       
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
         <BrandLogo variant="full" size="sm" />
         {step !== 'intro' && step !== 'complete' && (
@@ -473,7 +447,6 @@ const Onboarding = () => {
         )}
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 pt-20">
         <div className="w-full max-w-2xl">
           {/* Intro Step */}
@@ -505,40 +478,19 @@ const Onboarding = () => {
 
           {/* Basic Info Step */}
           {step === 'basic' && (
-            <OnboardingQuestionCard
-              icon={User}
-              title="Seus Dados"
-              subtitle="Como podemos te chamar?"
-            >
+            <OnboardingQuestionCard icon={User} title="Seus Dados" subtitle="Como podemos te chamar?">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Nome Completo *</label>
-                  <Input
-                    value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    placeholder="Seu nome completo"
-                    className="h-12 text-lg"
-                    autoFocus
-                  />
+                  <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} placeholder="Seu nome completo" className="h-12 text-lg" autoFocus />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Email *</label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="seu@email.com"
-                    className="h-12 text-lg"
-                  />
+                  <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="seu@email.com" className="h-12 text-lg" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">WhatsApp</label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                    className="h-12 text-lg"
-                  />
+                  <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="(00) 00000-0000" className="h-12 text-lg" />
                 </div>
               </div>
             </OnboardingQuestionCard>
@@ -546,33 +498,17 @@ const Onboarding = () => {
 
           {/* Business Info Step */}
           {step === 'business' && (
-            <OnboardingQuestionCard
-              icon={Briefcase}
-              title="Seu Negócio"
-              subtitle="Conte-nos sobre sua empresa"
-            >
+            <OnboardingQuestionCard icon={Briefcase} title="Seu Negócio" subtitle="Conte-nos sobre sua empresa">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Nome do Negócio</label>
-                  <Input
-                    value={formData.business_name}
-                    onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                    placeholder="Nome da sua empresa"
-                    className="h-12 text-lg"
-                    autoFocus
-                  />
+                  <Input value={formData.business_name} onChange={(e) => setFormData({ ...formData, business_name: e.target.value })} placeholder="Nome da sua empresa" className="h-12 text-lg" autoFocus />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Tipo de Negócio *</label>
                   <div className="grid grid-cols-2 gap-2">
                     {BUSINESS_TYPES.map(type => (
-                      <Button
-                        key={type}
-                        type="button"
-                        variant={formData.business_type === type ? 'default' : 'outline'}
-                        className="h-auto py-3 justify-start"
-                        onClick={() => setFormData({ ...formData, business_type: type })}
-                      >
+                      <Button key={type} type="button" variant={formData.business_type === type ? 'default' : 'outline'} className="h-auto py-3 justify-start" onClick={() => setFormData({ ...formData, business_type: type })}>
                         {type}
                       </Button>
                     ))}
@@ -582,13 +518,7 @@ const Onboarding = () => {
                   <label className="text-sm font-medium text-foreground">Faturamento Mensal</label>
                   <div className="grid grid-cols-2 gap-2">
                     {REVENUE_RANGES.map(range => (
-                      <Button
-                        key={range}
-                        type="button"
-                        variant={formData.monthly_revenue === range ? 'default' : 'outline'}
-                        className="h-auto py-2 text-sm justify-start"
-                        onClick={() => setFormData({ ...formData, monthly_revenue: range })}
-                      >
+                      <Button key={range} type="button" variant={formData.monthly_revenue === range ? 'default' : 'outline'} className="h-auto py-2 text-sm justify-start" onClick={() => setFormData({ ...formData, monthly_revenue: range })}>
                         {range}
                       </Button>
                     ))}
@@ -611,43 +541,19 @@ const Onboarding = () => {
                 </p>
                 
                 {questions[currentQuestionIndex].question_type === 'text' && (
-                  <Input
-                    value={formData.responses[questions[currentQuestionIndex].id] || ''}
-                    onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)}
-                    placeholder="Digite sua resposta..."
-                    className="h-12 text-lg"
-                    autoFocus
-                  />
+                  <Input value={formData.responses[questions[currentQuestionIndex].id] || ''} onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)} placeholder="Digite sua resposta..." className="h-12 text-lg" autoFocus />
                 )}
                 
                 {questions[currentQuestionIndex].question_type === 'textarea' && (
-                  <Textarea
-                    value={formData.responses[questions[currentQuestionIndex].id] || ''}
-                    onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)}
-                    placeholder="Digite sua resposta..."
-                    rows={4}
-                    className="text-lg"
-                    autoFocus
-                  />
+                  <Textarea value={formData.responses[questions[currentQuestionIndex].id] || ''} onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)} placeholder="Digite sua resposta..." rows={4} className="text-lg" autoFocus />
                 )}
                 
                 {questions[currentQuestionIndex].question_type === 'multiple_choice' && (
                   <div className="space-y-2">
-                    {(Array.isArray(questions[currentQuestionIndex].options) 
-                      ? questions[currentQuestionIndex].options 
-                      : []
-                    ).map((opt: string, idx: number) => (
-                      <Button
-                        key={idx}
-                        type="button"
-                        variant={formData.responses[questions[currentQuestionIndex].id] === opt ? 'default' : 'outline'}
-                        className="w-full h-auto py-4 justify-start text-left"
-                        onClick={() => updateResponse(questions[currentQuestionIndex].id, opt)}
-                      >
+                    {(Array.isArray(questions[currentQuestionIndex].options) ? questions[currentQuestionIndex].options : []).map((opt: string, idx: number) => (
+                      <Button key={idx} type="button" variant={formData.responses[questions[currentQuestionIndex].id] === opt ? 'default' : 'outline'} className="w-full h-auto py-4 justify-start text-left" onClick={() => updateResponse(questions[currentQuestionIndex].id, opt)}>
                         <span className="h-6 w-6 rounded-full border-2 mr-3 flex items-center justify-center flex-shrink-0">
-                          {formData.responses[questions[currentQuestionIndex].id] === opt && (
-                            <CheckCircle className="h-4 w-4" />
-                          )}
+                          {formData.responses[questions[currentQuestionIndex].id] === opt && <CheckCircle className="h-4 w-4" />}
                         </span>
                         {opt}
                       </Button>
@@ -657,35 +563,15 @@ const Onboarding = () => {
                 
                 {questions[currentQuestionIndex].question_type === 'yes_no' && (
                   <div className="flex gap-4">
-                    <Button
-                      type="button"
-                      variant={formData.responses[questions[currentQuestionIndex].id] === 'Sim' ? 'default' : 'outline'}
-                      className="flex-1 h-14 text-lg"
-                      onClick={() => updateResponse(questions[currentQuestionIndex].id, 'Sim')}
-                    >
-                      Sim
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={formData.responses[questions[currentQuestionIndex].id] === 'Não' ? 'default' : 'outline'}
-                      className="flex-1 h-14 text-lg"
-                      onClick={() => updateResponse(questions[currentQuestionIndex].id, 'Não')}
-                    >
-                      Não
-                    </Button>
+                    <Button type="button" variant={formData.responses[questions[currentQuestionIndex].id] === 'Sim' ? 'default' : 'outline'} className="flex-1 h-14 text-lg" onClick={() => updateResponse(questions[currentQuestionIndex].id, 'Sim')}>Sim</Button>
+                    <Button type="button" variant={formData.responses[questions[currentQuestionIndex].id] === 'Não' ? 'default' : 'outline'} className="flex-1 h-14 text-lg" onClick={() => updateResponse(questions[currentQuestionIndex].id, 'Não')}>Não</Button>
                   </div>
                 )}
                 
                 {questions[currentQuestionIndex].question_type === 'scale' && (
                   <div className="flex gap-2 flex-wrap justify-center">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                      <Button
-                        key={num}
-                        type="button"
-                        variant={formData.responses[questions[currentQuestionIndex].id] === num ? 'default' : 'outline'}
-                        className="h-12 w-12 p-0 text-lg"
-                        onClick={() => updateResponse(questions[currentQuestionIndex].id, num)}
-                      >
+                      <Button key={num} type="button" variant={formData.responses[questions[currentQuestionIndex].id] === num ? 'default' : 'outline'} className="h-12 w-12 p-0 text-lg" onClick={() => updateResponse(questions[currentQuestionIndex].id, num)}>
                         {num}
                       </Button>
                     ))}
@@ -693,60 +579,26 @@ const Onboarding = () => {
                 )}
 
                 {questions[currentQuestionIndex].question_type === 'link' && (
-                  <Input
-                    type="url"
-                    value={formData.responses[questions[currentQuestionIndex].id] || ''}
-                    onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)}
-                    placeholder="https://..."
-                    className="h-12 text-lg"
-                    autoFocus
-                  />
+                  <Input type="url" value={formData.responses[questions[currentQuestionIndex].id] || ''} onChange={(e) => updateResponse(questions[currentQuestionIndex].id, e.target.value)} placeholder="https://..." className="h-12 text-lg" autoFocus />
                 )}
 
                 {questions[currentQuestionIndex].question_type === 'image' && (
                   <div className="space-y-4">
                     <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer relative">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          
-                          // Convert to base64 for now (in production would upload to storage)
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            updateResponse(questions[currentQuestionIndex].id, {
-                              fileName: file.name,
-                              fileSize: file.size,
-                              preview: reader.result,
-                            });
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                      />
+                      <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          updateResponse(questions[currentQuestionIndex].id, { fileName: file.name, fileSize: file.size, preview: reader.result });
+                        };
+                        reader.readAsDataURL(file);
+                      }} />
                       {formData.responses[questions[currentQuestionIndex].id]?.preview ? (
                         <div className="space-y-2">
-                          <img 
-                            src={formData.responses[questions[currentQuestionIndex].id].preview} 
-                            alt="Preview" 
-                            className="max-h-48 mx-auto rounded-lg"
-                          />
-                          <p className="text-sm text-muted-foreground">
-                            {formData.responses[questions[currentQuestionIndex].id].fileName}
-                          </p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateResponse(questions[currentQuestionIndex].id, null);
-                            }}
-                          >
-                            Trocar imagem
-                          </Button>
+                          <img src={formData.responses[questions[currentQuestionIndex].id].preview} alt="Preview" className="max-h-48 mx-auto rounded-lg" />
+                          <p className="text-sm text-muted-foreground">{formData.responses[questions[currentQuestionIndex].id].fileName}</p>
+                          <Button type="button" variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); updateResponse(questions[currentQuestionIndex].id, null); }}>Trocar imagem</Button>
                         </div>
                       ) : (
                         <>
@@ -761,11 +613,25 @@ const Onboarding = () => {
                   </div>
                 )}
 
-                {/* Optional indicator */}
+                {questions[currentQuestionIndex].question_type === 'disc' && (
+                  <div className="space-y-2">
+                    {(Array.isArray(questions[currentQuestionIndex].options) ? questions[currentQuestionIndex].options : []).map((opt: any, idx: number) => {
+                      const optText = typeof opt === 'string' ? opt : opt?.text || '';
+                      const optValue = typeof opt === 'string' ? opt : opt;
+                      return (
+                        <Button key={idx} type="button" variant={JSON.stringify(formData.responses[questions[currentQuestionIndex].id]) === JSON.stringify(optValue) ? 'default' : 'outline'} className="w-full h-auto py-4 justify-start text-left" onClick={() => updateResponse(questions[currentQuestionIndex].id, optValue)}>
+                          <span className="h-6 w-6 rounded-full border-2 mr-3 flex items-center justify-center flex-shrink-0">
+                            {JSON.stringify(formData.responses[questions[currentQuestionIndex].id]) === JSON.stringify(optValue) && <CheckCircle className="h-4 w-4" />}
+                          </span>
+                          {optText}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {!questions[currentQuestionIndex].is_required && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Esta pergunta é opcional
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center">Esta pergunta é opcional</p>
                 )}
               </div>
             </OnboardingQuestionCard>
@@ -773,31 +639,13 @@ const Onboarding = () => {
 
           {/* OTP Verification Step */}
           {step === 'otp' && (
-            <OnboardingQuestionCard
-              icon={CheckCircle}
-              title="Verificar Email"
-              subtitle={`Enviamos um código para ${formData.email}`}
-            >
+            <OnboardingQuestionCard icon={CheckCircle} title="Verificar Email" subtitle={`Enviamos um código para ${formData.email}`}>
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Código de Verificação</label>
-                  <Input
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="000000"
-                    className="h-16 text-center text-3xl tracking-[0.5em] font-mono"
-                    maxLength={6}
-                    autoFocus
-                  />
+                  <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" className="h-16 text-center text-3xl tracking-[0.5em] font-mono" maxLength={6} autoFocus />
                 </div>
-                <Button
-                  variant="link"
-                  className="text-sm"
-                  onClick={sendOtp}
-                  disabled={isSubmitting}
-                >
-                  Reenviar código
-                </Button>
+                <Button variant="link" className="text-sm" onClick={sendOtp} disabled={isSubmitting}>Reenviar código</Button>
               </div>
             </OnboardingQuestionCard>
           )}
@@ -810,12 +658,8 @@ const Onboarding = () => {
                   <CheckCircle className="h-10 w-10 text-green-500" />
                 </div>
                 <div className="space-y-3">
-                  <h1 className="text-3xl font-display font-bold text-foreground">
-                    Tudo pronto! 🎉
-                  </h1>
-                  <p className="text-muted-foreground">
-                    Sua conta foi criada com sucesso. Redirecionando...
-                  </p>
+                  <h1 className="text-3xl font-display font-bold text-foreground">Tudo pronto! 🎉</h1>
+                  <p className="text-muted-foreground">Sua conta foi criada com sucesso. Redirecionando...</p>
                 </div>
                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
               </div>
@@ -829,14 +673,8 @@ const Onboarding = () => {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
               </Button>
-              <Button 
-                onClick={handleNext} 
-                disabled={isSubmitting}
-                className="gradient-gold text-primary-foreground"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+              <Button onClick={handleNext} disabled={isSubmitting} className="gradient-gold text-primary-foreground">
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {step === 'otp' ? 'Verificar e Criar Conta' : 'Continuar'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -845,7 +683,6 @@ const Onboarding = () => {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="p-4 text-center text-sm text-muted-foreground">
         <p>Pressione <kbd className="px-2 py-1 bg-secondary rounded text-xs">Enter</kbd> para continuar</p>
       </footer>
