@@ -2616,6 +2616,76 @@ export type Database = {
           },
         ]
       }
+      smart_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          mentee_membership_id: string | null
+          mentor_membership_id: string
+          metadata: Json | null
+          severity: string | null
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          mentee_membership_id?: string | null
+          mentor_membership_id: string
+          metadata?: Json | null
+          severity?: string | null
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          mentee_membership_id?: string | null
+          mentor_membership_id?: string
+          metadata?: Json | null
+          severity?: string | null
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_alerts_mentee_membership_id_fkey"
+            columns: ["mentee_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_alerts_mentor_membership_id_fkey"
+            columns: ["mentor_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sos_requests: {
         Row: {
           ai_analysis: Json | null

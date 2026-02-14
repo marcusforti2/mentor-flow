@@ -1,8 +1,11 @@
+ import { useState } from 'react';
  import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
  import { FloatingDock } from '@/components/FloatingDock';
  import { useAuth } from '@/hooks/useAuth';
  import { useTenant } from '@/contexts/TenantContext';
  import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
+ import { AlertsBell } from '@/components/admin/AlertsBell';
+ import { AlertsPanel } from '@/components/admin/AlertsPanel';
  import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
  import { Button } from '@/components/ui/button';
  import { LogOut, Settings, ArrowLeft, UserCircle } from 'lucide-react';
@@ -43,6 +46,7 @@
   export function MentorLayout() {
     const { profile, signOut } = useAuth();
     const { tenant, activeMembership, realMembership, isImpersonating, endImpersonation } = useTenant();
+    const [alertsOpen, setAlertsOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
   
@@ -106,27 +110,28 @@
              </h1>
            </div>
  
-           <div className="flex items-center gap-3">
-             <Avatar className="h-8 w-8">
-               <AvatarImage src={profile?.avatar_url || ''} />
-               <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                 {profile?.full_name?.charAt(0) || 'M'}
-               </AvatarFallback>
-             </Avatar>
-             <Tooltip>
-               <TooltipTrigger asChild>
-                 <Button
-                   variant="ghost"
-                   size="icon"
-                   onClick={signOut}
-                   className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
-                 >
-                   <LogOut className="h-4 w-4" />
-                 </Button>
-               </TooltipTrigger>
-               <TooltipContent>Sair</TooltipContent>
-             </Tooltip>
-           </div>
+            <div className="flex items-center gap-3">
+              <AlertsBell onClick={() => setAlertsOpen(true)} />
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || ''} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  {profile?.full_name?.charAt(0) || 'M'}
+                </AvatarFallback>
+              </Avatar>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={signOut}
+                    className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sair</TooltipContent>
+              </Tooltip>
+            </div>
          </header>
        )}
  
@@ -137,7 +142,8 @@
               <BrandLogo variant="full" size="sm" />
             </Link>
  
-           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
+              <AlertsBell onClick={() => setAlertsOpen(true)} />
              <Tooltip>
                <TooltipTrigger asChild>
                  <Button
@@ -188,7 +194,8 @@
           <Outlet />
        </main>
  
-       <SOSNotificationAlert />
-     </div>
+        <SOSNotificationAlert />
+        <AlertsPanel open={alertsOpen} onOpenChange={setAlertsOpen} />
+      </div>
    );
  }
