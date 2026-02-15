@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useTenants } from '@/hooks/useTenants';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,10 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Settings, Palette, ToggleLeft, Shield, Key,
   Save, Loader2, CheckCircle2, XCircle, Globe, Building2,
 } from 'lucide-react';
+
+const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
 
 // ─── Platform Settings ───────────────────────────────────────
 
@@ -25,27 +29,30 @@ interface PlatformSettings {
   secondary_color: string;
 }
 
-function PlatformSection() {
-  const { tenant } = useTenant();
+function PlatformSection({ tenantId }: { tenantId: string }) {
   const [form, setForm] = useState<PlatformSettings>({
     name: '', slug: '', logo_url: '', primary_color: '', secondary_color: '',
   });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (tenant) {
-      setForm({
-        name: tenant.name || '',
-        slug: (tenant as any).slug || '',
-        logo_url: tenant.logo_url || '',
-        primary_color: tenant.primary_color || '',
-        secondary_color: tenant.secondary_color || '',
-      });
-    }
-  }, [tenant]);
+    const fetchTenant = async () => {
+      const { data } = await supabase.from('tenants').select('*').eq('id', tenantId).single();
+      if (data) {
+        setForm({
+          name: data.name || '',
+          slug: data.slug || '',
+          logo_url: data.logo_url || '',
+          primary_color: data.primary_color || '',
+          secondary_color: data.secondary_color || '',
+        });
+      }
+    };
+    fetchTenant();
+  }, [tenantId]);
 
   const handleSave = async () => {
-    if (!tenant) return;
+    if (!tenantId) return;
     setSaving(true);
     const { error } = await supabase
       .from('tenants')
@@ -55,7 +62,7 @@ function PlatformSection() {
         primary_color: form.primary_color || null,
         secondary_color: form.secondary_color || null,
       })
-      .eq('id', tenant.id);
+      .eq('id', tenantId);
     setSaving(false);
     if (error) {
       toast.error('Erro ao salvar configurações');
@@ -167,42 +174,38 @@ const FEATURES = [
   { key: 'sos_center', label: 'Centro SOS', description: 'Canal de suporte urgente' },
 ];
 
-function FeatureFlagsSection() {
-  const { tenant } = useTenant();
+function FeatureFlagsSection({ tenantId }: { tenantId: string }) {
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  const [tenantSettings, setTenantSettings] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
-    if (tenant?.settings && typeof tenant.settings === 'object') {
-      const settings = tenant.settings as Record<string, any>;
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('tenants').select('settings').eq('id', tenantId).single();
+      const settings = (data?.settings && typeof data.settings === 'object') ? data.settings as Record<string, any> : {};
+      setTenantSettings(settings);
       const featureFlags = (settings.features as Record<string, boolean>) || {};
-      // Default all to true if not set
       const resolved: Record<string, boolean> = {};
       FEATURES.forEach(f => {
         resolved[f.key] = featureFlags[f.key] !== undefined ? featureFlags[f.key] : true;
       });
       setFlags(resolved);
-    } else {
-      const defaults: Record<string, boolean> = {};
-      FEATURES.forEach(f => { defaults[f.key] = true; });
-      setFlags(defaults);
-    }
-  }, [tenant]);
+    };
+    fetchSettings();
+  }, [tenantId]);
 
   const toggle = (key: string) => {
     setFlags(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSave = async () => {
-    if (!tenant) return;
+    if (!tenantId) return;
     setSaving(true);
-    const currentSettings = (tenant.settings && typeof tenant.settings === 'object')
-      ? tenant.settings as Record<string, any>
-      : {};
+    const currentSettings = tenantSettings || {};
     const { error } = await supabase
       .from('tenants')
       .update({ settings: { ...currentSettings, features: flags } })
-      .eq('id', tenant.id);
+      .eq('id', tenantId);
     setSaving(false);
     if (error) {
       toast.error('Erro ao salvar feature flags');
@@ -389,54 +392,100 @@ function SecretsSection() {
 // ─── Main Config Page ────────────────────────────────────────
 
 export default function ConfigPage() {
+  const { tenants, isLoading: tenantsLoading } = useTenants();
+  const { tenant: contextTenant } = useTenant();
+  
+  const availableTenants = tenants.filter(t => t.id !== SANDBOX_TENANT_ID);
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
+
+  // Default to context tenant or first available
+  useEffect(() => {
+    if (!selectedTenantId && availableTenants.length > 0) {
+      const defaultId = contextTenant?.id && availableTenants.some(t => t.id === contextTenant.id)
+        ? contextTenant.id
+        : availableTenants[0].id;
+      setSelectedTenantId(defaultId);
+    }
+  }, [availableTenants, contextTenant, selectedTenantId]);
+
+  const selectedTenantName = availableTenants.find(t => t.id === selectedTenantId)?.name;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
-          <Settings className="h-6 w-6 text-amber-400" />
-          Configurações
-        </h1>
-        <p className="text-slate-400 mt-1">
-          Gerencie plataforma, módulos, autenticação e integrações
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
+            <Settings className="h-6 w-6 text-amber-400" />
+            Configurações
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Gerencie plataforma, módulos, autenticação e integrações
+          </p>
+        </div>
+
+        <div className="w-full sm:w-72">
+          <Label className="text-xs text-slate-500 mb-1 block">Configurando tenant:</Label>
+          <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+            <SelectTrigger className="bg-slate-800/50 border-slate-700/50 text-slate-100">
+              <SelectValue placeholder={tenantsLoading ? 'Carregando...' : 'Selecione um tenant'} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableTenants.map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  <span className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    {t.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <Tabs defaultValue="platform" className="w-full">
-        <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1">
-          <TabsTrigger value="platform" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
-            <Palette className="h-4 w-4 mr-2" />
-            Plataforma
-          </TabsTrigger>
-          <TabsTrigger value="features" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
-            <ToggleLeft className="h-4 w-4 mr-2" />
-            Features
-          </TabsTrigger>
-          <TabsTrigger value="auth" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
-            <Shield className="h-4 w-4 mr-2" />
-            Auth
-          </TabsTrigger>
-          <TabsTrigger value="secrets" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
-            <Key className="h-4 w-4 mr-2" />
-            Integrações
-          </TabsTrigger>
-        </TabsList>
+      {selectedTenantId ? (
+        <Tabs defaultValue="platform" className="w-full">
+          <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1">
+            <TabsTrigger value="platform" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+              <Palette className="h-4 w-4 mr-2" />
+              Plataforma
+            </TabsTrigger>
+            <TabsTrigger value="features" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+              <ToggleLeft className="h-4 w-4 mr-2" />
+              Features
+            </TabsTrigger>
+            <TabsTrigger value="auth" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+              <Shield className="h-4 w-4 mr-2" />
+              Auth
+            </TabsTrigger>
+            <TabsTrigger value="secrets" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+              <Key className="h-4 w-4 mr-2" />
+              Integrações
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="platform" className="mt-6">
-          <PlatformSection />
-        </TabsContent>
+          <TabsContent value="platform" className="mt-6">
+            <PlatformSection tenantId={selectedTenantId} />
+          </TabsContent>
 
-        <TabsContent value="features" className="mt-6">
-          <FeatureFlagsSection />
-        </TabsContent>
+          <TabsContent value="features" className="mt-6">
+            <FeatureFlagsSection tenantId={selectedTenantId} />
+          </TabsContent>
 
-        <TabsContent value="auth" className="mt-6">
-          <AuthSection />
-        </TabsContent>
+          <TabsContent value="auth" className="mt-6">
+            <AuthSection />
+          </TabsContent>
 
-        <TabsContent value="secrets" className="mt-6">
-          <SecretsSection />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="secrets" className="mt-6">
+            <SecretsSection />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="text-center py-12 text-slate-500">
+          <Building2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
+          <p>Selecione um tenant para configurar</p>
+        </div>
+      )}
     </div>
   );
 }
