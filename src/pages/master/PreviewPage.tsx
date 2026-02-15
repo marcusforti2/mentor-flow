@@ -322,7 +322,7 @@ export default function PreviewPage() {
       </div>
 
       {/* Stats Banner */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Mentorados', value: stats.mentorados, icon: Users },
           { label: 'Trilhas', value: stats.trails, icon: BarChart3 },
