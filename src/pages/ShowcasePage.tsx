@@ -3,22 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { BrandLogo } from '@/components/BrandLogo';
 import { PLATFORM } from '@/lib/platform';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Brain, Target, MessageSquare, BarChart3, Trophy, BookOpen,
   Zap, Shield, Users, ArrowRight, Sparkles, TrendingUp,
   Eye, Mic, FileText, Bot, Flame, ChevronDown, Star,
   Crosshair, Send, Swords, FileSignature, LineChart,
-  UserCircle, PenTool, GraduationCap
+  UserCircle, PenTool, GraduationCap, Calendar, AlertTriangle,
+  Settings, LayoutDashboard, UserCheck, Bell, ClipboardList,
+  Activity, Mail, Video, MonitorPlay, Award, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/* ─────────────────────────────────────────────
-   Intersection Observer hook for scroll reveal
-   ───────────────────────────────────────────── */
+/* ─── Scroll reveal hook ─── */
 function useReveal(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -29,13 +29,10 @@ function useReveal(threshold = 0.15) {
     obs.observe(el);
     return () => obs.disconnect();
   }, [threshold]);
-
   return { ref, visible };
 }
 
-/* ─────────────────────────────────────────────
-   Reusable section wrapper with reveal animation
-   ───────────────────────────────────────────── */
+/* ─── Section wrapper ─── */
 function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
   const { ref, visible } = useReveal();
   return (
@@ -43,7 +40,7 @@ function Section({ children, className, id }: { children: React.ReactNode; class
       ref={ref}
       id={id}
       className={cn(
-        'relative px-6 md:px-12 lg:px-20 py-20 md:py-28 transition-all duration-700 ease-out',
+        'relative px-6 md:px-12 lg:px-20 py-16 md:py-24 transition-all duration-700 ease-out',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12',
         className
       )}
@@ -53,13 +50,12 @@ function Section({ children, className, id }: { children: React.ReactNode; class
   );
 }
 
-/* ─────────────────────────────────────────────
-   Feature Card Component
-   ───────────────────────────────────────────── */
-function FeatureCard({ icon: Icon, title, description, color, delay = 0 }: {
+/* ─── Feature module card ─── */
+function ModuleCard({ icon: Icon, title, description, highlights, color, delay = 0 }: {
   icon: React.ElementType;
   title: string;
   description: string;
+  highlights?: string[];
   color: string;
   delay?: number;
 }) {
@@ -68,59 +64,34 @@ function FeatureCard({ icon: Icon, title, description, color, delay = 0 }: {
     <div
       ref={ref}
       className={cn(
-        'glass-card p-6 hover-lift group cursor-default transition-all duration-500',
+        'glass-card p-6 rounded-2xl hover-lift group cursor-default transition-all duration-500 border border-border/30',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       )}
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110"
-        style={{ background: `${color}20` }}
+        style={{ background: `${color}15` }}
       >
         <Icon className="w-6 h-6" style={{ color }} />
       </div>
       <h3 className="font-display text-lg font-semibold text-foreground mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   AI Tool Card (Arsenal)
-   ───────────────────────────────────────────── */
-function AIToolCard({ icon: Icon, name, description, delay = 0 }: {
-  icon: React.ElementType;
-  name: string;
-  description: string;
-  delay?: number;
-}) {
-  const { ref, visible } = useReveal(0.08);
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'relative group p-5 rounded-2xl border border-border/50 transition-all duration-500',
-        'bg-card/40 hover:bg-card/80 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(45_100%_51%/0.08)]',
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+      <p className="text-sm text-muted-foreground leading-relaxed mb-3">{description}</p>
+      {highlights && highlights.length > 0 && (
+        <ul className="space-y-1.5">
+          {highlights.map((h, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+              <Star className="w-3 h-3 shrink-0 mt-0.5" style={{ color }} />
+              {h}
+            </li>
+          ))}
+        </ul>
       )}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 group-hover:bg-primary/20 transition-colors">
-          <Icon className="w-5 h-5 text-primary" />
-        </div>
-        <div>
-          <h4 className="font-display font-semibold text-foreground text-sm mb-1">{name}</h4>
-          <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
-        </div>
-      </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
-   Stat Counter
-   ───────────────────────────────────────────── */
+/* ─── Stat block ─── */
 function StatBlock({ value, label, delay = 0 }: { value: string; label: string; delay?: number }) {
   const { ref, visible } = useReveal(0.2);
   return (
@@ -138,12 +109,13 @@ function StatBlock({ value, label, delay = 0 }: { value: string; label: string; 
   );
 }
 
-/* ═══════════════════════════════════════════════
+/* ═══════════════════════════════════
    MAIN SHOWCASE PAGE
-   ═══════════════════════════════════════════════ */
+   ═══════════════════════════════════ */
 export default function ShowcasePage() {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
+  const [activeView, setActiveView] = useState<'mentor' | 'mentorado'>('mentor');
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -151,23 +123,189 @@ export default function ShowcasePage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const aiTools = [
-    { icon: Crosshair, name: 'Qualificador de Leads', description: 'Analisa perfis com IA e gera score, temperatura e estratégia personalizada de abordagem.' },
-    { icon: Send, name: 'Cold Messages', description: 'Gera mensagens frias para WhatsApp, Instagram, LinkedIn e Email com tom adaptado ao perfil do lead.' },
-    { icon: Swords, name: 'Simulador de Objeções', description: 'Treine respostas para as objeções mais comuns do seu nicho em cenários realistas com IA.' },
-    { icon: FileSignature, name: 'Gerador de Propostas', description: 'Crie propostas comerciais profissionais com ancoragem de valor baseada no perfil do cliente.' },
-    { icon: LineChart, name: 'Análise de Conversão', description: 'Envie transcrições de reuniões e receba feedback detalhado de performance com nota IA.' },
-    { icon: UserCircle, name: 'Gerador de Bio', description: 'Bio otimizada para Instagram, LinkedIn e WhatsApp que comunica autoridade e gera conexão.' },
-    { icon: PenTool, name: 'Gerador de Conteúdo', description: 'Crie posts, carrosséis e stories baseados na sua oferta, público e tom de comunicação.' },
-    { icon: Bot, name: 'Mentor Virtual 24/7', description: 'Tire dúvidas estratégicas a qualquer hora. A IA conhece seu negócio e dá respostas práticas.' },
+  /* ─── MENTOR modules ─── */
+  const mentorModules = [
+    {
+      icon: LayoutDashboard,
+      title: 'Dashboard Estratégico',
+      description: 'Visão 360° de toda sua operação: mentorados ativos, engajamento, alertas e KPIs de performance em tempo real.',
+      highlights: ['KPIs clicáveis com navegação direta', 'Atividades recentes dos mentorados', 'Score IA consolidado da turma'],
+      color: 'hsl(160 84% 39%)',
+    },
+    {
+      icon: Users,
+      title: 'Gestão de Mentorados',
+      description: 'Cadastre, importe via planilha e acompanhe cada mentorado individualmente. Perfil completo com KPIs, Governo do Negócio e timeline de atividades.',
+      highlights: ['Perfil 360° com resumo IA', 'Importação em massa via CSV', 'Contato direto via WhatsApp e email'],
+      color: 'hsl(220 91% 65%)',
+    },
+    {
+      icon: Target,
+      title: 'CRM dos Mentorados',
+      description: 'Acompanhe o pipeline de prospecção de cada aluno. Veja quantos leads cada um tem, em que estágio estão e quem precisa de atenção.',
+      highlights: ['Visão consolidada de todos os pipelines', 'Ranking por volume e conversão', 'Alertas de mentorados parados'],
+      color: 'hsl(45 93% 48%)',
+    },
+    {
+      icon: Brain,
+      title: 'Análise Comportamental IA',
+      description: 'A IA extrai dados do Instagram e LinkedIn do mentorado e gera um relatório psicológico profundo: medos ocultos, bloqueios de execução, linguagem ideal e estratégia de potencialização.',
+      highlights: ['Perfil DISC e Eneagrama automatizado', 'Gatilhos de motivação personalizados', 'Orientação de como conduzir cada aluno'],
+      color: 'hsl(270 91% 65%)',
+    },
+    {
+      icon: BookOpen,
+      title: 'Trilhas de Conteúdo',
+      description: 'Crie trilhas de capacitação com módulos, aulas em vídeo, materiais complementares e certificados automáticos de conclusão.',
+      highlights: ['Editor completo de trilhas e aulas', 'Acompanhamento de progresso por aluno', 'Certificados gerados automaticamente'],
+      color: 'hsl(190 95% 45%)',
+    },
+    {
+      icon: Trophy,
+      title: 'Gamificação & Ranking',
+      description: 'Sistema de pontos, badges, streaks e ranking competitivo. Você configura as regras, a plataforma engaja seus alunos automaticamente.',
+      highlights: ['Ranking em tempo real entre mentorados', 'Badges personalizáveis', 'Loja de prêmios configurável'],
+      color: 'hsl(45 100% 51%)',
+    },
+    {
+      icon: BarChart3,
+      title: 'Relatórios & Analytics',
+      description: 'Score de performance ponderado (0-100) por mentorado, evolução temporal, distribuição por faixas de engajamento e métricas de conversão.',
+      highlights: ['Fórmula: Leads 30% + Tarefas 20% + Trilhas 20% + Atividades 20% + Streak 10%', 'Gráficos de evolução e comparativos', 'Exportação de dados'],
+      color: 'hsl(160 84% 39%)',
+    },
+    {
+      icon: AlertTriangle,
+      title: 'Centro SOS + Alertas',
+      description: 'Receba alertas inteligentes quando mentorados estão travados, inativos ou precisam de atenção. Sistema de SOS com triagem IA e notificação em tempo real.',
+      highlights: ['Triagem automática por gravidade', 'Notificação instantânea para o mentor', 'Histórico de ocorrências por aluno'],
+      color: 'hsl(0 84% 55%)',
+    },
+    {
+      icon: Calendar,
+      title: 'Agendamento Integrado',
+      description: 'Configure sua disponibilidade e permita que mentorados agendem sessões diretamente. Calendário completo com eventos e reuniões.',
+      highlights: ['Disponibilidade configurável por dia/horário', 'Booking automático pelo mentorado', 'Integração com link de reunião'],
+      color: 'hsl(220 91% 55%)',
+    },
+    {
+      icon: Video,
+      title: 'Reuniões & Transcrições',
+      description: 'Registre reuniões, importe transcrições e extraia tarefas automaticamente com IA. Histórico completo de cada sessão com cada mentorado.',
+      highlights: ['Extração automática de tarefas por IA', 'Kanban de tarefas por mentorado', 'Player de vídeo integrado'],
+      color: 'hsl(270 91% 55%)',
+    },
+    {
+      icon: Mail,
+      title: 'Email Marketing',
+      description: 'Crie templates, monte fluxos automatizados e dispare campanhas segmentadas para seus mentorados ou leads.',
+      highlights: ['Editor visual de fluxos', 'Templates personalizáveis', 'Automações por gatilho'],
+      color: 'hsl(190 95% 45%)',
+    },
+    {
+      icon: Settings,
+      title: 'Branding Personalizado',
+      description: 'Sua mentoria com a sua cara: logo, cores, fontes e domínio personalizado. O mentorado vê a SUA marca, não a nossa.',
+      highlights: ['IA Branding Engine (análise visual)', 'Cores e fontes customizáveis', 'Landing page exclusiva do mentor'],
+      color: 'hsl(45 93% 48%)',
+    },
   ];
+
+  /* ─── MENTORADO modules ─── */
+  const mentoradoModules = [
+    {
+      icon: LayoutDashboard,
+      title: 'Dashboard do Mentorado',
+      description: 'O aluno vê seus KPIs pessoais: leads no CRM, trilhas em andamento, pontos acumulados, streak e próximos eventos — tudo em um único lugar.',
+      highlights: ['Visão consolidada do progresso pessoal', 'Cards clicáveis para cada módulo', 'Nota IA de performance'],
+      color: 'hsl(160 84% 39%)',
+    },
+    {
+      icon: Target,
+      title: 'CRM Pessoal de Vendas',
+      description: 'Pipeline Kanban completo para o mentorado gerenciar seus próprios leads. Arraste entre fases, registre interações e veja scores de qualificação IA.',
+      highlights: ['Vision IA: print do perfil → lead qualificado', 'Score e temperatura automáticos', 'Abordagem sugerida pela IA'],
+      color: 'hsl(45 93% 48%)',
+    },
+    {
+      icon: Brain,
+      title: 'Arsenal IA (8 Ferramentas)',
+      description: 'O mentorado tem acesso a 8 IAs treinadas no negócio dele: qualificador, cold messages, simulador de objeções, propostas, bio, conteúdo, análise de conversão e mentor virtual.',
+      highlights: ['Qualificador de Leads com score IA', 'Cold Messages para WhatsApp, LinkedIn, Email', 'Simulador de objeções em cenários reais', 'Mentor Virtual 24/7 contextualizado'],
+      color: 'hsl(270 91% 65%)',
+    },
+    {
+      icon: BookOpen,
+      title: 'Trilhas de Capacitação',
+      description: 'Acesso às trilhas criadas pelo mentor: vídeos, materiais e aulas organizadas por módulos com progresso visual e certificados de conclusão.',
+      highlights: ['Player de vídeo integrado', 'Barra de progresso por trilha', 'Certificados ao concluir'],
+      color: 'hsl(190 95% 45%)',
+    },
+    {
+      icon: Trophy,
+      title: 'Gamificação & Ranking',
+      description: 'Pontos por cada ação (lead cadastrado, aula concluída, tarefa feita), badges de conquista, ofensivas diárias e posição no ranking geral.',
+      highlights: ['Ranking competitivo entre colegas', 'Streaks e metas diárias', 'Loja de prêmios do mentor'],
+      color: 'hsl(45 100% 51%)',
+    },
+    {
+      icon: ClipboardList,
+      title: 'Minhas Tarefas',
+      description: 'Tarefas atribuídas pelo mentor (ou extraídas automaticamente de reuniões) em formato Kanban. O aluno organiza, prioriza e executa.',
+      highlights: ['Kanban com drag & drop', 'Prioridade e prazo por tarefa', 'Tarefas extraídas de reuniões por IA'],
+      color: 'hsl(220 91% 65%)',
+    },
+    {
+      icon: MessageSquare,
+      title: 'Comunidade',
+      description: 'Espaço de troca entre mentorados: compartilhe vitórias, tire dúvidas, interaja com o grupo e fortaleça o networking.',
+      highlights: ['Feed de posts com likes e comentários', 'Chat em tempo real', 'Tags e filtros por tema'],
+      color: 'hsl(220 91% 55%)',
+    },
+    {
+      icon: Calendar,
+      title: 'Agendamento',
+      description: 'Veja a disponibilidade do mentor e agende sessões diretamente pela plataforma. Calendário pessoal com todos os eventos.',
+      highlights: ['Booking direto com o mentor', 'Calendário de eventos e reuniões', 'Confirmação automática'],
+      color: 'hsl(160 84% 45%)',
+    },
+    {
+      icon: AlertTriangle,
+      title: 'Centro SOS',
+      description: 'Precisa de ajuda urgente? O mentorado abre um chamado SOS e a IA faz triagem antes de notificar o mentor. Respostas rápidas para momentos críticos.',
+      highlights: ['Triagem IA antes do envio', 'Categorização automática', 'Histórico de chamados'],
+      color: 'hsl(0 84% 55%)',
+    },
+    {
+      icon: FileText,
+      title: 'Meus Arquivos',
+      description: 'Central de materiais compartilhados pelo mentor: apresentações, scripts, planilhas, e-books e tudo que o aluno precisa para performar.',
+      highlights: ['Organização por categoria', 'Download direto', 'Materiais exclusivos do mentor'],
+      color: 'hsl(270 91% 55%)',
+    },
+    {
+      icon: UserCircle,
+      title: 'Perfil & Governo do Negócio',
+      description: 'O aluno preenche seu contexto de negócio: faturamento, gargalos, público-alvo e pitch. Essas informações alimentam todas as IAs e análises da plataforma.',
+      highlights: ['Diagnóstico de maturidade empresarial', 'Contexto de Pitch para IAs', 'Perfil comportamental integrado'],
+      color: 'hsl(45 93% 48%)',
+    },
+    {
+      icon: Award,
+      title: 'Certificados',
+      description: 'Ao concluir trilhas, o mentorado recebe certificados profissionais gerados automaticamente para fortalecer sua autoridade no mercado.',
+      highlights: ['Geração automática em PDF', 'Galeria de certificados conquistados', 'Compartilhável nas redes sociais'],
+      color: 'hsl(160 84% 39%)',
+    },
+  ];
+
+  const currentModules = activeView === 'mentor' ? mentorModules : mentoradoModules;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden theme-light">
-      {/* ── Animated background ── */}
       <div className="animated-gradient-bg" />
 
-      {/* ── Floating Nav ── */}
+      {/* ── Nav ── */}
       <nav
         className={cn(
           'fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 md:px-12',
@@ -178,21 +316,10 @@ export default function ShowcasePage() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <BrandLogo variant="full" size="sm" />
-          <div className="hidden md:flex items-center gap-8">
-            {[
-              ['#arsenal', 'Arsenal IA'],
-              ['#crm', 'CRM'],
-              ['#trilhas', 'Trilhas'],
-              ['#gamificacao', 'Gamificação'],
-            ].map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {label}
-              </a>
-            ))}
+          <div className="hidden md:flex items-center gap-6">
+            <a href="#visao" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Visão Geral</a>
+            <a href="#modulos" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Módulos</a>
+            <a href="#arsenal" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Arsenal IA</a>
           </div>
           <Button
             onClick={() => navigate('/auth')}
@@ -204,64 +331,59 @@ export default function ShowcasePage() {
       </nav>
 
       {/* ═══════════════════════
-         HERO SECTION
+         HERO
          ═══════════════════════ */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 md:px-12 pt-24 pb-12 overflow-hidden">
-        {/* Ambient orbs */}
+      <section className="relative min-h-[90vh] flex items-center justify-center px-6 md:px-12 pt-24 pb-12 overflow-hidden">
         <div
           className="absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.07] pointer-events-none blur-3xl"
           style={{ background: 'hsl(45 100% 51%)' }}
         />
         <div
           className="absolute bottom-[10%] right-[5%] w-[400px] h-[400px] rounded-full opacity-[0.05] pointer-events-none blur-3xl"
-          style={{ background: 'hsl(220 91% 65%)' }}
+          style={{ background: 'hsl(160 84% 45%)' }}
         />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 mb-8">
             <Sparkles className="w-4 h-4 text-primary" />
             <span className="text-xs font-medium text-primary tracking-wider uppercase">
-              Tecnologia que vende por você
+              Demonstração Completa da Plataforma
             </span>
           </div>
 
-          {/* Headline */}
           <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-6">
-            Seu{' '}
-            <span className="text-gradient-gold">arsenal completo</span>
+            Veja tudo que você e{' '}
+            <span className="text-gradient-gold">seus mentorados</span>
             <br />
-            para vender mais.
+            terão acesso.
           </h1>
 
-          {/* Sub */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            8 inteligências artificiais treinadas no seu negócio, CRM inteligente,
-            trilhas de capacitação e gamificação — tudo integrado em uma única plataforma.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
+            A plataforma opera em duas frentes: o <strong className="text-foreground">Painel do Mentor</strong> para você gerenciar,
+            analisar e escalar sua operação — e o <strong className="text-foreground">Painel do Mentorado</strong> para
+            seu aluno prospectar, aprender e performar com as ferramentas que você disponibiliza.
           </p>
 
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=signup')}
               className="btn-premium px-8 h-14 text-base font-bold"
               size="lg"
             >
               <span className="flex items-center gap-2">
-                Começar Agora <ArrowRight className="w-5 h-5" />
+                Quero Para Minha Mentoria <ArrowRight className="w-5 h-5" />
               </span>
             </Button>
             <Button
               variant="outline"
               size="lg"
-              className="px-8 h-14 text-base border-border/50 text-muted-foreground hover:text-foreground hover:bg-card/50"
-              onClick={() => document.getElementById('arsenal')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-8 h-14 text-base border-primary/30 text-foreground hover:bg-primary/5"
+              onClick={() => document.getElementById('modulos')?.scrollIntoView({ behavior: 'smooth' })}
             >
-              Ver Funcionalidades
+              Ver Todos os Módulos
             </Button>
           </div>
 
-          {/* Scroll indicator */}
           <div className="animate-bounce">
             <ChevronDown className="w-6 h-6 text-muted-foreground mx-auto" />
           </div>
@@ -269,78 +391,91 @@ export default function ShowcasePage() {
       </section>
 
       {/* ═══════════════════════
-         STATS BAR
+         STATS
          ═══════════════════════ */}
-      <Section className="py-16 md:py-20">
+      <Section id="visao" className="py-12 md:py-16">
         <div className="max-w-5xl mx-auto">
-          <div className="glass-card p-8 md:p-12 rounded-3xl">
+          <div className="glass-card p-8 md:p-12 rounded-3xl border border-border/30">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <StatBlock value="8" label="IAs Integradas" delay={0} />
-              <StatBlock value="24/7" label="Mentor Virtual" delay={100} />
-              <StatBlock value="∞" label="Leads Qualificados" delay={200} />
-              <StatBlock value="100%" label="Personalizado" delay={300} />
+              <StatBlock value="12+" label="Módulos para o Mentor" delay={0} />
+              <StatBlock value="12+" label="Módulos para o Mentorado" delay={100} />
+              <StatBlock value="8" label="IAs Integradas" delay={200} />
+              <StatBlock value="100%" label="White-Label" delay={300} />
             </div>
           </div>
         </div>
       </Section>
 
       {/* ═══════════════════════
-         PROBLEM → SOLUTION
+         HOW IT WORKS - Dual view explanation
          ═══════════════════════ */}
       <Section>
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              O problema que você <span className="text-gradient-gold">já conhece</span>
+              Uma plataforma, <span className="text-gradient-gold">duas experiências</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Prospectar sem processo é como atirar no escuro. Você sabe que pode mais — só faltava a ferramenta certa.
+              Você configura e gerencia tudo pelo Painel do Mentor. Seu mentorado acessa um ambiente completo
+              e personalizado com a SUA marca, pronto para prospectar e performar.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-            {/* Before */}
-            <div className="glass-card p-8 rounded-2xl border-destructive/20">
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Mentor side */}
+            <div className="glass-card-glow p-8 rounded-2xl border border-primary/20">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-                  <span className="text-destructive text-lg">✕</span>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="font-display text-xl font-semibold text-destructive">Sem a plataforma</h3>
+                <div>
+                  <h3 className="font-display text-xl font-bold text-foreground">Painel do Mentor</h3>
+                  <p className="text-xs text-muted-foreground">Você no controle total</p>
+                </div>
               </div>
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 {[
-                  'Prospectando no escuro, sem dados do lead',
-                  'Mensagens genéricas que ninguém responde',
-                  'Sem processo: cada venda é uma surpresa',
-                  'Follow-up esquecido, lead esfriou',
-                  'Depende de sorte, não de estratégia',
+                  'Dashboard com KPIs de toda a operação',
+                  'Gestão individual de cada mentorado',
+                  'Análise comportamental IA do aluno',
+                  'Trilhas, gamificação e tarefas configuráveis',
+                  'Relatórios de performance e ranking',
+                  'Alertas inteligentes + Centro SOS',
+                  'Email marketing e automações',
+                  'Branding 100% personalizado',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
-                    <span className="text-destructive mt-0.5">●</span>
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <UserCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* After */}
-            <div className="glass-card-glow p-8 rounded-2xl">
+            {/* Mentorado side */}
+            <div className="glass-card p-8 rounded-2xl border border-accent/20">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-accent" />
                 </div>
-                <h3 className="font-display text-xl font-semibold text-primary">Com a plataforma</h3>
+                <div>
+                  <h3 className="font-display text-xl font-bold text-foreground">Painel do Mentorado</h3>
+                  <p className="text-xs text-muted-foreground">Seu aluno com arsenal completo</p>
+                </div>
               </div>
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 {[
-                  'IA analisa o perfil e entrega a abordagem ideal',
-                  'Mensagens personalizadas por canal e persona',
-                  'CRM visual com pipeline e priorização automática',
-                  'Follow-up inteligente — nunca mais perca um lead',
-                  'Dados, gamificação e ranking pra manter o ritmo',
+                  'Dashboard pessoal com progresso e metas',
+                  'CRM pessoal com pipeline de vendas',
+                  '8 ferramentas IA treinadas no negócio',
+                  'Trilhas de conteúdo com certificados',
+                  'Gamificação, ranking e badges',
+                  'Comunidade e networking entre alunos',
+                  'Agendamento direto com o mentor',
+                  'Centro SOS para urgências',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-foreground">
-                    <Star className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                    <Star className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                     {item}
                   </li>
                 ))}
@@ -351,324 +486,180 @@ export default function ShowcasePage() {
       </Section>
 
       {/* ═══════════════════════
-         ARSENAL DE VENDAS (8 IAs)
+         MODULES - Toggle Mentor / Mentorado
+         ═══════════════════════ */}
+      <Section id="modulos">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 mb-6">
+              <MonitorPlay className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-medium text-primary tracking-wider uppercase">Módulos Detalhados</span>
+            </div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+              Explore cada módulo em <span className="text-gradient-gold">detalhe</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
+              Alterne entre a visão do Mentor e do Mentorado para entender exatamente
+              o que cada um terá acesso na plataforma.
+            </p>
+
+            {/* Toggle */}
+            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted/80 border border-border/50">
+              <button
+                onClick={() => setActiveView('mentor')}
+                className={cn(
+                  'flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300',
+                  activeView === 'mentor'
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Shield className="w-4 h-4" />
+                Visão do Mentor
+              </button>
+              <button
+                onClick={() => setActiveView('mentorado')}
+                className={cn(
+                  'flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300',
+                  activeView === 'mentorado'
+                    ? 'bg-accent text-accent-foreground shadow-lg'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Zap className="w-4 h-4" />
+                Visão do Mentorado
+              </button>
+            </div>
+          </div>
+
+          {/* Module description banner */}
+          <div className={cn(
+            'mb-10 p-6 rounded-2xl border text-center transition-all duration-300',
+            activeView === 'mentor'
+              ? 'bg-primary/5 border-primary/20'
+              : 'bg-accent/5 border-accent/20'
+          )}>
+            {activeView === 'mentor' ? (
+              <p className="text-sm text-foreground max-w-3xl mx-auto">
+                <strong>Mentor:</strong> Aqui está tudo que VOCÊ terá acesso para gerenciar sua mentoria.
+                Desde o dashboard com visão 360° dos seus alunos até análise comportamental IA, relatórios,
+                gamificação e branding personalizado. Você controla cada aspecto da experiência.
+              </p>
+            ) : (
+              <p className="text-sm text-foreground max-w-3xl mx-auto">
+                <strong>Mentorado:</strong> Aqui está tudo que SEU ALUNO terá acesso na plataforma que leva a SUA marca.
+                Um arsenal completo para ele prospectar, aprender e performar — tudo configurado e gerenciado por você.
+              </p>
+            )}
+          </div>
+
+          {/* Modules grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentModules.map((module, i) => (
+              <ModuleCard key={`${activeView}-${i}`} {...module} delay={i * 60} />
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══════════════════════
+         ARSENAL IA HIGHLIGHT
          ═══════════════════════ */}
       <Section id="arsenal" className="relative">
-        {/* Glow */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-[0.04] pointer-events-none blur-3xl"
           style={{ background: 'hsl(45 100% 51%)' }}
         />
-
         <div className="max-w-6xl mx-auto relative z-10">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 mb-6">
               <Brain className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-medium text-primary tracking-wider uppercase">Arsenal de Vendas</span>
+              <span className="text-xs font-medium text-primary tracking-wider uppercase">Arsenal de Vendas IA</span>
             </div>
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              <span className="text-gradient-gold">8 IAs</span> trabalhando pelo seu resultado
+              <span className="text-gradient-gold">8 IAs</span> trabalhando pelos seus mentorados
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Cada ferramenta conhece seu produto, seu público e seu pitch. 
-              É como ter uma equipe inteira de vendas, 24 horas por dia.
+            <p className="text-muted-foreground max-w-3xl mx-auto">
+              Cada IA é treinada com o contexto do negócio do mentorado: produto, público-alvo, pitch e histórico.
+              <strong className="text-foreground"> Você disponibiliza, eles performam.</strong> Tudo registrado para você acompanhar.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {aiTools.map((tool, i) => (
-              <AIToolCard key={tool.name} {...tool} delay={i * 70} />
+            {[
+              { icon: Crosshair, name: 'Qualificador de Leads', description: 'Analisa perfis com IA, gera score de 0-100, temperatura (quente/morno/frio) e estratégia de abordagem personalizada.' },
+              { icon: Send, name: 'Cold Messages', description: 'Mensagens para WhatsApp, Instagram, LinkedIn e Email com tom adaptado ao perfil DISC do lead.' },
+              { icon: Swords, name: 'Simulador de Objeções', description: 'Role-play com IA em 9 fases de negociação High Ticket. Cenários realistas e desafiadores.' },
+              { icon: FileSignature, name: 'Gerador de Propostas', description: 'Propostas comerciais com ancoragem de valor, personalizadas para cada lead e contexto.' },
+              { icon: LineChart, name: 'Análise de Conversão', description: 'Envie transcrições de reuniões e receba nota IA, pontos fortes, objeções perdidas e melhorias.' },
+              { icon: UserCircle, name: 'Gerador de Bio', description: 'Bio otimizada para Instagram, LinkedIn e WhatsApp que comunica autoridade.' },
+              { icon: PenTool, name: 'Gerador de Conteúdo', description: 'Posts, carrosséis e stories baseados na oferta, público e tom de comunicação do aluno.' },
+              { icon: Bot, name: 'Mentor Virtual 24/7', description: 'O aluno tira dúvidas a qualquer hora. A IA conhece o negócio e dá respostas práticas.' },
+            ].map((tool, i) => (
+              <div
+                key={tool.name}
+                className="relative group p-5 rounded-2xl border border-border/50 transition-all duration-300 bg-card/40 hover:bg-card/80 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(45_100%_51%/0.08)]"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                    <tool.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-display font-semibold text-foreground text-sm mb-1">{tool.name}</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{tool.description}</p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-        </div>
-      </Section>
 
-      {/* ═══════════════════════
-         CRM INTELIGENTE
-         ═══════════════════════ */}
-      <Section id="crm">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Text */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/20 bg-accent/5 mb-6">
-                <Target className="w-3.5 h-3.5 text-accent" />
-                <span className="text-xs font-medium text-accent tracking-wider uppercase">CRM com Vision IA</span>
-              </div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-                Seu funil organizado com{' '}
-                <span className="text-gradient-premium">inteligência visual</span>
-              </h2>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
-                Pipeline Kanban com arrastar e soltar, qualificação automática por IA 
-                e a revolução: tire um print do perfil do lead e a IA extrai tudo pra você.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  { icon: Eye, text: 'Vision IA: print → lead qualificado em segundos' },
-                  { icon: BarChart3, text: 'Pipeline visual com arraste entre fases' },
-                  { icon: TrendingUp, text: 'Score e temperatura automáticos por lead' },
-                  { icon: MessageSquare, text: 'Abordagem sugerida pela IA com base no perfil DISC' },
-                ].map(({ icon: Ic, text }, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-foreground">
-                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                      <Ic className="w-4 h-4 text-accent" />
-                    </div>
-                    {text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Visual mockup */}
-            <div className="relative">
-              <div className="glass-card-glow p-6 rounded-2xl">
-                <div className="space-y-3">
-                  {['Novo', 'Contato', 'Negociação', 'Fechado'].map((stage, i) => (
-                    <div
-                      key={stage}
-                      className="flex items-center justify-between p-3 rounded-xl bg-card/60 border border-border/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{
-                            background: ['hsl(45 100% 51%)', 'hsl(220 91% 65%)', 'hsl(270 91% 65%)', 'hsl(160 84% 45%)'][i],
-                          }}
-                        />
-                        <span className="text-sm font-medium text-foreground">{stage}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{[12, 8, 5, 3][i]} leads</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-semibold text-primary">Score IA</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 rounded-full bg-card">
-                      <div className="h-full w-[85%] rounded-full bg-gradient-to-r from-primary to-accent" />
-                    </div>
-                    <span className="text-xs font-bold text-primary">85%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* ═══════════════════════
-         TRILHAS DE CONTEÚDO
-         ═══════════════════════ */}
-      <Section id="trilhas">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-400/20 bg-purple-400/5 mb-6">
-              <BookOpen className="w-3.5 h-3.5" style={{ color: 'hsl(270 91% 65%)' }} />
-              <span className="text-xs font-medium tracking-wider uppercase" style={{ color: 'hsl(270 91% 65%)' }}>
-                Trilhas de Capacitação
-              </span>
-            </div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              Aprenda no ritmo certo,{' '}
-              <span className="text-gradient-premium">como na Netflix</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Trilhas de conteúdo organizadas em módulos e aulas com vídeo player integrado, 
-              acompanhamento de progresso e certificados de conclusão.
+          <div className="mt-8 p-6 rounded-2xl bg-primary/5 border border-primary/15 text-center">
+            <p className="text-sm text-foreground">
+              <Activity className="w-4 h-4 inline-block mr-1 text-primary" />
+              <strong>Para o Mentor:</strong> Toda utilização de IA é registrada em telemetria. Você sabe exatamente
+              quais ferramentas cada mentorado está usando, com que frequência e para quais leads.
             </p>
           </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: 'Prospecção Outbound', lessons: 12, duration: '4h 30min', progress: 75, color: 'hsl(45 100% 51%)' },
-              { title: 'Fechamento High Ticket', lessons: 8, duration: '3h 15min', progress: 40, color: 'hsl(220 91% 65%)' },
-              { title: 'Script de Vendas', lessons: 10, duration: '2h 45min', progress: 0, color: 'hsl(270 91% 65%)' },
-            ].map((trail, i) => (
-              <div key={i} className="glass-card hover-lift rounded-2xl overflow-hidden group">
-                {/* Trail cover */}
-                <div
-                  className="h-36 relative"
-                  style={{
-                    background: `linear-gradient(135deg, ${trail.color}15 0%, ${trail.color}05 100%)`,
-                  }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <GraduationCap className="w-12 h-12 opacity-20" style={{ color: trail.color }} />
-                  </div>
-                  {trail.progress > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-card/50">
-                      <div
-                        className="h-full rounded-r-full"
-                        style={{ width: `${trail.progress}%`, background: trail.color }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="p-5">
-                  <h3 className="font-display font-semibold text-foreground mb-2">{trail.title}</h3>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{trail.lessons} aulas</span>
-                    <span>·</span>
-                    <span>{trail.duration}</span>
-                  </div>
-                  {trail.progress > 0 && (
-                    <div className="mt-3 text-xs font-medium" style={{ color: trail.color }}>
-                      {trail.progress}% concluído
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </Section>
 
       {/* ═══════════════════════
-         GAMIFICAÇÃO
-         ═══════════════════════ */}
-      <Section id="gamificacao">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Visual */}
-            <div className="order-2 lg:order-1 relative">
-              <div className="glass-card-glow p-8 rounded-2xl">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-display font-bold text-foreground">Seu Progresso</h3>
-                  <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10">
-                    <Flame className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-bold text-primary">7 dias</span>
-                  </div>
-                </div>
-
-                {/* XP bar */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">Nível 12</span>
-                    <span className="text-xs text-primary font-medium">2.450 / 3.000 XP</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-card">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000"
-                      style={{ width: '82%' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Badges */}
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    { emoji: '🎯', label: 'Sniper' },
-                    { emoji: '🔥', label: 'Streak 7' },
-                    { emoji: '💎', label: 'Top 10' },
-                    { emoji: '🏆', label: 'Closer' },
-                  ].map((badge, i) => (
-                    <div
-                      key={i}
-                      className="glass-card p-3 rounded-xl text-center"
-                    >
-                      <div className="text-2xl mb-1">{badge.emoji}</div>
-                      <div className="text-[10px] text-muted-foreground">{badge.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Text */}
-            <div className="order-1 lg:order-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/20 bg-emerald-400/5 mb-6">
-                <Trophy className="w-3.5 h-3.5" style={{ color: 'hsl(160 84% 45%)' }} />
-                <span className="text-xs font-medium tracking-wider uppercase" style={{ color: 'hsl(160 84% 45%)' }}>
-                  Gamificação
-                </span>
-              </div>
-              <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-                Transforme disciplina em{' '}
-                <span className="text-gradient-gold">vício de vender</span>
-              </h2>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
-                Pontos por cada ação, badges de conquista, ofensivas diárias e ranking 
-                entre mentorados. Gamificação que transforma rotina comercial em competição saudável.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { icon: Flame, label: 'Ofensivas diárias' },
-                  { icon: Trophy, label: 'Ranking competitivo' },
-                  { icon: Star, label: 'Badges de conquista' },
-                  { icon: Zap, label: 'Loja de prêmios' },
-                ].map(({ icon: Ic, label }, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-foreground">
-                    <Ic className="w-4 h-4 text-primary" />
-                    {label}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      {/* ═══════════════════════
-         MORE FEATURES GRID
+         SECURITY / WHITE LABEL
          ═══════════════════════ */}
       <Section>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              E tem <span className="text-gradient-gold">muito mais</span>
-            </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Cada detalhe pensado para potencializar sua performance comercial.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard
-              icon={Shield}
-              title="Centro SOS"
-              description="Suporte urgente com triagem inteligente do Mentor Virtual. Seu mentor é notificado em tempo real."
-              color="hsl(0 84% 60%)"
-              delay={0}
+        <div className="max-w-5xl mx-auto">
+          <div className="glass-card-glow p-10 md:p-14 rounded-3xl text-center relative overflow-hidden">
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full opacity-[0.06] pointer-events-none blur-3xl"
+              style={{ background: 'hsl(160 84% 45%)' }}
             />
-            <FeatureCard
-              icon={Users}
-              title="Comunidade"
-              description="Troque experiências, compartilhe vitórias e aprenda com outros mentorados em tempo real."
-              color="hsl(220 91% 65%)"
-              delay={100}
-            />
-            <FeatureCard
-              icon={Mic}
-              title="Análise de Calls"
-              description="Suba transcrições de reuniões e receba diagnóstico de performance com nota IA e pontos de melhoria."
-              color="hsl(160 84% 45%)"
-              delay={200}
-            />
-            <FeatureCard
-              icon={FileText}
-              title="Meus Arquivos"
-              description="Central de materiais organizados pelo seu mentor: apresentações, scripts, planilhas e mais."
-              color="hsl(270 91% 65%)"
-              delay={300}
-            />
-            <FeatureCard
-              icon={BarChart3}
-              title="Calendário Integrado"
-              description="Reuniões, eventos e encontros agendados pelo mentor com confirmação automática."
-              color="hsl(190 95% 55%)"
-              delay={400}
-            />
-            <FeatureCard
-              icon={GraduationCap}
-              title="Certificados"
-              description="Ao concluir trilhas, ganhe certificados profissionais para fortalecer sua autoridade."
-              color="hsl(45 100% 51%)"
-              delay={500}
-            />
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+                <Lock className="w-4 h-4" />
+                White-Label Completo
+              </div>
+              <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+                Sua <span className="text-gradient-gold">marca</span>, sua plataforma
+              </h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
+                O mentorado nunca vê o nome da nossa tecnologia. Ele acessa uma plataforma com a
+                <strong className="text-foreground"> sua logo, suas cores, sua fonte e sua landing page</strong>.
+                Para ele, é 100% seu.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                {[
+                  { icon: Eye, label: 'Logo personalizada' },
+                  { icon: Sparkles, label: 'Cores e fontes' },
+                  { icon: MonitorPlay, label: 'Landing exclusiva' },
+                  { icon: Brain, label: 'IA Branding Engine' },
+                ].map(({ icon: Ic, label }, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card/60 border border-border/30">
+                    <Ic className="w-5 h-5 text-primary" />
+                    <span className="text-xs text-foreground font-medium text-center">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </Section>
@@ -676,42 +667,50 @@ export default function ShowcasePage() {
       {/* ═══════════════════════
          FINAL CTA
          ═══════════════════════ */}
-      <Section className="pb-32">
+      <Section className="pb-28">
         <div className="max-w-4xl mx-auto text-center">
           <div className="glass-card-glow p-12 md:p-16 rounded-3xl relative overflow-hidden">
-            {/* Background glow */}
             <div
               className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full opacity-[0.08] pointer-events-none blur-3xl"
               style={{ background: 'hsl(45 100% 51%)' }}
             />
-
             <div className="relative z-10">
               <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-                Pronto pra vender{' '}
-                <span className="text-gradient-gold">diferente?</span>
+                Pronto para ter tudo isso na{' '}
+                <span className="text-gradient-gold">sua mentoria?</span>
               </h2>
               <p className="text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-                A mesma tecnologia usada por mentores de alta performance, 
-                agora no seu dia a dia. Entre e comece a prospectar com inteligência.
+                A mesma tecnologia usada por mentores de alta performance.
+                Implemente na sua operação e transforme a experiência dos seus mentorados.
               </p>
-              <Button
-                onClick={() => navigate('/auth')}
-                className="btn-premium px-10 h-14 text-base font-bold"
-                size="lg"
-              >
-                <span className="flex items-center gap-2">
-                  Entrar na Plataforma <ArrowRight className="w-5 h-5" />
-                </span>
-              </Button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button
+                  onClick={() => navigate('/auth?mode=signup')}
+                  className="btn-premium px-10 h-14 text-base font-bold"
+                  size="lg"
+                >
+                  <span className="flex items-center gap-2">
+                    Quero Para Minha Mentoria <ArrowRight className="w-5 h-5" />
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="px-8 h-14 text-base border-primary/30 text-foreground hover:bg-primary/5"
+                  onClick={() => navigate('/#pricing')}
+                >
+                  Ver Planos e Preços
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </Section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-border/30 py-8 px-6 md:px-12">
+      <footer className="border-t border-border/50 py-8 px-6 md:px-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <BrandLogo variant="full" size="sm" className="opacity-60" />
+          <BrandLogo variant="full" size="sm" className="opacity-70" />
           <p className="text-xs text-muted-foreground">
             {PLATFORM.email.footer}
           </p>
