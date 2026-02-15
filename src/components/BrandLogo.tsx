@@ -1,12 +1,15 @@
 import { cn } from '@/lib/utils';
+import vhfLogo from '@/assets/vhf-logo.png';
 
 interface BrandLogoProps {
   variant?: 'full' | 'compact' | 'text';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
+  /** Override with tenant logo URL when in tenant context */
+  logoUrl?: string;
 }
 
-export function BrandLogo({ variant = 'full', size = 'md', className }: BrandLogoProps) {
+export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }: BrandLogoProps) {
   const sizes = {
     sm: { icon: 'w-8 h-8', text: 'text-lg', techText: 'text-sm' },
     md: { icon: 'w-10 h-10', text: 'text-xl', techText: 'text-base' },
@@ -15,39 +18,18 @@ export function BrandLogo({ variant = 'full', size = 'md', className }: BrandLog
   };
 
   const currentSize = sizes[size];
+  const logoSrc = logoUrl || vhfLogo;
 
-  const HexagonIcon = () => (
+  const LogoIcon = () => (
     <div className={cn(currentSize.icon, 'relative flex items-center justify-center')}>
-      <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(45 100% 60%)" />
-            <stop offset="50%" stopColor="hsl(45 100% 51%)" />
-            <stop offset="100%" stopColor="hsl(40 100% 45%)" />
-          </linearGradient>
-          <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(220 91% 45%)" />
-            <stop offset="100%" stopColor="hsl(220 91% 35%)" />
-          </linearGradient>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" fill="url(#goldGradient)" filter="url(#glow)" />
-        <polygon points="50,18 78,35 78,65 50,82 22,65 22,35" fill="url(#blueGradient)" />
-        <text x="50" y="62" textAnchor="middle" fill="hsl(45 100% 51%)" fontSize="36" fontWeight="bold" fontFamily="Space Grotesk, sans-serif">L</text>
-      </svg>
+      <img src={logoSrc} alt="VHF Logo" className="w-full h-full object-contain" />
     </div>
   );
 
   if (variant === 'compact') {
     return (
       <div className={cn('flex items-center', className)}>
-        <HexagonIcon />
+        <LogoIcon />
       </div>
     );
   }
@@ -55,18 +37,18 @@ export function BrandLogo({ variant = 'full', size = 'md', className }: BrandLog
   if (variant === 'text') {
     return (
       <div className={cn('flex items-center gap-1', className)}>
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Learning</span>
-        <span className={cn(currentSize.techText, 'font-semibold tracking-wider')} style={{ color: 'hsl(220 91% 55%)' }}>Brand</span>
+        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Vértice</span>
+        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Hub Forti</span>
       </div>
     );
   }
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <HexagonIcon />
+      <LogoIcon />
       <div className="flex items-baseline gap-1">
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Learning</span>
-        <span className={cn(currentSize.techText, 'font-semibold tracking-wider')} style={{ color: 'hsl(220 91% 55%)' }}>Brand</span>
+        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Vértice</span>
+        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Hub Forti</span>
       </div>
     </div>
   );

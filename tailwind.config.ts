@@ -65,16 +65,19 @@ export default {
         // Premium custom colors
         gold: {
           DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
-          dark: "hsl(var(--gold-dark))",
+          light: "hsl(var(--gold-light, var(--gold-glow)))",
+          dark: "hsl(var(--gold-dark, 45 93% 45%))",
+        },
+        emerald: {
+          DEFAULT: "hsl(var(--emerald))",
         },
         "blue-accent": {
-          DEFAULT: "hsl(var(--blue-accent))",
-          light: "hsl(var(--blue-light))",
-          dark: "hsl(var(--blue-dark))",
+          DEFAULT: "hsl(var(--accent))",
+          light: "hsl(var(--blue-light, var(--accent)))",
+          dark: "hsl(var(--blue-dark, var(--accent)))",
         },
-        success: "hsl(var(--success))",
-        warning: "hsl(var(--warning))",
+        success: "hsl(var(--success, 160 84% 39%))",
+        warning: "hsl(var(--warning, 45 93% 58%))",
       },
       borderRadius: {
         lg: "var(--radius)",

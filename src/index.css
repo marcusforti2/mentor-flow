@@ -19,8 +19,8 @@
     --popover: 240 10% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 45 100% 51%;
-    --primary-foreground: 240 10% 4%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 240 6% 12%;
     --secondary-foreground: 0 0% 98%;
@@ -28,24 +28,24 @@
     --muted: 240 6% 16%;
     --muted-foreground: 240 5% 60%;
 
-    --accent: 220 91% 65%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 45 93% 58%;
+    --accent-foreground: 240 10% 4%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 6% 16%;
     --input: 240 6% 16%;
-    --ring: 45 100% 51%;
+    --ring: 160 84% 39%;
 
     --radius: 1rem;
 
     /* Premium tokens */
-    --gold: 45 100% 51%;
-    --gold-glow: 45 100% 65%;
+    --gold: 45 93% 58%;
+    --gold-glow: 45 93% 68%;
     --purple: 270 91% 65%;
     --cyan: 190 95% 55%;
-    --emerald: 160 84% 45%;
+    --emerald: 160 84% 39%;
     
     /* Glass tokens */
     --glass-bg: 240 10% 8% / 0.6;
@@ -60,19 +60,19 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 8%;
     --popover-foreground: 0 0% 98%;
-    --primary: 45 100% 51%;
-    --primary-foreground: 240 10% 4%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 98%;
     --secondary: 240 6% 12%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 6% 16%;
     --muted-foreground: 240 5% 60%;
-    --accent: 220 91% 65%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 45 93% 58%;
+    --accent-foreground: 240 10% 4%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 6% 16%;
     --input: 240 6% 16%;
-    --ring: 45 100% 51%;
+    --ring: 160 84% 39%;
   }
 }
 
