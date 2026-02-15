@@ -11,10 +11,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { tenant_id, asset_urls, membership_id } = await req.json();
+    const { tenant_id, asset_urls, membership_id, text_prompt } = await req.json();
 
-    if (!tenant_id || !asset_urls?.length) {
-      return new Response(JSON.stringify({ error: "tenant_id e asset_urls são obrigatórios" }), {
+    if (!tenant_id || (!asset_urls?.length && !text_prompt)) {
+      return new Response(JSON.stringify({ error: "tenant_id e (asset_urls ou text_prompt) são obrigatórios" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -35,21 +35,31 @@ serve(async (req) => {
       .single();
 
     // Build image content parts for vision
-    const imageParts = asset_urls.map((url: string) => ({
+    // Build user message based on mode (visual vs text)
+    const imageParts = (asset_urls || []).map((url: string) => ({
       type: "image_url" as const,
       image_url: { url },
     }));
 
-    const systemPrompt = `Você é um especialista em branding e design de sistemas digitais. 
-Analise as imagens enviadas (prints de Instagram, logos, materiais da marca) e gere uma proposta completa de branding para uma plataforma de mentoria.
+    const hasImages = imageParts.length > 0;
 
-IMPORTANTE: Use tool calling para retornar a proposta estruturada. Analise:
-- Identidade visual existente (cores, tipografia, estilo)
+    const systemPrompt = `Você é um especialista em branding e design de sistemas digitais. 
+${hasImages ? 'Analise as imagens enviadas (prints de Instagram, logos, materiais da marca) e' : 'Com base na descrição fornecida,'} gere uma proposta completa de branding para uma plataforma de mentoria.
+
+IMPORTANTE: Use tool calling para retornar a proposta estruturada. Considere:
+- Identidade visual ${hasImages ? 'existente' : 'desejada'} (cores, tipografia, estilo)
 - Tom de comunicação
-- Público-alvo aparente
+- Público-alvo ${hasImages ? 'aparente' : 'descrito'}
 - Nível de maturidade da marca
 
 O tenant atual se chama: "${tenant?.name || "Não definido"}"`;
+
+    const userContent = hasImages
+      ? [
+          { type: "text", text: text_prompt || "Analise estas imagens da marca e gere uma proposta completa de branding para o sistema de mentoria." },
+          ...imageParts,
+        ]
+      : text_prompt || "Gere uma proposta de branding baseada no nome do tenant.";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -61,16 +71,7 @@ O tenant atual se chama: "${tenant?.name || "Não definido"}"`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Analise estas imagens da marca e gere uma proposta completa de branding para o sistema de mentoria.",
-              },
-              ...imageParts,
-            ],
-          },
+          { role: "user", content: userContent },
         ],
         tools: [
           {

@@ -43,34 +43,26 @@ export function useTenantBranding(tenantId: string | null) {
     enabled: !!tenantId,
   });
 
-  const uploadAssets = async (files: File[], tenantId: string) => {
+  const uploadAssets = async (files: File[], tid: string) => {
     const urls: string[] = [];
     for (const file of files) {
-      const path = `${tenantId}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage
-        .from('branding-assets')
-        .upload(path, file, { upsert: true });
-
+      const path = `${tid}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('branding-assets').upload(path, file, { upsert: true });
       if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from('branding-assets')
-        .getPublicUrl(path);
-      
-      // Since bucket is private, we need signed URLs
-      const { data: signedData } = await supabase.storage
-        .from('branding-assets')
-        .createSignedUrl(path, 3600); // 1h
-
-      urls.push(signedData?.signedUrl || urlData.publicUrl);
+      const { data: signedData } = await supabase.storage.from('branding-assets').createSignedUrl(path, 3600);
+      urls.push(signedData?.signedUrl || '');
     }
     return urls;
   };
 
   const analyzebranding = useMutation({
-    mutationFn: async ({ tenantId, files, membershipId }: { tenantId: string; files: File[]; membershipId?: string }) => {
-      toast.info('Enviando assets...');
-      const assetUrls = await uploadAssets(files, tenantId);
+    mutationFn: async ({ tenantId, files, membershipId, textPrompt }: { tenantId: string; files: File[]; membershipId?: string; textPrompt?: string }) => {
+      let assetUrls: string[] = [];
+      
+      if (files.length > 0) {
+        toast.info('Enviando assets...');
+        assetUrls = await uploadAssets(files, tenantId);
+      }
 
       toast.info('Analisando branding com IA...');
       const { data, error } = await supabase.functions.invoke('analyze-branding', {
@@ -78,6 +70,7 @@ export function useTenantBranding(tenantId: string | null) {
           tenant_id: tenantId,
           asset_urls: assetUrls,
           membership_id: membershipId,
+          text_prompt: textPrompt,
         },
       });
 
@@ -94,25 +87,38 @@ export function useTenantBranding(tenantId: string | null) {
     },
   });
 
+  const saveManualBranding = useMutation({
+    mutationFn: async (proposal: any) => {
+      const { data, error } = await supabase
+        .from('tenant_branding' as any)
+        .upsert(proposal, { onConflict: 'tenant_id' })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-branding', tenantId] });
+      toast.success('Branding manual salvo como rascunho!');
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao salvar: ${error.message}`);
+    },
+  });
+
   const approveBranding = useMutation({
     mutationFn: async ({ brandingId, membershipId }: { brandingId: string; membershipId: string }) => {
-      // Update branding status
       const { data: branding, error: brandingError } = await supabase
         .from('tenant_branding' as any)
-        .update({
-          status: 'approved',
-          approved_by: membershipId,
-          approved_at: new Date().toISOString(),
-        } as any)
+        .update({ status: 'approved', approved_by: membershipId, approved_at: new Date().toISOString() } as any)
         .eq('id', brandingId)
         .select()
         .single();
 
       if (brandingError) throw brandingError;
-
       const b = branding as unknown as BrandingProposal;
 
-      // Apply to tenant
       const tenantUpdate: any = {};
       if (b.suggested_name) tenantUpdate.name = b.suggested_name;
       if (b.color_palette?.primary) tenantUpdate.primary_color = b.color_palette.primary;
@@ -120,12 +126,9 @@ export function useTenantBranding(tenantId: string | null) {
       if (b.color_palette?.accent) tenantUpdate.accent_color = b.color_palette.accent;
       if (b.typography?.display_font) tenantUpdate.font_family = b.typography.display_font;
       if (b.brand_attributes) tenantUpdate.brand_attributes = b.brand_attributes;
+      if (b.suggested_logo_url) tenantUpdate.logo_url = b.suggested_logo_url;
 
-      const { error: tenantError } = await supabase
-        .from('tenants')
-        .update(tenantUpdate)
-        .eq('id', b.tenant_id);
-
+      const { error: tenantError } = await supabase.from('tenants').update(tenantUpdate).eq('id', b.tenant_id);
       if (tenantError) throw tenantError;
 
       return branding;
@@ -146,12 +149,11 @@ export function useTenantBranding(tenantId: string | null) {
         .from('tenant_branding' as any)
         .update({ status: 'rejected' } as any)
         .eq('id', brandingId);
-
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-branding', tenantId] });
-      toast.success('Proposta rejeitada. Envie novos assets para gerar outra.');
+      toast.success('Proposta rejeitada.');
     },
     onError: (error: Error) => {
       toast.error(`Erro: ${error.message}`);
@@ -164,5 +166,6 @@ export function useTenantBranding(tenantId: string | null) {
     analyzebranding,
     approveBranding,
     rejectBranding,
+    saveManualBranding,
   };
 }
