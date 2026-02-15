@@ -4,7 +4,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Presentation } from 'lucide-react';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Presentation, Palette } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
@@ -18,6 +18,7 @@ import { FloatingDock } from '@/components/FloatingDock';
    { icon: Shield, label: 'Dashboard', path: '/master' },
    { icon: Building2, label: 'Tenants', path: '/master/tenants' },
    { icon: Users, label: 'Usuários', path: '/master/users' },
+   { icon: Palette, label: 'Branding', path: '/master/branding' },
    { icon: Eye, label: 'Preview', path: '/master/preview' },
    { icon: Presentation, label: 'Apresentação', path: '/master/apresentacao' },
    { icon: Settings, label: 'Config', path: '/master/config' },

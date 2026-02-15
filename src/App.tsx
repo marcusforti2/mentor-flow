@@ -34,6 +34,7 @@ const TenantsPage = lazy(() => import("./pages/master/TenantsPage"));
 const UsersPage = lazy(() => import("./pages/master/UsersPage"));
 const ApresentacaoPage = lazy(() => import("./pages/master/ApresentacaoPage"));
 const ConfigPage = lazy(() => import("./pages/master/ConfigPage"));
+const BrandingPage = lazy(() => import("./pages/master/BrandingPage"));
 
 // Admin/Mentor Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -112,6 +113,7 @@ const App = () => (
                     <Route path="tenants" element={<TenantsPage />} />
                     <Route path="users" element={<UsersPage />} />
                     <Route path="config" element={<ConfigPage />} />
+                    <Route path="branding" element={<BrandingPage />} />
                     <Route path="apresentacao" element={<ApresentacaoPage />} />
                   </Route>
 

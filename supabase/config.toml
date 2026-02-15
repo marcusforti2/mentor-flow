@@ -88,3 +88,6 @@ verify_jwt = false
 
 [functions.contextual-chat]
 verify_jwt = false
+
+[functions.analyze-branding]
+verify_jwt = false
