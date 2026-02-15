@@ -96,6 +96,44 @@
   }
 }
 
+/* ========================================
+   MASTER LIGHT THEME SCOPE
+   ======================================== */
+.theme-master-light {
+  --background: 210 20% 98%;
+  --foreground: 215 25% 15%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 215 25% 15%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 25% 15%;
+
+  --primary: 160 84% 32%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 15% 93%;
+  --secondary-foreground: 215 25% 20%;
+
+  --muted: 210 15% 93%;
+  --muted-foreground: 215 15% 50%;
+
+  --accent: 45 93% 48%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 210 15% 88%;
+  --input: 210 15% 88%;
+  --ring: 160 84% 32%;
+
+  /* Glass tokens - light */
+  --glass-bg: 0 0% 100% / 0.7;
+  --glass-border: 215 25% 15% / 0.08;
+  --glass-highlight: 0 0% 100% / 0.5;
+}
+
 @layer components {
   /* ========================================
      ANIMATED GRADIENT BACKGROUND
