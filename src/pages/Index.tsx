@@ -63,35 +63,38 @@ const Index = () => {
   const plans = [
     {
       name: 'Starter',
-      price: 'R$ 197',
-      period: '/mês',
-      description: 'Para mentores começando a escalar',
-      features: ['Até 30 mentorados', 'CRM básico', '3 ferramentas IA', 'Trilhas ilimitadas', 'Suporte por email'],
-      cta: 'Começar Grátis',
+      price: 'R$ 30.000',
+      priceLabel: 'Implementação',
+      monthly: '+ mensalidade',
+      description: 'Para mentores começando a escalar sua operação com tecnologia',
+      features: ['Até 30 mentorados ativos', 'CRM com pipeline visual', '3 ferramentas IA (Bio, Cold Messages, Qualificador)', 'Trilhas de conteúdo ilimitadas', 'Dashboard do mentor completo', 'Suporte por email'],
+      cta: 'Quero o Starter',
       highlighted: false,
     },
     {
       name: 'Professional',
-      price: 'R$ 497',
-      period: '/mês',
-      description: 'Para mentores em crescimento acelerado',
-      features: ['Até 100 mentorados', 'CRM completo + Vision IA', '8 ferramentas IA', 'Gamificação + Ranking', 'Relatórios avançados', 'Alertas inteligentes', 'Branding personalizado'],
-      cta: 'Escolher Professional',
+      price: 'R$ 60.000',
+      priceLabel: 'Implementação',
+      monthly: '+ mensalidade',
+      description: 'O arsenal completo para mentores em crescimento acelerado',
+      features: ['Até 100 mentorados ativos', 'CRM completo + Vision IA (análise de perfil)', '8 ferramentas IA incluídas', 'Gamificação + Ranking em tempo real', 'Relatórios avançados com Score IA', 'Alertas inteligentes + Centro SOS', 'Branding 100% personalizado', 'Agendamento integrado'],
+      cta: 'Quero o Professional',
       highlighted: true,
     },
     {
       name: 'Enterprise',
-      price: 'R$ 997',
-      period: '/mês',
-      description: 'Para operações de mentoria de alto volume',
-      features: ['Mentorados ilimitados', 'Tudo do Professional', 'Multi-mentor', 'API customizada', 'Onboarding dedicado', 'SLA garantido', 'White-label completo'],
-      cta: 'Falar com Vendas',
+      price: 'R$ 120.000',
+      priceLabel: 'Implementação',
+      monthly: '+ mensalidade',
+      description: 'Para operações de mentoria de alto volume que exigem máxima performance',
+      features: ['Mentorados ilimitados', 'Tudo do Professional incluso', 'Multi-mentor (equipe de mentores)', 'API customizada + Integrações avançadas', 'Onboarding dedicado com especialista', 'SLA garantido com suporte prioritário', 'White-label completo (sua marca)', 'Email marketing automatizado', 'Análise comportamental avançada por IA'],
+      cta: 'Falar com Especialista',
       highlighted: false,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-background theme-light">
+    <div className="min-h-screen bg-background theme-light text-foreground">
       {/* Animated gradient background */}
       <div className="animated-gradient-bg" />
 
@@ -102,13 +105,13 @@ const Index = () => {
             <BrandLogo variant="full" size="md" />
           </Link>
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Planos</a>
-            <Link to="/showcase" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Demo</Link>
+            <a href="#features" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Recursos</a>
+            <a href="#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Planos</a>
+            <Link to="/showcase" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Demo</Link>
           </nav>
           <div className="flex items-center gap-4">
             <Link to="/auth">
-              <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" className="text-foreground/70 hover:text-foreground font-medium">
                 Entrar
               </Button>
             </Link>
@@ -151,7 +154,7 @@ const Index = () => {
               </Button>
             </Link>
             <Link to="/showcase">
-              <Button size="lg" variant="outline" className="border-border/50 hover:bg-card/50 text-lg px-8 h-14">
+              <Button size="lg" variant="outline" className="border-primary/30 hover:bg-primary/5 text-foreground text-lg px-8 h-14">
                 Ver Demonstração
               </Button>
             </Link>
@@ -238,14 +241,17 @@ const Index = () => {
                   <div className="mb-6">
                     <h3 className="font-display text-xl font-bold text-foreground mb-1">{plan.name}</h3>
                     <p className="text-xs text-muted-foreground mb-4">{plan.description}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-display font-bold text-foreground">{plan.price}</span>
-                      <span className="text-sm text-muted-foreground">{plan.period}</span>
+                    <div className="flex flex-col">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-display font-bold text-foreground">{plan.price}</span>
+                      </div>
+                      <span className="text-xs font-semibold text-primary uppercase tracking-wider">{plan.priceLabel}</span>
+                      <span className="text-sm text-muted-foreground mt-1">{plan.monthly}</span>
                     </div>
                   </div>
                   <ul className="space-y-3 mb-8">
                     {plan.features.map((feat, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+                      <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                         {feat}
                       </li>
@@ -296,17 +302,17 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-border/30">
+      <footer className="py-12 px-6 border-t border-border/50">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <BrandLogo variant="full" size="sm" className="opacity-60" />
+            <BrandLogo variant="full" size="sm" className="opacity-70" />
             <p className="text-sm text-muted-foreground">
               {PLATFORM.email.footer}
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Termos</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacidade</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Termos</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Privacidade</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contato</a>
             </div>
           </div>
         </div>
