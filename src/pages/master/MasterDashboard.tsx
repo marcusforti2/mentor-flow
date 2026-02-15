@@ -3,6 +3,7 @@
  import { Building2, Users, Eye, Shield, Activity, UserPlus, Loader2 } from 'lucide-react';
  import { Link } from 'react-router-dom';
  import { useMasterDashboardStats } from '@/hooks/useMasterDashboardStats';
+ import { PLATFORM } from '@/lib/platform';
  import { formatDistanceToNow } from 'date-fns';
  import { ptBR } from 'date-fns/locale';
  import { Skeleton } from '@/components/ui/skeleton';
@@ -26,12 +27,12 @@
    };
  
    const getRoleColor = (role: string) => {
-     switch (role) {
-       case 'mentor': return 'bg-blue-500/20 text-blue-400';
-       case 'mentee': return 'bg-green-500/20 text-green-400';
-       case 'master_admin': return 'bg-amber-500/20 text-amber-400';
-       default: return 'bg-slate-500/20 text-slate-400';
-     }
+    switch (role) {
+      case 'mentor': return 'bg-blue-500/20 text-blue-400';
+      case 'mentee': return 'bg-green-500/20 text-green-400';
+      case 'master_admin': return 'bg-primary/20 text-primary';
+      default: return 'bg-slate-500/20 text-slate-400';
+    }
    };
  
    const getRoleLabel = (role: string) => {
@@ -46,14 +47,14 @@
    return (
      <div className="space-y-8">
        {/* Header */}
-       <div>
-         <h1 className="text-3xl font-display font-bold text-slate-100">
-           Master Admin
-         </h1>
-         <p className="text-slate-400 mt-1">
-           Gerenciamento global da plataforma Learning Brand
-         </p>
-       </div>
+        <div>
+          <h1 className="text-3xl font-display font-bold text-slate-100">
+            {PLATFORM.shortName} — Master Admin
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Gerenciamento global da plataforma {PLATFORM.name}
+          </p>
+        </div>
  
        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
