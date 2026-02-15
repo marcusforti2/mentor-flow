@@ -31,7 +31,7 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
     >
       {items.map((item) => {
         const isActive = location.pathname === item.path || 
-          (item.path !== '/admin' && item.path !== '/app' && location.pathname.startsWith(item.path));
+          (location.pathname.startsWith(item.path + '/'));
         
         return (
           <Tooltip key={item.path} delayDuration={0}>
