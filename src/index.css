@@ -83,16 +83,16 @@
 
   body {
     @apply bg-background text-foreground dark antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-body, 'Inter'), system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-display, 'Space Grotesk'), sans-serif;
     letter-spacing: -0.02em;
   }
 
   .font-display {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-display, 'Space Grotesk'), sans-serif;
   }
 }
 

@@ -233,11 +233,19 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       if (hsl) root.style.setProperty('--accent', hsl);
     }
 
+    // Inject custom font if defined
+    if (tenant.font_family) {
+      root.style.setProperty('--font-display', tenant.font_family);
+      root.style.setProperty('--font-body', tenant.font_family);
+    }
+
     // Cleanup: restore defaults when tenant changes or unmounts
     return () => {
       root.style.removeProperty('--primary');
       root.style.removeProperty('--secondary');
       root.style.removeProperty('--accent');
+      root.style.removeProperty('--font-display');
+      root.style.removeProperty('--font-body');
     };
   }, [tenant, realMembership?.role, isImpersonating]);
 
