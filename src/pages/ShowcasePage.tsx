@@ -558,6 +558,47 @@ export default function ShowcasePage() {
       </Section>
 
       {/* ═══════════════════════════════════════
+         O QUE O MENTORADO VÊ
+         ═══════════════════════════════════════ */}
+      <Section>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+              O que o mentorado vê <span className="text-gradient-gold">no seu painel</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              O mentorado não é passivo. Ele opera um negócio — com ferramentas, metas e visibilidade.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: LayoutDashboard, title: 'Dashboard Pessoal', desc: 'Score IA, metas, streak e progresso da jornada em tempo real.' },
+              { icon: Target, title: 'CRM Kanban', desc: 'Pipeline de vendas pessoal com estágios customizáveis e histórico.' },
+              { icon: Brain, title: '8 Ferramentas IA', desc: 'Qualificação, cold messages, objeções, propostas — tudo contextualizado.' },
+              { icon: BookOpen, title: 'Trilhas de Conteúdo', desc: 'Vídeos, textos e materiais com progresso dinâmico e certificados.' },
+              { icon: ClipboardList, title: 'Tarefas com Kanban', desc: 'Criação autônoma e tarefas extraídas de reuniões com prioridade.' },
+              { icon: Trophy, title: 'Gamificação & Badges', desc: 'Pontos por execução real, badges de conquista e streak contínuo.' },
+              { icon: Bot, title: 'Mentor Virtual 24/7', desc: 'Chat IA contextual com histórico, dados e orientação personalizada.' },
+              { icon: Video, title: 'Arquivos & Reuniões', desc: 'Histórico de reuniões, gravações, documentos e materiais do mentor.' },
+              { icon: Calendar, title: 'Agendamento', desc: 'Marcação direta de sessões com o mentor integrada ao calendário.' },
+              { icon: Award, title: 'Certificados', desc: 'Micro-certificações automáticas por trilha concluída, compartilháveis.' },
+              { icon: AlertTriangle, title: 'Centro SOS', desc: 'Canal direto de urgência para momentos críticos da operação.' },
+              { icon: Settings, title: 'Governo do Negócio', desc: 'Perfil estratégico: faturamento, gargalos, público e maturidade.' },
+            ].map(({ icon: Icon, title, desc }, i) => (
+              <div key={i} className="glass-card p-6 rounded-2xl border border-accent/10 hover:border-accent/30 transition-colors group">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 group-hover:bg-accent/20 flex items-center justify-center mb-4 transition-colors">
+                  <Icon className="w-5 h-5 text-accent" />
+                </div>
+                <h3 className="font-display text-base font-semibold text-foreground mb-1.5">{title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════
          MÓDULOS COMPLETOS
          ═══════════════════════════════════════ */}
       <Section>
