@@ -14,6 +14,8 @@ import { Building2, Plus, Search, MoreHorizontal, Pencil, Power, Users, Trash2 }
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
+
 const statusConfig = {
   active: { label: 'Ativo', variant: 'default' as const, color: 'bg-green-500' },
   trial: { label: 'Trial', variant: 'secondary' as const, color: 'bg-yellow-500' },
@@ -28,11 +30,13 @@ export default function TenantsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
 
-  const filteredTenants = tenants.filter(
-    (t) =>
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.slug.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredTenants = tenants
+    .filter((t) => t.id !== SANDBOX_TENANT_ID)
+    .filter(
+      (t) =>
+        t.name.toLowerCase().includes(search.toLowerCase()) ||
+        t.slug.toLowerCase().includes(search.toLowerCase())
+    );
 
   const handleCreate = () => {
     setEditingTenant(null);
