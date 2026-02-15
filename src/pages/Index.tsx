@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  ArrowRight, Shield, Zap, Target, BarChart3, CheckCircle2,
+  ArrowRight, Shield, Zap, Target, BarChart3, CheckCircle2, X,
   Brain, Trophy, Users, AlertTriangle, BookOpen, Calendar,
   Mail, Video, Settings, Eye, Bot, Crosshair, Send, Swords,
   FileSignature, LineChart, UserCircle, PenTool, Activity,
@@ -475,31 +475,57 @@ const Index = () => {
          7. COMPARAÇÃO IMPLÍCITA COM O MERCADO
          ═══════════════════════════════════════ */}
       <Section>
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
               Isso não é <span className="text-gradient-gold">ferramenta.</span>
             </h2>
-            <p className="text-muted-foreground">É infraestrutura de negócio.</p>
+            <p className="text-lg text-muted-foreground">É infraestrutura de negócio.</p>
           </div>
 
-          <div className="glass-card rounded-2xl overflow-hidden border border-border/30">
-            {comparisons.map(({ label, has }, i) => (
-              <div key={i} className={cn(
-                'flex items-center justify-between px-6 py-4 border-b border-border/20 last:border-0',
-                has ? 'bg-primary/5' : ''
-              )}>
-                <span className={cn('text-sm', has ? 'text-foreground font-medium' : 'text-muted-foreground')}>{label}</span>
-                {has ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-primary font-semibold">{PLATFORM.name}</span>
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground/60">Mercado</span>
-                )}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Mercado */}
+            <div className="rounded-2xl border border-destructive/15 bg-destructive/[0.02] p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <AlertTriangle className="w-4.5 h-4.5 text-destructive" />
+                </div>
+                <h3 className="font-display font-bold text-foreground text-lg">O que o mercado vende</h3>
               </div>
-            ))}
+              <div className="space-y-3">
+                {comparisons.filter(c => !c.has).map(({ label }, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-background/60 border border-border/30">
+                    <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                      <X className="w-3.5 h-3.5 text-destructive" />
+                    </div>
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground/60 text-center mt-5">Funcionalidades soltas. Sem governo.</p>
+            </div>
+
+            {/* MentorFlow */}
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.03] p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-[0.06] pointer-events-none blur-2xl bg-primary" />
+              <div className="flex items-center gap-3 mb-6 relative z-10">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <h3 className="font-display font-bold text-foreground text-lg">{PLATFORM.name}</h3>
+              </div>
+              <div className="space-y-3 relative z-10">
+                {comparisons.filter(c => c.has).map(({ label }, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/15 group hover:border-primary/30 hover:bg-primary/10 transition-all duration-300">
+                    <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                    <span className="text-sm text-foreground font-medium">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-primary/70 text-center mt-5 font-medium relative z-10">Infraestrutura integrada. Governo real.</p>
+            </div>
           </div>
         </div>
       </Section>
