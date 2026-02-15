@@ -67,13 +67,13 @@ export function MasterLayout() {
              </h1>
            </div>
  
-           <div className="flex items-center gap-3">
-             <div className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30">
-               <span className="text-xs font-medium text-amber-400">Master Admin</span>
-             </div>
-             <Avatar className="h-8 w-8">
-               <AvatarImage src={profile?.avatar_url || ''} />
-               <AvatarFallback className="bg-amber-500/20 text-amber-400 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="px-3 py-1 rounded-full bg-primary/20 border border-primary/30">
+                <span className="text-xs font-medium text-primary">Master Admin</span>
+              </div>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || ''} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
                  {profile?.full_name?.charAt(0) || 'M'}
                </AvatarFallback>
              </Avatar>
@@ -101,15 +101,15 @@ export function MasterLayout() {
              <BrandLogo variant="full" size="sm" />
            </Link>
  
-           <div className="flex items-center gap-3">
-             <div className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30">
-               <span className="text-xs font-medium text-amber-400">Master Admin</span>
-             </div>
- 
-             <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full bg-slate-800/50 border-slate-700/50">
-               <Avatar className="h-8 w-8">
-                 <AvatarImage src={profile?.avatar_url || ''} />
-                 <AvatarFallback className="bg-amber-500/20 text-amber-400 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="px-3 py-1 rounded-full bg-primary/20 border border-primary/30">
+                <span className="text-xs font-medium text-primary">Master Admin</span>
+              </div>
+
+              <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full bg-slate-800/50 border-slate-700/50">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
                    {profile?.full_name?.charAt(0) || 'M'}
                  </AvatarFallback>
                </Avatar>
