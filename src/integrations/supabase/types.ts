@@ -2904,9 +2904,95 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_branding: {
+        Row: {
+          ai_analysis: string | null
+          approved_at: string | null
+          approved_by: string | null
+          brand_attributes: Json | null
+          brand_concept: string | null
+          color_palette: Json | null
+          created_at: string
+          generated_by: string | null
+          id: string
+          status: string
+          suggested_logo_url: string | null
+          suggested_name: string | null
+          system_colors: Json | null
+          tenant_id: string
+          typography: Json | null
+          updated_at: string
+          uploaded_assets: string[] | null
+        }
+        Insert: {
+          ai_analysis?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_attributes?: Json | null
+          brand_concept?: string | null
+          color_palette?: Json | null
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          status?: string
+          suggested_logo_url?: string | null
+          suggested_name?: string | null
+          system_colors?: Json | null
+          tenant_id: string
+          typography?: Json | null
+          updated_at?: string
+          uploaded_assets?: string[] | null
+        }
+        Update: {
+          ai_analysis?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_attributes?: Json | null
+          brand_concept?: string | null
+          color_palette?: Json | null
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          status?: string
+          suggested_logo_url?: string | null
+          suggested_name?: string | null
+          system_colors?: Json | null
+          tenant_id?: string
+          typography?: Json | null
+          updated_at?: string
+          uploaded_assets?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_branding_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_branding_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_branding_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
+          accent_color: string | null
+          brand_attributes: Json | null
           created_at: string | null
+          favicon_url: string | null
+          font_family: string | null
           id: string
           logo_url: string | null
           name: string
@@ -2918,7 +3004,11 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          accent_color?: string | null
+          brand_attributes?: Json | null
           created_at?: string | null
+          favicon_url?: string | null
+          font_family?: string | null
           id?: string
           logo_url?: string | null
           name: string
@@ -2930,7 +3020,11 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          accent_color?: string | null
+          brand_attributes?: Json | null
           created_at?: string | null
+          favicon_url?: string | null
+          font_family?: string | null
           id?: string
           logo_url?: string | null
           name?: string
