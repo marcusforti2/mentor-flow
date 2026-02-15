@@ -13,7 +13,7 @@ import {
   Mail, Video, MonitorPlay, Award, Lock, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 
 /* ── Scroll reveal ── */
 function useReveal(threshold = 0.12) {
@@ -197,7 +197,7 @@ function GovernanceFlowCard({ step, index, total }: {
 export default function ShowcasePage() {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
-  const [selectedTool, setSelectedTool] = useState<number | null>(null);
+  
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -216,7 +216,7 @@ export default function ShowcasePage() {
     { icon: Bot, name: 'Mentor Virtual 24/7', color: 'hsl(270 91% 55%)', desc: 'Chat contextual com histórico completo.', expanded: { subtitle: 'Um mentor que nunca dorme', details: 'IA com acesso a todo o contexto do mentorado: perfil, trilhas, CRM, tarefas.', features: ['Dados reais do aluno', 'Histórico completo', 'Orientação prática', 'Conversas salvas', 'Markdown formatado', '24/7 sem fila'], impact: 'Nunca fica travado — complementando o mentor real.' } },
   ];
 
-  const tool = selectedTool !== null ? aiTools[selectedTool] : null;
+  
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden theme-light">
@@ -332,10 +332,10 @@ export default function ShowcasePage() {
                 details: (
                   <div className="flex flex-wrap gap-1.5 pt-2">
                     {aiTools.slice(0, 4).map((t, i) => (
-                      <button key={i} onClick={() => setSelectedTool(i)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium hover:bg-primary/20 transition-colors">
+                      <span key={i}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium">
                         <t.icon className="w-3 h-3" /> {t.name}
-                      </button>
+                      </span>
                     ))}
                     <span className="text-[10px] text-muted-foreground self-center">+4 mais</span>
                   </div>
@@ -443,72 +443,45 @@ export default function ShowcasePage() {
               <span className="text-gradient-gold">8 IAs</span> calibradas no negócio do mentorado
             </h2>
             <p className="text-muted-foreground max-w-3xl mx-auto">
-              Clique em qualquer ferramenta para ver exatamente o que ela faz, como funciona e qual o impacto no resultado.
+              Passe o mouse em qualquer ferramenta para ver exatamente o que ela faz e qual o impacto no resultado.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {aiTools.map((t, i) => (
+            {aiTools.map((t) => (
               <div
                 key={t.name}
-                className="relative group p-5 rounded-2xl border border-border/50 transition-all duration-300 bg-card/40 hover:bg-card/80 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(var(--primary)/0.08)] cursor-pointer"
-                onClick={() => setSelectedTool(i)}
+                className="relative group p-5 rounded-2xl border border-border/50 transition-all duration-300 bg-card/40 hover:bg-card/80 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(var(--primary)/0.08)]"
               >
                 <div className="flex items-start gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 group-hover:bg-primary/20 group-hover:shadow-[0_0_15px_hsl(var(--primary)/0.2)] transition-all duration-300">
                     <t.icon className="w-5 h-5 text-primary" />
                   </div>
                 </div>
                 <h4 className="font-display font-semibold text-foreground text-sm mb-1">{t.name}</h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">{t.desc}</p>
-                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[10px] text-primary font-medium flex items-center gap-1">
-                    Detalhes <ArrowRight className="w-3 h-3" />
-                  </span>
+
+                {/* Hover expand */}
+                <div className="max-h-0 overflow-hidden opacity-0 group-hover:max-h-72 group-hover:opacity-100 transition-all duration-500 ease-out">
+                  <div className="pt-3 mt-3 border-t border-border/30 space-y-2.5">
+                    <p className="text-[11px] text-primary font-semibold uppercase tracking-wider">Experiência</p>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{t.expanded.details}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {t.expanded.features.slice(0, 3).map((f, fi) => (
+                        <span key={fi} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9px] text-primary font-medium">
+                          <Star className="w-2.5 h-2.5" /> {f}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-primary font-semibold uppercase tracking-wider pt-1">Resultado</p>
+                    <p className="text-xs text-foreground/80 font-medium">{t.expanded.impact}</p>
+                  </div>
+                  {/* Bottom glow line */}
+                  <div className="absolute bottom-0 left-[10%] right-[10%] h-[1px] bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.4),transparent)]" />
                 </div>
               </div>
             ))}
           </div>
-
-          {/* Tool Detail Modal */}
-          <Dialog open={selectedTool !== null} onOpenChange={(open) => !open && setSelectedTool(null)}>
-            {tool && (
-              <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${tool.color}15` }}>
-                      <tool.icon className="w-5 h-5" style={{ color: tool.color }} />
-                    </div>
-                    <div>
-                      <DialogTitle className="font-display text-lg">{tool.name}</DialogTitle>
-                      <p className="text-xs text-muted-foreground">{tool.expanded.subtitle}</p>
-                    </div>
-                  </div>
-                </DialogHeader>
-                <div className="space-y-5 pt-2">
-                  <p className="text-sm text-muted-foreground leading-relaxed">{tool.expanded.details}</p>
-                  <div>
-                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-primary" /> O que faz
-                    </h4>
-                    <ul className="space-y-2">
-                      {tool.expanded.features.map((f, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/85">
-                          <Star className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/15">
-                    <p className="text-sm text-foreground">
-                      <strong className="text-primary">Impacto:</strong> {tool.expanded.impact}
-                    </p>
-                  </div>
-                </div>
-              </DialogContent>
-            )}
-          </Dialog>
 
           <div className="mt-8 p-5 rounded-2xl bg-primary/5 border border-primary/15 text-center">
             <p className="text-sm text-foreground">
