@@ -91,7 +91,7 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background theme-light">
       {/* Animated gradient background */}
       <div className="animated-gradient-bg" />
 
