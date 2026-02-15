@@ -10,11 +10,11 @@
  export default function MasterDashboard() {
    const { tenantsCount, usersCount, membershipsCount, recentActivity, isLoading } = useMasterDashboardStats();
  
-   const stats = [
-     { label: 'Tenants Ativos', value: tenantsCount, icon: Building2, color: 'text-blue-400' },
-     { label: 'Usuários Únicos', value: usersCount, icon: Users, color: 'text-green-400' },
-     { label: 'Memberships', value: membershipsCount, icon: Activity, color: 'text-purple-400' },
-   ];
+    const stats = [
+      { label: 'Tenants Ativos', value: tenantsCount, icon: Building2, color: 'text-blue-400' },
+      { label: 'Pessoas Cadastradas', value: usersCount, icon: Users, color: 'text-green-400' },
+      { label: 'Vínculos Ativos', value: membershipsCount, icon: Activity, color: 'text-purple-400' },
+    ];
  
    const getRoleIcon = (role: string) => {
      switch (role) {
