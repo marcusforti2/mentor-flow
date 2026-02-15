@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Brain, Target, MessageSquare, BarChart3, Trophy, BookOpen,
-  Zap, Shield, Users, ArrowRight, Sparkles, TrendingUp,
+  Zap, Shield, Users, ArrowRight, ArrowLeft, Sparkles, TrendingUp,
   Eye, Mic, FileText, Bot, Flame, ChevronDown, Star,
   Crosshair, Send, Swords, FileSignature, LineChart,
   UserCircle, PenTool, GraduationCap, Calendar, AlertTriangle,
@@ -315,7 +315,16 @@ export default function ShowcasePage() {
         )}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <BrandLogo variant="full" size="sm" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-muted/60 hover:bg-muted border border-border/50 transition-colors"
+              title="Voltar"
+            >
+              <ArrowLeft className="w-4 h-4 text-foreground" />
+            </button>
+            <BrandLogo variant="full" size="sm" />
+          </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#visao" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Visão Geral</a>
             <a href="#modulos" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Módulos</a>
