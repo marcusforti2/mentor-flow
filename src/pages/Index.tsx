@@ -5,7 +5,7 @@ import {
   Brain, Trophy, Users, AlertTriangle, BookOpen, Calendar,
   Mail, Video, Settings, Eye, Bot, Crosshair, Send, Swords,
   FileSignature, LineChart, UserCircle, PenTool, Activity,
-  ChevronDown, Flame, Lock, MessageSquare
+  ChevronDown, Flame, Lock, MessageSquare, Star
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -136,27 +136,36 @@ const Index = () => {
   const plans = [
     {
       name: 'Starter',
+      tagline: 'Estrutura imediata',
       price: 'R$ 30.000',
-      monthly: 'R$ 2.497/mês',
-      description: 'Para operações que precisam de estrutura imediata',
+      monthly: 'R$ 1.997',
+      description: 'Para operações que precisam de governo desde o dia 1.',
       features: ['Até 30 mentorados', 'Governance Engine completo', 'CRM com pipeline visual', '3 ferramentas IA', 'Trilhas ilimitadas', 'Dashboard + relatórios'],
+      hoverExtras: ['Onboarding guiado incluso', 'Migração de dados assistida', 'Suporte por e-mail em até 48h'],
       highlighted: false,
+      anchor: 'Menos que 1 mentorado paga a operação do ano inteiro.',
     },
     {
       name: 'Professional',
+      tagline: 'Escala governada',
       price: 'R$ 60.000',
-      monthly: 'R$ 4.997/mês',
-      description: 'O arsenal completo para escala governada',
+      monthly: 'R$ 3.997',
+      description: 'O arsenal completo para quem já fatura e precisa escalar sem perder controle.',
       features: ['Até 100 mentorados', '8 IAs com contexto unificado', 'Análise comportamental automática', 'Score IA + Gamificação', 'Alertas inteligentes + SOS', 'Branding personalizado', 'Agendamento + reuniões', 'Email marketing'],
+      hoverExtras: ['Implementação em até 15 dias', 'Treinamento da equipe incluso', 'Suporte prioritário 24h'],
       highlighted: true,
+      anchor: 'Com 2 fechamentos High Ticket, a implementação se paga.',
     },
     {
       name: 'Enterprise',
+      tagline: 'Operação de alto volume',
       price: 'R$ 120.000',
-      monthly: 'R$ 9.997/mês',
-      description: 'Infraestrutura para operações de alto volume',
+      monthly: 'R$ 8.997',
+      description: 'Infraestrutura white-label para operações com múltiplos mentores.',
       features: ['Mentorados ilimitados', 'Tudo do Professional', 'Multi-mentor (equipe)', 'API + integrações avançadas', 'White-label completo', 'Análise comportamental avançada', 'Onboarding dedicado', 'SLA prioritário'],
+      hoverExtras: ['Gerente de sucesso dedicado', 'Customizações sob demanda', 'Contrato com SLA garantido'],
       highlighted: false,
+      anchor: 'Para quem fatura 7+ dígitos e precisa de infraestrutura à altura.',
     },
   ];
 
@@ -534,57 +543,119 @@ const Index = () => {
          8. PRICING — Infraestrutura, não mensalidade
          ═══════════════════════════════════════ */}
       <Section id="pricing">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Investimento em <span className="text-gradient-gold">infraestrutura</span>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 mb-6">
+              <Flame className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium text-primary tracking-wider uppercase">Investimento</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+              Isso não é <span className="text-gradient-gold">mensalidade.</span>
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-2">
+              É implementação de infraestrutura. A mensalidade é manutenção do governo.
+            </p>
+            <p className="text-sm text-muted-foreground/70 max-w-xl mx-auto">
               Fração mínima do faturamento. Substituição de múltiplas ferramentas. Previsibilidade e escala.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-5 items-start">
             {plans.map((plan, i) => (
               <div
                 key={i}
                 className={cn(
-                  'glass-card rounded-2xl overflow-hidden border',
+                  'group relative rounded-2xl overflow-hidden border transition-all duration-500',
                   plan.highlighted
-                    ? 'border-primary/30 ring-2 ring-primary/20 glass-card-glow'
-                    : 'border-border/30'
+                    ? 'border-primary/40 bg-card/80 shadow-[0_0_40px_hsl(var(--primary)/0.1)] scale-[1.02] z-10'
+                    : 'border-border/40 bg-card/40 hover:border-primary/25 hover:bg-card/60'
                 )}
               >
+                {/* Top accent bar */}
                 {plan.highlighted && (
-                  <div className="h-1 bg-gradient-to-r from-primary to-accent" />
+                  <div className="h-1.5 bg-gradient-to-r from-primary via-accent to-primary" />
                 )}
-                <div className="p-8">
-                  <h3 className="font-display text-xl font-bold text-foreground mb-1">{plan.name}</h3>
-                  <p className="text-xs text-muted-foreground mb-5">{plan.description}</p>
-                  <div className="mb-1">
-                    <span className="text-3xl font-display font-bold text-foreground">{plan.price}</span>
+
+                {/* Badge */}
+                {plan.highlighted && (
+                  <div className="absolute -top-0 right-4 translate-y-0">
+                    <div className="px-3 py-1 rounded-b-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest">
+                      Mais escolhido
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">Implementação</span>
-                  <p className="text-sm text-muted-foreground mt-1 mb-6">{plan.monthly}</p>
-                  <ul className="space-y-3 mb-8">
+                )}
+
+                <div className="p-7">
+                  {/* Header */}
+                  <div className="mb-5">
+                    <h3 className="font-display text-xl font-bold text-foreground">{plan.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{plan.tagline}</p>
+                  </div>
+
+                  {/* Price block */}
+                  <div className="mb-1">
+                    <span className="text-4xl font-display font-bold text-foreground tracking-tight">{plan.price}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-bold text-primary uppercase tracking-widest">Implementação</span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 mb-5 pb-5 border-b border-border/30">
+                    <span className="text-lg font-display font-bold text-foreground">{plan.monthly}</span>
+                    <span className="text-xs text-muted-foreground">/mês</span>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-5">{plan.description}</p>
+
+                  {/* Features */}
+                  <ul className="space-y-2.5 mb-6">
                     {plan.features.map((f, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm text-foreground">
+                      <li key={j} className="flex items-start gap-2.5 text-sm text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                         {f}
                       </li>
                     ))}
                   </ul>
+
+                  {/* Hover expand — extras */}
+                  <div className="max-h-0 overflow-hidden opacity-0 group-hover:max-h-48 group-hover:opacity-100 transition-all duration-500 ease-out">
+                    <div className="pt-4 mb-4 border-t border-border/30 space-y-2.5">
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-2">Incluso neste plano</p>
+                      {plan.hoverExtras.map((extra, j) => (
+                        <div key={j} className="flex items-center gap-2 text-sm text-foreground/80">
+                          <Star className="w-3.5 h-3.5 text-accent shrink-0" />
+                          {extra}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CTA */}
                   <Link to="/showcase">
                     <Button
-                      className={cn('w-full', plan.highlighted ? 'btn-premium' : '')}
+                      className={cn('w-full h-11', plan.highlighted ? 'btn-premium' : '')}
                       variant={plan.highlighted ? 'default' : 'outline'}
                     >
                       <span>{plan.highlighted ? 'Solicitar Demonstração' : 'Falar com Especialista'}</span>
                     </Button>
                   </Link>
+
+                  {/* Anchor phrase */}
+                  <p className="text-[11px] text-muted-foreground/70 text-center mt-4 italic leading-relaxed">
+                    "{plan.anchor}"
+                  </p>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Bottom social proof */}
+          <div className="mt-10 text-center">
+            <p className="text-xs text-muted-foreground/60">
+              Implementação inclui configuração completa, migração de dados e treinamento da equipe.
+              <br />
+              Sem fidelidade. Cancele quando quiser.
+            </p>
           </div>
         </div>
       </Section>
