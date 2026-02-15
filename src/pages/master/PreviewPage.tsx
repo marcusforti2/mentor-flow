@@ -17,7 +17,6 @@ interface SandboxMember {
   user_id: string;
   user_name: string | null;
   user_email: string | null;
-  // Mentorado-specific enrichment
   leads_count?: number;
   activity_level?: 'alta' | 'media' | 'baixa' | 'inativa';
   points?: number;
@@ -46,7 +45,6 @@ export default function PreviewPage() {
   const fetchSandboxData = async () => {
     setLoading(true);
     try {
-      // Fetch sandbox memberships
       const { data: membData, error } = await supabase
         .from('memberships')
         .select('id, role, status, tenant_id, user_id, tenants(name)')
@@ -67,7 +65,6 @@ export default function PreviewPage() {
         return;
       }
 
-      // Fetch profiles for all users
       const userIds = [...new Set(membData.map(m => m.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
@@ -75,7 +72,6 @@ export default function PreviewPage() {
         .in('user_id', userIds);
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
-      // Build member list
       const members: SandboxMember[] = membData.map(m => {
         const profile = profileMap.get(m.user_id);
         return {
@@ -91,27 +87,15 @@ export default function PreviewPage() {
       const mentorMember = members.find(m => m.role === 'mentor') || null;
       const menteeMemberships = members.filter(m => m.role === 'mentee');
       
-      // Enrich mentees with CRM data using membership_id
       if (menteeMemberships.length > 0) {
         const menteeIds = menteeMemberships.map(m => m.id);
         
-        // Get leads count per membership
         const [prospectionsRes, activitiesRes, pointsRes] = await Promise.all([
-          supabase
-            .from('crm_prospections')
-            .select('membership_id, temperature')
-            .in('membership_id', menteeIds),
-          supabase
-            .from('activity_logs')
-            .select('membership_id')
-            .in('membership_id', menteeIds),
-          supabase
-            .from('activity_logs')
-            .select('membership_id, points_earned')
-            .in('membership_id', menteeIds),
+          supabase.from('crm_prospections').select('membership_id, temperature').in('membership_id', menteeIds),
+          supabase.from('activity_logs').select('membership_id').in('membership_id', menteeIds),
+          supabase.from('activity_logs').select('membership_id, points_earned').in('membership_id', menteeIds),
         ]);
         
-        // Count leads per membership
         const leadsPerMembership = new Map<string, number>();
         const tempPerMembership = new Map<string, string>();
         prospectionsRes.data?.forEach(p => {
@@ -121,7 +105,6 @@ export default function PreviewPage() {
           }
         });
         
-        // Count activities per membership
         const actPerMembership = new Map<string, number>();
         activitiesRes.data?.forEach(a => {
           if (a.membership_id) {
@@ -129,7 +112,6 @@ export default function PreviewPage() {
           }
         });
         
-        // Sum points per membership
         const ptsPerMembership = new Map<string, number>();
         pointsRes.data?.forEach(p => {
           if (p.membership_id && p.points_earned) {
@@ -137,7 +119,6 @@ export default function PreviewPage() {
           }
         });
         
-        // Enrich mentee data
         menteeMemberships.forEach(m => {
           m.leads_count = leadsPerMembership.get(m.id) || 0;
           m.temperature = tempPerMembership.get(m.id);
@@ -150,7 +131,6 @@ export default function PreviewPage() {
       setMentor(mentorMember);
       setMentees(menteeMemberships);
 
-      // Fetch stats
       const [trailsRes, leadsRes, meetingsRes] = await Promise.all([
         supabase.from('trails').select('id', { count: 'exact', head: true }).eq('tenant_id', SANDBOX_TENANT_ID),
         supabase.from('crm_prospections').select('id', { count: 'exact', head: true }).eq('tenant_id', SANDBOX_TENANT_ID),
@@ -174,7 +154,6 @@ export default function PreviewPage() {
     fetchSandboxData();
   }, []);
 
-  // Auto-seed if sandbox is empty
   useEffect(() => {
     if (!loading && !mentor && mentees.length === 0 && !seeding && !autoSeeded.current) {
       autoSeeded.current = true;
@@ -186,20 +165,9 @@ export default function PreviewPage() {
     setSeeding(true);
     try {
       toast.info('Preparando ambiente de preview... Isso pode levar até 30 segundos.');
-      
       const { data, error } = await supabase.functions.invoke('seed-sandbox', { body: {} });
-
-      if (error) {
-        console.error('[PreviewPage] Seed error:', error);
-        toast.error('Erro ao preparar o preview: ' + error.message);
-        return;
-      }
-
-      if (data?.error) {
-        toast.error('Erro: ' + data.error);
-        return;
-      }
-
+      if (error) { console.error('[PreviewPage] Seed error:', error); toast.error('Erro ao preparar o preview: ' + error.message); return; }
+      if (data?.error) { toast.error('Erro: ' + data.error); return; }
       toast.success(`Preview preparado! ${data.mentees_created || 0} mentorados criados.`);
       await fetchSandboxData();
     } catch (err: any) {
@@ -212,22 +180,15 @@ export default function PreviewPage() {
 
   const handleEnterAs = async (membershipId: string) => {
     setEntering(membershipId);
-    try {
-      await switchMembership(membershipId);
-    } catch (e) {
-      console.error('[PreviewPage] Enter error:', e);
-      toast.error('Erro ao entrar no preview');
-    } finally {
-      setEntering(null);
-    }
+    try { await switchMembership(membershipId); } catch (e) { console.error('[PreviewPage] Enter error:', e); toast.error('Erro ao entrar no preview'); } finally { setEntering(null); }
   };
 
   const getActivityColor = (level?: string) => {
     switch (level) {
-      case 'alta': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
-      case 'media': return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
-      case 'baixa': return 'text-amber-400 bg-amber-400/10 border-amber-400/30';
-      default: return 'text-slate-500 bg-slate-500/10 border-slate-500/30';
+      case 'alta': return 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30';
+      case 'media': return 'text-blue-600 bg-blue-500/10 border-blue-500/30';
+      case 'baixa': return 'text-amber-600 bg-amber-500/10 border-amber-500/30';
+      default: return 'text-muted-foreground bg-muted/50 border-border';
     }
   };
 
@@ -242,35 +203,31 @@ export default function PreviewPage() {
 
   const getTemperatureIcon = (temp?: string) => {
     switch (temp) {
-      case 'hot': return <Flame className="h-3 w-3 text-red-400" />;
-      case 'warm': return <Sun className="h-3 w-3 text-amber-400" />;
-      case 'cold': return <Snowflake className="h-3 w-3 text-blue-400" />;
+      case 'hot': return <Flame className="h-3 w-3 text-red-500" />;
+      case 'warm': return <Sun className="h-3 w-3 text-amber-500" />;
+      case 'cold': return <Snowflake className="h-3 w-3 text-blue-500" />;
       default: return null;
     }
   };
 
   const hasSandboxData = mentor || mentees.length > 0;
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-sm text-slate-400">Carregando ambiente de preview...</p>
+        <p className="text-sm text-muted-foreground">Carregando ambiente de preview...</p>
       </div>
     );
   }
 
-  // Seeding state
   if (seeding) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <div className="relative">
-          <Rocket className="h-12 w-12 text-primary animate-bounce" />
-        </div>
+        <Rocket className="h-12 w-12 text-primary animate-bounce" />
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-100">Preparando demonstração...</h2>
-          <p className="text-sm text-slate-400 mt-2 max-w-md">
+          <h2 className="text-xl font-bold text-foreground">Preparando demonstração...</h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md">
             Criando mentor, 10 mentorados, trilhas, leads de CRM, reuniões e dados de atividade.
             Isso leva cerca de 30 segundos.
           </p>
@@ -280,14 +237,13 @@ export default function PreviewPage() {
     );
   }
 
-  // Empty state (shouldn't normally show since auto-seed triggers)
   if (!hasSandboxData) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-6">
         <Rocket className="h-16 w-16 text-primary/50" />
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-100">Ambiente de Preview</h2>
-          <p className="text-sm text-slate-400 mt-2">Nenhum dado encontrado no sandbox.</p>
+          <h2 className="text-xl font-bold text-foreground">Ambiente de Preview</h2>
+          <p className="text-sm text-muted-foreground mt-2">Nenhum dado encontrado no sandbox.</p>
         </div>
         <Button onClick={handleSeedSandbox} size="lg" className="px-8">
           <Rocket className="mr-2 h-5 w-5" />
@@ -302,10 +258,10 @@ export default function PreviewPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-display font-bold text-slate-100">
+          <h1 className="text-3xl font-display font-bold text-foreground">
             Preview do Sistema
           </h1>
-          <p className="text-slate-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Escolha um perfil para explorar a plataforma com dados reais
           </p>
         </div>
@@ -314,7 +270,6 @@ export default function PreviewPage() {
           size="sm"
           onClick={handleSeedSandbox}
           disabled={seeding}
-          className="border-slate-700 text-slate-300 hover:bg-slate-800"
         >
           {seeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
           Recriar dados
@@ -329,14 +284,14 @@ export default function PreviewPage() {
           { label: 'Leads CRM', value: stats.leads, icon: TrendingUp },
           { label: 'Reuniões', value: stats.meetings, icon: Briefcase },
         ].map(({ label, value, icon: Icon }) => (
-          <Card key={label} className="bg-slate-800/30 border-slate-700/30">
+          <Card key={label}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Icon className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-100">{value}</p>
-                <p className="text-xs text-slate-500">{label}</p>
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
               </div>
             </CardContent>
           </Card>
@@ -346,7 +301,7 @@ export default function PreviewPage() {
       {/* Mentor Card */}
       {mentor && (
         <Card 
-          className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 border-primary/20 hover:border-primary/40 transition-all cursor-pointer group"
+          className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group"
           onClick={() => handleEnterAs(mentor.id)}
         >
           <CardContent className="p-6">
@@ -357,14 +312,14 @@ export default function PreviewPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-slate-100">
+                    <h2 className="text-xl font-bold text-foreground">
                       {mentor.user_name || 'Mentor Demo'}
                     </h2>
                     <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">
                       MENTOR
                     </Badge>
                   </div>
-                  <p className="text-sm text-slate-400 mt-0.5">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     Dashboard completo • {stats.mentorados} mentorados • CRM • Trilhas • Calendário
                   </p>
                 </div>
@@ -388,15 +343,15 @@ export default function PreviewPage() {
       <div>
         <div className="flex items-center gap-2 mb-4">
           <User className="h-5 w-5 text-accent" />
-          <h2 className="text-lg font-semibold text-slate-100">Mentorados</h2>
-          <span className="text-sm text-slate-500">— clique para entrar como qualquer um</span>
+          <h2 className="text-lg font-semibold text-foreground">Mentorados</h2>
+          <span className="text-sm text-muted-foreground">— clique para entrar como qualquer um</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {mentees.map((m) => (
             <Card 
               key={m.id}
-              className="bg-slate-800/40 border-slate-700/30 hover:border-accent/30 transition-all cursor-pointer group"
+              className="hover:border-accent/30 transition-all cursor-pointer group"
               onClick={() => handleEnterAs(m.id)}
             >
               <CardContent className="p-4">
@@ -406,7 +361,7 @@ export default function PreviewPage() {
                       {(m.user_name || '?')[0]}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-200">
+                      <p className="text-sm font-medium text-foreground">
                         {m.user_name || m.user_email || 'Mentorado'}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -414,11 +369,11 @@ export default function PreviewPage() {
                           {getActivityLabel(m.activity_level)}
                         </Badge>
                         {m.leads_count !== undefined && m.leads_count > 0 && (
-                          <span className="text-[10px] text-slate-500">{m.leads_count} leads</span>
+                          <span className="text-[10px] text-muted-foreground">{m.leads_count} leads</span>
                         )}
                         {getTemperatureIcon(m.temperature)}
                         {m.points !== undefined && m.points > 0 && (
-                          <span className="text-[10px] text-amber-400/70">★ {m.points}pts</span>
+                          <span className="text-[10px] text-amber-500">★ {m.points}pts</span>
                         )}
                       </div>
                     </div>
@@ -427,7 +382,7 @@ export default function PreviewPage() {
                     {entering === m.id ? (
                       <Loader2 className="h-4 w-4 animate-spin text-accent" />
                     ) : (
-                      <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-accent transition-colors" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-accent transition-colors" />
                     )}
                   </div>
                 </div>
@@ -438,7 +393,7 @@ export default function PreviewPage() {
       </div>
 
       {/* Footer note */}
-      <div className="flex items-center gap-2 text-xs text-slate-600 pt-4 border-t border-slate-800">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t border-border">
         <CheckCircle className="h-3 w-3" />
         <span>Preview usa impersonation auditada. Use o banner âmbar no topo para retornar ao Master.</span>
       </div>
