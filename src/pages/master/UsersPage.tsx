@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMemberships, MembershipWithDetails } from '@/hooks/useMemberships';
+import { useQueryClient } from '@tanstack/react-query';
 import { useInvites, InviteWithDetails } from '@/hooks/useInvites';
 import { useTenants } from '@/hooks/useTenants';
 import { useTenant } from '@/contexts/TenantContext';
@@ -191,9 +192,12 @@ export default function UsersPage() {
     resendInvite.mutate(invite.id);
   };
 
+  const queryClient = useQueryClient();
+  
   const handleRefreshData = () => {
-    // This triggers a refetch by invalidating queries
-    toast.success('Atualizando dados...');
+    queryClient.invalidateQueries({ queryKey: ['memberships'] });
+    queryClient.invalidateQueries({ queryKey: ['invites'] });
+    toast.success('Dados atualizados!');
   };
 
   // Stats - include invites count
