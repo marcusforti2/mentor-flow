@@ -566,7 +566,7 @@ export default function ShowcasePage() {
               O {PLATFORM.name} não analisa métricas genéricas. Ele lê <strong className="text-foreground">comportamento humano real</strong> — dos dois lados da mentoria.
             </p>
             <p className="text-sm text-muted-foreground/70 max-w-2xl mx-auto">
-              Dados extraídos de redes sociais, cruzados com contexto da mentoria. Sem teorias. Sem achismo.
+              Engenharia psicológica social, diagnóstico personalizado e análise de redes sociais. Sem teorias. Sem achismo.
             </p>
           </div>
 
