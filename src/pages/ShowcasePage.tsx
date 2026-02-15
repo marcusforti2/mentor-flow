@@ -49,27 +49,146 @@ function Section({ children, className, id }: { children: React.ReactNode; class
   );
 }
 
-/* ── Flow Step ── */
-function FlowStep({ number, title, description, icon: Icon, children, isLast = false }: {
-  number: number; title: string; description: string; icon: React.ElementType; children?: React.ReactNode; isLast?: boolean;
+/* ── Animated Counter ── */
+function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting && !started) { setStarted(true); obs.unobserve(el); } },
+      { threshold: 0.5 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [started]);
+
+  useEffect(() => {
+    if (!started) return;
+    const duration = 1500;
+    const steps = 40;
+    const increment = target / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) { setCount(target); clearInterval(timer); }
+      else setCount(Math.floor(current));
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [started, target]);
+
+  return <span ref={ref}>{count}{suffix}</span>;
+}
+
+/* ── Flow Card (modern) ── */
+function GovernanceFlowCard({ step, index, total }: {
+  step: { number: number; title: string; description: string; icon: React.ElementType; accent: string; details: React.ReactNode };
+  index: number; total: number;
 }) {
+  const { ref, visible } = useReveal(0.15);
+  const [isHovered, setIsHovered] = useState(false);
+  const Icon = step.icon;
+
   return (
-    <div className="relative">
-      {!isLast && (
-        <div className="absolute left-6 top-16 bottom-0 w-px bg-gradient-to-b from-primary/40 to-transparent" />
+    <div
+      ref={ref}
+      className="relative"
+      style={{ transitionDelay: `${index * 120}ms` }}
+    >
+      {/* Connector line */}
+      {index < total - 1 && (
+        <div className="hidden lg:block absolute top-1/2 -right-4 w-8 z-0">
+          <div className={cn(
+            'h-px transition-all duration-700',
+            visible ? 'w-full opacity-100' : 'w-0 opacity-0'
+          )} style={{
+            background: `linear-gradient(90deg, hsl(var(--primary) / 0.6), hsl(var(--accent) / 0.3))`,
+            transitionDelay: `${(index + 1) * 200}ms`,
+          }} />
+          <div className={cn(
+            'absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full transition-all duration-500',
+            visible ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+          )} style={{
+            background: `hsl(var(--primary))`,
+            boxShadow: `0 0 10px hsl(var(--primary) / 0.5)`,
+            transitionDelay: `${(index + 1) * 250}ms`,
+          }} />
+        </div>
       )}
-      <div className="flex items-start gap-5">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 relative z-10">
-          <Icon className="w-5 h-5 text-primary" />
+
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={cn(
+          'relative h-full rounded-2xl p-6 transition-all duration-500 cursor-default overflow-hidden group',
+          'border backdrop-blur-xl',
+          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8',
+          isHovered
+            ? 'border-primary/40 bg-card/90 shadow-[0_0_40px_hsl(var(--primary)/0.12)] scale-[1.02]'
+            : 'border-border/40 bg-card/50'
+        )}
+      >
+        {/* Glow orb behind icon */}
+        <div className={cn(
+          'absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl transition-opacity duration-500 pointer-events-none',
+          isHovered ? 'opacity-30' : 'opacity-0'
+        )} style={{ background: step.accent }} />
+
+        {/* Step badge */}
+        <div className={cn(
+          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 transition-colors duration-300',
+          isHovered ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-muted-foreground'
+        )}>
+          <span className={cn(
+            'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300',
+            isHovered
+              ? 'bg-primary text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.5)]'
+              : 'bg-muted-foreground/20 text-muted-foreground'
+          )}>
+            {step.number}
+          </span>
+          Passo {step.number}
         </div>
-        <div className="flex-1 pb-12">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-xs font-bold text-primary/60 tracking-widest uppercase">Passo {number}</span>
-          </div>
-          <h3 className="font-display text-xl font-bold text-foreground mb-2">{title}</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{description}</p>
-          {children}
+
+        {/* Icon */}
+        <div className={cn(
+          'w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-500',
+          isHovered
+            ? 'bg-primary/15 shadow-[0_0_20px_hsl(var(--primary)/0.3)]'
+            : 'bg-muted/50'
+        )}>
+          <Icon className={cn(
+            'w-6 h-6 transition-all duration-300',
+            isHovered ? 'text-primary scale-110' : 'text-muted-foreground'
+          )} />
         </div>
+
+        {/* Title */}
+        <h3 className="font-display text-base font-bold text-foreground mb-2 leading-tight">
+          {step.title}
+        </h3>
+        <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+          {step.description}
+        </p>
+
+        {/* Details - expandable on hover */}
+        <div className={cn(
+          'transition-all duration-500 overflow-hidden',
+          isHovered ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+        )}>
+          {step.details}
+        </div>
+
+        {/* Bottom shine line */}
+        <div className={cn(
+          'absolute bottom-0 left-0 right-0 h-px transition-all duration-500',
+          isHovered ? 'opacity-100' : 'opacity-0'
+        )} style={{
+          background: `linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent)`
+        }} />
       </div>
     </div>
   );
@@ -172,145 +291,140 @@ export default function ShowcasePage() {
       </section>
 
       {/* ═══════════════════════════════════════
-         FLUXO GOVERNADO — Step by Step
+         FLUXO GOVERNADO — Modern Grid
          ═══════════════════════════════════════ */}
       <Section id="fluxo">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 mb-6">
+              <Activity className="w-4 h-4 text-primary animate-pulse" />
+              <span className="text-xs font-medium text-primary tracking-wider uppercase">Governance Engine</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
               O <span className="text-gradient-gold">Fluxo Governado</span> em ação
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Cada etapa mostra como o sistema governa a execução — do onboarding ao resultado.
+            <p className="text-muted-foreground max-w-2xl mx-auto text-base">
+              Do onboarding ao resultado previsível — cada passo é governado pelo sistema.
             </p>
           </div>
 
-          <FlowStep
-            number={1}
-            title="Mentorado entra → Governo começa"
-            description="O aluno faz onboarding, preenche o Governo do Negócio (faturamento, gargalos, público, pitch) e é atribuído automaticamente à jornada CS. O sistema já sabe onde ele está."
-            icon={UserCheck}
-          >
-            <div className="grid grid-cols-3 gap-3">
-              {['Perfil completo', 'Jornada atribuída', 'Score inicial'].map((item, i) => (
-                <div key={i} className="p-3 rounded-lg bg-primary/5 border border-primary/15 text-center">
-                  <span className="text-xs text-foreground font-medium">{item}</span>
-                </div>
-              ))}
-            </div>
-          </FlowStep>
-
-          <FlowStep
-            number={2}
-            title="Arsenal IA ativado"
-            description="Com o contexto de negócio preenchido, as 8 IAs ficam calibradas. O mentorado prospecta com o CRM pessoal, qualifica leads, gera cold messages e simula objeções — tudo dentro do sistema."
-            icon={Brain}
-          >
-            <div className="flex flex-wrap gap-2">
-              {aiTools.map((t, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedTool(i)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/60 border border-border/30 text-xs text-foreground font-medium hover:border-primary/30 hover:bg-primary/5 transition-colors"
-                >
-                  <t.icon className="w-3 h-3 text-primary" />
-                  {t.name}
-                </button>
-              ))}
-            </div>
-          </FlowStep>
-
-          <FlowStep
-            number={3}
-            title="Execução rastreada em tempo real"
-            description="Cada lead cadastrado, tarefa concluída, aula assistida e login registrado alimenta o Score IA do mentorado. O Governance Engine mede consistência, não apenas volume."
-            icon={Activity}
-          >
-            <div className="glass-card p-5 rounded-xl border border-border/30">
-              <p className="text-xs text-muted-foreground mb-3 font-semibold uppercase tracking-wider">Fórmula do Score IA</p>
-              <div className="grid grid-cols-5 gap-2">
-                {[
-                  { label: 'Leads', weight: '30%' },
-                  { label: 'Tarefas', weight: '20%' },
-                  { label: 'Trilhas', weight: '20%' },
-                  { label: 'Atividades', weight: '20%' },
-                  { label: 'Streak', weight: '10%' },
-                ].map((m, i) => (
-                  <div key={i} className="text-center p-2 rounded-lg bg-primary/5">
-                    <div className="text-lg font-display font-bold text-primary">{m.weight}</div>
-                    <div className="text-[10px] text-muted-foreground">{m.label}</div>
+          {/* Flow Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            {[
+              {
+                number: 1, title: 'Mentorado entra → Governo começa', icon: UserCheck,
+                accent: 'hsl(var(--primary))',
+                description: 'Onboarding + Governo do Negócio + atribuição automática à Jornada CS.',
+                details: (
+                  <div className="grid grid-cols-3 gap-2 pt-2">
+                    {['Perfil', 'Jornada', 'Score'].map((item, i) => (
+                      <div key={i} className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                        <span className="text-[10px] text-primary font-semibold">{item}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          </FlowStep>
-
-          <FlowStep
-            number={4}
-            title="Alertas de desvio disparam"
-            description="Quando um mentorado para de executar (3+ dias sem atividade), atrasa tarefas ou abre um SOS, o sistema alerta o mentor automaticamente. Sem achismo."
-            icon={Bell}
-          >
-            <div className="space-y-2">
-              {[
-                { type: 'Inatividade', desc: 'João não registra atividade há 4 dias', severity: 'high' },
-                { type: 'Tarefa atrasada', desc: 'Ana tem 2 tarefas vencidas', severity: 'medium' },
-                { type: 'SOS', desc: 'Pedro abriu chamado de urgência', severity: 'critical' },
-              ].map((alert, i) => (
-                <div key={i} className={cn(
-                  'flex items-center gap-3 p-3 rounded-lg border text-sm',
-                  alert.severity === 'critical' ? 'bg-destructive/5 border-destructive/20' :
-                  alert.severity === 'high' ? 'bg-accent/5 border-accent/20' :
-                  'bg-muted/50 border-border/30'
-                )}>
-                  <AlertTriangle className={cn('w-4 h-4 shrink-0',
-                    alert.severity === 'critical' ? 'text-destructive' :
-                    alert.severity === 'high' ? 'text-accent' : 'text-muted-foreground'
-                  )} />
-                  <div>
-                    <span className="font-medium text-foreground">{alert.type}:</span>{' '}
-                    <span className="text-muted-foreground">{alert.desc}</span>
+                ),
+              },
+              {
+                number: 2, title: 'Arsenal IA ativado', icon: Brain,
+                accent: 'hsl(var(--accent))',
+                description: '8 IAs calibradas no negócio. CRM, qualificação, cold messages, objeções.',
+                details: (
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {aiTools.slice(0, 4).map((t, i) => (
+                      <button key={i} onClick={() => setSelectedTool(i)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium hover:bg-primary/20 transition-colors">
+                        <t.icon className="w-3 h-3" /> {t.name}
+                      </button>
+                    ))}
+                    <span className="text-[10px] text-muted-foreground self-center">+4 mais</span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </FlowStep>
+                ),
+              },
+              {
+                number: 3, title: 'Execução rastreada', icon: Activity,
+                accent: 'hsl(var(--primary))',
+                description: 'Cada ação alimenta o Score IA ponderado. Consistência > volume.',
+                details: (
+                  <div className="grid grid-cols-5 gap-1 pt-2">
+                    {[
+                      { l: 'Leads', w: 30 }, { l: 'Tarefas', w: 20 }, { l: 'Trilhas', w: 20 },
+                      { l: 'Ativid.', w: 20 }, { l: 'Streak', w: 10 },
+                    ].map((m, i) => (
+                      <div key={i} className="text-center">
+                        <div className="text-sm font-display font-bold text-primary"><AnimatedCounter target={m.w} suffix="%" /></div>
+                        <div className="text-[9px] text-muted-foreground">{m.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                number: 4, title: 'Alertas de desvio', icon: Bell,
+                accent: 'hsl(var(--destructive))',
+                description: 'Inatividade, tarefas atrasadas e SOS disparam alertas automáticos.',
+                details: (
+                  <div className="space-y-1.5 pt-2">
+                    {[
+                      { t: 'Inatividade', c: 'destructive' },
+                      { t: 'Tarefa atrasada', c: 'accent' },
+                      { t: 'SOS urgência', c: 'destructive' },
+                    ].map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-destructive/5 border border-destructive/15">
+                        <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                        <span className="text-[10px] text-foreground font-medium">{a.t}</span>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                number: 5, title: 'Mentor intervém com dados', icon: Shield,
+                accent: 'hsl(var(--primary))',
+                description: 'Score, ranking, jornada CS, análise comportamental — decisão cirúrgica.',
+                details: (
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    {[
+                      { l: 'Score IA', v: 78 }, { l: 'Leads', v: 42 },
+                      { l: 'Streak', v: 12 }, { l: 'Dia', v: 47 },
+                    ].map((kpi, i) => (
+                      <div key={i} className="text-center p-2 rounded-lg bg-primary/5 border border-primary/15">
+                        <div className="text-base font-display font-bold text-primary"><AnimatedCounter target={kpi.v} /></div>
+                        <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{kpi.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                number: 6, title: 'Resultado governado', icon: TrendingUp,
+                accent: 'hsl(var(--accent))',
+                description: 'Resultados previsíveis. Quem executa sobe. Quem trava é resgatado.',
+                details: (
+                  <div className="pt-2">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 text-center">
+                      <p className="text-xs font-display font-bold text-foreground">
+                        "Governado para{' '}
+                        <span className="text-gradient-gold">vencer.</span>"
+                      </p>
+                    </div>
+                  </div>
+                ),
+              },
+            ].map((step, i, arr) => (
+              <GovernanceFlowCard key={i} step={step} index={i} total={arr.length} />
+            ))}
+          </div>
 
-          <FlowStep
-            number={5}
-            title="Mentor intervém com dados"
-            description="O dashboard mostra Score, ranking, jornada CS, análise comportamental e timeline. O mentor sabe exatamente quem precisa de atenção, por quê, e como intervir."
-            icon={Shield}
-          >
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: 'Score IA', value: '78/100' },
-                { label: 'Leads ativos', value: '42' },
-                { label: 'Streak', value: '12 dias' },
-                { label: 'Jornada', value: 'Dia 47/90' },
-              ].map((kpi, i) => (
-                <div key={i} className="text-center p-3 rounded-lg bg-card/60 border border-border/30">
-                  <div className="text-xl font-display font-bold text-primary">{kpi.value}</div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{kpi.label}</div>
-                </div>
-              ))}
-            </div>
-          </FlowStep>
-
-          <FlowStep
-            number={6}
-            title="Resultado é governado — não torcido"
-            description="Com governo contínuo, os resultados se tornam previsíveis. Mentorados que executam sobem no ranking. Quem trava é resgatado antes de desistir. A operação escala sem caos."
-            icon={TrendingUp}
-            isLast
-          >
-            <div className="glass-card-glow p-6 rounded-xl text-center">
+          {/* Bottom anchor quote */}
+          <div className="mt-12 text-center">
+            <div className="inline-block glass-card-glow px-8 py-5 rounded-2xl">
               <p className="text-lg font-display font-bold text-foreground">
-                "No {PLATFORM.name}, o mentorado é{' '}
-                <span className="text-gradient-gold">governado para vencer.</span>"
+                No {PLATFORM.name}, o mentorado é{' '}
+                <span className="text-gradient-gold">governado para vencer.</span>
               </p>
             </div>
-          </FlowStep>
+          </div>
         </div>
       </Section>
 
