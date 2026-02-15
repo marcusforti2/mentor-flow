@@ -26,14 +26,14 @@
      }
    };
  
-   const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'mentor': return 'bg-blue-500/20 text-blue-400';
-      case 'mentee': return 'bg-green-500/20 text-green-400';
-      case 'master_admin': return 'bg-primary/20 text-primary';
-      default: return 'bg-slate-500/20 text-slate-400';
-    }
-   };
+    const getRoleColor = (role: string) => {
+     switch (role) {
+       case 'mentor': return 'bg-blue-500/15 text-blue-600';
+       case 'mentee': return 'bg-emerald-500/15 text-emerald-600';
+       case 'master_admin': return 'bg-primary/15 text-primary';
+       default: return 'bg-muted text-muted-foreground';
+     }
+    };
  
    const getRoleLabel = (role: string) => {
      switch (role) {

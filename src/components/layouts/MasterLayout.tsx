@@ -39,8 +39,8 @@ export function MasterLayout() {
   const bannerOffset = isImpersonating ? 'pt-10' : '';
 
   return (
-    <div className={cn("min-h-screen", bannerOffset)}>
-      {/* VHF master admin background */}
+    <div className={cn("min-h-screen theme-master-light", bannerOffset)}>
+      {/* VHF master admin light background */}
       <div className="animated-gradient-bg" />
        
        {/* Floating Dock - only visible on dashboard */}
