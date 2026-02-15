@@ -19,10 +19,14 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { GuidedTour } from '@/components/onboarding/GuidedTour';
+import { useGuidedTour, mentoradoDashboardSteps } from '@/hooks/useGuidedTour';
+import { HelpCircle } from 'lucide-react';
 
 export default function MemberDashboard() {
   const { profile, user } = useAuth();
   const { activeMembership, isImpersonating } = useTenant();
+  const { isOpen: isTourOpen, startTour, completeTour, skipTour } = useGuidedTour(user?.id);
 
   // Fetch impersonated user's profile
   const { data: impersonatedProfile } = useQuery({
@@ -117,12 +121,17 @@ export default function MemberDashboard() {
             {displayName?.split(' ')[0] || 'Mentorado'} <span className="text-gradient-gold">🚀</span>
           </h1>
         </div>
-        <Link to="/mentorado/trilhas">
-          <Button className="btn-premium px-6 py-5 text-base">
-            <Play className="mr-2 h-5 w-5" />
-            <span>{hasTrailProgress ? 'Continuar Trilha' : 'Iniciar Trilha'}</span>
+        <div className="flex items-center gap-3">
+          <Link to="/mentorado/trilhas">
+            <Button className="btn-premium px-6 py-5 text-base">
+              <Play className="mr-2 h-5 w-5" />
+              <span>{hasTrailProgress ? 'Continuar Trilha' : 'Iniciar Trilha'}</span>
+            </Button>
+          </Link>
+          <Button variant="outline" size="icon" onClick={startTour} title="Tour guiado" className="h-12 w-12">
+            <HelpCircle className="h-5 w-5" />
           </Button>
-        </Link>
+        </div>
       </div>
 
       {/* Daily Goal Counter */}
@@ -133,7 +142,7 @@ export default function MemberDashboard() {
       {/* Bento Grid */}
       <BentoGrid>
         {/* Main Progress Card */}
-        <BentoCard size="xl" glow>
+        <BentoCard size="xl" glow data-tour="trail-progress">
           <div className="h-full flex flex-col">
             <div className="flex items-center gap-2 mb-6">
               <BookOpen className="h-6 w-6 text-primary" />
@@ -158,8 +167,8 @@ export default function MemberDashboard() {
         </BentoCard>
 
         {/* Stats Cards */}
-        <Link to="/mentorado/meu-crm" className="contents">
-          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all">
+        <Link to="/mentorado/meu-crm" className="contents" data-tour="prospections">
+          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all" data-tour="prospections">
             <div className="flex flex-col justify-between h-full">
               <Target className="h-8 w-8 text-accent" />
               <div className="mt-auto">
@@ -172,7 +181,7 @@ export default function MemberDashboard() {
         </Link>
 
         {/* Next Meeting */}
-        <BentoCard size="md">
+        <BentoCard size="md" data-tour="next-meeting">
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="h-5 w-5 text-cyan-500" />
@@ -195,7 +204,7 @@ export default function MemberDashboard() {
         </BentoCard>
 
         {/* Badges */}
-        <BentoCard size="md">
+        <BentoCard size="md" data-tour="badges">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2"><Award className="h-5 w-5 text-primary" /><h3 className="font-semibold text-foreground">Conquistas</h3></div>
@@ -217,7 +226,7 @@ export default function MemberDashboard() {
         </BentoCard>
 
         {/* Quick Actions */}
-        <BentoCard size="wide" className="!p-0">
+        <BentoCard size="wide" className="!p-0" data-tour="quick-actions">
           <div className="h-full flex">
             <Link to="/mentorado/meu-crm" className="flex-1 p-6 group hover:bg-accent/5 transition-colors border-r border-border">
               <div className="h-12 w-12 rounded-2xl bg-accent/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Target className="h-6 w-6 text-accent" /></div>
@@ -238,7 +247,7 @@ export default function MemberDashboard() {
         </BentoCard>
 
         {/* Weekly Performance */}
-        <BentoCard size="sm" glow>
+        <BentoCard size="sm" glow data-tour="ai-score">
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 mb-3"><Zap className="h-5 w-5 text-primary" /><h3 className="font-semibold text-foreground text-sm">Nota Média IA</h3></div>
             <div className="flex-1 flex items-center justify-center">
@@ -267,6 +276,14 @@ export default function MemberDashboard() {
           </div>
         </BentoCard>
       </BentoGrid>
+
+      {/* Guided Tour */}
+      <GuidedTour
+        steps={mentoradoDashboardSteps}
+        isOpen={isTourOpen}
+        onComplete={completeTour}
+        onSkip={skipTour}
+      />
     </div>
   );
 }
