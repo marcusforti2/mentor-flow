@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrandLogo } from '@/components/BrandLogo';
+import { GuidedTour, TourStep } from '@/components/onboarding/GuidedTour';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { PLATFORM } from '@/lib/platform';
 import { Button } from '@/components/ui/button';
 import {
@@ -194,10 +196,42 @@ function GovernanceFlowCard({ step, index, total }: {
   );
 }
 
+const SHOWCASE_TOUR_STEPS: TourStep[] = [
+  { target: '#showcase-hero', title: 'A Pergunta Central', description: 'Esta é a pergunta que o MentorFlow responde: "Quem está vencendo e quem está travando?" — em tempo real, com dados.', placement: 'bottom' },
+  { target: '#fluxo', title: 'Fluxo Governado', description: '6 etapas automatizadas que levam o mentorado do onboarding ao resultado previsível. Cada passo é rastreado pelo sistema.', placement: 'bottom' },
+  { target: '#arsenal', title: 'Arsenal IA', description: '8 ferramentas de inteligência artificial calibradas no negócio do mentorado: qualificação, cold messages, objeções, propostas e mais.', placement: 'bottom' },
+  { target: '#metricas', title: 'Métricas em Tempo Real', description: 'Score IA, ranking, alertas, jornada CS — o mentor vê tudo em tempo real sem depender de perguntar ao aluno.', placement: 'bottom' },
+  { target: '#visao-mentorado', title: 'Painel do Mentorado', description: 'O mentorado opera com CRM, ferramentas IA, trilhas, gamificação e mentor virtual 24/7 — tudo na sua marca.', placement: 'bottom' },
+  { target: '#modulos-completos', title: 'Tudo Incluído', description: 'Duas experiências completas: o Mentor governa a operação, o Mentorado executa com arsenal completo. Tudo white-label.', placement: 'bottom' },
+  { target: '#cta-final', title: 'Próximo Passo', description: 'Gostou do que viu? Solicite acesso ou veja o investimento para implementar na sua operação.', placement: 'top' },
+];
+
 export default function ShowcasePage() {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
-  
+  const [showTourPrompt, setShowTourPrompt] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
+
+  useEffect(() => {
+    const seen = localStorage.getItem('showcase-tour-prompted');
+    if (!seen) {
+      const timer = setTimeout(() => setShowTourPrompt(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const startTour = () => {
+    localStorage.setItem('showcase-tour-prompted', '1');
+    setShowTourPrompt(false);
+    // Scroll to top before starting
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => setTourActive(true), 500);
+  };
+
+  const skipTour = () => {
+    localStorage.setItem('showcase-tour-prompted', '1');
+    setShowTourPrompt(false);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -253,7 +287,7 @@ export default function ShowcasePage() {
       {/* ═══════════════════════════════════════
          HERO — A Pergunta que a Demo responde
          ═══════════════════════════════════════ */}
-      <section className="relative min-h-[90vh] flex items-center justify-center px-6 md:px-12 pt-24 pb-12 overflow-hidden">
+      <section id="showcase-hero" className="relative min-h-[90vh] flex items-center justify-center px-6 md:px-12 pt-24 pb-12 overflow-hidden">
         <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] pointer-events-none blur-3xl bg-primary" />
         <div className="absolute bottom-[10%] right-[5%] w-[400px] h-[400px] rounded-full opacity-[0.04] pointer-events-none blur-3xl bg-accent" />
 
@@ -550,7 +584,7 @@ export default function ShowcasePage() {
       {/* ═══════════════════════════════════════
          O QUE O MENTORADO VÊ
          ═══════════════════════════════════════ */}
-      <Section>
+      <Section id="visao-mentorado">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
@@ -608,7 +642,7 @@ export default function ShowcasePage() {
       {/* ═══════════════════════════════════════
          MÓDULOS COMPLETOS
          ═══════════════════════════════════════ */}
-      <Section>
+      <Section id="modulos-completos">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
@@ -724,7 +758,7 @@ export default function ShowcasePage() {
       {/* ═══════════════════════════════════════
          CTA FINAL
          ═══════════════════════════════════════ */}
-      <Section className="pb-20">
+      <Section id="cta-final" className="pb-20">
         <div className="max-w-4xl mx-auto text-center">
           <div className="glass-card-glow p-12 md:p-16 rounded-3xl relative overflow-hidden">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full opacity-[0.06] pointer-events-none blur-3xl bg-accent" />
@@ -773,6 +807,42 @@ export default function ShowcasePage() {
           </p>
         </div>
       </footer>
+
+      {/* Tour Prompt Dialog */}
+      <Dialog open={showTourPrompt} onOpenChange={setShowTourPrompt}>
+        <DialogContent className="sm:max-w-md border-border/60 bg-card">
+          <div className="text-center space-y-5 py-2">
+            <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-display text-xl font-bold text-foreground">
+                Quer uma demo guiada?
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+                Posso te guiar por cada seção da plataforma, destacando o que importa — ou você pode explorar livremente.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Button onClick={startTour} className="btn-premium px-8 h-12 text-sm font-semibold w-full sm:w-auto">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Sim, iniciar demo guiada
+              </Button>
+              <Button variant="outline" onClick={skipTour} className="px-8 h-12 text-sm border-border/50 w-full sm:w-auto">
+                Quero explorar manual
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Guided Tour */}
+      <GuidedTour
+        steps={SHOWCASE_TOUR_STEPS}
+        isOpen={tourActive}
+        onComplete={() => setTourActive(false)}
+        onSkip={() => setTourActive(false)}
+      />
     </div>
   );
 }
