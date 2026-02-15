@@ -163,7 +163,7 @@ serve(async (req) => {
       </div>
     </div>
     <div class="footer">
-      Learning Brand - Plataforma para Mentores • Chamado recebido via Centro SOS
+      Vértice Hub Forti - Plataforma para Mentores • Chamado recebido via Centro SOS
     </div>
   </div>
 </body>
@@ -215,7 +215,7 @@ serve(async (req) => {
       </div>
     </div>
     <div class="footer">
-      Learning Brand - Plataforma para Mentores • Você receberá uma resposta em breve
+      Vértice Hub Forti - Plataforma para Mentores • Você receberá uma resposta em breve
     </div>
   </div>
 </body>
@@ -226,7 +226,7 @@ serve(async (req) => {
     for (const mentorEmail of mentorEmails) {
       try {
         await resend.emails.send({
-          from: "SOS Learning Brand <sos@equipe.aceleracaoforti.online>",
+          from: "SOS Vértice Hub Forti <sos@equipe.aceleracaoforti.online>",
           to: [mentorEmail],
           subject: `🚨 [SOS ${sosPriority.toUpperCase()}] ${mentoradoName}: ${sosTitle}`,
           html: mentorEmailHtml,
@@ -241,7 +241,7 @@ serve(async (req) => {
     if (mentoradoEmail) {
       try {
         await resend.emails.send({
-          from: "Learning Brand <contato@equipe.aceleracaoforti.online>",
+          from: "Vértice Hub Forti <contato@equipe.aceleracaoforti.online>",
           to: [mentoradoEmail],
           subject: "✅ Seu chamado SOS foi enviado com sucesso!",
           html: mentoradoEmailHtml,

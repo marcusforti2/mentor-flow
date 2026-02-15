@@ -405,7 +405,7 @@ const Auth = () => {
             <div className="flex justify-center mb-4">
               <BrandLogo variant="compact" size="lg" />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground">Learning Brand</CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground">Vértice Hub Forti</CardTitle>
             <CardDescription className="text-muted-foreground">
               {step === "email" && "Digite seu email para receber o código de acesso"}
               {step === "code" && "Digite o código enviado para seu email"}
