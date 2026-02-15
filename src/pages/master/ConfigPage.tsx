@@ -73,77 +73,73 @@ function PlatformSection({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-slate-800/50 border-slate-700/50">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-slate-100 flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-amber-400" />
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
             Identidade do Tenant Principal
           </CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription>
             Configurações visuais e de marca da plataforma
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">Nome da Plataforma</Label>
+              <Label>Nome da Plataforma</Label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="bg-slate-900/50 border-slate-600 text-slate-100"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Slug</Label>
+              <Label>Slug</Label>
               <Input
                 value={form.slug}
                 disabled
-                className="bg-slate-900/50 border-slate-600 text-slate-500"
+                className="opacity-60"
               />
-              <p className="text-xs text-slate-500">Slug não pode ser alterado</p>
+              <p className="text-xs text-muted-foreground">Slug não pode ser alterado</p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-slate-300">URL do Logo</Label>
+            <Label>URL do Logo</Label>
             <Input
               value={form.logo_url}
               onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
               placeholder="https://..."
-              className="bg-slate-900/50 border-slate-600 text-slate-100"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">Cor Primária</Label>
+              <Label>Cor Primária</Label>
               <div className="flex items-center gap-2">
                 <Input
                   value={form.primary_color}
                   onChange={(e) => setForm({ ...form, primary_color: e.target.value })}
                   placeholder="#7c3aed"
-                  className="bg-slate-900/50 border-slate-600 text-slate-100"
                 />
                 {form.primary_color && (
                   <div
-                    className="h-9 w-9 rounded-md border border-slate-600 shrink-0"
+                    className="h-9 w-9 rounded-md border border-border shrink-0"
                     style={{ backgroundColor: form.primary_color }}
                   />
                 )}
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Cor Secundária</Label>
+              <Label>Cor Secundária</Label>
               <div className="flex items-center gap-2">
                 <Input
                   value={form.secondary_color}
                   onChange={(e) => setForm({ ...form, secondary_color: e.target.value })}
                   placeholder="#06b6d4"
-                  className="bg-slate-900/50 border-slate-600 text-slate-100"
                 />
                 {form.secondary_color && (
                   <div
-                    className="h-9 w-9 rounded-md border border-slate-600 shrink-0"
+                    className="h-9 w-9 rounded-md border border-border shrink-0"
                     style={{ backgroundColor: form.secondary_color }}
                   />
                 )}
@@ -151,7 +147,7 @@ function PlatformSection({ tenantId }: { tenantId: string }) {
             </div>
           </div>
 
-          <Button onClick={handleSave} disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-black">
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Salvar
           </Button>
@@ -215,13 +211,13 @@ function FeatureFlagsSection({ tenantId }: { tenantId: string }) {
   };
 
   return (
-    <Card className="bg-slate-800/50 border-slate-700/50">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-slate-100 flex items-center gap-2">
-          <ToggleLeft className="h-5 w-5 text-amber-400" />
+        <CardTitle className="flex items-center gap-2">
+          <ToggleLeft className="h-5 w-5 text-primary" />
           Feature Flags
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription>
           Ative ou desative módulos da plataforma para este tenant
         </CardDescription>
       </CardHeader>
@@ -229,11 +225,11 @@ function FeatureFlagsSection({ tenantId }: { tenantId: string }) {
         {FEATURES.map((feature) => (
           <div
             key={feature.key}
-            className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-slate-700/30 transition-colors"
+            className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors"
           >
             <div>
-              <p className="text-sm font-medium text-slate-200">{feature.label}</p>
-              <p className="text-xs text-slate-500">{feature.description}</p>
+              <p className="text-sm font-medium text-foreground">{feature.label}</p>
+              <p className="text-xs text-muted-foreground">{feature.description}</p>
             </div>
             <Switch
               checked={flags[feature.key] ?? true}
@@ -241,8 +237,8 @@ function FeatureFlagsSection({ tenantId }: { tenantId: string }) {
             />
           </div>
         ))}
-        <Separator className="bg-slate-700/50 my-4" />
-        <Button onClick={handleSave} disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-black">
+        <Separator className="my-4" />
+        <Button onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
           Salvar Feature Flags
         </Button>
@@ -255,53 +251,53 @@ function FeatureFlagsSection({ tenantId }: { tenantId: string }) {
 
 function AuthSection() {
   return (
-    <Card className="bg-slate-800/50 border-slate-700/50">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-slate-100 flex items-center gap-2">
-          <Shield className="h-5 w-5 text-amber-400" />
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
           Autenticação
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription>
           Configurações de acesso e segurança
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 space-y-2">
-            <p className="text-sm font-medium text-slate-200">Método de Login</p>
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
+            <p className="text-sm font-medium text-foreground">Método de Login</p>
+            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" /> OTP via Email
             </Badge>
-            <p className="text-xs text-slate-500">Login sem senha via código de verificação</p>
+            <p className="text-xs text-muted-foreground">Login sem senha via código de verificação</p>
           </div>
 
-          <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 space-y-2">
-            <p className="text-sm font-medium text-slate-200">Governança</p>
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
+            <p className="text-sm font-medium text-foreground">Governança</p>
+            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" /> Invite-Only
             </Badge>
-            <p className="text-xs text-slate-500">Apenas usuários convidados podem acessar</p>
+            <p className="text-xs text-muted-foreground">Apenas usuários convidados podem acessar</p>
           </div>
 
-          <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 space-y-2">
-            <p className="text-sm font-medium text-slate-200">Auto-confirm Email</p>
-            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
+            <p className="text-sm font-medium text-foreground">Auto-confirm Email</p>
+            <Badge className="bg-red-500/20 text-red-600 border-red-500/30">
               <XCircle className="h-3 w-3 mr-1" /> Desativado
             </Badge>
-            <p className="text-xs text-slate-500">Emails precisam ser verificados</p>
+            <p className="text-xs text-muted-foreground">Emails precisam ser verificados</p>
           </div>
 
-          <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 space-y-2">
-            <p className="text-sm font-medium text-slate-200">OAuth / SSO</p>
-            <Badge className="bg-slate-600/50 text-slate-400 border-slate-600/30">
+          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
+            <p className="text-sm font-medium text-foreground">OAuth / SSO</p>
+            <Badge variant="secondary">
               Não configurado
             </Badge>
-            <p className="text-xs text-slate-500">Google e Apple disponíveis via Cloud</p>
+            <p className="text-xs text-muted-foreground">Google e Apple disponíveis via Cloud</p>
           </div>
         </div>
 
         <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <p className="text-xs text-amber-400">
+          <p className="text-xs text-amber-600">
             ⚡ Para alterar configurações de auth avançadas, utilize o painel de Cloud Settings.
           </p>
         </div>
@@ -321,7 +317,6 @@ const KNOWN_SECRETS = [
 ];
 
 function SecretsSection() {
-  // Secrets are managed via Cloud Settings — this is a read-only display
   const configuredSecrets = [
     'APIFY_API_KEY', 'FIRECRAWL_API_KEY', 'LOVABLE_API_KEY',
     'PILOTERR_API_KEY', 'PILOTERR_API_KEY_2', 'PILOTERR_API_KEY_3',
@@ -329,13 +324,13 @@ function SecretsSection() {
   ];
 
   return (
-    <Card className="bg-slate-800/50 border-slate-700/50">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-slate-100 flex items-center gap-2">
-          <Key className="h-5 w-5 text-amber-400" />
+        <CardTitle className="flex items-center gap-2">
+          <Key className="h-5 w-5 text-primary" />
           Integrações & API Keys
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription>
           Chaves de API configuradas no backend
         </CardDescription>
       </CardHeader>
@@ -345,27 +340,27 @@ function SecretsSection() {
           return (
             <div
               key={secret.name}
-              className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-slate-700/30 transition-colors"
+              className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Globe className="h-4 w-4 text-slate-500" />
+                <Globe className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-slate-200">{secret.label}</p>
-                  <p className="text-xs text-slate-500">{secret.description}</p>
+                  <p className="text-sm font-medium text-foreground">{secret.label}</p>
+                  <p className="text-xs text-muted-foreground">{secret.description}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {secret.managed && (
-                  <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
+                  <Badge variant="outline" className="text-xs">
                     Auto
                   </Badge>
                 )}
                 {isConfigured ? (
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                  <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
                     <CheckCircle2 className="h-3 w-3 mr-1" /> Configurada
                   </Badge>
                 ) : (
-                  <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                  <Badge className="bg-red-500/20 text-red-600 border-red-500/30">
                     <XCircle className="h-3 w-3 mr-1" /> Ausente
                   </Badge>
                 )}
@@ -374,13 +369,13 @@ function SecretsSection() {
           );
         })}
 
-        <Separator className="bg-slate-700/50 my-4" />
+        <Separator className="my-4" />
 
-        <div className="text-xs text-slate-500">
-          Total de secrets configuradas: <span className="font-bold text-slate-300">{configuredSecrets.length}</span>
+        <div className="text-xs text-muted-foreground">
+          Total de secrets configuradas: <span className="font-bold text-foreground">{configuredSecrets.length}</span>
         </div>
         <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 mt-2">
-          <p className="text-xs text-amber-400">
+          <p className="text-xs text-amber-600">
             🔒 Valores das chaves são criptografados e não podem ser visualizados. Para atualizar, use o painel de Cloud Settings.
           </p>
         </div>
@@ -414,19 +409,19 @@ export default function ConfigPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100 flex items-center gap-2">
-            <Settings className="h-6 w-6 text-amber-400" />
+          <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
+            <Settings className="h-6 w-6 text-primary" />
             Configurações
           </h1>
-          <p className="text-slate-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Gerencie plataforma, módulos, autenticação e integrações
           </p>
         </div>
 
         <div className="w-full sm:w-72">
-          <Label className="text-xs text-slate-500 mb-1 block">Configurando tenant:</Label>
+          <Label className="text-xs text-muted-foreground mb-1 block">Configurando tenant:</Label>
           <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
-            <SelectTrigger className="bg-slate-800/50 border-slate-700/50 text-slate-100">
+            <SelectTrigger>
               <SelectValue placeholder={tenantsLoading ? 'Carregando...' : 'Selecione um tenant'} />
             </SelectTrigger>
             <SelectContent>
@@ -445,20 +440,20 @@ export default function ConfigPage() {
 
       {selectedTenantId ? (
         <Tabs defaultValue="platform" className="w-full">
-          <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1">
-            <TabsTrigger value="platform" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+          <TabsList className="p-1">
+            <TabsTrigger value="platform" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Palette className="h-4 w-4 mr-2" />
               Plataforma
             </TabsTrigger>
-            <TabsTrigger value="features" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+            <TabsTrigger value="features" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <ToggleLeft className="h-4 w-4 mr-2" />
               Features
             </TabsTrigger>
-            <TabsTrigger value="auth" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+            <TabsTrigger value="auth" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Shield className="h-4 w-4 mr-2" />
               Auth
             </TabsTrigger>
-            <TabsTrigger value="secrets" className="data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+            <TabsTrigger value="secrets" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Key className="h-4 w-4 mr-2" />
               Integrações
             </TabsTrigger>
@@ -481,7 +476,7 @@ export default function ConfigPage() {
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="text-center py-12 text-slate-500">
+        <div className="text-center py-12 text-muted-foreground">
           <Building2 className="mx-auto h-12 w-12 mb-4 opacity-50" />
           <p>Selecione um tenant para configurar</p>
         </div>

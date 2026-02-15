@@ -18,14 +18,14 @@ export default function BrandingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-slate-100">AI Branding Engine</h1>
-        <p className="text-slate-400">Analise a marca do cliente e gere o branding completo do sistema</p>
+        <h1 className="text-2xl font-display font-bold text-foreground">AI Branding Engine</h1>
+        <p className="text-muted-foreground">Analise a marca do cliente e gere o branding completo do sistema</p>
       </div>
 
       {/* Tenant Selector */}
-      <Card className="bg-slate-900/50 border-slate-700/50">
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-300">
+          <CardTitle className="text-sm flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Selecionar Tenant
           </CardTitle>
@@ -35,7 +35,7 @@ export default function BrandingPage() {
             value={selectedTenantId || ''}
             onValueChange={(val) => setSelectedTenantId(val)}
           >
-            <SelectTrigger className="bg-slate-800 border-slate-600">
+            <SelectTrigger>
               <SelectValue placeholder="Escolha um tenant para configurar o branding..." />
             </SelectTrigger>
             <SelectContent>
@@ -43,7 +43,7 @@ export default function BrandingPage() {
                 <SelectItem key={t.id} value={t.id}>
                   <div className="flex items-center gap-2">
                     <div
-                      className="w-3 h-3 rounded-full border border-slate-600"
+                      className="w-3 h-3 rounded-full border border-border"
                       style={{ backgroundColor: t.primary_color || '#666' }}
                     />
                     {t.name}
@@ -63,7 +63,7 @@ export default function BrandingPage() {
           membershipId={realMembership?.id}
         />
       ) : (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16 text-muted-foreground">
           <Palette className="h-12 w-12 mx-auto mb-4 opacity-30" />
           <p>Selecione um tenant para começar a análise de branding</p>
         </div>

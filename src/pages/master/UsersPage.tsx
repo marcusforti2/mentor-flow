@@ -30,7 +30,7 @@ const roleConfig = {
   admin: { label: 'Admin', variant: 'default' as const, color: 'bg-purple-500' },
   ops: { label: 'Ops', variant: 'secondary' as const, color: 'bg-blue-500' },
   mentor: { label: 'Mentor', variant: 'secondary' as const, color: 'bg-green-500' },
-  mentee: { label: 'Mentorado', variant: 'outline' as const, color: 'bg-slate-500' },
+  mentee: { label: 'Mentorado', variant: 'outline' as const, color: 'bg-muted-foreground' },
 };
 
 const statusConfig = {
@@ -213,21 +213,19 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-slate-100">Gestão de Usuários</h1>
-          <p className="text-slate-400">Gerencie todos os memberships da plataforma</p>
+          <h1 className="text-2xl font-display font-bold text-foreground">Gestão de Usuários</h1>
+          <p className="text-muted-foreground">Gerencie todos os memberships da plataforma</p>
         </div>
         <div className="flex gap-2">
           <Button 
             onClick={() => setCreateMenteeOpen(true)}
             variant="outline"
-            className="border-slate-700 text-slate-300 hover:bg-slate-800"
           >
             <GraduationCap className="mr-2 h-4 w-4" />
             Adicionar Mentorado
           </Button>
           <Button 
             onClick={() => setCreateMentorOpen(true)}
-            className="gradient-gold text-primary-foreground"
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Adicionar Mentor
@@ -237,62 +235,62 @@ export default function UsersPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="bg-slate-800/50 border-slate-700/50">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-slate-100">{stats.total}</div>
-            <div className="text-sm text-slate-400">Total</div>
+            <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+            <div className="text-sm text-muted-foreground">Total</div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-400">{stats.active}</div>
-            <div className="text-sm text-slate-400">Ativos</div>
+            <div className="text-2xl font-bold text-emerald-600">{stats.active}</div>
+            <div className="text-sm text-muted-foreground">Ativos</div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-amber-400">{stats.convidados}</div>
-            <div className="text-sm text-slate-400">Convidados</div>
+            <div className="text-2xl font-bold text-amber-500">{stats.convidados}</div>
+            <div className="text-sm text-muted-foreground">Convidados</div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-400">{stats.mentors}</div>
-            <div className="text-sm text-slate-400">Mentores</div>
+            <div className="text-2xl font-bold text-blue-500">{stats.mentors}</div>
+            <div className="text-sm text-muted-foreground">Mentores</div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
+        <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-slate-300">{stats.mentees}</div>
-            <div className="text-sm text-slate-400">Mentorados</div>
+            <div className="text-2xl font-bold text-foreground">{stats.mentees}</div>
+            <div className="text-sm text-muted-foreground">Mentorados</div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-slate-800/50 border-slate-700/50">
+      <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2 text-slate-100">
+              <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Usuários ({filteredMemberships.length + filteredInvites.length})
               </CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardDescription>
                 Lista de memberships ativos e convites pendentes
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-56">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar usuário..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-500"
+                  className="pl-9"
                 />
               </div>
               <Select value={tenantFilter} onValueChange={setTenantFilter}>
-                <SelectTrigger className="w-full sm:w-36 bg-slate-900/50 border-slate-700 text-slate-100">
+                <SelectTrigger className="w-full sm:w-36">
                   <SelectValue placeholder="Tenant" />
                 </SelectTrigger>
                 <SelectContent>
@@ -305,7 +303,7 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-36 bg-slate-900/50 border-slate-700 text-slate-100">
+                <SelectTrigger className="w-full sm:w-36">
                   <SelectValue placeholder="Papel" />
                 </SelectTrigger>
                 <SelectContent>
@@ -318,7 +316,7 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-32 bg-slate-900/50 border-slate-700 text-slate-100">
+                <SelectTrigger className="w-full sm:w-32">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -335,7 +333,7 @@ export default function UsersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  className="text-slate-400 hover:text-slate-100"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4 mr-1" />
                   Limpar
@@ -348,11 +346,11 @@ export default function UsersPage() {
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full bg-slate-700/50" />
+                <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
           ) : filteredMemberships.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
+            <div className="text-center py-12 text-muted-foreground">
               <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p>Nenhum usuário encontrado</p>
             </div>
@@ -360,15 +358,15 @@ export default function UsersPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-700/50 hover:bg-slate-800/30">
-                    <TableHead className="text-slate-400 w-12"></TableHead>
-                    <TableHead className="text-slate-400">Usuário</TableHead>
-                    <TableHead className="text-slate-400">Tenant</TableHead>
-                    <TableHead className="text-slate-400">Papel</TableHead>
-                    <TableHead className="text-slate-400">Status</TableHead>
-                    <TableHead className="text-slate-400 text-center">Impersonate</TableHead>
-                    <TableHead className="text-slate-400">Desde</TableHead>
-                    <TableHead className="text-slate-400 w-12"></TableHead>
+                  <TableRow>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Papel</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Impersonate</TableHead>
+                    <TableHead>Desde</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -378,28 +376,28 @@ export default function UsersPage() {
                     const status = statusConfig[membership.status as keyof typeof statusConfig] || statusConfig.active;
                     
                     return (
-                      <TableRow key={membership.id} className="border-slate-700/50 hover:bg-slate-800/30">
+                      <TableRow key={membership.id}>
                         <TableCell>
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={membership.profile?.avatar_url || undefined} />
-                            <AvatarFallback className="bg-slate-700 text-slate-300 text-xs">
+                            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
                               {membership.profile?.full_name?.charAt(0) || '?'}
                             </AvatarFallback>
                           </Avatar>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium text-slate-100">
+                            <div className="font-medium text-foreground">
                               {membership.profile?.full_name || 'Sem nome'}
                             </div>
-                            <div className="text-sm text-slate-500">
+                            <div className="text-sm text-muted-foreground">
                               {membership.profile?.email || 'Sem email'}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-slate-300">{membership.tenant?.name || '-'}</div>
-                          <div className="text-xs text-slate-500 font-mono">
+                          <div className="text-foreground">{membership.tenant?.name || '-'}</div>
+                          <div className="text-xs text-muted-foreground font-mono">
                             {membership.tenant?.slug || '-'}
                           </div>
                         </TableCell>
@@ -421,50 +419,46 @@ export default function UsersPage() {
                             disabled={membership.role === 'master_admin'}
                           />
                         </TableCell>
-                        <TableCell className="text-slate-400 text-sm">
+                        <TableCell className="text-muted-foreground text-sm">
                           {format(new Date(membership.created_at), "dd MMM yyyy", { locale: ptBR })}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100">
+                              <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                            <DropdownMenuContent align="end">
                               <DropdownMenuItem 
                                 onClick={() => {
                                   setSelectedMembership(membership);
                                   setDetailModalOpen(true);
                                 }}
-                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                               >
                                 <Info className="mr-2 h-4 w-4" />
                                 Ver detalhes
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-slate-700" />
+                              <DropdownMenuSeparator />
                               {membership.role === 'mentor' && (
                                 <>
                                   <DropdownMenuItem 
                                     onClick={() => handleInviteMentor(membership)}
-                                    className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                                     disabled={!canInviteMentor(membership)}
                                   >
-                                    <MessageCircle className="mr-2 h-4 w-4 text-green-400" />
+                                    <MessageCircle className="mr-2 h-4 w-4 text-green-500" />
                                     Convidar (WhatsApp)
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={handleCopyLoginLink}
-                                    className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                                   >
                                     <Link className="mr-2 h-4 w-4" />
                                     Copiar link de acesso
                                   </DropdownMenuItem>
-                                  <DropdownMenuSeparator className="bg-slate-700" />
+                                  <DropdownMenuSeparator />
                                 </>
                               )}
                               <DropdownMenuItem 
-                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                                 disabled={membership.role === 'master_admin'}
                               >
                                 <UserCog className="mr-2 h-4 w-4" />
@@ -472,25 +466,23 @@ export default function UsersPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleStartImpersonation(membership)}
-                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                                 disabled={membership.role === 'master_admin' || !membership.can_impersonate}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Impersonar
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-slate-700" />
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => handleStatusToggle(membership)}
-                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                                 disabled={membership.role === 'master_admin'}
                               >
                                 <Power className="mr-2 h-4 w-4" />
                                 {membership.status === 'active' ? 'Suspender' : 'Ativar'}
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-slate-700" />
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => handleDeleteClick(membership)}
-                                className="text-red-400 focus:text-red-300 focus:bg-slate-700"
+                                className="text-destructive focus:text-destructive"
                                 disabled={membership.role === 'master_admin'}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -508,27 +500,27 @@ export default function UsersPage() {
                     const role = roleConfig[invite.role] || roleConfig.mentee;
                     
                     return (
-                      <TableRow key={`invite-${invite.id}`} className="border-slate-700/50 hover:bg-slate-800/30 bg-amber-950/10">
+                      <TableRow key={`invite-${invite.id}`} className="bg-amber-50/50 dark:bg-amber-950/10">
                         <TableCell>
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-amber-900/50 text-amber-300 text-xs">
+                            <AvatarFallback className="bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300 text-xs">
                               <Clock className="h-4 w-4" />
                             </AvatarFallback>
                           </Avatar>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium text-slate-100">
+                            <div className="font-medium text-foreground">
                               {invite.metadata?.full_name || 'Sem nome'}
                             </div>
-                            <div className="text-sm text-slate-500">
+                            <div className="text-sm text-muted-foreground">
                               {invite.email}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-slate-300">{invite.tenant?.name || '-'}</div>
-                          <div className="text-xs text-slate-500 font-mono">
+                          <div className="text-foreground">{invite.tenant?.name || '-'}</div>
+                          <div className="text-xs text-muted-foreground font-mono">
                             {invite.tenant?.slug || '-'}
                           </div>
                         </TableCell>
@@ -539,43 +531,41 @@ export default function UsersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-400">
+                          <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-600 dark:text-amber-400">
                             <Clock className="h-3 w-3" />
                             Convidado
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <span className="text-slate-500">-</span>
+                          <span className="text-muted-foreground">-</span>
                         </TableCell>
-                        <TableCell className="text-slate-400 text-sm">
+                        <TableCell className="text-muted-foreground text-sm">
                           {format(new Date(invite.created_at), "dd MMM yyyy", { locale: ptBR })}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100">
+                              <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
+                            <DropdownMenuContent align="end">
                               <DropdownMenuItem 
                                 onClick={() => handleResendInvite(invite)}
-                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                               >
                                 <RefreshCw className="mr-2 h-4 w-4" />
                                 Renovar convite
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={handleCopyLoginLink}
-                                className="text-slate-300 focus:text-slate-100 focus:bg-slate-700"
                               >
                                 <Link className="mr-2 h-4 w-4" />
                                 Copiar link de acesso
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-slate-700" />
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => handleRevokeClick(invite)}
-                                className="text-red-400 focus:text-red-300 focus:bg-slate-700"
+                                className="text-destructive focus:text-destructive"
                               >
                                 <Ban className="mr-2 h-4 w-4" />
                                 Revogar convite
@@ -610,22 +600,20 @@ export default function UsersPage() {
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-slate-800 border-slate-700">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-100">Excluir Usuário</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              Tem certeza que deseja excluir o membership de <strong className="text-slate-200">{membershipToDelete?.profile?.full_name || 'este usuário'}</strong>?
+            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o membership de <strong>{membershipToDelete?.profile?.full_name || 'este usuário'}</strong>?
               <br /><br />
               Esta ação é irreversível.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-700 text-slate-100 border-slate-600 hover:bg-slate-600">
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmDelete}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir
             </AlertDialogAction>
@@ -634,22 +622,20 @@ export default function UsersPage() {
       </AlertDialog>
 
       <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
-        <AlertDialogContent className="bg-slate-800 border-slate-700">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-100">Revogar Convite</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              Tem certeza que deseja revogar o convite de <strong className="text-slate-200">{inviteToRevoke?.metadata?.full_name || inviteToRevoke?.email}</strong>?
+            <AlertDialogTitle>Revogar Convite</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja revogar o convite de <strong>{inviteToRevoke?.metadata?.full_name || inviteToRevoke?.email}</strong>?
               <br /><br />
               O usuário não poderá mais acessar a plataforma com este convite.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-700 text-slate-100 border-slate-600 hover:bg-slate-600">
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleConfirmRevoke}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Revogar
             </AlertDialogAction>
