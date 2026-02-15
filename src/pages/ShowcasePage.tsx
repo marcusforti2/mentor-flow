@@ -535,22 +535,39 @@ export default function ShowcasePage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: BarChart3, title: 'Score IA por Mentorado', desc: 'Performance ponderada de 0 a 100 atualizada em tempo real.' },
-              { icon: Trophy, title: 'Ranking Competitivo', desc: 'Posição relativa entre mentorados — gamificação por resultado.' },
-              { icon: TrendingUp, title: 'Evolução Temporal', desc: 'Gráficos de progresso por semana, mês e jornada.' },
-              { icon: AlertTriangle, title: 'Alertas Inteligentes', desc: 'Inatividade, tarefas atrasadas e SOS — antes que vire problema.' },
-              { icon: Brain, title: 'Análise Comportamental', desc: 'DISC, medos ocultos, bloqueios e linguagem ideal — automático.' },
-              { icon: Target, title: 'Jornada CS', desc: 'Progresso por etapa configurável com Kanban visual.' },
-              { icon: Users, title: 'Gestão 360°', desc: 'Perfil completo, KPIs, resumo IA, timeline e contato direto.' },
-              { icon: Flame, title: 'Distribuição por Faixas', desc: 'Excelente, Bom, Regular, Atenção — visão da turma inteira.' },
-              { icon: Activity, title: 'Logs de Atividade', desc: 'Registro de cada ação do mentorado — transparência total.' },
-            ].map(({ icon: Icon, title, desc }, i) => (
-              <div key={i} className="glass-card p-6 rounded-2xl border border-border/30 hover:border-primary/20 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Icon className="w-5 h-5 text-primary" />
+              { icon: BarChart3, title: 'Score IA por Mentorado', desc: 'Performance ponderada de 0 a 100 atualizada em tempo real.', experience: 'O mentor abre o painel e vê, em um número, quem está performando e quem precisa de atenção imediata.', result: 'Decisões cirúrgicas em segundos — sem achismo.' },
+              { icon: Trophy, title: 'Ranking Competitivo', desc: 'Posição relativa entre mentorados — gamificação por resultado.', experience: 'Tabela de classificação que atualiza em tempo real conforme a execução. Mentorados se comparam entre si.', result: 'Competição saudável que acelera a execução da turma.' },
+              { icon: TrendingUp, title: 'Evolução Temporal', desc: 'Gráficos de progresso por semana, mês e jornada.', experience: 'Curvas de evolução que mostram se o mentorado está acelerando, estagnando ou regredindo.', result: 'Antecipar problemas antes que virem desistência.' },
+              { icon: AlertTriangle, title: 'Alertas Inteligentes', desc: 'Inatividade, tarefas atrasadas e SOS — antes que vire problema.', experience: 'Notificações automáticas no sino: quem sumiu, quem atrasou, quem pediu socorro.', result: 'Nenhum aluno fica invisível — o sistema não permite.' },
+              { icon: Brain, title: 'Análise Comportamental', desc: 'DISC, medos ocultos, bloqueios e linguagem ideal — automático.', experience: 'Perfil psicológico gerado por IA com gatilhos de motivação e erros a evitar.', result: 'Comunicação calibrada para cada personalidade.' },
+              { icon: Target, title: 'Jornada CS', desc: 'Progresso por etapa configurável com Kanban visual.', experience: 'Kanban visual onde cada mentorado aparece na etapa exata da sua jornada de evolução.', result: 'Visibilidade total do pipeline de sucesso do cliente.' },
+              { icon: Users, title: 'Gestão 360°', desc: 'Perfil completo, KPIs, resumo IA, timeline e contato direto.', experience: 'Um clique abre tudo: KPIs, governo do negócio, atividades, contato via WhatsApp.', result: 'Monitoramento estratégico sem impersonation.' },
+              { icon: Flame, title: 'Distribuição por Faixas', desc: 'Excelente, Bom, Regular, Atenção — visão da turma inteira.', experience: 'Gráfico que segmenta a turma por performance: quantos estão voando e quantos estão travados.', result: 'Visão macro para decisões de escala.' },
+              { icon: Activity, title: 'Logs de Atividade', desc: 'Registro de cada ação do mentorado — transparência total.', experience: 'Feed em tempo real com cada lead criado, tarefa concluída e login registrado.', result: 'Prova concreta de execução — ou de ausência.' },
+            ].map(({ icon: Icon, title, desc, experience, result }, i) => (
+              <div key={i} className="glass-card rounded-2xl border border-border/30 hover:border-primary/30 transition-all duration-500 group relative overflow-hidden">
+                <div className="p-6">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center mb-4 transition-all duration-300 group-hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)]">
+                    <Icon className="w-5 h-5 text-primary transition-transform duration-300 group-hover:scale-110" />
+                  </div>
+                  <h3 className="font-display text-base font-semibold text-foreground mb-1.5">{title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
                 </div>
-                <h3 className="font-display text-base font-semibold text-foreground mb-1.5">{title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                {/* Expandable on hover */}
+                <div className="max-h-0 group-hover:max-h-48 overflow-hidden transition-all duration-500 ease-out">
+                  <div className="px-6 pb-5 space-y-3 border-t border-border/20 pt-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Experiência</p>
+                      <p className="text-xs text-foreground/80 leading-relaxed">{experience}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Resultado</p>
+                      <p className="text-xs text-foreground/80 leading-relaxed">{result}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Bottom glow line */}
+                <div className="absolute bottom-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent)' }} />
               </div>
             ))}
           </div>
@@ -573,25 +590,42 @@ export default function ShowcasePage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: LayoutDashboard, title: 'Dashboard Pessoal', desc: 'Score IA, metas, streak e progresso da jornada em tempo real.' },
-              { icon: Target, title: 'CRM Kanban', desc: 'Pipeline de vendas pessoal com estágios customizáveis e histórico.' },
-              { icon: Brain, title: '8 Ferramentas IA', desc: 'Qualificação, cold messages, objeções, propostas — tudo contextualizado.' },
-              { icon: BookOpen, title: 'Trilhas de Conteúdo', desc: 'Vídeos, textos e materiais com progresso dinâmico e certificados.' },
-              { icon: ClipboardList, title: 'Tarefas com Kanban', desc: 'Criação autônoma e tarefas extraídas de reuniões com prioridade.' },
-              { icon: Trophy, title: 'Gamificação & Badges', desc: 'Pontos por execução real, badges de conquista e streak contínuo.' },
-              { icon: Bot, title: 'Mentor Virtual 24/7', desc: 'Chat IA contextual com histórico, dados e orientação personalizada.' },
-              { icon: Video, title: 'Arquivos & Reuniões', desc: 'Histórico de reuniões, gravações, documentos e materiais do mentor.' },
-              { icon: Calendar, title: 'Agendamento', desc: 'Marcação direta de sessões com o mentor integrada ao calendário.' },
-              { icon: Award, title: 'Certificados', desc: 'Micro-certificações automáticas por trilha concluída, compartilháveis.' },
-              { icon: AlertTriangle, title: 'Centro SOS', desc: 'Canal direto de urgência para momentos críticos da operação.' },
-              { icon: Settings, title: 'Governo do Negócio', desc: 'Perfil estratégico: faturamento, gargalos, público e maturidade.' },
-            ].map(({ icon: Icon, title, desc }, i) => (
-              <div key={i} className="glass-card p-6 rounded-2xl border border-accent/10 hover:border-accent/30 transition-colors group">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 group-hover:bg-accent/20 flex items-center justify-center mb-4 transition-colors">
-                  <Icon className="w-5 h-5 text-accent" />
+              { icon: LayoutDashboard, title: 'Dashboard Pessoal', desc: 'Score IA, metas, streak e progresso da jornada em tempo real.', experience: 'Tela inicial com visão completa: onde está, o que falta e quanto já evoluiu.', result: 'Clareza total sobre o próprio progresso.' },
+              { icon: Target, title: 'CRM Kanban', desc: 'Pipeline de vendas pessoal com estágios customizáveis e histórico.', experience: 'Arrasta leads entre colunas, registra interações e acompanha cada negociação.', result: 'Prospecção organizada — sem planilha, sem esquecimento.' },
+              { icon: Brain, title: '8 Ferramentas IA', desc: 'Qualificação, cold messages, objeções, propostas — tudo contextualizado.', experience: 'Clica na ferramenta, a IA já sabe o negócio, o público e o pitch. Resultado em segundos.', result: 'Arsenal de vendas pessoal calibrado no seu negócio.' },
+              { icon: BookOpen, title: 'Trilhas de Conteúdo', desc: 'Vídeos, textos e materiais com progresso dinâmico e certificados.', experience: 'Interface estilo Netflix com progresso automático e certificado ao concluir.', result: 'Aprendizado estruturado que gera certificação.' },
+              { icon: ClipboardList, title: 'Tarefas com Kanban', desc: 'Criação autônoma e tarefas extraídas de reuniões com prioridade.', experience: 'Kanban pessoal: cria tarefas, prioriza e move entre colunas. Tarefas de reunião aparecem automaticamente.', result: 'Execução visível e rastreável.' },
+              { icon: Trophy, title: 'Gamificação & Badges', desc: 'Pontos por execução real, badges de conquista e streak contínuo.', experience: 'Cada ação gera pontos. Streaks recompensam consistência. Badges celebram conquistas.', result: 'Motivação intrínseca atrelada a resultado.' },
+              { icon: Bot, title: 'Mentor Virtual 24/7', desc: 'Chat IA contextual com histórico, dados e orientação personalizada.', experience: 'Conversa com uma IA que conhece seu negócio, suas tarefas, seus leads e seu progresso.', result: 'Nunca fica travado — orientação instantânea.' },
+              { icon: Video, title: 'Arquivos & Reuniões', desc: 'Histórico de reuniões, gravações, documentos e materiais do mentor.', experience: 'Hub centralizado com todas as gravações, transcrições e materiais organizados por data.', result: 'Nada se perde — tudo acessível.' },
+              { icon: Calendar, title: 'Agendamento', desc: 'Marcação direta de sessões com o mentor integrada ao calendário.', experience: 'Escolhe horário disponível e agenda direto — sem mensagem, sem espera.', result: 'Acesso ao mentor sem fricção.' },
+              { icon: Award, title: 'Certificados', desc: 'Micro-certificações automáticas por trilha concluída, compartilháveis.', experience: 'Ao completar uma trilha, o certificado é gerado e pode ser compartilhado no LinkedIn.', result: 'Prova social de evolução profissional.' },
+              { icon: AlertTriangle, title: 'Centro SOS', desc: 'Canal direto de urgência para momentos críticos da operação.', experience: 'Botão de emergência que notifica o mentor imediatamente com contexto do problema.', result: 'Resgate antes da desistência.' },
+              { icon: Settings, title: 'Governo do Negócio', desc: 'Perfil estratégico: faturamento, gargalos, público e maturidade.', experience: 'Formulário estratégico que calibra toda a IA e alimenta o diagnóstico do mentor.', result: 'Contexto profundo desde o primeiro dia.' },
+            ].map(({ icon: Icon, title, desc, experience, result }, i) => (
+              <div key={i} className="glass-card rounded-2xl border border-accent/10 hover:border-accent/30 transition-all duration-500 group relative overflow-hidden">
+                <div className="p-6">
+                  <div className="w-10 h-10 rounded-lg bg-accent/10 group-hover:bg-accent/20 flex items-center justify-center mb-4 transition-all duration-300 group-hover:shadow-[0_0_15px_hsl(var(--accent)/0.3)]">
+                    <Icon className="w-5 h-5 text-accent transition-transform duration-300 group-hover:scale-110" />
+                  </div>
+                  <h3 className="font-display text-base font-semibold text-foreground mb-1.5">{title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
                 </div>
-                <h3 className="font-display text-base font-semibold text-foreground mb-1.5">{title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                {/* Expandable on hover */}
+                <div className="max-h-0 group-hover:max-h-48 overflow-hidden transition-all duration-500 ease-out">
+                  <div className="px-6 pb-5 space-y-3 border-t border-border/20 pt-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Experiência</p>
+                      <p className="text-xs text-foreground/80 leading-relaxed">{experience}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Resultado</p>
+                      <p className="text-xs text-foreground/80 leading-relaxed">{result}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Bottom glow line */}
+                <div className="absolute bottom-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.5), transparent)' }} />
               </div>
             ))}
           </div>
