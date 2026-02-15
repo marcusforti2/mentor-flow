@@ -163,7 +163,7 @@ export default function ShowcasePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden theme-light">
       {/* ── Animated background ── */}
       <div className="animated-gradient-bg" />
 
