@@ -1,12 +1,12 @@
-/** Central platform identity constants for Vértice Hub Forti */
+/** Central platform identity constants for MentorFlow.io */
 export const PLATFORM = {
-  name: 'Vértice Hub Forti',
-  shortName: 'VHF',
+  name: 'MentorFlow.io',
+  shortName: 'MF',
   tagline: 'Sua plataforma de mentoria inteligente',
-  description: 'Escale sua mentoria com o Vértice Hub Forti. CRM inteligente, gamificação, IA avançada e ferramentas premium.',
-  domain: 'verticehubforti.com',
+  description: 'Escale sua mentoria com o MentorFlow.io. CRM inteligente, gamificação, IA avançada e ferramentas premium.',
+  domain: 'mentorflow.io',
   email: {
-    from: 'Vértice Hub Forti <noreply@equipe.aceleracaoforti.online>',
-    footer: `© ${new Date().getFullYear()} Vértice Hub Forti. Todos os direitos reservados.`,
+    from: 'MentorFlow.io <noreply@equipe.aceleracaoforti.online>',
+    footer: `© ${new Date().getFullYear()} MentorFlow.io. Todos os direitos reservados.`,
   },
 } as const;

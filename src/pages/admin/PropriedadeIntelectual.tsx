@@ -127,7 +127,7 @@ export default function PropriedadeIntelectual() {
     y = 55;
 
     // Sistema
-    addText(`Sistema: ${fp.system_name || "Vértice Hub Forti"}`, 14, true);
+    addText(`Sistema: ${fp.system_name || "MentorFlow.io"}`, 14, true);
     addText(`Versão: ${fp.version || "1.0.0"}`, 11);
     addText(`Data de Registro: ${fp.created_at ? new Date(fp.created_at).toLocaleString("pt-BR") : "N/A"}`, 11);
     
@@ -194,7 +194,7 @@ export default function PropriedadeIntelectual() {
     }
 
     // Download
-    const fileName = `VHF_Propriedade_Intelectual_${fp.version}_${new Date().toISOString().split("T")[0]}.pdf`;
+    const fileName = `MentorFlow_Propriedade_Intelectual_${fp.version}_${new Date().toISOString().split("T")[0]}.pdf`;
     doc.save(fileName);
     toast.success("PDF gerado com sucesso!");
   };

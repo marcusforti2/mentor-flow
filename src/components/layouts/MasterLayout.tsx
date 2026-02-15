@@ -40,7 +40,7 @@ export function MasterLayout() {
 
   return (
     <div className={cn("min-h-screen theme-light", bannerOffset)}>
-      {/* VHF master admin light background */}
+      {/* MentorFlow master admin light background */}
       <div className="animated-gradient-bg" />
        
        {/* Floating Dock - only visible on dashboard */}
