@@ -19,7 +19,7 @@ import {
   Sparkles,
   FolderOpen,
   ClipboardCheck,
-  
+  CalendarClock,
 } from 'lucide-react';
  import {
    Tooltip,
@@ -36,6 +36,7 @@ const menuItems = [
   { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
   { icon: FolderOpen, label: 'Arquivos & Reuniões', path: '/mentorado/meus-arquivos' },
   { icon: Calendar, label: 'Calendário', path: '/mentorado/calendario' },
+  { icon: CalendarClock, label: 'Agendar Sessão', path: '/mentorado/agendamento' },
   { icon: AlertTriangle, label: 'Centro SOS', path: '/mentorado/sos' },
   { icon: User, label: 'Meu Perfil', path: '/mentorado/perfil' },
 ];

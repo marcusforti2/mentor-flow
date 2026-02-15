@@ -49,6 +49,7 @@ const CRMMentorados = lazy(() => import("./pages/admin/CRMMentorados"));
 const Relatorios = lazy(() => import("./pages/admin/Relatorios"));
 const MentorPerfil = lazy(() => import("./pages/admin/MentorPerfil"));
 const AdminCentroSOS = lazy(() => import("./pages/admin/CentroSOS"));
+const Agendamento = lazy(() => import("./pages/admin/Agendamento"));
 
 // Member Pages
 const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
@@ -60,6 +61,7 @@ const FerramentasIA = lazy(() => import("./pages/member/FerramentasIA"));
 const CalendarioMembro = lazy(() => import("./pages/member/Calendario"));
 const MeusArquivos = lazy(() => import("./pages/member/MeusArquivos"));
 const MinhasTarefas = lazy(() => import("./pages/member/MinhasTarefas"));
+const AgendamentoMembro = lazy(() => import("./pages/member/Agendamento"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +137,7 @@ const App = () => (
                     <Route path="sos" element={<AdminCentroSOS />} />
                     <Route path="emails" element={<EmailMarketing />} />
                     <Route path="relatorios" element={<Relatorios />} />
+                    <Route path="agendamento" element={<Agendamento />} />
                     <Route path="perfil" element={<MentorPerfil />} />
                     <Route path="devtools" element={<DevTools />} />
                     <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
@@ -158,6 +161,7 @@ const App = () => (
                     <Route path="ferramentas" element={<FerramentasIA />} />
                     <Route path="meus-arquivos" element={<MeusArquivos />} />
                     <Route path="tarefas" element={<MinhasTarefas />} />
+                    <Route path="agendamento" element={<AgendamentoMembro />} />
                   </Route>
 
                   {/* Legacy route redirect */}
