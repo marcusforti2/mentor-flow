@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Bot, Send, RefreshCw, User, Lightbulb, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, Send, RefreshCw, User, Lightbulb, Users, ChevronDown, ChevronUp, Plus, MessageSquare, Trash2, Clock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { buildQualificationContext } from '@/hooks/useLeadsWithQualification';
@@ -21,6 +21,13 @@ interface VirtualMentorProps {
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface SavedLead {
@@ -49,13 +56,61 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  
+
+  // Conversations
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+
   // Lead selection
   const [leads, setLeads] = useState<SavedLead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [selectedLead, setSelectedLead] = useState<SavedLead | null>(null);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
   const [showLeadContext, setShowLeadContext] = useState(false);
+
+  // Fetch conversations
+  const fetchConversations = useCallback(async () => {
+    if (!mentoradoId) return;
+    setIsLoadingConversations(true);
+    try {
+      const { data, error } = await supabase
+        .from('chat_conversations')
+        .select('id, title, created_at, updated_at')
+        .eq('membership_id', mentoradoId)
+        .order('updated_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setConversations(data || []);
+    } catch (e) {
+      console.error('Error fetching conversations:', e);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, [mentoradoId]);
+
+  // Load conversations on mount
+  useEffect(() => { fetchConversations(); }, [fetchConversations]);
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!activeConversationId) { setMessages([]); return; }
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('role, content')
+          .eq('conversation_id', activeConversationId)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        setMessages((data || []).filter(m => m.role !== 'system') as Message[]);
+      } catch (e) {
+        console.error('Error loading messages:', e);
+      }
+    };
+    loadMessages();
+  }, [activeConversationId]);
 
   // Fetch leads
   useEffect(() => {
@@ -69,7 +124,6 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
           .eq('membership_id', mentoradoId)
           .order('updated_at', { ascending: false })
           .limit(50);
-        
         if (error) throw error;
         setLeads(data || []);
       } catch (error) {
@@ -78,7 +132,6 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
         setIsLoadingLeads(false);
       }
     };
-    
     fetchLeads();
   }, [mentoradoId]);
 
@@ -90,10 +143,7 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
 
   const handleLeadSelect = (leadId: string) => {
     setSelectedLeadId(leadId);
-    if (leadId === 'none') {
-      setSelectedLead(null);
-      return;
-    }
+    if (leadId === 'none') { setSelectedLead(null); return; }
     const lead = leads.find((l) => l.id === leadId);
     setSelectedLead(lead || null);
     if (lead) {
@@ -104,15 +154,31 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
 
   const buildLeadContextString = (): string => {
     if (!selectedLead) return '';
-    
-    // Adapta para o formato esperado pelo buildQualificationContext
     const enrichedLead = {
       ...selectedLead,
       ai_insights: selectedLead.ai_insights as LeadQualificationReport | null,
-      hasQualification: !!(selectedLead.ai_insights as any)?.behavioral_profile
+      hasQualification: !!(selectedLead.ai_insights as any)?.behavioral_profile,
     };
-    
     return buildQualificationContext(enrichedLead);
+  };
+
+  const startNewConversation = () => {
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    setActiveConversationId(null);
+    setMessages([]);
+    setInput('');
+  };
+
+  const deleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await supabase.from('chat_conversations').delete().eq('id', convId);
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (activeConversationId === convId) startNewConversation();
+      toast.success('Conversa excluída');
+    } catch {
+      toast.error('Erro ao excluir conversa');
+    }
   };
 
   const sendMessage = async (messageText?: string) => {
@@ -124,15 +190,12 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    // Create abort controller for this request
     abortControllerRef.current = new AbortController();
-
-    // Build context with lead info if selected
     const leadContext = buildLeadContextString();
 
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tools`;
-      
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contextual-chat`;
+
       const response = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -140,13 +203,10 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          tool: 'virtual_mentor',
-          mentorado_id: mentoradoId,
-          stream: true,
-          data: {
-            messages: [...messages, userMessage],
-            leadContext: leadContext || undefined,
-          },
+          membership_id: mentoradoId,
+          conversation_id: activeConversationId,
+          message: text,
+          lead_context: leadContext || undefined,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -154,13 +214,22 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
       if (!response.ok) {
         if (response.status === 429) {
           toast.error('Limite de requisições excedido. Tente novamente em alguns segundos.');
+          setMessages(prev => prev.slice(0, -1));
           return;
         }
         if (response.status === 402) {
           toast.error('Créditos esgotados. Adicione créditos para continuar.');
+          setMessages(prev => prev.slice(0, -1));
           return;
         }
         throw new Error('Failed to start stream');
+      }
+
+      // Get conversation ID from header (for new conversations)
+      const newConvId = response.headers.get('X-Conversation-Id');
+      if (newConvId && !activeConversationId) {
+        setActiveConversationId(newConvId);
+        fetchConversations(); // Refresh sidebar
       }
 
       if (!response.body) throw new Error('No response body');
@@ -170,7 +239,6 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
       let assistantContent = '';
       let textBuffer = '';
 
-      // Add empty assistant message
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
       while (true) {
@@ -239,13 +307,9 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
         }
       }
     } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        console.log('Request aborted');
-        return;
-      }
+      if ((error as Error).name === 'AbortError') return;
       console.error('Error in chat:', error);
       toast.error('Erro ao enviar mensagem');
-      // Remove the empty assistant message on error
       setMessages((prev) => prev.filter((m) => m.content !== ''));
     } finally {
       setIsLoading(false);
@@ -254,56 +318,98 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const clearChat = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    setMessages([]);
-    setInput('');
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
   const hasQualification = !!(selectedLead?.ai_insights as any)?.behavioral_profile;
 
   return (
-    <Card className="glass-card flex flex-col h-[700px] lg:h-[750px]">
-      <CardHeader className="pb-4 border-b border-border/50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
-              <Bot className="h-5 w-5 text-primary-foreground" />
+    <div className="flex gap-4 h-[700px] lg:h-[750px]">
+      {/* Sidebar - Conversation History */}
+      {showSidebar && (
+        <Card className="glass-card w-64 shrink-0 flex flex-col overflow-hidden">
+          <div className="p-3 border-b border-border/50">
+            <Button onClick={startNewConversation} className="w-full gap-2" size="sm">
+              <Plus className="h-4 w-4" />
+              Nova Conversa
+            </Button>
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-2 space-y-1">
+              {conversations.length === 0 && !isLoadingConversations && (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Nenhuma conversa salva
+                </p>
+              )}
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={cn(
+                    "group flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors text-sm",
+                    activeConversationId === conv.id
+                      ? "bg-primary/10 border border-primary/30"
+                      : "hover:bg-muted/50"
+                  )}
+                  onClick={() => setActiveConversationId(conv.id)}
+                >
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-foreground text-xs font-medium">{conv.title}</p>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-2.5 w-2.5" />
+                      {new Date(conv.updated_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    onClick={(e) => deleteConversation(conv.id, e)}
+                  >
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                  </Button>
+                </div>
+              ))}
             </div>
-            <div>
-              <CardTitle className="text-xl font-display">Mentor Virtual 24/7</CardTitle>
-              <CardDescription className="text-sm">
-                Seu coach de vendas de alto ticket
-              </CardDescription>
+          </ScrollArea>
+        </Card>
+      )}
+
+      {/* Main Chat */}
+      <Card className="glass-card flex-1 flex flex-col overflow-hidden">
+        <CardHeader className="pb-3 border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 lg:hidden"
+                onClick={() => setShowSidebar(!showSidebar)}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </Button>
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
+                <Bot className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-display">Mentor Virtual 24/7</CardTitle>
+                <CardDescription className="text-xs">
+                  Contextual • Conhece seu histórico completo
+                </CardDescription>
+              </div>
             </div>
           </div>
-          {messages.length > 0 && (
-            <Button variant="outline" size="sm" onClick={clearChat} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Limpar
-            </Button>
-          )}
-        </div>
-        
-        {/* Lead Selector */}
-        <div className="mt-4 pt-4 border-t border-border/30 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <Label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+
+          {/* Lead Selector — compact */}
+          <div className="mt-3 pt-3 border-t border-border/30">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
                 <Users className="h-3 w-3" />
-                Contexto de Lead (opcional)
+                Lead:
               </Label>
               <Select value={selectedLeadId} onValueChange={handleLeadSelect}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder={isLoadingLeads ? "Carregando..." : "Selecione um lead para contextualizar"} />
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder={isLoadingLeads ? "..." : "Sem lead específico"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem lead específico</SelectItem>
@@ -314,7 +420,6 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
                         <div className="flex items-center gap-2">
                           {lead.temperature === 'hot' ? '🔥' : lead.temperature === 'warm' ? '☀️' : '❄️'}
                           <span>{lead.contact_name}</span>
-                          {lead.company && <span className="text-muted-foreground text-xs">• {lead.company}</span>}
                           {hasQual && <span className="text-primary text-[10px]">✓IA</span>}
                         </div>
                       </SelectItem>
@@ -323,168 +428,125 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          
-          {selectedLead && (
-            <div className="p-3 rounded-lg bg-muted/30 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{selectedLead.contact_name}</span>
+
+            {selectedLead && (
+              <div className="mt-2 p-2 rounded-lg bg-muted/30 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{selectedLead.contact_name}</span>
                   {hasQualification && (
-                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
-                      ✓ Qualificado
-                    </Badge>
+                    <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1" onClick={() => setShowLeadContext(!showLeadContext)}>
+                      {showLeadContext ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </Button>
                   )}
                 </div>
-                {hasQualification && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => setShowLeadContext(!showLeadContext)}
-                  >
-                    {showLeadContext ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
-                    {showLeadContext ? 'Ocultar' : 'Ver dados'}
-                  </Button>
+                {showLeadContext && hasQualification && (
+                  <div className="mt-1 pt-1 border-t border-border/30 space-y-0.5 max-h-20 overflow-y-auto">
+                    {selectedLead.ai_insights?.score && <p><span className="text-muted-foreground">Score:</span> {selectedLead.ai_insights.score}/100</p>}
+                    {selectedLead.ai_insights?.summary && <p className="text-muted-foreground">{selectedLead.ai_insights.summary}</p>}
+                  </div>
                 )}
               </div>
-              {selectedLead.company && (
-                <p className="text-xs text-muted-foreground">{selectedLead.company}</p>
-              )}
-              {showLeadContext && hasQualification && (
-                <div className="mt-2 pt-2 border-t border-border/30 text-xs space-y-1 max-h-32 overflow-y-auto">
-                  {selectedLead.ai_insights?.behavioral_profile?.primary_style && (
-                    <p><span className="text-muted-foreground">DISC:</span> {selectedLead.ai_insights.behavioral_profile.primary_style.toUpperCase()}</p>
-                  )}
-                  {selectedLead.ai_insights?.score && (
-                    <p><span className="text-muted-foreground">Score:</span> {selectedLead.ai_insights.score}/100</p>
-                  )}
-                  {selectedLead.ai_insights?.summary && (
-                    <p><span className="text-muted-foreground">Resumo:</span> {selectedLead.ai_insights.summary}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </CardHeader>
+            )}
+          </div>
+        </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col min-h-0 p-4 lg:p-6">
-        {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-6">
-              <Bot className="h-10 w-10 text-primary" />
-            </div>
-            <h3 className="text-xl font-display font-semibold mb-3">Olá! Sou seu Mentor Virtual</h3>
-            <p className="text-base text-muted-foreground mb-8 max-w-lg leading-relaxed">
-              {selectedLead 
-                ? `Posso te ajudar com estratégias específicas para ${selectedLead.contact_name}. O que você precisa?`
-                : 'Estou aqui para ajudar com estratégias de vendas, scripts, objeções e tudo sobre seu negócio. Selecione um lead para contexto ou pergunte qualquer coisa!'}
-            </p>
-
-            <div className="w-full max-w-xl space-y-3">
-              <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
-                <Lightbulb className="h-4 w-4 text-warning" />
-                Perguntas rápidas:
+        <CardContent className="flex-1 flex flex-col min-h-0 p-4">
+          {messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-4">
+                <Bot className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-display font-semibold mb-2">Olá! Sou seu Mentor Virtual</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md leading-relaxed">
+                Conheço seu perfil, progresso, CRM e histórico completo. Pergunte qualquer coisa!
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {(selectedLead ? [
-                  `Como abordar ${selectedLead.contact_name}?`,
-                  `Quais objeções esperar de ${selectedLead.contact_name}?`,
-                  `Estratégia de follow-up para esse lead`,
-                  `Como fechar com esse perfil?`,
-                ] : quickQuestions).map((question, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="lg"
-                    className="text-sm h-auto py-3 px-4 text-left justify-start hover:bg-primary/10 hover:border-primary/50 transition-colors"
-                    onClick={() => sendMessage(question)}
-                  >
-                    {question}
-                  </Button>
-                ))}
+
+              <div className="w-full max-w-lg space-y-2">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-center">
+                  <Lightbulb className="h-3 w-3 text-primary" />
+                  Perguntas rápidas:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(selectedLead ? [
+                    `Como abordar ${selectedLead.contact_name}?`,
+                    `Objeções esperadas de ${selectedLead.contact_name}?`,
+                    `Estratégia de follow-up para esse lead`,
+                    `Como fechar com esse perfil?`,
+                  ] : quickQuestions).map((question, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-auto py-2 px-3 text-left justify-start hover:bg-primary/10 hover:border-primary/50"
+                      onClick={() => sendMessage(question)}
+                    >
+                      {question}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <>
+          ) : (
             <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollRef}>
-              <div className="space-y-6 pb-4">
+              <div className="space-y-4 pb-4">
                 {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      'flex gap-4',
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
+                  <div key={index} className={cn('flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                     {message.role === 'assistant' && (
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0 shadow-md">
-                        <Bot className="h-5 w-5 text-primary-foreground" />
+                      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0 shadow-md">
+                        <Bot className="h-4 w-4 text-primary-foreground" />
                       </div>
                     )}
-                    <div
-                      className={cn(
-                        'max-w-[85%] lg:max-w-[75%] rounded-2xl',
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground px-5 py-3'
-                          : 'bg-muted/80 px-5 py-4'
-                      )}
-                    >
+                    <div className={cn(
+                      'max-w-[85%] rounded-2xl',
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground px-4 py-2.5'
+                        : 'bg-muted/80 px-4 py-3'
+                    )}>
                       {message.role === 'assistant' ? (
-                        <div className="prose prose-base max-w-none prose-invert prose-p:text-foreground prose-p:leading-relaxed prose-p:mb-4 prose-li:text-foreground prose-li:mb-2 prose-headings:text-foreground prose-headings:font-display prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-3 prose-ol:my-3 prose-strong:text-primary prose-strong:font-semibold">
+                        <div className="prose prose-sm max-w-none prose-invert prose-p:text-foreground prose-p:leading-relaxed prose-p:mb-3 prose-li:text-foreground prose-headings:text-foreground prose-headings:font-display prose-strong:text-primary">
                           <ReactMarkdown>{message.content || '...'}</ReactMarkdown>
                         </div>
                       ) : (
-                        <p className="text-base leading-relaxed">{message.content}</p>
+                        <p className="text-sm leading-relaxed">{message.content}</p>
                       )}
                     </div>
                     {message.role === 'user' && (
-                      <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                        <User className="h-5 w-5 text-primary" />
+                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4 text-muted-foreground" />
                       </div>
                     )}
                   </div>
                 ))}
-                {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                  <div className="flex gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
-                      <Bot className="h-5 w-5 text-primary-foreground" />
+                {isLoading && messages[messages.length - 1]?.content === '' && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pl-11">
+                    <div className="flex gap-1">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <div className="bg-muted/80 rounded-2xl px-5 py-4">
-                      <div className="flex gap-1.5">
-                        <span className="w-2.5 h-2.5 bg-foreground/50 rounded-full animate-bounce" />
-                        <span className="w-2.5 h-2.5 bg-foreground/50 rounded-full animate-bounce [animation-delay:100ms]" />
-                        <span className="w-2.5 h-2.5 bg-foreground/50 rounded-full animate-bounce [animation-delay:200ms]" />
-                      </div>
-                    </div>
+                    <span>Pensando...</span>
                   </div>
                 )}
               </div>
             </ScrollArea>
+          )}
 
-            <div className="flex gap-3 mt-4 pt-4 border-t border-border/50">
-              <Input
-                placeholder={selectedLead ? `Pergunte sobre ${selectedLead.contact_name}...` : "Digite sua pergunta..."}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="text-base h-12"
-              />
-              <Button 
-                onClick={() => sendMessage()} 
-                disabled={isLoading || !input.trim()}
-                size="lg"
-                className="h-12 px-5"
-              >
-                <Send className="h-5 w-5" />
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          {/* Input */}
+          <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Digite sua dúvida..."
+              className="flex-1 h-10"
+              disabled={isLoading}
+            />
+            <Button onClick={() => sendMessage()} disabled={isLoading || !input.trim()} size="icon" className="h-10 w-10 shrink-0">
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
