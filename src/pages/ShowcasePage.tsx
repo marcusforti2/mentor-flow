@@ -243,6 +243,7 @@ export default function ShowcasePage() {
           <div className="hidden md:flex items-center gap-6">
             <a href="#fluxo" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Fluxo Governado</a>
             <a href="#arsenal" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Arsenal IA</a>
+            <a href="#bmi" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">BMI</a>
             <a href="#metricas" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Métricas</a>
           </div>
           <Button onClick={() => navigate('/auth')} className="btn-premium px-6 h-10 text-sm font-semibold">
@@ -544,6 +545,122 @@ export default function ShowcasePage() {
                 <div className="absolute bottom-0 left-0 right-0 h-px opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent)' }} />
               </div>
             ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════
+         BMI — BEHAVIORAL MENTORING INTELLIGENCE
+         ═══════════════════════════════════════ */}
+      <Section id="bmi">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent/20 bg-accent/5 mb-6">
+              <Brain className="w-4 h-4 text-accent animate-pulse" />
+              <span className="text-xs font-medium text-accent tracking-wider uppercase">O Diferencial Invisível</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+              <span className="text-gradient-gold">Behavioral Mentoring Intelligence</span>
+            </h2>
+            <p className="text-muted-foreground max-w-3xl mx-auto text-base mb-2">
+              O {PLATFORM.name} não analisa métricas genéricas. Ele lê <strong className="text-foreground">comportamento humano real</strong> — dos dois lados da mentoria.
+            </p>
+            <p className="text-sm text-muted-foreground/70 max-w-2xl mx-auto">
+              Dados extraídos de redes sociais, cruzados com contexto da mentoria. Sem teorias. Sem achismo.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-10">
+            {/* Mentor Side */}
+            <div className="glass-card-glow p-8 rounded-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-[0.05] pointer-events-none blur-3xl bg-primary group-hover:opacity-[0.1] transition-opacity duration-500" />
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.3)] transition-all duration-300">
+                  <Shield className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-foreground">O Mentor Governa Comportamento</h3>
+                  <p className="text-[11px] text-primary font-medium tracking-wide">Gestão de Sucesso Comportamental</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                {[
+                  { icon: Eye, title: 'Scraping Social Automatizado', desc: 'Instagram e LinkedIn do mentorado são lidos e analisados pela IA.' },
+                  { icon: Brain, title: 'Mapa Emocional Profundo', desc: 'Medos ocultos, vícios emocionais, padrões de autossabotagem.' },
+                  { icon: MessageSquare, title: 'Linguagem Ideal por Perfil', desc: 'A IA indica exatamente como se comunicar com cada aluno.' },
+                  { icon: AlertTriangle, title: 'Sinais Preditivos', desc: 'Detecta risco de desengajamento antes que o mentorado perceba.' },
+                ].map(({ icon: Icon, title, desc }, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{title}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/15">
+                <p className="text-xs text-center font-medium text-foreground">
+                  Resultado: O mentor sabe <strong className="text-primary">o que o aluno sente</strong> — não apenas o que faz.
+                </p>
+              </div>
+            </div>
+
+            {/* Mentorado Side */}
+            <div className="glass-card p-8 rounded-2xl border border-accent/20 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-[0.05] pointer-events-none blur-3xl bg-accent group-hover:opacity-[0.1] transition-opacity duration-500" />
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 group-hover:shadow-[0_0_20px_hsl(var(--accent)/0.3)] transition-all duration-300">
+                  <Crosshair className="w-6 h-6 text-accent" />
+                </div>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-foreground">O Mentorado Vende com Inteligência</h3>
+                  <p className="text-[11px] text-accent font-medium tracking-wide">Inteligência de Vendas Comportamental</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                {[
+                  { icon: Crosshair, title: 'Lead Scoring Comportamental', desc: 'Score baseado no perfil real do lead, não em dados superficiais.' },
+                  { icon: Brain, title: 'Análise de Personalidade do Lead', desc: 'A IA mapeia padrões de decisão, objeções prováveis e gatilhos.' },
+                  { icon: Send, title: 'Scripts Calibrados por Emoção', desc: 'Abordagens personalizadas por perfil comportamental — não templates.' },
+                  { icon: Swords, title: 'Objeções Previstas', desc: 'Sabe as objeções antes da call — preparado para cada cenário.' },
+                ].map(({ icon: Icon, title, desc }, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon className="w-4 h-4 text-accent" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{title}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 rounded-xl bg-accent/5 border border-accent/15">
+                <p className="text-xs text-center font-medium text-foreground">
+                  Resultado: O mentorado sabe <strong className="text-accent">como o lead pensa</strong> — antes de ligar.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* BMI Bottom Anchor */}
+          <div className="glass-card-glow p-8 md:p-10 rounded-3xl text-center relative overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] rounded-full opacity-[0.05] pointer-events-none blur-3xl bg-accent" />
+            <div className="relative z-10">
+              <p className="text-sm text-muted-foreground mb-3">Isso não existe em nenhuma plataforma do mercado.</p>
+              <p className="text-xl md:text-2xl font-display font-bold text-foreground">
+                <span className="text-gradient-gold">Inteligência comportamental real</span>
+                <br />
+                aplicada dos dois lados da mentoria.
+              </p>
+            </div>
           </div>
         </div>
       </Section>
