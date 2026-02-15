@@ -593,15 +593,23 @@ const Index = () => {
                   </div>
 
                   {/* Price block */}
-                  <div className="mb-1">
-                    <span className="text-4xl font-display font-bold text-foreground tracking-tight">{plan.price}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[11px] font-bold text-primary uppercase tracking-widest">Implementação</span>
-                  </div>
-                  <div className="flex items-baseline gap-1.5 mb-5 pb-5 border-b border-border/30">
-                    <span className="text-lg font-display font-bold text-foreground">{plan.monthly}</span>
-                    <span className="text-xs text-muted-foreground">/mês</span>
+                  <div className="p-4 rounded-xl bg-muted/40 border border-border/30 mb-5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Implementação</span>
+                    </div>
+                    <span className="text-3xl font-display font-bold text-foreground tracking-tight">{plan.price}</span>
+
+                    <div className="my-3 border-t border-border/30" />
+
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                      <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Mensalidade</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-display font-bold text-foreground">{plan.monthly}</span>
+                      <span className="text-xs text-muted-foreground">/mês</span>
+                    </div>
                   </div>
 
                   {/* Description */}
