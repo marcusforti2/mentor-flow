@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import vhfLogo from '@/assets/vhf-logo.png';
+import mentorflowLogo from '@/assets/mentorflow-logo.png';
 
 interface BrandLogoProps {
   variant?: 'full' | 'compact' | 'text';
@@ -18,7 +18,7 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }:
   };
 
   const currentSize = sizes[size];
-  const logoSrc = logoUrl || vhfLogo;
+  const logoSrc = logoUrl || mentorflowLogo;
 
   const LogoIcon = () => (
     <div className={cn(currentSize.icon, 'relative flex items-center justify-center')}>
