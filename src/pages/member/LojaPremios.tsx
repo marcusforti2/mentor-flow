@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useGamification } from "@/hooks/useGamification";
+import { useCertificates } from "@/hooks/useCertificates";
+import { useAuth } from "@/hooks/useAuth";
 import { BadgeCard, BadgeGrid } from "@/components/gamification/BadgeCard";
+import { CertificateGallery } from "@/components/certificates/CertificateGallery";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +28,7 @@ import {
   Loader2,
   ShoppingBag,
   Award,
+  GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,6 +43,10 @@ export default function LojaPremios() {
     isBadgeUnlocked,
     getBadgeUnlockDate,
   } = useGamification();
+
+  const { profile } = useAuth();
+  const { certificates, isLoading: certsLoading } = useCertificates();
+  const studentName = profile?.full_name || "Aluno";
 
   const [selectedReward, setSelectedReward] = useState<string | null>(null);
   const [shippingAddress, setShippingAddress] = useState("");
@@ -106,9 +114,18 @@ export default function LojaPremios() {
             <ShoppingBag className="h-4 w-4" />
             Loja
           </TabsTrigger>
+          <TabsTrigger value="certificados" className="gap-2">
+            <GraduationCap className="h-4 w-4" />
+            Certificados
+            {certificates.length > 0 && (
+              <span className="ml-1 text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
+                {certificates.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="conquistas" className="gap-2">
             <Award className="h-4 w-4" />
-            Minhas Conquistas
+            Conquistas
           </TabsTrigger>
           <TabsTrigger value="historico" className="gap-2">
             <Clock className="h-4 w-4" />
@@ -199,6 +216,17 @@ export default function LojaPremios() {
               </p>
             </div>
           )}
+        </TabsContent>
+
+        {/* Certificados */}
+        <TabsContent value="certificados" className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              Meus Certificados ({certificates.length})
+            </h2>
+            <CertificateGallery certificates={certificates} studentName={studentName} />
+          </div>
         </TabsContent>
 
         {/* Minhas Conquistas */}
