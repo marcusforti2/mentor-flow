@@ -424,7 +424,7 @@ const Index = () => {
               <span className="text-gradient-gold">Behavioral Mentoring Intelligence</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-2">
-              Não usamos métricas genéricas. Usamos <strong className="text-foreground">dados comportamentais e emocionais reais</strong> — extraídos de redes sociais e cruzados com o contexto da mentoria.
+              Não usamos métricas genéricas. Usamos <strong className="text-foreground">engenharia psicológica social</strong>, diagnóstico personalizado e análise de redes sociais — cruzados com o contexto da mentoria.
             </p>
             <p className="text-base text-muted-foreground/70 max-w-2xl mx-auto">
               Isso muda tudo. Para o mentor e para o mentorado.
