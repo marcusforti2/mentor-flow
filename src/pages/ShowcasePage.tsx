@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrandLogo } from '@/components/BrandLogo';
 import { PLATFORM } from '@/lib/platform';
+import { WelcomePopup } from '@/components/showcase/WelcomePopup';
 import { Button } from '@/components/ui/button';
 import {
   Brain, Target, MessageSquare, BarChart3, Trophy, BookOpen,
@@ -219,6 +220,7 @@ export default function ShowcasePage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden theme-light">
+      <WelcomePopup />
       <div className="animated-gradient-bg" />
 
       {/* ── Nav ── */}
