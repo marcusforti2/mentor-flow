@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  ArrowRight, Shield, Zap, Target, BarChart3, CheckCircle2, X,
+  ArrowRight, Shield, Zap, Target, BarChart3, CheckCircle2, XCircle,
   Brain, Trophy, Users, AlertTriangle, BookOpen, Calendar,
   Mail, Video, Settings, Eye, Bot, Crosshair, Send, Swords,
   FileSignature, LineChart, UserCircle, PenTool, Activity,
@@ -496,7 +496,7 @@ const Index = () => {
                 {comparisons.filter(c => !c.has).map(({ label }, i) => (
                   <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-background/60 border border-border/30">
                     <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                      <X className="w-3.5 h-3.5 text-destructive" />
+                      <XCircle className="w-3.5 h-3.5 text-destructive" />
                     </div>
                     <span className="text-sm text-muted-foreground">{label}</span>
                   </div>
