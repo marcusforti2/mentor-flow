@@ -2077,6 +2077,57 @@ export type Database = {
           },
         ]
       }
+      mentor_availability: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          mentor_membership_id: string
+          slot_duration_minutes: number | null
+          start_time: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          mentor_membership_id: string
+          slot_duration_minutes?: number | null
+          start_time: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          mentor_membership_id?: string
+          slot_duration_minutes?: number | null
+          start_time?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_availability_mentor_membership_id_fkey"
+            columns: ["mentor_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_availability_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_library: {
         Row: {
           category: string | null
@@ -2686,6 +2737,76 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "crm_prospections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_bookings: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          id: string
+          meeting_url: string | null
+          mentee_membership_id: string
+          mentor_membership_id: string
+          notes: string | null
+          scheduled_at: string
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          meeting_url?: string | null
+          mentee_membership_id: string
+          mentor_membership_id: string
+          notes?: string | null
+          scheduled_at: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          id?: string
+          meeting_url?: string | null
+          mentee_membership_id?: string
+          mentor_membership_id?: string
+          notes?: string | null
+          scheduled_at?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_bookings_mentee_membership_id_fkey"
+            columns: ["mentee_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_bookings_mentor_membership_id_fkey"
+            columns: ["mentor_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_bookings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

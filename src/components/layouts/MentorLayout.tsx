@@ -8,7 +8,7 @@
  import { AlertsPanel } from '@/components/admin/AlertsPanel';
  import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
  import { Button } from '@/components/ui/button';
- import { LogOut, Settings, ArrowLeft, UserCircle } from 'lucide-react';
+ import { LogOut, Settings, ArrowLeft, UserCircle, CalendarClock } from 'lucide-react';
  import { BrandLogo } from '@/components/BrandLogo';
   import {
     LayoutDashboard,
@@ -40,6 +40,7 @@
     
     { icon: Mail, label: 'Emails', path: '/mentor/emails' },
     { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
+    { icon: CalendarClock, label: 'Agendamento', path: '/mentor/agendamento' },
     { icon: UserCircle, label: 'Meu Perfil', path: '/mentor/perfil' },
   ];
  
