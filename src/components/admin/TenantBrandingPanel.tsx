@@ -151,7 +151,7 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
           body_font: manual.body_font || 'Inter',
           rationale: 'Definido manualmente',
         },
-        ai_analysis: 'Branding configurado manualmente pela equipe VHF.',
+        ai_analysis: 'Branding configurado manualmente pela equipe MentorFlow.',
         generated_by: membershipId || null,
       };
 

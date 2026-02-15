@@ -54,12 +54,12 @@ async function sendWelcomeEmail(params: {
   <div class="container">
     <div class="card">
       <div class="header">
-        <div class="logo">Vértice <span>Hub Forti</span></div>
+        <div class="logo">Mentor <span>Flow.io</span></div>
       </div>
       
       <h1>Olá ${displayName},</h1>
       
-      <p>Seu acesso à plataforma <strong>Vértice Hub Forti</strong> já está liberado.</p>
+      <p>Seu acesso à plataforma <strong>MentorFlow.io</strong> já está liberado.</p>
       
       <div class="steps">
         <h3>📋 Como acessar</h3>
@@ -83,8 +83,8 @@ async function sendWelcomeEmail(params: {
       <p>Seja bem-vindo(a)!</p>
       
       <div class="footer">
-        <p>Com carinho,<br><strong>Equipe Vértice Hub Forti</strong></p>
-        <p style="font-size: 12px; color: #999;">© ${new Date().getFullYear()} Vértice Hub Forti. Todos os direitos reservados.</p>
+        <p>Com carinho,<br><strong>Equipe MentorFlow.io</strong></p>
+        <p style="font-size: 12px; color: #999;">© ${new Date().getFullYear()} MentorFlow.io. Todos os direitos reservados.</p>
       </div>
     </div>
   </div>
@@ -100,9 +100,9 @@ async function sendWelcomeEmail(params: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Vértice Hub Forti <no-reply@equipe.aceleracaoforti.online>",
+        from: "MentorFlow.io <no-reply@equipe.aceleracaoforti.online>",
         to: [email],
-        subject: "Bem-vindo ao Vértice Hub Forti | Seu acesso está pronto",
+        subject: "Bem-vindo ao MentorFlow.io | Seu acesso está pronto",
         html: htmlBody,
       }),
     });

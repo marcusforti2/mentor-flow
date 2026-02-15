@@ -22,7 +22,7 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }:
 
   const LogoIcon = () => (
     <div className={cn(currentSize.icon, 'relative flex items-center justify-center')}>
-      <img src={logoSrc} alt="VHF Logo" className="w-full h-full object-contain" />
+      <img src={logoSrc} alt="MentorFlow Logo" className="w-full h-full object-contain" />
     </div>
   );
 
@@ -37,8 +37,8 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }:
   if (variant === 'text') {
     return (
       <div className={cn('flex items-center gap-1', className)}>
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Vértice</span>
-        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Hub Forti</span>
+        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
+        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
       </div>
     );
   }
@@ -47,12 +47,14 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }:
     <div className={cn('flex items-center gap-2', className)}>
       <LogoIcon />
       <div className="flex items-baseline gap-1">
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Vértice</span>
-        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Hub Forti</span>
+        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
+        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
       </div>
     </div>
   );
 }
 
 // Backward compatibility alias
+// Backward compatibility aliases
 export const LBVLogo = BrandLogo;
+export const VHFLogo = BrandLogo;
