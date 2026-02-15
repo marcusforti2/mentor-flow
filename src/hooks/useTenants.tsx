@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface Tenant {
   id: string;
@@ -9,6 +10,10 @@ export interface Tenant {
   logo_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  accent_color: string | null;
+  font_family: string | null;
+  favicon_url: string | null;
+  brand_attributes: Record<string, string> | null;
   status: string;
   created_at: string;
   memberships_count?: number;
@@ -20,6 +25,10 @@ export interface TenantFormData {
   logo_url?: string | null;
   primary_color?: string | null;
   secondary_color?: string | null;
+  accent_color?: string | null;
+  font_family?: string | null;
+  favicon_url?: string | null;
+  brand_attributes?: Record<string, string>;
   status?: string;
 }
 
@@ -29,7 +38,6 @@ export function useTenants() {
   const tenantsQuery = useQuery({
     queryKey: ['tenants-with-counts'],
     queryFn: async () => {
-      // Fetch tenants
       const { data: tenants, error: tenantsError } = await supabase
         .from('tenants')
         .select('*')
@@ -37,7 +45,6 @@ export function useTenants() {
 
       if (tenantsError) throw tenantsError;
 
-      // Fetch membership counts per tenant
       const { data: counts, error: countsError } = await supabase
         .from('memberships')
         .select('tenant_id')
@@ -45,7 +52,6 @@ export function useTenants() {
 
       if (countsError) throw countsError;
 
-      // Count memberships per tenant
       const countMap = counts.reduce((acc, m) => {
         acc[m.tenant_id] = (acc[m.tenant_id] || 0) + 1;
         return acc;
@@ -69,6 +75,10 @@ export function useTenants() {
           logo_url: data.logo_url || null,
           primary_color: data.primary_color || null,
           secondary_color: data.secondary_color || null,
+          accent_color: data.accent_color || null,
+          font_family: data.font_family || null,
+          favicon_url: data.favicon_url || null,
+          brand_attributes: (data.brand_attributes || {}) as unknown as Json,
           status: data.status || 'active',
         })
         .select()
@@ -88,9 +98,13 @@ export function useTenants() {
 
   const updateTenant = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TenantFormData> }) => {
+      const updatePayload: Record<string, unknown> = { ...data };
+      if (data.brand_attributes) {
+        updatePayload.brand_attributes = data.brand_attributes as unknown as Json;
+      }
       const { data: tenant, error } = await supabase
         .from('tenants')
-        .update(data)
+        .update(updatePayload)
         .eq('id', id)
         .select()
         .single();

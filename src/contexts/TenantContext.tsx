@@ -220,32 +220,47 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       } catch { return null; }
     };
 
-    if (tenant.primary_color) {
-      const hsl = hexToHsl(tenant.primary_color);
-      if (hsl) root.style.setProperty('--primary', hsl);
-    }
-    if (tenant.secondary_color) {
-      const hsl = hexToHsl(tenant.secondary_color);
-      if (hsl) root.style.setProperty('--secondary', hsl);
-    }
-    if (tenant.accent_color) {
-      const hsl = hexToHsl(tenant.accent_color);
-      if (hsl) root.style.setProperty('--accent', hsl);
+    const injectedProps: string[] = [];
+
+    const inject = (prop: string, hex: string | null | undefined) => {
+      if (!hex) return;
+      const hsl = hexToHsl(hex);
+      if (hsl) {
+        root.style.setProperty(prop, hsl);
+        injectedProps.push(prop);
+      }
+    };
+
+    // Core colors
+    inject('--primary', tenant.primary_color);
+    inject('--secondary', tenant.secondary_color);
+    inject('--accent', tenant.accent_color);
+
+    // Advanced brand_attributes (background, foreground, card, etc.)
+    const attrs = (tenant as any).brand_attributes as Record<string, string> | null;
+    if (attrs) {
+      inject('--background', attrs.background);
+      inject('--foreground', attrs.foreground);
+      inject('--card', attrs.card);
+      inject('--card-foreground', attrs.card_foreground);
+      inject('--muted', attrs.muted);
+      inject('--muted-foreground', attrs.muted_foreground);
+      inject('--border', attrs.border);
+      inject('--input', attrs.border); // input uses same as border
+      inject('--popover', attrs.card); // popover uses same as card
+      inject('--popover-foreground', attrs.card_foreground);
     }
 
     // Inject custom font if defined
     if (tenant.font_family) {
       root.style.setProperty('--font-display', tenant.font_family);
       root.style.setProperty('--font-body', tenant.font_family);
+      injectedProps.push('--font-display', '--font-body');
     }
 
     // Cleanup: restore defaults when tenant changes or unmounts
     return () => {
-      root.style.removeProperty('--primary');
-      root.style.removeProperty('--secondary');
-      root.style.removeProperty('--accent');
-      root.style.removeProperty('--font-display');
-      root.style.removeProperty('--font-body');
+      injectedProps.forEach(prop => root.style.removeProperty(prop));
     };
   }, [tenant, realMembership?.role, isImpersonating]);
 
