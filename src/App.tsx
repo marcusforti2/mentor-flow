@@ -21,6 +21,7 @@ import Auth from "./pages/Auth";
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ShowcasePage = lazy(() => import("./pages/ShowcasePage"));
+const TenantLandingPage = lazy(() => import("./pages/TenantLandingPage"));
 
 // Layouts (keep static - structural)
 import { MasterLayout } from "@/components/layouts/MasterLayout";
@@ -100,6 +101,7 @@ const App = () => (
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/setup" element={<Navigate to="/auth" replace />} />
                   <Route path="/showcase" element={<ShowcasePage />} />
+                  <Route path="/t/:slug" element={<TenantLandingPage />} />
 
                   {/* Master Admin Routes */}
                   <Route

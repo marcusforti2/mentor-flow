@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrandLogo } from '@/components/BrandLogo';
+import { PLATFORM } from '@/lib/platform';
 import { Button } from '@/components/ui/button';
 import {
   Brain, Target, MessageSquare, BarChart3, Trophy, BookOpen,
@@ -712,7 +713,7 @@ export default function ShowcasePage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <BrandLogo variant="full" size="sm" className="opacity-60" />
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Learning Brand. Todos os direitos reservados.
+            {PLATFORM.email.footer}
           </p>
         </div>
       </footer>
