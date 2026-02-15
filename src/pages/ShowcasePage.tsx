@@ -753,7 +753,12 @@ export default function ShowcasePage() {
                   variant="outline"
                   size="lg"
                   className="px-8 h-14 text-base border-primary/30 text-foreground hover:bg-primary/5"
-                  onClick={() => navigate('/#pricing')}
+                  onClick={() => {
+                    navigate('/');
+                    setTimeout(() => {
+                      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 300);
+                  }}
                 >
                   Ver Investimento
                 </Button>
