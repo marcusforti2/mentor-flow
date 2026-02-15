@@ -107,9 +107,9 @@ serve(async (req) => {
 
     // Send email via Resend
     const { error: emailError } = await resend.emails.send({
-      from: "Learning Brand <noreply@equipe.aceleracaoforti.online>",
+      from: "Vértice Hub Forti <noreply@equipe.aceleracaoforti.online>",
       to: [normalizedEmail],
-      subject: "Seu código de acesso - Learning Brand",
+      subject: "Seu código de acesso - Vértice Hub Forti",
       html: `
         <!DOCTYPE html>
         <html>
@@ -127,7 +127,7 @@ serve(async (req) => {
                       <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #c9a227 100%); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
                         <span style="font-size: 28px;">✨</span>
                       </div>
-                      <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 700;">Learning Brand</h1>
+                      <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 700;">Vértice Hub Forti</h1>
                       <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 14px;">Seu código de acesso chegou</p>
                     </td>
                   </tr>
@@ -150,7 +150,7 @@ serve(async (req) => {
                     <td style="padding: 24px 32px; background-color: #09090b; border-top: 1px solid #27272a;">
                       <p style="margin: 0; color: #52525b; font-size: 12px; text-align: center; line-height: 1.5;">
                         Se você não solicitou este código, ignore este email.<br>
-                        © ${new Date().getFullYear()} Learning Brand - Plataforma para Mentores
+                        © ${new Date().getFullYear()} Vértice Hub Forti - Plataforma para Mentores
                       </p>
                     </td>
                   </tr>

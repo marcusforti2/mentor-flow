@@ -8,7 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const FROM_EMAIL = "Learning Brand <noreply@equipe.aceleracaoforti.online>";
+const FROM_EMAIL = "Vértice Hub Forti <noreply@equipe.aceleracaoforti.online>";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -247,7 +247,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <div class="footer">
                 <p style="margin-bottom:10px;color:#4b5563;">Com carinho,<br/><strong>${mentorName}</strong></p>
-                <p>© ${new Date().getFullYear()} Learning Brand. Todos os direitos reservados.</p>
+                <p>© ${new Date().getFullYear()} Vértice Hub Forti. Todos os direitos reservados.</p>
               </div>
             </div>
           </body>

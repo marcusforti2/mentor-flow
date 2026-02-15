@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Configuração do domínio verificado
-const FROM_EMAIL = "Learning Brand <noreply@equipe.aceleracaoforti.online>";
+const FROM_EMAIL = "Vértice Hub Forti <noreply@equipe.aceleracaoforti.online>";
 
 interface EmailContent {
   subject: string;
@@ -150,7 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <div class="footer">
                 <p style="margin-bottom: 10px; color: #4b5563;">Com carinho,<br/><strong>Seu Mentor</strong></p>
-                <p>© ${new Date().getFullYear()} Learning Brand. Todos os direitos reservados.</p>
+                <p>© ${new Date().getFullYear()} Vértice Hub Forti. Todos os direitos reservados.</p>
                 ${isTest ? `<p style="color: #9ca3af; margin-top: 10px;">Este é um email de teste do fluxo "${flowName}"</p>` : ''}
               </div>
             </div>

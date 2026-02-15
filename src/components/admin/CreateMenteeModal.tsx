@@ -165,7 +165,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     }
 
     const selectedTenant = tenants.find(t => t.id === effectiveTenantId);
-    const tenantName = selectedTenant?.name || 'Learning Brand';
+    const tenantName = selectedTenant?.name || 'Vértice Hub Forti';
 
     try {
       await createMembership.mutateAsync({
