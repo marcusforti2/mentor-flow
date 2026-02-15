@@ -244,13 +244,13 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <a href="https://wa.me/5511972889909?text=Olá%20Jacob!%20Tenho%20interesse%20no%20MentorFlow.io" target="_blank" rel="noopener noreferrer">
+            <Link to="/showcase">
               <Button size="lg" className="btn-premium text-lg px-10 h-14">
                 <span className="flex items-center gap-2">
-                  Solicitar Demonstração <ArrowRight className="w-5 h-5" />
+                  Ver Demonstração <ArrowRight className="w-5 h-5" />
                 </span>
               </Button>
-            </a>
+            </Link>
           </div>
 
           <div className="mt-20 animate-bounce">
@@ -639,14 +639,14 @@ const Index = () => {
                   </div>
 
                   {/* CTA */}
-                  <a href="https://wa.me/5511972889909?text=Olá%20Jacob!%20Tenho%20interesse%20no%20MentorFlow.io" target="_blank" rel="noopener noreferrer">
+                  <Link to="/showcase">
                     <Button
                       className={cn('w-full h-11', plan.highlighted ? 'btn-premium' : '')}
                       variant={plan.highlighted ? 'default' : 'outline'}
                     >
-                      <span>{plan.highlighted ? 'Solicitar Demonstração' : 'Falar com Especialista'}</span>
+                      <span>Ver Demonstração</span>
                     </Button>
-                  </a>
+                  </Link>
 
                   {/* Anchor phrase */}
                   <p className="text-[11px] text-muted-foreground/70 text-center mt-4 italic leading-relaxed">
