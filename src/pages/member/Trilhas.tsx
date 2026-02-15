@@ -265,6 +265,8 @@ export default function Trilhas() {
         isOpen={isVideoOpen}
         onClose={handleCloseVideo}
         onComplete={handleCompleteLesson}
+        trailId={selectedTrail?.id}
+        trailTitle={selectedTrail?.title}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { X, FileText, Download, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -5,16 +6,40 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 import type { TrailLesson } from '@/types/trails';
 import { isGoogleDriveUrl, getGoogleDriveEmbedUrl } from '@/types/trails';
+import { CertificateModal } from '@/components/certificates/CertificateModal';
+import { useCertificates } from '@/hooks/useCertificates';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LessonContentModalProps {
   lesson: TrailLesson | null;
   isOpen: boolean;
   onClose: () => void;
   onComplete?: () => void;
+  trailId?: string;
+  trailTitle?: string;
 }
 
-export function LessonContentModal({ lesson, isOpen, onClose, onComplete }: LessonContentModalProps) {
+export function LessonContentModal({ lesson, isOpen, onClose, onComplete, trailId, trailTitle }: LessonContentModalProps) {
+  const [showCertificate, setShowCertificate] = useState(false);
+  const { checkTrailCompletion, issueCertificate, hasCertificate } = useCertificates();
+  const { profile } = useAuth();
+
   if (!lesson) return null;
+
+  const handleComplete = async () => {
+    onComplete?.();
+    // After marking complete, check if trail is now 100%
+    if (trailId && !hasCertificate(trailId)) {
+      // Small delay to let the progress update propagate
+      setTimeout(async () => {
+        const isComplete = await checkTrailCompletion(trailId);
+        if (isComplete) {
+          await issueCertificate.mutateAsync(trailId);
+          setShowCertificate(true);
+        }
+      }, 500);
+    }
+  };
 
   const renderContent = () => {
     switch (lesson.content_type) {
@@ -96,50 +121,63 @@ export function LessonContentModal({ lesson, isOpen, onClose, onComplete }: Less
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl w-[95vw] p-0 bg-background border-border overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div>
-            <h2 className="font-display font-bold text-lg text-foreground">
-              {lesson.title}
-            </h2>
-            {lesson.description && lesson.content_type !== 'file' && (
-              <p className="text-sm text-muted-foreground">
-                {lesson.description}
-              </p>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="rounded-full"
-          >
-            <X className="w-5 h-5" />
-          </Button>
-        </div>
-
-        {/* Content */}
-        {renderContent()}
-
-        {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-border bg-card">
-          <div className="text-sm text-muted-foreground">
-            {lesson.duration_minutes > 0 && `Duração: ${lesson.duration_minutes} minutos`}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Fechar
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-5xl w-[95vw] p-0 bg-background border-border overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div>
+              <h2 className="font-display font-bold text-lg text-foreground">
+                {lesson.title}
+              </h2>
+              {lesson.description && lesson.content_type !== 'file' && (
+                <p className="text-sm text-muted-foreground">
+                  {lesson.description}
+                </p>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="rounded-full"
+            >
+              <X className="w-5 h-5" />
             </Button>
-            {onComplete && (
-              <Button onClick={onComplete}>
-                Marcar como Concluída
-              </Button>
-            )}
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+          {/* Content */}
+          {renderContent()}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between p-4 border-t border-border bg-card">
+            <div className="text-sm text-muted-foreground">
+              {lesson.duration_minutes > 0 && `Duração: ${lesson.duration_minutes} minutos`}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Fechar
+              </Button>
+              {onComplete && (
+                <Button onClick={handleComplete}>
+                  Marcar como Concluída
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {showCertificate && trailTitle && (
+        <CertificateModal
+          isOpen={showCertificate}
+          onClose={() => setShowCertificate(false)}
+          studentName={profile?.full_name || "Aluno"}
+          trailTitle={trailTitle}
+          issuedAt={new Date().toISOString()}
+          isCelebration
+        />
+      )}
+    </>
   );
 }
