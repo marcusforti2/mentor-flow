@@ -40,7 +40,7 @@ export default function TenantLandingPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex items-center justify-center h-screen bg-background theme-light">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -48,7 +48,7 @@ export default function TenantLandingPage() {
 
   if (!tenant) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <div className="flex items-center justify-center h-screen bg-background theme-light">
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-display font-bold text-foreground">Mentoria não encontrada</h1>
           <p className="text-muted-foreground">O link que você acessou não corresponde a nenhuma mentoria ativa.</p>
@@ -70,7 +70,7 @@ export default function TenantLandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background theme-light">
       <div className="animated-gradient-bg" />
 
       {/* Header */}

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
+import { useTenant } from '@/contexts/TenantContext';
 import {
   LayoutDashboard,
   BookOpen,
@@ -36,6 +37,7 @@ const menuItems = [
 
 export function MemberLayout() {
   const { profile, signOut } = useAuth();
+  const { tenant } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -101,7 +103,7 @@ export function MemberLayout() {
         <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
           {/* Logo on the left */}
           <Link to="/app" className="ml-28">
-            <BrandLogo variant="full" size="sm" />
+            <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} />
           </Link>
 
           {/* User controls on the right */}
