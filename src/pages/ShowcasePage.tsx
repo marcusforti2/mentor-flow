@@ -14,6 +14,7 @@ import {
   Activity, Mail, Video, MonitorPlay, Award, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /* ─── Scroll reveal hook ─── */
 function useReveal(threshold = 0.15) {
@@ -116,6 +117,7 @@ export default function ShowcasePage() {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
   const [activeView, setActiveView] = useState<'mentor' | 'mentorado'>('mentor');
+  const [selectedTool, setSelectedTool] = useState<number | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -596,18 +598,155 @@ export default function ShowcasePage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Crosshair, name: 'Qualificador de Leads', description: 'Analisa perfis com IA, gera score de 0-100, temperatura (quente/morno/frio) e estratégia de abordagem personalizada.' },
-              { icon: Send, name: 'Cold Messages', description: 'Mensagens para WhatsApp, Instagram, LinkedIn e Email com tom adaptado ao perfil DISC do lead.' },
-              { icon: Swords, name: 'Simulador de Objeções', description: 'Role-play com IA em 9 fases de negociação High Ticket. Cenários realistas e desafiadores.' },
-              { icon: FileSignature, name: 'Gerador de Propostas', description: 'Propostas comerciais com ancoragem de valor, personalizadas para cada lead e contexto.' },
-              { icon: LineChart, name: 'Análise de Conversão', description: 'Envie transcrições de reuniões e receba nota IA, pontos fortes, objeções perdidas e melhorias.' },
-              { icon: UserCircle, name: 'Gerador de Bio', description: 'Bio otimizada para Instagram, LinkedIn e WhatsApp que comunica autoridade.' },
-              { icon: PenTool, name: 'Gerador de Conteúdo', description: 'Posts, carrosséis e stories baseados na oferta, público e tom de comunicação do aluno.' },
-              { icon: Bot, name: 'Mentor Virtual 24/7', description: 'O aluno tira dúvidas a qualquer hora. A IA conhece o negócio e dá respostas práticas.' },
+              {
+                icon: Crosshair,
+                name: 'Qualificador de Leads',
+                description: 'Analisa perfis com IA, gera score de 0-100, temperatura (quente/morno/frio) e estratégia de abordagem personalizada.',
+                expanded: {
+                  subtitle: 'Transforme perfis sociais em oportunidades qualificadas',
+                  details: 'A IA faz scraping automatizado de perfis do Instagram e LinkedIn, extrai dados relevantes e cruza com o Contexto de Pitch do mentorado para gerar uma análise completa.',
+                  features: [
+                    'Score de qualificação de 0 a 100 com justificativa IA',
+                    'Temperatura do lead: quente, morno ou frio',
+                    'Estratégia de abordagem personalizada para cada perfil',
+                    'Detecção de dores e oportunidades no perfil do lead',
+                    'Script sugerido para primeiro contato',
+                    'Integração automática com o CRM pessoal',
+                  ],
+                  impact: 'O mentorado para de perder tempo com leads frios e foca em quem tem maior probabilidade de fechar.',
+                },
+              },
+              {
+                icon: Send,
+                name: 'Cold Messages',
+                description: 'Mensagens para WhatsApp, Instagram, LinkedIn e Email com tom adaptado ao perfil DISC do lead.',
+                expanded: {
+                  subtitle: 'Mensagens que abrem portas — em qualquer canal',
+                  details: 'Gera mensagens de prospecção adaptadas ao perfil comportamental do lead (DISC) e ao canal de comunicação escolhido, respeitando o tom e a linguagem ideal.',
+                  features: [
+                    'Mensagens para WhatsApp, Instagram DM, LinkedIn e Email',
+                    'Tom adaptado ao perfil DISC do lead',
+                    'Variações A/B para testar abordagens',
+                    'Sequências de follow-up sugeridas',
+                    'Personalização com dados do negócio do mentorado',
+                    'Copy persuasiva com gatilhos mentais calibrados',
+                  ],
+                  impact: 'Taxa de resposta significativamente maior porque cada mensagem é cirurgicamente adaptada ao receptor.',
+                },
+              },
+              {
+                icon: Swords,
+                name: 'Simulador de Objeções',
+                description: 'Role-play com IA em 9 fases de negociação High Ticket. Cenários realistas e desafiadores.',
+                expanded: {
+                  subtitle: 'Treine para fechar antes de entrar na call',
+                  details: 'O mentorado pratica negociação em cenários realistas simulados pela IA, passando por 9 fases específicas de negociação High Ticket com objeções calibradas.',
+                  features: [
+                    '9 fases: Diagnóstico, Ancoragem, Resgate de Leads Frios e mais',
+                    'Objeções realistas baseadas no nicho do mentorado',
+                    'Feedback em tempo real sobre cada resposta',
+                    'Score de performance por sessão',
+                    'Sugestão de rebate para objeções perdidas',
+                    'Cenários progressivos de dificuldade',
+                  ],
+                  impact: 'Mentorados que treinam com o simulador entram em calls reais com mais confiança e repertório de respostas.',
+                },
+              },
+              {
+                icon: FileSignature,
+                name: 'Gerador de Propostas',
+                description: 'Propostas comerciais com ancoragem de valor, personalizadas para cada lead e contexto.',
+                expanded: {
+                  subtitle: 'Propostas profissionais em segundos',
+                  details: 'Cria propostas comerciais completas com ancoragem de valor, usando o contexto do negócio e os dados do lead para personalizar cada detalhe.',
+                  features: [
+                    'Estrutura profissional com ancoragem de preço',
+                    'Personalização automática com dados do lead',
+                    'Seção de benefícios e entregáveis detalhados',
+                    'Gatilhos de urgência e escassez integrados',
+                    'Formato pronto para envio por email ou PDF',
+                    'Variações de tom: formal, consultivo, direto',
+                  ],
+                  impact: 'Propostas que comunicam valor e profissionalismo, elevando a percepção da oferta do mentorado.',
+                },
+              },
+              {
+                icon: LineChart,
+                name: 'Análise de Conversão',
+                description: 'Envie transcrições de reuniões e receba nota IA, pontos fortes, objeções perdidas e melhorias.',
+                expanded: {
+                  subtitle: 'Diagnóstico IA de cada call de vendas',
+                  details: 'O mentorado envia a transcrição de uma reunião de vendas e a IA analisa toda a performance: técnica, argumentação, objeções tratadas e oportunidades perdidas.',
+                  features: [
+                    'Nota de performance de 0 a 100',
+                    'Pontos fortes identificados na argumentação',
+                    'Objeções perdidas que poderiam ser contornadas',
+                    'Sugestões concretas de melhoria',
+                    'Análise de linguagem corporal e tom (quando disponível)',
+                    'Comparativo de evolução entre calls',
+                  ],
+                  impact: 'Cada call se torna uma oportunidade de aprendizado. O mentorado evolui call a call com feedback objetivo.',
+                },
+              },
+              {
+                icon: UserCircle,
+                name: 'Gerador de Bio',
+                description: 'Bio otimizada para Instagram, LinkedIn e WhatsApp que comunica autoridade.',
+                expanded: {
+                  subtitle: 'Primeira impressão que converte',
+                  details: 'Gera bios otimizadas para cada rede social, comunicando autoridade, proposta de valor e chamada para ação — tudo alinhado ao posicionamento do negócio.',
+                  features: [
+                    'Bios otimizadas para Instagram, LinkedIn e WhatsApp',
+                    'Comunicação de autoridade e proposta de valor',
+                    'Chamadas para ação estratégicas',
+                    'Variações de tom e estilo',
+                    'Palavras-chave para descoberta orgânica',
+                    'Emojis estratégicos para cada plataforma',
+                  ],
+                  impact: 'Perfis profissionais que geram credibilidade antes mesmo do primeiro contato.',
+                },
+              },
+              {
+                icon: PenTool,
+                name: 'Gerador de Conteúdo',
+                description: 'Posts, carrosséis e stories baseados na oferta, público e tom de comunicação do aluno.',
+                expanded: {
+                  subtitle: 'Conteúdo estratégico sem bloquei criativo',
+                  details: 'Cria conteúdos para redes sociais alinhados com a oferta, público-alvo e estilo de comunicação do mentorado — de posts simples a carrosséis educativos.',
+                  features: [
+                    'Posts, carrosséis, reels e stories',
+                    'Calendário editorial sugerido',
+                    'Tom adaptado ao posicionamento do negócio',
+                    'Ganchos de engajamento e CTAs',
+                    'Conteúdo educativo, prova social e bastidores',
+                    'Hashtags e legendas otimizadas',
+                  ],
+                  impact: 'Mentorados que postam consistentemente atraem leads orgânicos qualificados para o pipeline.',
+                },
+              },
+              {
+                icon: Bot,
+                name: 'Mentor Virtual 24/7',
+                description: 'O aluno tira dúvidas a qualquer hora. A IA conhece o negócio e dá respostas práticas.',
+                expanded: {
+                  subtitle: 'Um mentor que nunca dorme',
+                  details: 'Chat contextual com IA que conhece todo o histórico do mentorado: perfil do negócio, progresso nas trilhas, leads no CRM, tarefas e perfil comportamental.',
+                  features: [
+                    'Respostas contextualizadas com dados reais do aluno',
+                    'Acesso ao histórico de negócio, trilhas e CRM',
+                    'Orientação prática para situações do dia a dia',
+                    'Histórico de conversas salvo e pesquisável',
+                    'Suporte com Markdown e formatação rica',
+                    'Disponível 24/7 sem fila de espera',
+                  ],
+                  impact: 'O mentorado nunca fica travado. Sempre tem uma orientação disponível — complementando o acompanhamento do mentor real.',
+                },
+              },
             ].map((tool, i) => (
               <div
                 key={tool.name}
-                className="relative group p-5 rounded-2xl border border-border/50 transition-all duration-300 bg-card/40 hover:bg-card/80 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(45_100%_51%/0.08)]"
+                className="relative group p-5 rounded-2xl border border-border/50 transition-all duration-300 bg-card/40 hover:bg-card/80 hover:border-primary/30 hover:shadow-[0_0_30px_hsl(45_100%_51%/0.08)] cursor-pointer"
+                onClick={() => setSelectedTool(i)}
               >
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -618,9 +757,72 @@ export default function ShowcasePage() {
                     <p className="text-xs text-muted-foreground leading-relaxed">{tool.description}</p>
                   </div>
                 </div>
+                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <span className="text-[10px] text-primary font-medium flex items-center gap-1">
+                    Ver mais <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
               </div>
             ))}
           </div>
+
+          {/* Tool Detail Modal */}
+          {(() => {
+            const tools = [
+              { icon: Crosshair, name: 'Qualificador de Leads', color: 'hsl(45 93% 48%)', expanded: { subtitle: 'Transforme perfis sociais em oportunidades qualificadas', details: 'A IA faz scraping automatizado de perfis do Instagram e LinkedIn, extrai dados relevantes e cruza com o Contexto de Pitch do mentorado para gerar uma análise completa.', features: ['Score de qualificação de 0 a 100 com justificativa IA', 'Temperatura do lead: quente, morno ou frio', 'Estratégia de abordagem personalizada para cada perfil', 'Detecção de dores e oportunidades no perfil do lead', 'Script sugerido para primeiro contato', 'Integração automática com o CRM pessoal'], impact: 'O mentorado para de perder tempo com leads frios e foca em quem tem maior probabilidade de fechar.' } },
+              { icon: Send, name: 'Cold Messages', color: 'hsl(220 91% 65%)', expanded: { subtitle: 'Mensagens que abrem portas — em qualquer canal', details: 'Gera mensagens de prospecção adaptadas ao perfil comportamental do lead (DISC) e ao canal de comunicação escolhido.', features: ['Mensagens para WhatsApp, Instagram DM, LinkedIn e Email', 'Tom adaptado ao perfil DISC do lead', 'Variações A/B para testar abordagens', 'Sequências de follow-up sugeridas', 'Personalização com dados do negócio do mentorado', 'Copy persuasiva com gatilhos mentais calibrados'], impact: 'Taxa de resposta significativamente maior porque cada mensagem é cirurgicamente adaptada ao receptor.' } },
+              { icon: Swords, name: 'Simulador de Objeções', color: 'hsl(0 84% 55%)', expanded: { subtitle: 'Treine para fechar antes de entrar na call', details: 'O mentorado pratica negociação em cenários realistas simulados pela IA, passando por 9 fases específicas de negociação High Ticket.', features: ['9 fases: Diagnóstico, Ancoragem, Resgate de Leads Frios e mais', 'Objeções realistas baseadas no nicho do mentorado', 'Feedback em tempo real sobre cada resposta', 'Score de performance por sessão', 'Sugestão de rebate para objeções perdidas', 'Cenários progressivos de dificuldade'], impact: 'Mentorados que treinam com o simulador entram em calls reais com mais confiança e repertório.' } },
+              { icon: FileSignature, name: 'Gerador de Propostas', color: 'hsl(270 91% 65%)', expanded: { subtitle: 'Propostas profissionais em segundos', details: 'Cria propostas comerciais completas com ancoragem de valor, personalizadas para cada lead e contexto de negócio.', features: ['Estrutura profissional com ancoragem de preço', 'Personalização automática com dados do lead', 'Seção de benefícios e entregáveis detalhados', 'Gatilhos de urgência e escassez integrados', 'Formato pronto para envio por email ou PDF', 'Variações de tom: formal, consultivo, direto'], impact: 'Propostas que comunicam valor e profissionalismo, elevando a percepção da oferta.' } },
+              { icon: LineChart, name: 'Análise de Conversão', color: 'hsl(160 84% 39%)', expanded: { subtitle: 'Diagnóstico IA de cada call de vendas', details: 'O mentorado envia a transcrição e a IA analisa performance, argumentação, objeções tratadas e oportunidades perdidas.', features: ['Nota de performance de 0 a 100', 'Pontos fortes identificados na argumentação', 'Objeções perdidas que poderiam ser contornadas', 'Sugestões concretas de melhoria', 'Análise de linguagem e tom da conversa', 'Comparativo de evolução entre calls'], impact: 'Cada call se torna uma oportunidade de aprendizado com feedback objetivo.' } },
+              { icon: UserCircle, name: 'Gerador de Bio', color: 'hsl(190 95% 45%)', expanded: { subtitle: 'Primeira impressão que converte', details: 'Gera bios otimizadas para cada rede social, comunicando autoridade e proposta de valor.', features: ['Bios otimizadas para Instagram, LinkedIn e WhatsApp', 'Comunicação de autoridade e proposta de valor', 'Chamadas para ação estratégicas', 'Variações de tom e estilo', 'Palavras-chave para descoberta orgânica', 'Emojis estratégicos para cada plataforma'], impact: 'Perfis profissionais que geram credibilidade antes mesmo do primeiro contato.' } },
+              { icon: PenTool, name: 'Gerador de Conteúdo', color: 'hsl(45 100% 51%)', expanded: { subtitle: 'Conteúdo estratégico sem bloqueio criativo', details: 'Cria conteúdos para redes sociais alinhados com a oferta, público-alvo e estilo do mentorado.', features: ['Posts, carrosséis, reels e stories', 'Calendário editorial sugerido', 'Tom adaptado ao posicionamento do negócio', 'Ganchos de engajamento e CTAs', 'Conteúdo educativo, prova social e bastidores', 'Hashtags e legendas otimizadas'], impact: 'Mentorados que postam consistentemente atraem leads orgânicos qualificados.' } },
+              { icon: Bot, name: 'Mentor Virtual 24/7', color: 'hsl(270 91% 55%)', expanded: { subtitle: 'Um mentor que nunca dorme', details: 'Chat contextual com IA que conhece todo o histórico do mentorado: perfil, progresso, leads, tarefas e comportamento.', features: ['Respostas contextualizadas com dados reais do aluno', 'Acesso ao histórico de negócio, trilhas e CRM', 'Orientação prática para situações do dia a dia', 'Histórico de conversas salvo e pesquisável', 'Suporte com Markdown e formatação rica', 'Disponível 24/7 sem fila de espera'], impact: 'O mentorado nunca fica travado. Sempre tem orientação disponível — complementando o mentor real.' } },
+            ];
+            const tool = selectedTool !== null ? tools[selectedTool] : null;
+            return (
+              <Dialog open={selectedTool !== null} onOpenChange={(open) => !open && setSelectedTool(null)}>
+                {tool && (
+                  <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <div className="flex items-center gap-3 mb-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: `${tool.color}15` }}
+                        >
+                          <tool.icon className="w-5 h-5" style={{ color: tool.color }} />
+                        </div>
+                        <div>
+                          <DialogTitle className="font-display text-lg">{tool.name}</DialogTitle>
+                          <p className="text-xs text-muted-foreground">{tool.expanded.subtitle}</p>
+                        </div>
+                      </div>
+                    </DialogHeader>
+                    <div className="space-y-5 pt-2">
+                      <p className="text-sm text-muted-foreground leading-relaxed">{tool.expanded.details}</p>
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-primary" /> O que faz
+                        </h4>
+                        <ul className="space-y-2">
+                          {tool.expanded.features.map((f, i) => (
+                            <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/85">
+                              <Star className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="p-4 rounded-xl bg-primary/5 border border-primary/15">
+                        <p className="text-sm text-foreground">
+                          <strong className="text-primary">Impacto:</strong> {tool.expanded.impact}
+                        </p>
+                      </div>
+                    </div>
+                  </DialogContent>
+                )}
+              </Dialog>
+            );
+          })()}
 
           <div className="mt-8 p-6 rounded-2xl bg-primary/5 border border-primary/15 text-center">
             <p className="text-sm text-foreground">
