@@ -40,29 +40,29 @@ export function MasterLayout() {
 
   return (
     <div className={cn("min-h-screen", bannerOffset)}>
-      {/* Dark master admin background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 -z-10" />
+      {/* VHF master admin background */}
+      <div className="animated-gradient-bg" />
        
        {/* Floating Dock - only visible on dashboard */}
        {isDashboard && <FloatingDock items={menuItems} position="left" />}
  
        {/* Back Header - visible on sub-pages */}
        {!isDashboard && (
-         <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
+         <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-card/80 backdrop-blur-md border-b border-border/50">
            <div className="flex items-center gap-4">
              <Link to="/master">
               <BrandLogo variant="full" size="sm" />
              </Link>
-             <div className="h-6 w-px bg-slate-700/50" />
+             <div className="h-6 w-px bg-border/50" />
              <Button
                variant="ghost"
                size="icon"
                onClick={() => navigate('/master')}
-               className="h-9 w-9 rounded-full hover:bg-primary/10 text-slate-300"
+               className="h-9 w-9 rounded-full hover:bg-primary/10 text-muted-foreground"
              >
                <ArrowLeft className="h-4 w-4" />
              </Button>
-             <h1 className="font-display font-semibold text-lg text-slate-100">
+             <h1 className="font-display font-semibold text-lg text-foreground">
                {pageTitle}
              </h1>
            </div>
@@ -106,14 +106,14 @@ export function MasterLayout() {
                 <span className="text-xs font-medium text-primary">Master Admin</span>
               </div>
 
-              <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full bg-slate-800/50 border-slate-700/50">
+              <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={profile?.avatar_url || ''} />
                   <AvatarFallback className="bg-primary/20 text-primary text-sm">
                    {profile?.full_name?.charAt(0) || 'M'}
                  </AvatarFallback>
                </Avatar>
-               <span className="text-sm font-medium text-slate-200 hidden sm:block">
+               <span className="text-sm font-medium text-foreground hidden sm:block">
                  {profile?.full_name || 'Master Admin'}
                </span>
                <Tooltip>
@@ -122,7 +122,7 @@ export function MasterLayout() {
                      variant="ghost"
                      size="icon"
                      onClick={signOut}
-                     className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive text-slate-400"
+                      className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive text-muted-foreground"
                    >
                      <LogOut className="h-4 w-4" />
                    </Button>
