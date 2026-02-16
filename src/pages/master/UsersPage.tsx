@@ -126,7 +126,10 @@ export default function UsersPage() {
   };
 
   const handleStartImpersonation = async (membership: MembershipWithDetails) => {
-    if (!membership.can_impersonate) {
+    // Master admin can impersonate anyone (except other master admins)
+    const isMaster = realMembership?.role === 'master_admin';
+    
+    if (!isMaster && !membership.can_impersonate) {
       toast.error('Este usuário não tem permissão para ser impersonado. Ative a opção primeiro.');
       return;
     }
@@ -466,7 +469,7 @@ export default function UsersPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleStartImpersonation(membership)}
-                                disabled={membership.role === 'master_admin' || !membership.can_impersonate}
+                                disabled={membership.role === 'master_admin' || (!membership.can_impersonate && realMembership?.role !== 'master_admin')}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Impersonar
