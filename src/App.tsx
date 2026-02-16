@@ -8,7 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/contexts/TenantContext";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { SwitchContextPanel } from "@/components/SwitchContextPanel";
+
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { Loader2 } from "lucide-react";
 
@@ -184,7 +184,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
-              <SwitchContextPanel />
+              
           </TenantProvider>
         </AuthProvider>
       </BrowserRouter>
