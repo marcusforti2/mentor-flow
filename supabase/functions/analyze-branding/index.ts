@@ -40,50 +40,89 @@ serve(async (req) => {
 
     const hasImages = imageParts.length > 0;
 
-    const systemPrompt = `Você é um designer de produto sênior especializado em Design Systems para plataformas SaaS.
+    const systemPrompt = `Você é um designer de produto sênior especializado em criar Design Systems visualmente impactantes para plataformas SaaS.
 
-CONTEXTO TÉCNICO CRÍTICO:
-A plataforma suporta DOIS modos de tema: dark e light. Você DEVE decidir qual modo combina melhor com a marca analisada.
+TAREFA: Analisar a identidade visual de uma marca e gerar um branding PREMIUM com cores que criem uma interface BONITA e FUNCIONAL.
+
+CONTEXTO: A plataforma suporta dois modos de tema: dark e light. Você DEVE decidir qual combina melhor com a marca.
 
 CRITÉRIOS PARA ESCOLHER O MODO:
-- **dark**: Marcas premium, tech, luxo, masculinas, corporativas sérias, coaching executivo. Cores vibrantes sobre fundo escuro.
-- **light**: Marcas femininas, wellness, educação, saúde, infantis, naturais, clean, coloridas. Cores sobre fundo claro.
+- **dark**: Marcas premium, tech, luxo, masculinas, corporativas sérias, coaching executivo, segurança, fintech
+- **light**: Marcas femininas, wellness, educação, saúde, infantis, naturais, clean, coloridas, criativas
 
-As cores são definidas em formato HSL SEM wrapper — apenas os três valores: "220 15% 10%" (NÃO "hsl(220 15% 10%)").
+⚠️ REGRA CRÍTICA DE FORMATO: Todas as cores devem ser HSL raw: "H S% L%" — NUNCA "hsl()", NUNCA hex, NUNCA rgb.
 
-REGRAS PARA DARK MODE:
-- background: luminosidade 5-15%, foreground: 85-98%
-- cards: 2-5% mais claro que background
-- muted: luminosidade 15-25%, muted-foreground: 55-70%
-- border: luminosidade 18-28%
+═══════════════════════════════════════
+REGRAS VISUAIS OBRIGATÓRIAS (DARK MODE)
+═══════════════════════════════════════
+- background: matiz da marca, saturação 10-20%, luminosidade 6-12%. Ex: "220 15% 9%"
+- foreground: mesmo matiz, saturação 5-15%, luminosidade 90-98%. Ex: "220 10% 95%"
+- card: EXATAMENTE 3-5% mais luminoso que background. Ex: se bg é 9%, card é "220 15% 13%"
+- card_foreground: IGUAL ao foreground
+- muted: matiz da marca, saturação 10-20%, luminosidade 15-22%. Ex: "220 15% 18%"
+- muted_foreground: luminosidade 55-68%. Ex: "220 10% 62%"
+- border: luminosidade 18-25%. Ex: "220 12% 22%"
+- secondary: próximo ao muted, luminosidade 14-20%. Ex: "220 14% 17%"
+- secondary_foreground: luminosidade 85-95%. Ex: "220 10% 90%"
 
-REGRAS PARA LIGHT MODE:
-- background: luminosidade 95-100%, foreground: 5-20%
-- cards: luminosidade 98-100% (branco ou quase)
-- muted: luminosidade 88-95%, muted-foreground: 35-50%
-- border: luminosidade 82-92%
+═══════════════════════════════════════
+REGRAS VISUAIS OBRIGATÓRIAS (LIGHT MODE)
+═══════════════════════════════════════
+- background: luminosidade 97-100%. Ex: "0 0% 99%" ou "220 20% 98%"
+- foreground: luminosidade 5-15%. Ex: "220 20% 10%"
+- card: luminosidade 99-100%, branco puro ou quase. Ex: "0 0% 100%"
+- card_foreground: IGUAL ao foreground
+- muted: luminosidade 93-96%. Ex: "220 15% 95%"
+- muted_foreground: luminosidade 35-48%. Ex: "220 10% 42%"
+- border: luminosidade 85-92%. Ex: "220 10% 88%"
+- secondary: luminosidade 94-97%. Ex: "220 15% 96%"
+- secondary_foreground: luminosidade 15-30%. Ex: "220 15% 25%"
 
-REGRAS PARA AMBOS:
-1. FORMATO: Sempre "H S% L%". NUNCA inclua "hsl()".
-2. PRIMARY: Cor vibrante (saturação > 50%, luminosidade 40-65%).
-3. PRIMARY-FOREGROUND: Contraste com primary (branco "0 0% 98%" ou escuro "0 0% 10%").
-4. CONTRASTE: Diferença mínima de 40% luminosidade entre texto e fundo.
-5. DESTRUCTIVE: Sempre vermelho — "0 84% 60%".
+═══════════════════════════════════════
+REGRAS PARA PRIMARY (AMBOS OS MODOS)
+═══════════════════════════════════════
+A cor primary é a IDENTIDADE da marca. Deve ser VIBRANTE e MEMORÁVEL.
+- Saturação: SEMPRE ≥ 60% (cores vivas, NUNCA acinzentadas)
+- Luminosidade: 45-65% (visível tanto em dark quanto em light)
+- primary_foreground: branco "0 0% 100%" se primary for escura, ou "0 0% 5%" se primary for clara
 
+═══════════════════════════════════════
+REGRAS PARA ACCENT
+═══════════════════════════════════════
+- DEVE ter contraste com primary (matiz diferente, ≥60° de diferença no círculo cromático)
+- Saturação ≥ 50%, luminosidade 45-65%
+- accent_foreground: contraste máximo com accent
+
+═══════════════════════════════════════
+CHECKLIST DE QUALIDADE (VERIFICAR ANTES DE RESPONDER)
+═══════════════════════════════════════
+✅ background e foreground têm ≥75% diferença de luminosidade?
+✅ card é apenas 3-5% mais claro/escuro que background (NÃO igual, NÃO muito diferente)?
+✅ muted_foreground é legível sobre muted (≥30% diferença)?
+✅ primary tem saturação ≥ 60%?
+✅ border é sutil mas visível (nem igual ao bg, nem muito contrastante)?
+✅ Nenhuma cor tem wrapper hsl()?
+
+═══════════════════════════════════════
+ANÁLISE DE IMAGENS
+═══════════════════════════════════════
 ${hasImages
-  ? 'Analise as imagens da marca (Instagram, logo, materiais) e EXTRAIA cores dominantes. DECIDA se dark ou light combina melhor.'
-  : 'Baseado na descrição, crie uma identidade visual premium. DECIDA se dark ou light combina melhor.'}
+  ? `Analise as imagens fornecidas da marca. FOQUE em:
+- Logotipo: extraia a cor dominante para usar como PRIMARY
+- Paleta existente: respeite as cores da marca
+- Estilo visual: determine se combina com dark ou light
+- IGNORE completamente elementos de UI de outras aplicações (botões, menus, headers de apps)
+- IGNORE screenshots de redes sociais — foque apenas nos materiais de MARCA visíveis`
+  : `Baseado na descrição textual, crie uma identidade visual premium e coerente.`}
 
-O tenant se chama: "${tenant?.name || "Não definido"}"
-
-IMPORTANTE: Foque apenas no branding da marca. Ignore elementos de UI de outras apps visíveis nas imagens.`;
+O tenant se chama: "${tenant?.name || "Não definido"}"`;
 
     const userContent = hasImages
       ? [
-          { type: "text", text: text_prompt || "Analise a identidade visual da marca nestas imagens e gere um branding completo para dark mode." },
+          { type: "text", text: text_prompt || `Analise a identidade visual da marca "${tenant?.name || ''}" nestas imagens. Extraia as cores reais da marca e gere um branding premium. IGNORE elementos de UI de outras apps.` },
           ...imageParts,
         ]
-      : text_prompt || "Gere uma proposta de branding baseada no nome do tenant.";
+      : text_prompt || `Gere uma proposta de branding premium para a marca "${tenant?.name || ''}" baseada no nome.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -236,6 +275,51 @@ IMPORTANTE: Foque apenas no branding da marca. Ignore elementos de UI de outras 
 
     if (proposal.color_palette) proposal.color_palette = sanitizeColors(proposal.color_palette);
     if (proposal.system_colors) proposal.system_colors = sanitizeColors(proposal.system_colors);
+
+    // Post-processing: validate and fix critical contrast issues
+    const parseLum = (hsl: string): number => {
+      if (!hsl) return -1;
+      const parts = hsl.replace(/,/g, ' ').split(/\s+/).map(s => parseFloat(s));
+      return parts.length >= 3 ? parts[2] : -1;
+    };
+
+    const sc = proposal.system_colors;
+    if (sc) {
+      const isDark = (proposal.theme_mode || 'dark') === 'dark';
+      const bgLum = parseLum(sc.background);
+      const fgLum = parseLum(sc.foreground);
+
+      // Fix: ensure bg/fg contrast ≥ 75%
+      if (bgLum >= 0 && fgLum >= 0 && Math.abs(bgLum - fgLum) < 70) {
+        if (isDark) {
+          sc.foreground = sc.foreground.replace(/\d+%$/, '95%');
+          sc.background = sc.background.replace(/\d+%$/, '9%');
+        } else {
+          sc.foreground = sc.foreground.replace(/\d+%$/, '10%');
+          sc.background = sc.background.replace(/\d+%$/, '99%');
+        }
+      }
+
+      // Fix: card_foreground should equal foreground
+      sc.card_foreground = sc.foreground;
+
+      // Fix: ensure primary has enough saturation
+      if (sc.primary) {
+        const primaryParts = sc.primary.replace(/,/g, ' ').split(/\s+/).map(s => parseFloat(s));
+        if (primaryParts.length >= 3 && primaryParts[1] < 50) {
+          sc.primary = `${Math.round(primaryParts[0])} ${Math.max(60, Math.round(primaryParts[1]))}% ${Math.round(primaryParts[2])}%`;
+        }
+      }
+
+      // Sync palette with system colors
+      if (proposal.color_palette) {
+        proposal.color_palette.primary = sc.primary;
+        proposal.color_palette.background = sc.background;
+        proposal.color_palette.foreground = sc.foreground;
+      }
+
+      console.log("Post-processed system_colors:", JSON.stringify(sc));
+    }
 
     // Save proposal to database
     const { data: branding, error: dbError } = await supabase
