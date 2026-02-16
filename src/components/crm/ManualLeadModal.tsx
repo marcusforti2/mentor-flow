@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { logActivity } from "@/hooks/useActivityLog";
 import { Loader2 } from "lucide-react";
 
 interface ManualLeadModalProps {
@@ -68,6 +69,15 @@ export function ManualLeadModal({
       });
 
       if (error) throw error;
+
+      // Log activity for dashboard tracking
+      await logActivity({
+        membershipId,
+        tenantId: tenantId || undefined,
+        actionType: 'lead_created',
+        description: `Cadastrou lead: ${form.contact_name.trim()}`,
+        pointsEarned: 3,
+      });
 
       toast({ title: "Lead cadastrado com sucesso!" });
       setForm({ contact_name: "", contact_phone: "", contact_email: "", company: "", temperature: "cold", notes: "" });
