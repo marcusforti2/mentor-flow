@@ -7,11 +7,14 @@ import { TrailDetailSheet } from '@/components/trails/TrailDetailSheet';
 import { LessonContentModal } from '@/components/trails/LessonContentModal';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { logActivity } from '@/hooks/useActivityLog';
+import { toast } from 'sonner';
 import type { Trail, TrailLesson } from '@/types/trails';
 
 export default function Trilhas() {
   const { activeMembership } = useTenant();
+  const queryClient = useQueryClient();
   const [selectedTrail, setSelectedTrail] = useState<Trail | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<TrailLesson | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -102,11 +105,38 @@ export default function Trilhas() {
     enabled: !!activeMembership?.tenant_id
   });
 
+  // Fetch completed lesson IDs
+  const { data: completedLessonIds = [] } = useQuery({
+    queryKey: ['completed-lessons', activeMembership?.id],
+    queryFn: async () => {
+      if (!activeMembership?.id) return [];
+      const { data } = await supabase
+        .from('trail_progress')
+        .select('lesson_id')
+        .eq('membership_id', activeMembership.id)
+        .eq('completed', true);
+      return (data || []).map(p => p.lesson_id);
+    },
+    enabled: !!activeMembership?.id
+  });
+
   // Featured trail (primeira com is_featured=true ou primeira da lista)
   const featuredTrail = trails.find(t => t.is_featured) || trails[0];
   
-  // Trails with progress (continue watching) - TODO: implement real progress
-  const continueWatching: Trail[] = [];
+  // Trails with progress (continue watching)
+  const continueWatching = trails.filter(t => {
+    const allLessonIds = t.modules.flatMap(m => m.lessons.map(l => l.id));
+    const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
+    return completed > 0 && completed < allLessonIds.length;
+  });
+
+  // Calculate progress for a trail
+  const getTrailProgress = (trail: Trail) => {
+    const allLessonIds = trail.modules.flatMap(m => m.lessons.map(l => l.id));
+    if (allLessonIds.length === 0) return 0;
+    const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
+    return Math.round((completed / allLessonIds.length) * 100);
+  };
 
   const handleTrailClick = (trail: Trail) => {
     setSelectedTrail(trail);
@@ -124,8 +154,36 @@ export default function Trilhas() {
     setSelectedLesson(null);
   };
 
-  const handleCompleteLesson = () => {
-    console.log('Marking lesson as complete:', selectedLesson?.id);
+  const handleCompleteLesson = async () => {
+    if (!selectedLesson || !activeMembership) return;
+    try {
+      // Upsert trail_progress
+      const { error } = await supabase
+        .from('trail_progress')
+        .upsert({
+          membership_id: activeMembership.id,
+          lesson_id: selectedLesson.id,
+          completed: true,
+          tenant_id: activeMembership.tenant_id,
+        }, { onConflict: 'membership_id,lesson_id' });
+      if (error) throw error;
+
+      // Log activity
+      await logActivity({
+        membershipId: activeMembership.id,
+        tenantId: activeMembership.tenant_id,
+        actionType: 'lesson_completed',
+        description: `Concluiu a aula: ${selectedLesson.title}`,
+        pointsEarned: 5,
+      });
+
+      // Invalidate queries to refresh progress
+      queryClient.invalidateQueries({ queryKey: ['completed-lessons'] });
+      toast.success('Aula concluída! +5 pontos');
+    } catch (err) {
+      console.error('Error completing lesson:', err);
+      toast.error('Erro ao registrar progresso');
+    }
     handleCloseVideo();
   };
 
@@ -257,6 +315,8 @@ export default function Trilhas() {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         onLessonClick={handleLessonClick}
+        progress={selectedTrail ? getTrailProgress(selectedTrail) : 0}
+        completedLessonIds={completedLessonIds}
       />
 
       {/* Lesson Content Modal */}
