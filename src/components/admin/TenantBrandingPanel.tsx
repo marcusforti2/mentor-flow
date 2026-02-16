@@ -421,7 +421,9 @@ function BrandingResult({
   isRejecting: boolean;
   isUpdating: boolean;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [editMode, setEditMode] = useState<'off' | 'full' | 'colors'>('off');
+  const isEditing = editMode !== 'off';
+  const isColorOnly = editMode === 'colors';
   const [editColors, setEditColors] = useState<Record<string, string>>({});
   const [editSystemColors, setEditSystemColors] = useState<Record<string, string>>({});
   const [editTypography, setEditTypography] = useState<{ display_font: string; body_font: string }>({ display_font: '', body_font: '' });
@@ -430,7 +432,37 @@ function BrandingResult({
 
   if (!branding) return null;
 
-  const startEditing = () => {
+  // HSL string "220 91% 45%" <-> hex "#RRGGBB"
+  const hslToHex = (hslStr: string): string => {
+    if (!hslStr) return '#888888';
+    const parts = hslStr.replace(/,/g, ' ').split(/\s+/).map(s => parseFloat(s));
+    if (parts.length < 3 || parts.some(isNaN)) return '#888888';
+    let [h, s, l] = parts;
+    s /= 100; l /= 100;
+    const a2 = s * Math.min(l, 1 - l);
+    const f = (n: number) => { const k = (n + h / 30) % 12; return l - a2 * Math.max(Math.min(k - 3, 9 - k, 1), -1); };
+    const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+  };
+
+  const hexToHsl = (hex: string): string => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+      else if (max === g) h = ((b - r) / d + 2) * 60;
+      else h = ((r - g) / d + 4) * 60;
+    }
+    return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  };
+
+  const startEditing = (mode: 'full' | 'colors') => {
     setEditColors({ ...branding.color_palette });
     setEditSystemColors({ ...branding.system_colors });
     setEditTypography({
@@ -439,21 +471,28 @@ function BrandingResult({
     });
     setEditName(branding.suggested_name || '');
     setEditConcept(branding.brand_concept || '');
-    setIsEditing(true);
+    setEditMode(mode);
   };
 
   const handleSaveEdits = () => {
-    onUpdate({
+    const updates: Partial<BrandingProposal> = {
       color_palette: editColors,
       system_colors: editSystemColors,
-      typography: { ...branding.typography, ...editTypography },
-      suggested_name: editName || branding.suggested_name,
-      brand_concept: editConcept || branding.brand_concept,
-    });
-    setIsEditing(false);
+    };
+    if (!isColorOnly) {
+      updates.typography = { ...branding.typography, ...editTypography };
+      updates.suggested_name = editName || branding.suggested_name;
+      updates.brand_concept = editConcept || branding.brand_concept;
+    }
+    onUpdate(updates);
+    setEditMode('off');
   };
 
   const colorKeys = ['primary', 'secondary', 'accent', 'background', 'foreground', 'muted'];
+  const colorLabels: Record<string, string> = {
+    primary: 'Primária', secondary: 'Secundária', accent: 'Destaque',
+    background: 'Fundo', foreground: 'Texto', muted: 'Sutil',
+  };
 
   return (
     <div className="space-y-4">
@@ -464,22 +503,28 @@ function BrandingResult({
             {statusLabels[branding.status]}
           </Badge>
           {!isEditing && (branding.status === 'draft' || branding.status === 'approved') && (
-            <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5 h-7 text-xs">
-              <Pencil className="h-3 w-3" />
-              Editar
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => startEditing('colors')} className="gap-1.5 h-7 text-xs">
+                <Palette className="h-3 w-3" />
+                Editar Cores
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => startEditing('full')} className="gap-1.5 h-7 text-xs">
+                <Pencil className="h-3 w-3" />
+                Editar Tudo
+              </Button>
+            </>
           )}
         </div>
       </div>
 
       {/* Editing banner */}
       {isEditing && (
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between flex-wrap gap-2">
           <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
-            ✏️ Modo de edição — altere cores, fontes ou conceito e salve.
+            {isColorOnly ? '🎨 Editando cores — selecione e salve.' : '✏️ Modo de edição — altere cores, fontes ou conceito e salve.'}
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="h-7 text-xs">
+            <Button variant="ghost" size="sm" onClick={() => setEditMode('off')} className="h-7 text-xs">
               Cancelar
             </Button>
             <Button size="sm" onClick={handleSaveEdits} disabled={isUpdating} className="h-7 text-xs gap-1.5">
@@ -490,8 +535,8 @@ function BrandingResult({
         </div>
       )}
 
-      {/* Name & Concept */}
-      {(branding.brand_concept || branding.suggested_name) && (
+      {/* Name & Concept — hide in color-only mode */}
+      {!isColorOnly && (branding.brand_concept || branding.suggested_name) && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -585,20 +630,27 @@ function BrandingResult({
           </CardHeader>
           <CardContent>
             {isEditing ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {colorKeys.map((key) => {
                   const val = editColors[key] || '';
                   return (
-                    <div key={key}>
-                      <Label className="text-xs capitalize">{key}</Label>
+                    <div key={key} className="space-y-1.5">
+                      <Label className="text-xs">{colorLabels[key] || key}</Label>
                       <div className="flex gap-2 items-center">
-                        <Input
-                          value={val}
-                          onChange={(e) => setEditColors(prev => ({ ...prev, [key]: e.target.value }))}
-                          placeholder="220 91% 45%"
-                          className="text-xs font-mono"
+                        <input
+                          type="color"
+                          value={hslToHex(val)}
+                          onChange={(e) => setEditColors(prev => ({ ...prev, [key]: hexToHsl(e.target.value) }))}
+                          className="w-10 h-10 rounded-lg border border-border cursor-pointer shrink-0 bg-transparent p-0.5"
                         />
-                        {val && <div className="w-8 h-8 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${val})` }} />}
+                        <div className="flex-1 min-w-0">
+                          <Input
+                            value={val}
+                            onChange={(e) => setEditColors(prev => ({ ...prev, [key]: e.target.value }))}
+                            placeholder="220 91% 45%"
+                            className="text-xs font-mono h-8"
+                          />
+                        </div>
                       </div>
                     </div>
                   );
@@ -613,7 +665,7 @@ function BrandingResult({
                     return (
                       <div key={key} className="text-center">
                         <div className="w-full h-12 rounded-lg border border-border mb-1" style={{ backgroundColor: `hsl(${color})` }} />
-                        <p className="text-[10px] text-muted-foreground capitalize">{key}</p>
+                        <p className="text-[10px] text-muted-foreground">{colorLabels[key] || key}</p>
                         <p className="text-[9px] text-muted-foreground/60 font-mono">{color}</p>
                       </div>
                     );
@@ -628,8 +680,8 @@ function BrandingResult({
         </Card>
       )}
 
-      {/* Typography */}
-      {branding.typography && (
+      {/* Typography — hide in color-only mode */}
+      {branding.typography && !isColorOnly && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -673,18 +725,23 @@ function BrandingResult({
           </CardHeader>
           <CardContent>
             {isEditing ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {Object.entries(editSystemColors).map(([key, value]) => (
-                  <div key={key}>
+                  <div key={key} className="space-y-1.5">
                     <Label className="text-xs">--{key.replace(/_/g, '-')}</Label>
                     <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={hslToHex(value as string)}
+                        onChange={(e) => setEditSystemColors(prev => ({ ...prev, [key]: hexToHsl(e.target.value) }))}
+                        className="w-8 h-8 rounded border border-border cursor-pointer shrink-0 bg-transparent p-0.5"
+                      />
                       <Input
                         value={value as string}
                         onChange={(e) => setEditSystemColors(prev => ({ ...prev, [key]: e.target.value }))}
                         placeholder="220 91% 45%"
-                        className="text-xs font-mono"
+                        className="text-xs font-mono h-8"
                       />
-                      {value && <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${value})` }} />}
                     </div>
                   </div>
                 ))}
