@@ -159,3 +159,14 @@
   aspect-ratio: 16/9;
   height: auto;
 }
+
+/* Read-only mode */
+.tiptap-editor.readonly .tiptap {
+  cursor: default;
+}
+
+.tiptap-editor.readonly .tiptap a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  cursor: pointer;
+}
