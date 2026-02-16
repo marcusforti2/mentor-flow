@@ -240,7 +240,8 @@ const Mentorados = () => {
         .from('memberships')
         .select('id, user_id, status, created_at')
         .eq('tenant_id', tenantId)
-        .eq('role', 'mentee');
+        .eq('role', 'mentee')
+        .eq('status', 'active');
       
       if (membershipsError) throw membershipsError;
       
