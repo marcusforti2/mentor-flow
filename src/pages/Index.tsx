@@ -244,7 +244,7 @@ const Index = () => {
               <Brain className="w-3 h-3" />
               Engenharia Psicológica Social
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/8 border border-accent/15 text-xs font-medium text-accent-foreground">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-xs font-medium text-primary">
               <Target className="w-3 h-3" />
               Diagnóstico Personalizado
             </span>
