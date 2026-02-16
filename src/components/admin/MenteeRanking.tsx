@@ -6,9 +6,10 @@ import { MenteeScoreCard, type MenteeScore } from "./MenteeScoreCard";
 interface MenteeRankingProps {
   mentees: MenteeScore[];
   isLoading: boolean;
+  onMenteeClick?: (mentee: MenteeScore) => void;
 }
 
-export function MenteeRanking({ mentees, isLoading }: MenteeRankingProps) {
+export function MenteeRanking({ mentees, isLoading, onMenteeClick }: MenteeRankingProps) {
   const sorted = [...mentees].sort((a, b) => b.score - a.score);
 
   return (
@@ -33,11 +34,16 @@ export function MenteeRanking({ mentees, isLoading }: MenteeRankingProps) {
         ) : (
           <div className="space-y-2">
             {sorted.map((mentee, index) => (
-              <MenteeScoreCard
+              <div
                 key={mentee.membershipId}
-                mentee={mentee}
-                rank={index + 1}
-              />
+                className={onMenteeClick ? 'cursor-pointer' : ''}
+                onClick={() => onMenteeClick?.(mentee)}
+              >
+                <MenteeScoreCard
+                  mentee={mentee}
+                  rank={index + 1}
+                />
+              </div>
             ))}
           </div>
         )}

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import type { MenteeScore } from "@/components/admin/MenteeScoreCard";
 import type { WeeklyDataPoint } from "@/components/admin/PerformanceChart";
+import type { PeriodRange } from "@/components/admin/ReportPeriodFilter";
 
 export interface MentorReportStats {
   totalMentorados: number;
@@ -20,7 +21,13 @@ export interface LeadsByStatus {
   count: number;
 }
 
-// Calculate a 0-100 score for a mentee
+export interface MonthlyComparison {
+  month: string; // "Jan", "Fev", etc.
+  leads: number;
+  activities: number;
+  avgScore: number;
+}
+
 function calculateScore(data: {
   leadsCount: number;
   tasksCompleted: number;
@@ -28,7 +35,6 @@ function calculateScore(data: {
   activitiesCount: number;
   streak: number;
 }): number {
-  // Weights: leads 30%, tasks 20%, trails 20%, activities 20%, streak 10%
   const leadsScore = Math.min(data.leadsCount * 5, 30);
   const tasksScore = Math.min(data.tasksCompleted * 4, 20);
   const trailsScore = (data.trailsProgress / 100) * 20;
@@ -37,13 +43,16 @@ function calculateScore(data: {
   return Math.min(leadsScore + tasksScore + trailsScore + activitiesScore + streakScore, 100);
 }
 
-export function useMentorReports() {
+export function useMentorReports(period?: PeriodRange) {
   const { activeMembership } = useTenant();
   const tenantId = activeMembership?.tenant_id;
 
+  const fromISO = period?.from.toISOString() || '';
+  const toISO = period?.to.toISOString() || '';
+
   // --- KPI Stats ---
   const statsQuery = useQuery({
-    queryKey: ['mentor-reports-stats', tenantId],
+    queryKey: ['mentor-reports-stats', tenantId, fromISO, toISO],
     queryFn: async (): Promise<MentorReportStats> => {
       if (!tenantId) throw new Error('No tenant');
 
@@ -53,11 +62,18 @@ export function useMentorReports() {
       weekAgo.setDate(weekAgo.getDate() - 7);
       const startOfWeek = weekAgo.toISOString();
 
+      let membershipsQ = supabase.from('memberships').select('id, user_id, status').eq('tenant_id', tenantId).eq('role', 'mentee');
+      let leadsQ = supabase.from('crm_prospections').select('id, created_at, status').eq('tenant_id', tenantId);
+      let activitiesQ = supabase.from('activity_logs').select('id, created_at').eq('tenant_id', tenantId);
+      let progressQ = supabase.from('trail_progress').select('completed').eq('tenant_id', tenantId);
+
+      if (period) {
+        leadsQ = leadsQ.gte('created_at', fromISO).lte('created_at', toISO);
+        activitiesQ = activitiesQ.gte('created_at', fromISO).lte('created_at', toISO);
+      }
+
       const [membershipsRes, leadsRes, activitiesRes, progressRes] = await Promise.all([
-        supabase.from('memberships').select('id, user_id, status').eq('tenant_id', tenantId).eq('role', 'mentee'),
-        supabase.from('crm_prospections').select('id, created_at, status').eq('tenant_id', tenantId),
-        supabase.from('activity_logs').select('id, created_at').eq('tenant_id', tenantId),
-        supabase.from('trail_progress').select('completed').eq('tenant_id', tenantId),
+        membershipsQ, leadsQ, activitiesQ, progressQ,
       ]);
 
       const memberships = membershipsRes.data || [];
@@ -82,10 +98,12 @@ export function useMentorReports() {
 
   // --- Leads by Status ---
   const leadsByStatusQuery = useQuery({
-    queryKey: ['mentor-reports-leads-by-status', tenantId],
+    queryKey: ['mentor-reports-leads-by-status', tenantId, fromISO, toISO],
     queryFn: async (): Promise<LeadsByStatus[]> => {
       if (!tenantId) throw new Error('No tenant');
-      const { data: leads } = await supabase.from('crm_prospections').select('status').eq('tenant_id', tenantId);
+      let q = supabase.from('crm_prospections').select('status, created_at').eq('tenant_id', tenantId);
+      if (period) q = q.gte('created_at', fromISO).lte('created_at', toISO);
+      const { data: leads } = await q;
       const statusMap: Record<string, number> = {};
       leads?.forEach(l => {
         const status = l.status || 'novo';
@@ -98,7 +116,7 @@ export function useMentorReports() {
 
   // --- Mentee Scores ---
   const menteeScoresQuery = useQuery({
-    queryKey: ['mentor-reports-mentee-scores', tenantId],
+    queryKey: ['mentor-reports-mentee-scores', tenantId, fromISO, toISO],
     queryFn: async (): Promise<MenteeScore[]> => {
       if (!tenantId) throw new Error('No tenant');
 
@@ -111,17 +129,24 @@ export function useMentorReports() {
       const membershipIds = memberships.map(m => m.id);
       const userIds = memberships.map(m => m.user_id);
 
+      let leadsQ = supabase.from('crm_prospections').select('membership_id').eq('tenant_id', tenantId).in('membership_id', membershipIds);
+      let tasksQ = supabase.from('campan_tasks').select('mentorado_membership_id, status_column').eq('tenant_id', tenantId).in('mentorado_membership_id', membershipIds);
+      let activitiesQ = supabase.from('activity_logs').select('membership_id, created_at, points_earned').eq('tenant_id', tenantId).in('membership_id', membershipIds);
+
+      if (period) {
+        leadsQ = leadsQ.gte('created_at', fromISO).lte('created_at', toISO);
+        activitiesQ = activitiesQ.gte('created_at', fromISO).lte('created_at', toISO);
+      }
+
       const [profilesRes, leadsRes, tasksRes, progressRes, activitiesRes] = await Promise.all([
         supabase.from('profiles').select('user_id, full_name, avatar_url').in('user_id', userIds),
-        supabase.from('crm_prospections').select('membership_id').eq('tenant_id', tenantId).in('membership_id', membershipIds),
-        supabase.from('campan_tasks').select('mentorado_membership_id, status_column').eq('tenant_id', tenantId).in('mentorado_membership_id', membershipIds),
+        leadsQ, tasksQ,
         supabase.from('trail_progress').select('membership_id, completed').eq('tenant_id', tenantId).in('membership_id', membershipIds),
-        supabase.from('activity_logs').select('membership_id, created_at, points_earned').eq('tenant_id', tenantId).in('membership_id', membershipIds),
+        activitiesQ,
       ]);
 
       const profileMap = new Map((profilesRes.data || []).map(p => [p.user_id, p]));
 
-      // Aggregate per membership
       const leadsPerM: Record<string, number> = {};
       (leadsRes.data || []).forEach(l => { if (l.membership_id) leadsPerM[l.membership_id] = (leadsPerM[l.membership_id] || 0) + 1; });
 
@@ -167,7 +192,7 @@ export function useMentorReports() {
           name: profile?.full_name || 'Sem nome',
           avatar: profile?.avatar_url || null,
           score,
-          previousScore: null, // TODO: historical comparison
+          previousScore: null,
           leadsCount,
           tasksCompleted,
           trailsProgress,
@@ -182,34 +207,35 @@ export function useMentorReports() {
 
   // --- Weekly Evolution ---
   const weeklyEvolutionQuery = useQuery({
-    queryKey: ['mentor-reports-weekly-evolution', tenantId],
+    queryKey: ['mentor-reports-weekly-evolution', tenantId, fromISO, toISO],
     queryFn: async (): Promise<WeeklyDataPoint[]> => {
       if (!tenantId) throw new Error('No tenant');
 
+      const startDate = period ? period.from : new Date(Date.now() - 56 * 24 * 60 * 60 * 1000);
+      const endDate = period ? period.to : new Date();
+      
       const weeks: WeeklyDataPoint[] = [];
-      const now = new Date();
+      const cursor = new Date(startDate);
+      cursor.setHours(0, 0, 0, 0);
 
-      for (let i = 7; i >= 0; i--) {
-        const weekStart = new Date(now);
-        weekStart.setDate(weekStart.getDate() - (i * 7));
-        weekStart.setHours(0, 0, 0, 0);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 7);
-
+      while (cursor <= endDate) {
         weeks.push({
-          week: weekStart.toISOString().split('T')[0],
+          week: cursor.toISOString().split('T')[0],
           activities: 0,
           leads: 0,
           tasksCompleted: 0,
         });
+        cursor.setDate(cursor.getDate() + 7);
       }
 
-      const startDate = weeks[0].week;
+      if (weeks.length === 0) return [];
+
+      const startISO = weeks[0].week;
 
       const [activitiesRes, leadsRes, tasksRes] = await Promise.all([
-        supabase.from('activity_logs').select('created_at').eq('tenant_id', tenantId).gte('created_at', startDate),
-        supabase.from('crm_prospections').select('created_at').eq('tenant_id', tenantId).gte('created_at', startDate),
-        supabase.from('campan_tasks').select('updated_at, status_column').eq('tenant_id', tenantId).eq('status_column', 'done').gte('updated_at', startDate),
+        supabase.from('activity_logs').select('created_at').eq('tenant_id', tenantId).gte('created_at', startISO).lte('created_at', toISO || new Date().toISOString()),
+        supabase.from('crm_prospections').select('created_at').eq('tenant_id', tenantId).gte('created_at', startISO).lte('created_at', toISO || new Date().toISOString()),
+        supabase.from('campan_tasks').select('updated_at, status_column').eq('tenant_id', tenantId).eq('status_column', 'done').gte('updated_at', startISO).lte('updated_at', toISO || new Date().toISOString()),
       ]);
 
       const getWeekIdx = (dateStr: string) => {
@@ -229,6 +255,42 @@ export function useMentorReports() {
     enabled: !!tenantId,
   });
 
+  // --- Monthly Comparison (last 6 months) ---
+  const monthlyComparisonQuery = useQuery({
+    queryKey: ['mentor-reports-monthly-comparison', tenantId],
+    queryFn: async (): Promise<MonthlyComparison[]> => {
+      if (!tenantId) throw new Error('No tenant');
+
+      const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const now = new Date();
+      const months: { label: string; from: string; to: string }[] = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+        months.push({
+          label: MONTHS_PT[d.getMonth()],
+          from: d.toISOString(),
+          to: end.toISOString(),
+        });
+      }
+
+      const sixMonthsAgo = months[0].from;
+
+      const [leadsRes, activitiesRes] = await Promise.all([
+        supabase.from('crm_prospections').select('created_at').eq('tenant_id', tenantId).gte('created_at', sixMonthsAgo),
+        supabase.from('activity_logs').select('created_at').eq('tenant_id', tenantId).gte('created_at', sixMonthsAgo),
+      ]);
+
+      return months.map(m => {
+        const leads = (leadsRes.data || []).filter(l => l.created_at && l.created_at >= m.from && l.created_at <= m.to).length;
+        const activities = (activitiesRes.data || []).filter(a => a.created_at >= m.from && a.created_at <= m.to).length;
+        return { month: m.label, leads, activities, avgScore: 0 };
+      });
+    },
+    enabled: !!tenantId,
+  });
+
   return {
     stats: statsQuery.data,
     statsLoading: statsQuery.isLoading,
@@ -238,5 +300,7 @@ export function useMentorReports() {
     menteeScoresLoading: menteeScoresQuery.isLoading,
     weeklyEvolution: weeklyEvolutionQuery.data || [],
     weeklyEvolutionLoading: weeklyEvolutionQuery.isLoading,
+    monthlyComparison: monthlyComparisonQuery.data || [],
+    monthlyComparisonLoading: monthlyComparisonQuery.isLoading,
   };
 }
