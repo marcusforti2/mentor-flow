@@ -470,9 +470,72 @@ function BrandingResult({
     return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
   };
 
+  // Parse HSL string "220 15% 10%" -> { h, s, l }
+  const parseHsl = (val: string) => {
+    if (!val) return null;
+    const parts = val.replace(/,/g, ' ').split(/\s+/).map(s => parseFloat(s));
+    if (parts.length < 3 || parts.some(isNaN)) return null;
+    return { h: parts[0], s: parts[1], l: parts[2] };
+  };
+
+  // Flip lightness for theme switch: dark bg (5-15%) <-> light bg (95-100%)
+  const flipLightness = (hslStr: string, isDarkToLight: boolean): string => {
+    const parsed = parseHsl(hslStr);
+    if (!parsed) return hslStr;
+    const { h, s, l } = parsed;
+    const newL = isDarkToLight
+      ? Math.max(90, 100 - l) // dark->light: low L becomes high L
+      : Math.min(15, 100 - l); // light->dark: high L becomes low L
+    return `${Math.round(h)} ${Math.round(s)}% ${Math.round(newL)}%`;
+  };
+
+  const adaptColorsForTheme = (newTheme: 'dark' | 'light', oldTheme: 'dark' | 'light') => {
+    if (newTheme === oldTheme) return;
+    const isDarkToLight = newTheme === 'light';
+
+    // Adapt palette colors
+    setEditColors(prev => {
+      const next = { ...prev };
+      // background and foreground swap logic
+      if (next.background) next.background = flipLightness(next.background, isDarkToLight);
+      if (next.foreground) next.foreground = flipLightness(next.foreground, !isDarkToLight);
+      if (next.muted) next.muted = flipLightness(next.muted, isDarkToLight);
+      return next;
+    });
+
+    // Adapt system colors
+    setEditSystemColors(prev => {
+      const next = { ...prev };
+      const bgKeys = ['background', 'card', 'muted', 'popover'];
+      const fgKeys = ['foreground', 'card_foreground', 'muted_foreground', 'popover_foreground', 'primary_foreground', 'secondary_foreground', 'accent_foreground'];
+      const borderKeys = ['border', 'input', 'ring'];
+
+      bgKeys.forEach(k => {
+        if (next[k]) next[k] = flipLightness(next[k], isDarkToLight);
+      });
+      fgKeys.forEach(k => {
+        if (next[k]) next[k] = flipLightness(next[k], !isDarkToLight);
+      });
+      borderKeys.forEach(k => {
+        if (next[k]) {
+          const parsed = parseHsl(next[k]);
+          if (parsed) {
+            const newL = isDarkToLight ? Math.min(parsed.l + 60, 85) : Math.max(parsed.l - 60, 15);
+            next[k] = `${Math.round(parsed.h)} ${Math.round(parsed.s)}% ${Math.round(newL)}%`;
+          }
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleThemeToggle = (newTheme: 'dark' | 'light') => {
+    adaptColorsForTheme(newTheme, editThemeMode);
+    setEditThemeMode(newTheme);
+  };
+
   const startEditing = (mode: 'full' | 'colors') => {
     setEditColors({ ...branding.color_palette });
-    // Strip hsl() wrappers from system_colors
     const cleaned: Record<string, string> = {};
     Object.entries(branding.system_colors || {}).forEach(([k, v]) => {
       cleaned[k] = stripHsl(v as string);
@@ -562,7 +625,7 @@ function BrandingResult({
                 variant={editThemeMode === 'dark' ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs gap-1"
-                onClick={() => setEditThemeMode('dark')}
+                onClick={() => handleThemeToggle('dark')}
               >
                 🌙 Dark
               </Button>
@@ -570,7 +633,7 @@ function BrandingResult({
                 variant={editThemeMode === 'light' ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs gap-1"
-                onClick={() => setEditThemeMode('light')}
+                onClick={() => handleThemeToggle('light')}
               >
                 ☀️ Light
               </Button>
