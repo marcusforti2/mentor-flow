@@ -91,3 +91,12 @@ verify_jwt = false
 
 [functions.analyze-branding]
 verify_jwt = false
+
+[functions.weekly-digest]
+verify_jwt = false
+
+[functions.auto-qualify-lead]
+verify_jwt = false
+
+[functions.re-engage-inactive]
+verify_jwt = false
