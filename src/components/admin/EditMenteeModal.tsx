@@ -81,13 +81,16 @@ export function EditMenteeModal({ open, onOpenChange, onSuccess, menteeData }: E
 
     setIsSaving(true);
     try {
-      // 1. Update profile (full_name, phone)
+      // 1. Update profile (full_name, phone, social)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: fullName.trim(),
           phone: phone.trim() || null,
-        })
+          instagram: instagram.trim() || null,
+          linkedin: linkedin.trim() || null,
+          website: website.trim() || null,
+        } as any)
         .eq('user_id', menteeData.user_id);
 
       if (profileError) throw profileError;

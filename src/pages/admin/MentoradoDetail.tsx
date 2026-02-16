@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Brain, Video, ClipboardList, FolderOpen } from "lucide-react";
+import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Brain, Video, ClipboardList, FolderOpen, Instagram, Linkedin, Globe } from "lucide-react";
 import { DangerZoneDelete } from "@/components/admin/DangerZoneDelete";
 import {
   AlertDialog,
@@ -50,6 +50,10 @@ interface MentoradoData {
     email: string | null;
     avatar_url: string | null;
     phone: string | null;
+    instagram?: string | null;
+    linkedin?: string | null;
+    website?: string | null;
+    bio?: string | null;
   } | null;
   business_profile_full: Record<string, unknown> | null;
 }
@@ -89,7 +93,7 @@ const MentoradoDetail = () => {
       }
 
       const [profileRes, menteeRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, full_name, email, avatar_url, phone").eq("user_id", membership.user_id).maybeSingle(),
+        supabase.from("profiles").select("user_id, full_name, email, avatar_url, phone, instagram, linkedin, website, bio").eq("user_id", membership.user_id).maybeSingle(),
         supabase.from("mentee_profiles").select("membership_id, onboarding_completed, joined_at, business_profile").eq("membership_id", membership.id).maybeSingle(),
       ]);
 
@@ -264,6 +268,27 @@ const MentoradoDetail = () => {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>Entrou em {mentorado.joined_at ? format(new Date(mentorado.joined_at), "dd MMM yyyy", { locale: ptBR }) : "N/A"}</span>
                   </div>
+                  {mentorado.profile?.instagram && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Instagram className="h-4 w-4 text-muted-foreground" />
+                      <a href={`https://instagram.com/${mentorado.profile.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{mentorado.profile.instagram}</a>
+                    </div>
+                  )}
+                  {mentorado.profile?.linkedin && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Linkedin className="h-4 w-4 text-muted-foreground" />
+                      <a href={mentorado.profile.linkedin.startsWith('http') ? mentorado.profile.linkedin : `https://${mentorado.profile.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px]">{mentorado.profile.linkedin}</a>
+                    </div>
+                  )}
+                  {mentorado.profile?.website && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <a href={mentorado.profile.website.startsWith('http') ? mentorado.profile.website : `https://${mentorado.profile.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px]">{mentorado.profile.website}</a>
+                    </div>
+                  )}
+                  {mentorado.profile?.bio && (
+                    <p className="text-xs text-muted-foreground italic border-t border-border pt-2 mt-2">{mentorado.profile.bio}</p>
+                  )}
                 </CardContent>
               </Card>
 
