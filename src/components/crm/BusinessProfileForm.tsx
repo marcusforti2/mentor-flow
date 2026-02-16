@@ -325,6 +325,17 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
 
       toast({ title: "Perfil salvo!", description: "Seu diagnóstico foi atualizado." });
       loadProfile(resolvedMentoradoId);
+
+      // Trigger AI prospection tips email in background (fire-and-forget)
+      if (profile.daily_prospection_goal && profile.daily_prospection_goal > 0) {
+        supabase.functions.invoke("send-prospection-tips", {
+          body: { membership_id: resolvedMentoradoId },
+        }).then(res => {
+          if (!res.error) {
+            toast({ title: "📧 Email enviado!", description: "Você receberá dicas de prospecção personalizadas por email." });
+          }
+        }).catch(() => { /* silent fail */ });
+      }
     } catch (error) {
       console.error("Error saving profile:", error);
       const errorMsg = error instanceof Error
