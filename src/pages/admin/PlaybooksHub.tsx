@@ -19,7 +19,7 @@ import {
 import {
   BookOpen, Plus, FolderPlus, Search, MoreVertical, Edit3, Trash2,
   Loader2, Lock, Users, UserCheck, Globe, FileText, FolderOpen, ArrowLeft,
-  LayoutGrid, List,
+  LayoutGrid, List, Pin, PinOff,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,7 +35,7 @@ export default function PlaybooksHub() {
   const navigate = useNavigate();
   const { data: folders = [], isLoading: foldersLoading } = usePlaybookFolders();
   const { data: playbooks = [], isLoading: playbooksLoading } = usePlaybooks();
-  const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook } = usePlaybookMutations();
+  const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook } = usePlaybookMutations();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery');
@@ -66,13 +66,13 @@ export default function PlaybooksHub() {
     if (!searchTerm) return true;
     return f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       f.description?.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  }).sort((a, b) => (a.is_pinned === b.is_pinned ? 0 : a.is_pinned ? -1 : 1));
 
   const filteredPlaybooks = folderPlaybooks.filter(pb => {
     if (!searchTerm) return true;
     return pb.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pb.description?.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  }).sort((a, b) => (a.is_pinned === b.is_pinned ? 0 : a.is_pinned ? -1 : 1));
 
   // Orphan playbooks (no folder)
   const orphanPlaybooks = playbooks.filter(pb => !pb.folder_id);
@@ -268,6 +268,7 @@ export default function PlaybooksHub() {
                         onClick={() => setSelectedFolder(folder)}
                         onEdit={() => handleOpenFolderDialog(folder)}
                         onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
+                        onTogglePin={() => togglePinFolder.mutate({ id: folder.id, is_pinned: !folder.is_pinned })}
                       />
                     );
                   })}
@@ -284,6 +285,7 @@ export default function PlaybooksHub() {
                         onClick={() => setSelectedFolder(folder)}
                         onEdit={() => handleOpenFolderDialog(folder)}
                         onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
+                        onTogglePin={() => togglePinFolder.mutate({ id: folder.id, is_pinned: !folder.is_pinned })}
                       />
                     );
                   })}
@@ -308,6 +310,7 @@ export default function PlaybooksHub() {
                         onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
                         onEdit={() => handleOpenPlaybookDialog(pb)}
                         onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
+                        onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                       />
                     ))}
                   </div>
@@ -348,6 +351,7 @@ export default function PlaybooksHub() {
                   onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
+                  onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                 />
               ))}
             </div>
@@ -360,6 +364,7 @@ export default function PlaybooksHub() {
                   onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
+                  onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                 />
               ))}
             </div>
@@ -491,17 +496,18 @@ const coverPositionClass = (pos?: string) => {
 /* ========== Sub-components ========== */
 
 function FolderCardGallery({
-  folder, playbookCount, onClick, onEdit, onDelete,
+  folder, playbookCount, onClick, onEdit, onDelete, onTogglePin,
 }: {
   folder: PlaybookFolder;
   playbookCount: number;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePin: () => void;
 }) {
   return (
     <Card
-      className="glass-card hover:border-primary/30 cursor-pointer transition-all group overflow-hidden"
+      className={`glass-card hover:border-primary/30 cursor-pointer transition-all group overflow-hidden ${folder.is_pinned ? 'ring-1 ring-primary/30' : ''}`}
       onClick={onClick}
     >
       {/* Cover image - Notion-style */}
@@ -539,6 +545,10 @@ function FolderCardGallery({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onTogglePin}>
+                {folder.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                {folder.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>
@@ -554,6 +564,7 @@ function FolderCardGallery({
       <CardContent className="py-3 px-4">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
+            {folder.is_pinned && <Pin className="h-3 w-3 text-primary" />}
             <FileText className="h-3.5 w-3.5" />
             {playbookCount} playbook{playbookCount !== 1 ? 's' : ''}
           </span>
@@ -565,13 +576,14 @@ function FolderCardGallery({
 }
 
 function FolderCardList({
-  folder, playbookCount, onClick, onEdit, onDelete,
+  folder, playbookCount, onClick, onEdit, onDelete, onTogglePin,
 }: {
   folder: PlaybookFolder;
   playbookCount: number;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePin: () => void;
 }) {
   return (
     <Card
@@ -608,6 +620,10 @@ function FolderCardList({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onTogglePin}>
+                {folder.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                {folder.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>
@@ -623,12 +639,13 @@ function FolderCardList({
 }
 
 function PlaybookCard({
-  playbook, onClick, onEdit, onDelete,
+  playbook, onClick, onEdit, onDelete, onTogglePin,
 }: {
   playbook: Playbook;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePin: () => void;
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -658,6 +675,10 @@ function PlaybookCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onTogglePin}>
+                {playbook.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                {playbook.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>
@@ -693,12 +714,13 @@ function PlaybookCard({
 }
 
 function PlaybookCardList({
-  playbook, onClick, onEdit, onDelete,
+  playbook, onClick, onEdit, onDelete, onTogglePin,
 }: {
   playbook: Playbook;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePin: () => void;
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -743,6 +765,10 @@ function PlaybookCardList({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onTogglePin}>
+                {playbook.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                {playbook.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>
