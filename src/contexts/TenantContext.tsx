@@ -190,14 +190,31 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     fetchMemberships();
   }, [fetchMemberships]);
 
-  // Dynamic branding injection: apply tenant colors as CSS custom properties
+  // Dynamic branding injection: set CSS variables on document.body to override :root/@layer base
   useEffect(() => {
-    if (!tenant) return;
-    const root = document.documentElement;
-    const isMasterView = realMembership?.role === 'master_admin' && !isImpersonating;
+    const STYLE_ID = 'tenant-branding-override';
+    const body = document.body;
+    const injectedProps: string[] = [];
 
-    // Only inject tenant branding when viewing as mentor/mentorado (not master admin's own view)
-    if (isMasterView) return;
+    const cleanup = () => {
+      // Remove inline style properties from body
+      injectedProps.forEach(prop => body.style.removeProperty(prop));
+      injectedProps.length = 0;
+      // Also remove any leftover style tag
+      const existing = document.getElementById(STYLE_ID);
+      if (existing) existing.remove();
+    };
+
+    if (!tenant) {
+      cleanup();
+      return;
+    }
+
+    const isMasterView = realMembership?.role === 'master_admin' && !isImpersonating;
+    if (isMasterView) {
+      cleanup();
+      return;
+    }
 
     const hexToHsl = (hex: string): string | null => {
       try {
@@ -221,10 +238,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       } catch { return null; }
     };
 
-    // Detect if a value is already HSL (e.g. "220 91% 45%") vs HEX
     const isHslValue = (val: string): boolean => /^\d+\s+\d+%\s+\d+%$/.test(val.trim());
-
-    const injectedProps: string[] = [];
 
     const inject = (prop: string, value: string | null | undefined) => {
       if (!value) return;
@@ -235,17 +249,19 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         hsl = hexToHsl(value);
       }
       if (hsl) {
-        root.style.setProperty(prop, hsl);
+        body.style.setProperty(prop, hsl);
         injectedProps.push(prop);
       }
     };
 
     // Core colors
     inject('--primary', tenant.primary_color);
+    inject('--primary-foreground', '0 0% 98%');
     inject('--secondary', tenant.secondary_color);
     inject('--accent', tenant.accent_color);
+    inject('--ring', tenant.primary_color);
 
-    // Advanced brand_attributes (background, foreground, card, etc.)
+    // Advanced brand_attributes
     const attrs = tenant.brand_attributes as Record<string, string> | null;
     if (attrs) {
       inject('--background', attrs.background);
@@ -260,17 +276,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       inject('--popover-foreground', attrs.card_foreground);
     }
 
-    // Inject custom font if defined
+    // Font overrides
     if (tenant.font_family) {
-      root.style.setProperty('--font-display', tenant.font_family);
-      root.style.setProperty('--font-body', tenant.font_family);
+      body.style.setProperty('--font-display', `'${tenant.font_family}', sans-serif`);
+      body.style.setProperty('--font-body', `'${tenant.font_family}', sans-serif`);
       injectedProps.push('--font-display', '--font-body');
     }
 
-    // Cleanup: restore defaults when tenant changes or unmounts
-    return () => {
-      injectedProps.forEach(prop => root.style.removeProperty(prop));
-    };
+    console.log('[Branding] Body vars injected for', tenant.name, ':', injectedProps.length, 'vars');
+
+    return cleanup;
   }, [tenant, realMembership?.role, isImpersonating]);
 
   // Helper to fetch a single membership by ID from DB (for master_admin cross-tenant access)
