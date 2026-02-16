@@ -2403,6 +2403,7 @@ export type Database = {
       playbook_folders: {
         Row: {
           cover_image_url: string | null
+          cover_position: string
           created_at: string
           created_by_membership_id: string
           description: string | null
@@ -2414,6 +2415,7 @@ export type Database = {
         }
         Insert: {
           cover_image_url?: string | null
+          cover_position?: string
           created_at?: string
           created_by_membership_id: string
           description?: string | null
@@ -2425,6 +2427,7 @@ export type Database = {
         }
         Update: {
           cover_image_url?: string | null
+          cover_position?: string
           created_at?: string
           created_by_membership_id?: string
           description?: string | null
@@ -2503,6 +2506,7 @@ export type Database = {
         Row: {
           content: Json | null
           cover_image_url: string | null
+          cover_position: string
           created_at: string
           created_by_membership_id: string
           description: string | null
@@ -2519,6 +2523,7 @@ export type Database = {
         Insert: {
           content?: Json | null
           cover_image_url?: string | null
+          cover_position?: string
           created_at?: string
           created_by_membership_id: string
           description?: string | null
@@ -2535,6 +2540,7 @@ export type Database = {
         Update: {
           content?: Json | null
           cover_image_url?: string | null
+          cover_position?: string
           created_at?: string
           created_by_membership_id?: string
           description?: string | null

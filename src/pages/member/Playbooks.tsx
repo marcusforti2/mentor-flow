@@ -241,7 +241,7 @@ export default function MentoradoPlaybooks() {
                       >
                         <div className="relative h-44 overflow-hidden">
                           {folder.cover_image_url ? (
-                            <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
+                            <img src={folder.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(folder.cover_position)} transition-transform duration-500 group-hover:scale-105`} />
                           ) : (
                             <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
                               <FolderOpen className="h-10 w-10 text-primary/30" />
@@ -280,7 +280,7 @@ export default function MentoradoPlaybooks() {
                         <CardContent className="py-3 px-4 flex items-center gap-4">
                           <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0">
                             {folder.cover_image_url ? (
-                              <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover" />
+                              <img src={folder.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(folder.cover_position)}`} />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
                                 <FolderOpen className="h-5 w-5 text-primary/30" />
@@ -349,6 +349,12 @@ export default function MentoradoPlaybooks() {
   );
 }
 
+const coverPositionClass = (pos?: string) => {
+  if (pos === 'top') return 'object-top';
+  if (pos === 'bottom') return 'object-bottom';
+  return 'object-center';
+};
+
 // ========== Sub-components ==========
 
 function PlaybookGrid({ playbooks, viewMode, onSelect }: {
@@ -367,7 +373,7 @@ function PlaybookGrid({ playbooks, viewMode, onSelect }: {
           >
             {pb.cover_image_url ? (
               <div className="h-36 bg-muted overflow-hidden">
-                <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
+                <img src={pb.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(pb.cover_position)} transition-transform duration-500 group-hover:scale-105`} />
               </div>
             ) : (
               <div className="h-20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
@@ -404,7 +410,7 @@ function PlaybookGrid({ playbooks, viewMode, onSelect }: {
           <CardContent className="py-3 px-4 flex items-center gap-4">
             <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0 bg-muted">
               {pb.cover_image_url ? (
-                <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover" />
+                <img src={pb.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(pb.cover_position)}`} />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
                   <BookOpen className="h-4 w-4 text-primary/30" />

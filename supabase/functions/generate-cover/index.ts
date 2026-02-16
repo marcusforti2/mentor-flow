@@ -29,9 +29,9 @@ serve(async (req) => {
     const enhancedPrompt = `Create a professional, modern cover image for a business playbook/guide about: ${prompt}. 
 Style: Dark, sophisticated, premium feel with subtle geometric patterns or abstract shapes. 
 Use deep blacks, dark grays, and subtle gold/amber accent lighting. 
-The image should be wide format (16:9 aspect ratio), suitable as a folder or document cover.
+The image MUST be wide format, landscape orientation, 16:9 aspect ratio (wider than tall).
 No text, no letters, no words - purely visual/abstract design.
-Ultra high resolution.`;
+Ultra high resolution, cinematic wide shot.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -40,7 +40,7 @@ Ultra high resolution.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "google/gemini-3-pro-image-preview",
         messages: [
           {
             role: "user",
@@ -54,6 +54,20 @@ Ultra high resolution.`;
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI Gateway error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded, tente novamente em alguns segundos." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes para geração de imagem." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 

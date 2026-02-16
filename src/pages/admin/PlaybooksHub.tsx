@@ -47,7 +47,7 @@ export default function PlaybooksHub() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'folder' | 'playbook'; id: string; name: string } | null>(null);
 
   // Form states
-  const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '' });
+  const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '', cover_position: 'center' as string });
   const [playbookForm, setPlaybookForm] = useState({ title: '', description: '', folder_id: '', visibility: 'mentor_only' });
 
   // Selected folder view
@@ -80,10 +80,10 @@ export default function PlaybooksHub() {
   const handleOpenFolderDialog = (folder?: PlaybookFolder) => {
     if (folder) {
       setEditingFolder(folder);
-      setFolderForm({ name: folder.name, description: folder.description || '', cover_image_url: folder.cover_image_url || '' });
+      setFolderForm({ name: folder.name, description: folder.description || '', cover_image_url: folder.cover_image_url || '', cover_position: folder.cover_position || 'center' });
     } else {
       setEditingFolder(null);
-      setFolderForm({ name: '', description: '', cover_image_url: '' });
+      setFolderForm({ name: '', description: '', cover_image_url: '', cover_position: 'center' });
     }
     setFolderDialogOpen(true);
   };
@@ -91,9 +91,9 @@ export default function PlaybooksHub() {
   const handleSaveFolder = async () => {
     if (!folderForm.name.trim()) return;
     if (editingFolder) {
-      await updateFolder.mutateAsync({ id: editingFolder.id, name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null });
+      await updateFolder.mutateAsync({ id: editingFolder.id, name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null, cover_position: folderForm.cover_position });
     } else {
-      await createFolder.mutateAsync({ name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null });
+      await createFolder.mutateAsync({ name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null, cover_position: folderForm.cover_position });
     }
     setFolderDialogOpen(false);
   };
@@ -379,8 +379,10 @@ export default function PlaybooksHub() {
               <CoverImageUpload
                 currentUrl={folderForm.cover_image_url || null}
                 folder="folders"
+                coverPosition={(folderForm.cover_position || 'center') as 'top' | 'center' | 'bottom'}
                 onUploaded={(url) => setFolderForm({ ...folderForm, cover_image_url: url })}
                 onRemoved={() => setFolderForm({ ...folderForm, cover_image_url: '' })}
+                onPositionChange={(pos) => setFolderForm({ ...folderForm, cover_position: pos })}
               />
             </div>
             <div>
@@ -474,6 +476,14 @@ export default function PlaybooksHub() {
   );
 }
 
+/* ========== Helpers ========== */
+
+const coverPositionClass = (pos?: string) => {
+  if (pos === 'top') return 'object-top';
+  if (pos === 'bottom') return 'object-bottom';
+  return 'object-center';
+};
+
 /* ========== Sub-components ========== */
 
 function FolderCardGallery({
@@ -496,7 +506,7 @@ function FolderCardGallery({
           <img
             src={folder.cover_image_url}
             alt=""
-            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            className={`w-full h-full object-cover ${coverPositionClass(folder.cover_position)} transition-transform duration-500 group-hover:scale-105`}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
@@ -568,7 +578,7 @@ function FolderCardList({
         {/* Thumbnail */}
         <div className="h-14 w-20 rounded-lg overflow-hidden shrink-0">
           {folder.cover_image_url ? (
-            <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover" />
+            <img src={folder.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(folder.cover_position)}`} />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
               <FolderOpen className="h-5 w-5 text-primary/30" />
@@ -626,7 +636,7 @@ function PlaybookCard({
     >
       {playbook.cover_image_url ? (
         <div className="h-36 bg-muted overflow-hidden">
-          <img src={playbook.cover_image_url} alt="" className="w-full h-full object-cover object-center" />
+          <img src={playbook.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(playbook.cover_position)}`} />
         </div>
       ) : (
         <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
@@ -697,7 +707,7 @@ function PlaybookCardList({
       <CardContent className="py-3 px-4 flex items-center gap-4">
         <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0 bg-muted">
           {playbook.cover_image_url ? (
-            <img src={playbook.cover_image_url} alt="" className="w-full h-full object-cover" />
+            <img src={playbook.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(playbook.cover_position)}`} />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
               <BookOpen className="h-4 w-4 text-primary/30" />
