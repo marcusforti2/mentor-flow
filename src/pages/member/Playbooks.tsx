@@ -239,9 +239,9 @@ export default function MentoradoPlaybooks() {
                         className="glass-card hover:border-primary/30 cursor-pointer transition-all group overflow-hidden"
                         onClick={() => { setSelectedFolder(folder); setSearchTerm(''); }}
                       >
-                        <div className="relative h-36 overflow-hidden">
+                        <div className="relative h-44 overflow-hidden">
                           {folder.cover_image_url ? (
-                            <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
                           ) : (
                             <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
                               <FolderOpen className="h-10 w-10 text-primary/30" />
@@ -355,8 +355,8 @@ function PlaybookGrid({ playbooks, viewMode, onSelect }: {
             onClick={() => onSelect(pb)}
           >
             {pb.cover_image_url ? (
-              <div className="h-32 bg-muted overflow-hidden">
-                <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <div className="h-36 bg-muted overflow-hidden">
+                <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
               </div>
             ) : (
               <div className="h-20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
