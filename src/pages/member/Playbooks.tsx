@@ -1,4 +1,4 @@
-import { usePlaybooks, usePlaybookFolders, usePlaybookPages } from '@/hooks/usePlaybooks';
+import { usePlaybooks, usePlaybookFolders, usePlaybookPages, usePlaybookMutations, useRecentPlaybooks } from '@/hooks/usePlaybooks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,13 @@ export default function MentoradoPlaybooks() {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery');
+  const { trackPlaybookView } = usePlaybookMutations();
+  const { data: recentPlaybooks = [] } = useRecentPlaybooks(5);
+
+  const handleSelectPlaybook = (pb: Playbook) => {
+    trackPlaybookView.mutate(pb.id);
+    setSelectedPlaybook(pb);
+  };
 
   // Fetch pages for selected playbook
   const { data: pages = [], isLoading: pagesLoading } = usePlaybookPages(selectedPlaybook?.id ?? null);
@@ -218,6 +225,28 @@ export default function MentoradoPlaybooks() {
       </div>
 
       {/* Root View */}
+      {/* Recentes */}
+      {isRootView && !searchTerm && recentPlaybooks.length > 0 && (
+        <div className="mb-4">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+            🕐 Acessados recentemente
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {recentPlaybooks.map(pb => (
+              <Card
+                key={pb.id}
+                className="glass-card hover:border-primary/30 cursor-pointer transition-all"
+                onClick={() => handleSelectPlaybook(pb)}
+              >
+                <CardContent className="p-3">
+                  <p className="text-sm font-medium text-foreground line-clamp-1">{pb.title}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isRootView && rootData && (
         <>
           {rootData.folders.length === 0 && rootData.playbooks.length === 0 && !searchTerm ? (
@@ -310,7 +339,7 @@ export default function MentoradoPlaybooks() {
                   <PlaybookGrid
                     playbooks={rootData.playbooks}
                     viewMode={viewMode}
-                    onSelect={setSelectedPlaybook}
+                    onSelect={handleSelectPlaybook}
                   />
                 </div>
               )}
@@ -342,7 +371,7 @@ export default function MentoradoPlaybooks() {
             <PlaybookGrid
               playbooks={folderPlaybooks}
               viewMode={viewMode}
-              onSelect={setSelectedPlaybook}
+              onSelect={handleSelectPlaybook}
             />
           )}
         </>

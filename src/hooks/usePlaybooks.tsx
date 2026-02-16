@@ -293,5 +293,55 @@ export function usePlaybookMutations() {
     onError: (e: any) => toast.error(e.message || 'Erro ao fixar'),
   });
 
-  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook };
+  const trackPlaybookView = useMutation({
+    mutationFn: async (playbookId: string) => {
+      if (!membershipId || !tenantId) return;
+      const { error } = await supabase
+        .from('playbook_views')
+        .upsert(
+          { membership_id: membershipId, playbook_id: playbookId, tenant_id: tenantId, viewed_at: new Date().toISOString() },
+          { onConflict: 'membership_id,playbook_id' }
+        );
+      if (error) console.error('Track view error:', error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['playbook-recent-views'] });
+    },
+  });
+
+  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, trackPlaybookView };
+}
+
+export function useRecentPlaybooks(limit = 5) {
+  const { activeMembership } = useTenant();
+  const tenantId = activeMembership?.tenant_id;
+  const membershipId = activeMembership?.id;
+
+  return useQuery({
+    queryKey: ['playbook-recent-views', tenantId, membershipId],
+    queryFn: async () => {
+      if (!tenantId || !membershipId) return [];
+      const { data, error } = await supabase
+        .from('playbook_views')
+        .select('playbook_id, viewed_at')
+        .eq('membership_id', membershipId)
+        .eq('tenant_id', tenantId)
+        .order('viewed_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+
+      const ids = data.map(d => d.playbook_id);
+      const { data: pbs, error: pbErr } = await supabase
+        .from('playbooks')
+        .select('*')
+        .in('id', ids);
+      if (pbErr) throw pbErr;
+
+      // Sort by view order
+      const orderMap = new Map(data.map((d, i) => [d.playbook_id, i]));
+      return (pbs || []).sort((a, b) => (orderMap.get(a.id) ?? 99) - (orderMap.get(b.id) ?? 99)) as Playbook[];
+    },
+    enabled: !!tenantId && !!membershipId,
+  });
 }
