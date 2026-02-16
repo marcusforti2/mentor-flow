@@ -1361,6 +1361,51 @@ export type Database = {
           },
         ]
       }
+      event_reminders: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          remind_before: unknown
+          scheduled_at: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          remind_before: unknown
+          scheduled_at: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          remind_before?: unknown
+          scheduled_at?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extracted_task_drafts: {
         Row: {
           created_at: string
