@@ -44,6 +44,7 @@ export interface TenantContextType {
   endImpersonation: () => Promise<void>;
   refreshMemberships: () => Promise<void>;
   refreshMembershipsAndWait: () => Promise<Membership[]>;
+  refreshTenant: () => Promise<void>;
   hasRole: (roles: MembershipRole | MembershipRole[]) => boolean;
   isAdmin: boolean;
   isOps: boolean;
@@ -457,6 +458,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshTenant = useCallback(async () => {
+    if (!activeMembership?.tenant_id) return;
+    const { data: tenantData } = await supabase
+      .from('tenants')
+      .select('*')
+      .eq('id', activeMembership.tenant_id)
+      .single();
+    if (tenantData) setTenant(tenantData);
+  }, [activeMembership?.tenant_id]);
+
   const value: TenantContextType = {
     tenant,
     memberships,
@@ -469,6 +480,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     endImpersonation,
     refreshMemberships: async () => { await fetchMemberships(); },
     refreshMembershipsAndWait: fetchMemberships,
+    refreshTenant,
     hasRole,
     isAdmin: hasRole('admin'),
     isOps: hasRole('ops'),
@@ -498,6 +510,7 @@ export function useTenant() {
       endImpersonation: async () => {},
       refreshMemberships: async () => {},
       refreshMembershipsAndWait: async () => [],
+      refreshTenant: async () => {},
       hasRole: () => false,
       isAdmin: false,
       isOps: false,

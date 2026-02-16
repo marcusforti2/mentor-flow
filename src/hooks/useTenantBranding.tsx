@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useTenant } from '@/contexts/TenantContext';
 
 // Strip hsl() wrapper if present: "hsl(220 15% 10%)" -> "220 15% 10%"
 const stripHsl = (val: string): string => {
@@ -32,6 +33,7 @@ export interface BrandingProposal {
 
 export function useTenantBranding(tenantId: string | null) {
   const queryClient = useQueryClient();
+  const { refreshTenant } = useTenant();
 
   const brandingQuery = useQuery({
     queryKey: ['tenant-branding', tenantId],
@@ -159,6 +161,7 @@ export function useTenantBranding(tenantId: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-branding', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['tenants-with-counts'] });
+      refreshTenant();
       toast.success('Branding aprovado e aplicado ao tenant!');
     },
     onError: (error: Error) => {
@@ -228,6 +231,7 @@ export function useTenantBranding(tenantId: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-branding', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['tenants-with-counts'] });
+      refreshTenant();
       toast.success('Branding atualizado e aplicado!');
     },
     onError: (error: Error) => {
