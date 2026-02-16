@@ -19,7 +19,7 @@ import {
 import {
   BookOpen, Plus, FolderPlus, Search, MoreVertical, Edit3, Trash2,
   Loader2, Lock, Users, UserCheck, Globe, FileText, FolderOpen, ArrowLeft,
-  LayoutGrid, List, Pin, PinOff,
+  LayoutGrid, List, Pin, PinOff, Copy,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,7 +35,7 @@ export default function PlaybooksHub() {
   const navigate = useNavigate();
   const { data: folders = [], isLoading: foldersLoading } = usePlaybookFolders();
   const { data: playbooks = [], isLoading: playbooksLoading } = usePlaybooks();
-  const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, trackPlaybookView } = usePlaybookMutations();
+  const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, duplicatePlaybook, trackPlaybookView } = usePlaybookMutations();
   const { data: recentPlaybooks = [] } = useRecentPlaybooks(5);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -344,6 +344,7 @@ export default function PlaybooksHub() {
                         onEdit={() => handleOpenPlaybookDialog(pb)}
                         onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                         onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
+                        onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
                       />
                     ))}
                   </div>
@@ -385,6 +386,7 @@ export default function PlaybooksHub() {
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
+                  onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
                 />
               ))}
             </div>
@@ -398,6 +400,7 @@ export default function PlaybooksHub() {
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
+                  onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
                 />
               ))}
             </div>
@@ -672,13 +675,14 @@ function FolderCardList({
 }
 
 function PlaybookCard({
-  playbook, onClick, onEdit, onDelete, onTogglePin,
+  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate,
 }: {
   playbook: Playbook;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
+  onDuplicate: () => void;
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -711,6 +715,9 @@ function PlaybookCard({
               <DropdownMenuItem onClick={onTogglePin}>
                 {playbook.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
                 {playbook.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="h-4 w-4 mr-2" /> Duplicar
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
@@ -747,13 +754,14 @@ function PlaybookCard({
 }
 
 function PlaybookCardList({
-  playbook, onClick, onEdit, onDelete, onTogglePin,
+  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate,
 }: {
   playbook: Playbook;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
+  onDuplicate: () => void;
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -801,6 +809,9 @@ function PlaybookCardList({
               <DropdownMenuItem onClick={onTogglePin}>
                 {playbook.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
                 {playbook.is_pinned ? 'Desafixar' : 'Fixar no topo'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="h-4 w-4 mr-2" /> Duplicar
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar

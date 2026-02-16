@@ -293,8 +293,64 @@ export function usePlaybookMutations() {
     onError: (e: any) => toast.error(e.message || 'Erro ao fixar'),
   });
 
+  const duplicatePlaybook = useMutation({
+    mutationFn: async (playbookId: string) => {
+      if (!tenantId || !membershipId) throw new Error('Sem tenant/membership');
+      // 1. Fetch original playbook
+      const { data: original, error: fetchErr } = await supabase
+        .from('playbooks')
+        .select('*')
+        .eq('id', playbookId)
+        .single();
+      if (fetchErr || !original) throw fetchErr || new Error('Playbook não encontrado');
+
+      // 2. Create copy
+      const { data: copy, error: copyErr } = await supabase
+        .from('playbooks')
+        .insert({
+          tenant_id: tenantId,
+          folder_id: original.folder_id,
+          title: `${original.title} (cópia)`,
+          description: original.description,
+          content: original.content,
+          cover_image_url: original.cover_image_url,
+          cover_position: original.cover_position,
+          visibility: original.visibility,
+          tags: original.tags || [],
+          created_by_membership_id: membershipId,
+        })
+        .select()
+        .single();
+      if (copyErr || !copy) throw copyErr || new Error('Erro ao duplicar');
+
+      // 3. Copy pages
+      const { data: pages } = await supabase
+        .from('playbook_pages')
+        .select('*')
+        .eq('playbook_id', playbookId)
+        .order('position');
+      if (pages && pages.length > 0) {
+        const newPages = pages.map(p => ({
+          playbook_id: copy.id,
+          tenant_id: tenantId,
+          title: p.title,
+          content: p.content,
+          position: p.position,
+        }));
+        await supabase.from('playbook_pages').insert(newPages);
+      }
+      return copy;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['playbooks'] });
+      toast.success('Playbook duplicado!');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao duplicar'),
+  });
+
   const trackPlaybookView = useMutation({
     mutationFn: async (playbookId: string) => {
+
       if (!membershipId || !tenantId) return;
       const { error } = await supabase
         .from('playbook_views')
@@ -309,7 +365,7 @@ export function usePlaybookMutations() {
     },
   });
 
-  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, trackPlaybookView };
+  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, duplicatePlaybook, trackPlaybookView };
 }
 
 export function useRecentPlaybooks(limit = 5) {
