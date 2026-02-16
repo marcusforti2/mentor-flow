@@ -34,14 +34,6 @@ async function sendWelcomeEmail(params: {
     return { success: false, error: "RESEND_API_KEY not configured" };
   }
 
-  const { email, fullName, role, tenantName, loginUrl } = params;
-  const displayName = fullName || email.split('@')[0];
-  
-  const roleLabel = role === 'mentor' ? 'Mentor' : 
-                    role === 'mentee' ? 'Mentorado' : 
-                    role === 'admin' ? 'Administrador' : 
-                    role === 'ops' ? 'Operador' : role;
-
   const { email, fullName, role, tenantName, loginUrl, branding } = params;
   const displayName = fullName || email.split('@')[0];
   const roleLabel = role === 'mentor' ? 'Mentor' : role === 'mentee' ? 'Mentorado' : role === 'admin' ? 'Administrador' : role === 'ops' ? 'Operador' : role;
@@ -582,8 +574,11 @@ serve(async (req) => {
     });
 
     // ========== SEND WELCOME EMAIL (async, non-blocking) ==========
-    const siteUrl = Deno.env.get("SITE_URL") || "https://client-flourish-ai.lovable.app";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://lbvtech.aceleracaoforti.online";
     const loginUrl = `${siteUrl}/auth`;
+
+    // Fetch branding for white-label email
+    const branding = await getTenantBranding(supabaseAdmin, tenant_id);
 
     sendWelcomeEmail({
       email: normalizedEmail,
@@ -591,6 +586,7 @@ serve(async (req) => {
       role: role,
       tenantName: tenant.name,
       loginUrl: loginUrl,
+      branding: branding,
     }).then((result) => {
       if (result.success) {
         console.log("create-membership: Welcome email sent to:", normalizedEmail);
