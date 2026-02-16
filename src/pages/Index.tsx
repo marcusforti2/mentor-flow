@@ -236,14 +236,29 @@ const Index = () => {
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-4 animate-fade-in leading-relaxed" style={{ animationDelay: '0.2s' }}>
-            {PLATFORM.name} é o sistema operacional que governa a operação do mentor, a execução do mentorado e o resultado ao longo do tempo.
+            {PLATFORM.name} é o sistema operacional que governa a operação do mentor, a execução do mentorado e o resultado ao longo do tempo — com inteligência comportamental aplicada dos dois lados.
           </p>
 
-          <p className="text-base text-muted-foreground/80 max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: '0.25s' }}>
+          <div className="flex flex-wrap justify-center gap-3 mb-4 animate-fade-in" style={{ animationDelay: '0.25s' }}>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-xs font-medium text-primary">
+              <Brain className="w-3 h-3" />
+              Engenharia Psicológica Social
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/8 border border-accent/15 text-xs font-medium text-accent-foreground">
+              <Target className="w-3 h-3" />
+              Diagnóstico Personalizado
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-xs font-medium text-primary">
+              <Activity className="w-3 h-3" />
+              Resultado Baseado em Dados Reais
+            </span>
+          </div>
+
+          <p className="text-base text-muted-foreground/80 max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             O resto é ferramenta.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{ animationDelay: '0.35s' }}>
             <Link to="/showcase">
               <Button size="lg" className="btn-premium text-lg px-10 h-14">
                 <span className="flex items-center gap-2">
