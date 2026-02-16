@@ -33,9 +33,9 @@ export function WhatsAppGroupModal() {
   }, [hasJoined]);
 
   useEffect(() => {
-    // Show modal on first load if not joined
+    // Show modal on first load if not joined — delay to avoid overlap with GuidedTour
     if (!hasJoined) {
-      const timer = setTimeout(() => setIsOpen(true), 1000);
+      const timer = setTimeout(() => setIsOpen(true), 5000);
       return () => clearTimeout(timer);
     }
   }, [hasJoined]);

@@ -17,7 +17,7 @@ const MinhasTarefas = () => {
     <div className="max-w-[1400px] mx-auto px-4 md:px-6 space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold text-foreground">Minhas Tarefas</h1>
-        <p className="text-muted-foreground text-sm">Gerencie suas tarefas atribuídas pelo mentor</p>
+        <p className="text-muted-foreground text-sm">Gerencie suas tarefas e acompanhe seu progresso</p>
       </div>
 
       <CampanKanban mentoradoMembershipId={activeMembership.id} allowSelfCreate={true} />
