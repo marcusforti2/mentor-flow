@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -19,7 +19,7 @@ import {
 import {
   BookOpen, Plus, FolderPlus, Search, MoreVertical, Edit3, Trash2,
   Loader2, Lock, Users, UserCheck, Globe, FileText, FolderOpen, ArrowLeft,
-  LayoutGrid, List, Pin, PinOff, Copy,
+  LayoutGrid, List, Pin, PinOff, Copy, FolderInput,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -345,6 +345,8 @@ export default function PlaybooksHub() {
                         onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                         onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                         onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
+                        onMove={(folderId) => updatePlaybook.mutate({ id: pb.id, folder_id: folderId })}
+                        folders={folders}
                       />
                     ))}
                   </div>
@@ -387,6 +389,8 @@ export default function PlaybooksHub() {
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                   onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
+                  onMove={(folderId) => updatePlaybook.mutate({ id: pb.id, folder_id: folderId })}
+                  folders={folders}
                 />
               ))}
             </div>
@@ -401,6 +405,8 @@ export default function PlaybooksHub() {
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                   onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
+                  onMove={(folderId) => updatePlaybook.mutate({ id: pb.id, folder_id: folderId })}
+                  folders={folders}
                 />
               ))}
             </div>
@@ -675,7 +681,7 @@ function FolderCardList({
 }
 
 function PlaybookCard({
-  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate,
+  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate, onMove, folders,
 }: {
   playbook: Playbook;
   onClick: () => void;
@@ -683,6 +689,8 @@ function PlaybookCard({
   onDelete: () => void;
   onTogglePin: () => void;
   onDuplicate: () => void;
+  onMove: (folderId: string | null) => void;
+  folders: PlaybookFolder[];
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -719,6 +727,26 @@ function PlaybookCard({
               <DropdownMenuItem onClick={onDuplicate}>
                 <Copy className="h-4 w-4 mr-2" /> Duplicar
               </DropdownMenuItem>
+              {folders.length > 0 && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderInput className="h-4 w-4 mr-2" /> Mover para
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {playbook.folder_id && (
+                      <DropdownMenuItem onClick={() => onMove(null)}>
+                        📂 Sem pasta
+                      </DropdownMenuItem>
+                    )}
+                    {folders.filter(f => f.id !== playbook.folder_id).map(f => (
+                      <DropdownMenuItem key={f.id} onClick={() => onMove(f.id)}>
+                        {f.icon} {f.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>
@@ -754,7 +782,7 @@ function PlaybookCard({
 }
 
 function PlaybookCardList({
-  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate,
+  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate, onMove, folders,
 }: {
   playbook: Playbook;
   onClick: () => void;
@@ -762,6 +790,8 @@ function PlaybookCardList({
   onDelete: () => void;
   onTogglePin: () => void;
   onDuplicate: () => void;
+  onMove: (folderId: string | null) => void;
+  folders: PlaybookFolder[];
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -813,6 +843,26 @@ function PlaybookCardList({
               <DropdownMenuItem onClick={onDuplicate}>
                 <Copy className="h-4 w-4 mr-2" /> Duplicar
               </DropdownMenuItem>
+              {folders.length > 0 && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FolderInput className="h-4 w-4 mr-2" /> Mover para
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {playbook.folder_id && (
+                      <DropdownMenuItem onClick={() => onMove(null)}>
+                        📂 Sem pasta
+                      </DropdownMenuItem>
+                    )}
+                    {folders.filter(f => f.id !== playbook.folder_id).map(f => (
+                      <DropdownMenuItem key={f.id} onClick={() => onMove(f.id)}>
+                        {f.icon} {f.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onEdit}>
                 <Edit3 className="h-4 w-4 mr-2" /> Editar
               </DropdownMenuItem>
