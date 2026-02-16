@@ -7,9 +7,11 @@ interface BrandLogoProps {
   className?: string;
   /** Override with tenant logo URL when in tenant context */
   logoUrl?: string;
+  /** Override brand name with tenant name */
+  brandName?: string;
 }
 
-export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }: BrandLogoProps) {
+export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl, brandName }: BrandLogoProps) {
   const sizes = {
     sm: { icon: 'w-8 h-8', text: 'text-lg', techText: 'text-sm' },
     md: { icon: 'w-10 h-10', text: 'text-xl', techText: 'text-base' },
@@ -19,26 +21,44 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }:
 
   const currentSize = sizes[size];
   const logoSrc = logoUrl || mentorflowLogo;
+  const hasTenantBrand = !!brandName;
 
   const LogoIcon = () => (
     <div className={cn(currentSize.icon, 'relative flex items-center justify-center')}>
-      <img src={logoSrc} alt="MentorFlow Logo" className="w-full h-full object-contain" />
+      <img src={logoSrc} alt={brandName || 'MentorFlow Logo'} className="w-full h-full object-contain" />
     </div>
   );
 
   if (variant === 'compact') {
     return (
       <div className={cn('flex items-center', className)}>
-        <LogoIcon />
+        {logoUrl ? <LogoIcon /> : <LogoIcon />}
       </div>
     );
   }
 
   if (variant === 'text') {
+    if (hasTenantBrand) {
+      return (
+        <div className={cn('flex items-center gap-1', className)}>
+          <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>{brandName}</span>
+        </div>
+      );
+    }
     return (
       <div className={cn('flex items-center gap-1', className)}>
         <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
         <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
+      </div>
+    );
+  }
+
+  // Full variant
+  if (hasTenantBrand) {
+    return (
+      <div className={cn('flex items-center gap-2', className)}>
+        {logoUrl && <LogoIcon />}
+        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>{brandName}</span>
       </div>
     );
   }
@@ -54,7 +74,6 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl }:
   );
 }
 
-// Backward compatibility alias
 // Backward compatibility aliases
 export const LBVLogo = BrandLogo;
 export const VHFLogo = BrandLogo;
