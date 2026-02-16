@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2,
   ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List,
-  MapPin, ExternalLink, Sparkles, CalendarDays, Users, Lock, Eye
+  MapPin, ExternalLink, Sparkles, CalendarDays, Users, Lock, Eye, Bell
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -85,6 +85,8 @@ export default function Calendario() {
     recurrence_type: "weekly",
     audience_type: "all_mentees" as string,
     audience_membership_ids: [] as string[],
+    notify_email: false,
+    remind_before: "24h" as string,
   });
   const [tenantMembers, setTenantMembers] = useState<TenantMember[]>([]);
 
@@ -117,7 +119,7 @@ export default function Calendario() {
   useEffect(() => { fetchData(); }, [user, activeMembership]);
 
   const resetForm = () => {
-    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [] });
+    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, remind_before: "24h" });
     setEditingEvent(null);
   };
 
@@ -167,7 +169,59 @@ export default function Calendario() {
         }
         const { error } = await supabase.from('calendar_events').insert(eventsToCreate as any);
         if (error) throw error;
-        toast({ title: "✅ Evento criado!", description: newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined });
+
+        // Send email notification if requested
+        if (newEvent.notify_email && eventsToCreate.length > 0) {
+          const reminderLabels: Record<string, string> = { "1h": "1 hora antes", "24h": "24 horas antes", "48h": "48 horas antes", "1w": "1 semana antes", "now": "Agora" };
+          
+          if (newEvent.remind_before === "now") {
+            // Get the first created event to send notification
+            const { data: createdEvents } = await supabase.from('calendar_events')
+              .select('id').eq('tenant_id', activeMembership?.tenant_id)
+              .eq('title', newEvent.title)
+              .order('created_at', { ascending: false }).limit(1);
+            
+            if (createdEvents?.[0]) {
+              supabase.functions.invoke('send-event-notification', {
+                body: { event_id: createdEvents[0].id, tenant_id: activeMembership?.tenant_id, remind_before_label: "Agora" },
+              }).then(() => toast({ title: "📧 Notificação enviada!" }))
+                .catch(() => toast({ title: "Aviso", description: "Evento criado, mas falha ao enviar email.", variant: "destructive" }));
+            }
+          } else {
+            // Schedule reminders for each created event
+            const intervalMap: Record<string, string> = { "1h": "1 hour", "24h": "1 day", "48h": "2 days", "1w": "7 days" };
+            const pgInterval = intervalMap[newEvent.remind_before] || "1 day";
+            
+            const { data: createdEvents } = await supabase.from('calendar_events')
+              .select('id, event_date, event_time').eq('tenant_id', activeMembership?.tenant_id)
+              .eq('title', newEvent.title)
+              .order('created_at', { ascending: false }).limit(eventsToCreate.length);
+            
+            if (createdEvents?.length) {
+              const reminders = createdEvents.map((ce: any) => {
+                const eventDatetime = ce.event_time 
+                  ? `${ce.event_date}T${ce.event_time}` 
+                  : `${ce.event_date}T09:00:00`;
+                const scheduledDate = new Date(eventDatetime);
+                const hoursMap: Record<string, number> = { "1h": 1, "24h": 24, "48h": 48, "1w": 168 };
+                scheduledDate.setHours(scheduledDate.getHours() - (hoursMap[newEvent.remind_before] || 24));
+                
+                return {
+                  event_id: ce.id,
+                  tenant_id: activeMembership?.tenant_id,
+                  remind_before: pgInterval,
+                  scheduled_at: scheduledDate.toISOString(),
+                  status: 'pending',
+                };
+              });
+              await supabase.from('event_reminders' as any).insert(reminders as any);
+            }
+          }
+          
+          toast({ title: "✅ Evento criado!", description: newEvent.remind_before === "now" ? "Notificação sendo enviada..." : `Lembrete agendado para ${reminderLabels[newEvent.remind_before]}.` });
+        } else {
+          toast({ title: "✅ Evento criado!", description: newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined });
+        }
       }
       resetForm();
       setIsDialogOpen(false);
@@ -203,6 +257,7 @@ export default function Calendario() {
         is_recurring: event.is_recurring, recurrence_type: "weekly",
         audience_type: event.audience_type || "all_mentees",
         audience_membership_ids: (event.audience_membership_ids || []) as string[],
+        notify_email: false, remind_before: "24h",
       });
     } else {
       resetForm();
@@ -709,6 +764,48 @@ export default function Calendario() {
                 <span className="text-xs text-foreground">
                   Serão criados <strong>{newEvent.recurrence_type === "weekly" ? "12 eventos (12 semanas)" : "6 eventos (6 meses)"}</strong>
                 </span>
+              </div>
+            )}
+
+            {/* Email notification toggle */}
+            {!editingEvent && (
+              <div className="space-y-2 p-3 rounded-xl border border-border/40 bg-secondary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-muted-foreground" />
+                    <Label className="text-xs font-medium cursor-pointer">Notificar por email</Label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewEvent(prev => ({ ...prev, notify_email: !prev.notify_email }))}
+                    className={cn(
+                      "relative w-9 h-5 rounded-full transition-colors",
+                      newEvent.notify_email ? "bg-primary" : "bg-muted-foreground/30"
+                    )}
+                  >
+                    <span className={cn(
+                      "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                      newEvent.notify_email && "translate-x-4"
+                    )} />
+                  </button>
+                </div>
+                {newEvent.notify_email && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground">Quando enviar o lembrete?</Label>
+                    <Select value={newEvent.remind_before} onValueChange={(v) => setNewEvent({ ...newEvent, remind_before: v })}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="z-50">
+                        <SelectItem value="1h">1 hora antes</SelectItem>
+                        <SelectItem value="24h">24 horas antes</SelectItem>
+                        <SelectItem value="48h">48 horas antes</SelectItem>
+                        <SelectItem value="1w">1 semana antes</SelectItem>
+                        <SelectItem value="now">Enviar agora</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
           </div>
