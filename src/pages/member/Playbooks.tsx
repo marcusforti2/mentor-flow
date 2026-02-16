@@ -132,7 +132,10 @@ export default function MentoradoPlaybooks() {
 
         {/* Content */}
         <div className="flex-1 p-6 md:p-8 max-w-4xl">
-          <h1 className="text-2xl font-display font-bold text-foreground mb-6">{currentTitle}</h1>
+          {/* Only show title if there's no content or content doesn't start with same heading */}
+          {activePageId && activePage && (
+            <h1 className="text-2xl font-display font-bold text-foreground mb-6">{currentTitle}</h1>
+          )}
           <PlaybookReadOnly content={currentContent} />
         </div>
       </div>
