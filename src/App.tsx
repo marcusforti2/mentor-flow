@@ -54,6 +54,7 @@ const AdminCentroSOS = lazy(() => import("./pages/admin/CentroSOS"));
 // Agendamento removed — merged into Calendario
 const PlaybooksHub = lazy(() => import("./pages/admin/PlaybooksHub"));
 const PlaybookEditorPage = lazy(() => import("./pages/admin/PlaybookEditorPage"));
+const MentoradoDetail = lazy(() => import("./pages/admin/MentoradoDetail"));
 
 // Member Pages
 const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
@@ -147,6 +148,7 @@ const App = () => (
                     <Route index element={<AdminDashboard />} />
                     <Route path="jornada-cs" element={<JornadaCS />} />
                     <Route path="mentorados" element={<Mentorados />} />
+                    <Route path="mentorados/:id" element={<MentoradoDetail />} />
                     <Route path="crm" element={<CRMMentorados />} />
                     <Route path="trilhas" element={<AdminTrilhas />} />
                     <Route path="calendario" element={<Calendario />} />
