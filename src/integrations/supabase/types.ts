@@ -3159,6 +3159,53 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_automations: {
+        Row: {
+          automation_key: string
+          config: Json | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_run_at: string | null
+          last_run_status: string | null
+          schedule: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          automation_key: string
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_run_at?: string | null
+          last_run_status?: string | null
+          schedule?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          automation_key?: string
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_run_at?: string | null
+          last_run_status?: string | null
+          schedule?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_automations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_branding: {
         Row: {
           ai_analysis: string | null
