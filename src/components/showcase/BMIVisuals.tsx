@@ -9,6 +9,12 @@ function useAnimateOnView(threshold = 0.3) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Check if already in viewport (e.g. navigated via #hash)
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      setVisible(true);
+      return;
+    }
     const obs = new IntersectionObserver(
       ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } },
       { threshold }
