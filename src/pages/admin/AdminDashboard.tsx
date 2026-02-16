@@ -162,7 +162,9 @@ export default function AdminDashboard() {
                     <ActivityItem
                       key={activity.id}
                       icon={getActivityIcon(activity.type)}
-                      title={activity.title}
+                      title={activity.mentoradoName 
+                        ? `${activity.mentoradoName}: ${activity.title}` 
+                        : activity.title}
                       time={formatRelativeTime(activity.timestamp)}
                       color={getActivityColor(activity.type)}
                     />
