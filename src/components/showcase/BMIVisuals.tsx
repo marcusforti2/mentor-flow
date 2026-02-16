@@ -241,35 +241,24 @@ const gaugeItems = [
 ];
 
 export function BMIGaugeBars() {
-  const { ref, visible } = useAnimateOnView(0.2);
-  const [progress, setProgress] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
-    let frame: number;
-    let start: number | null = null;
-    const duration = 1500;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const elapsed = ts - start;
-      const p = Math.min(elapsed / duration, 1);
-      setProgress(1 - Math.pow(1 - p, 3));
-      if (p < 1) frame = requestAnimationFrame(animate);
-    };
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [visible]);
+    const timer = setTimeout(() => setAnimate(true), 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div ref={ref} className="space-y-5">
       {gaugeItems.map(({ label, value, icon: Icon, color }, i) => (
         <div
           key={i}
-          className={cn(
-            'transition-all duration-500',
-            visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
-          )}
-          style={{ transitionDelay: `${i * 120}ms` }}
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? 'translateX(0)' : 'translateX(20px)',
+            transition: `opacity 0.5s ease ${i * 120}ms, transform 0.5s ease ${i * 120}ms`,
+          }}
         >
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-2">
@@ -277,27 +266,24 @@ export function BMIGaugeBars() {
               <span className="text-xs font-semibold text-foreground">{label}</span>
             </div>
             <span className="text-xs font-bold" style={{ color }}>
-              {Math.round(value * progress)}%
+              {value}%
             </span>
           </div>
-          <div className="h-2.5 rounded-full bg-muted/40 overflow-hidden relative">
+          <div className="h-2.5 rounded-full overflow-hidden relative" style={{ backgroundColor: `${color}15` }}>
             <div
-              className="h-full rounded-full transition-all duration-100 relative"
+              className="h-full rounded-full relative"
               style={{
-                width: `${value * progress}%`,
-                background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+                width: animate ? `${value}%` : '0%',
+                background: `linear-gradient(90deg, ${color}, ${color}dd)`,
                 boxShadow: `0 0 12px ${color}40`,
+                transition: `width 1.2s cubic-bezier(0.22, 1, 0.36, 1) ${300 + i * 150}ms`,
               }}
             >
-              {/* Shimmer */}
               <div
-                className={cn(
-                  'absolute inset-0 opacity-0 transition-opacity duration-300',
-                  visible && progress > 0.9 ? 'opacity-100' : 'opacity-0'
-                )}
+                className="absolute inset-0"
                 style={{
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)',
-                  animation: 'shimmer 2s infinite',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+                  animation: animate ? 'bmiShimmer 2s 1.8s infinite' : 'none',
                 }}
               />
             </div>
@@ -305,7 +291,7 @@ export function BMIGaugeBars() {
         </div>
       ))}
       <style>{`
-        @keyframes shimmer {
+        @keyframes bmiShimmer {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(200%); }
         }
