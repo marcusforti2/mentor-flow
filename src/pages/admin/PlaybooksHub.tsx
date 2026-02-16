@@ -496,7 +496,7 @@ function FolderCardGallery({
           <img
             src={folder.cover_image_url}
             alt=""
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
@@ -626,7 +626,7 @@ function PlaybookCard({
     >
       {playbook.cover_image_url ? (
         <div className="h-36 bg-muted overflow-hidden">
-          <img src={playbook.cover_image_url} alt="" className="w-full h-full object-cover" />
+          <img src={playbook.cover_image_url} alt="" className="w-full h-full object-cover object-center" />
         </div>
       ) : (
         <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
