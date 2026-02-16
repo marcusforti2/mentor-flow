@@ -1,20 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlaybookMutations, usePlaybookPages, type Playbook, type PlaybookPage } from '@/hooks/usePlaybooks';
 import { PlaybookTipTapEditor } from '@/components/playbooks/PlaybookTipTapEditor';
+import { PlaybookAccessPanel } from '@/components/playbooks/PlaybookAccessPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PlaybookEditorPage() {
   const { playbookId } = useParams<{ playbookId: string }>();
   const navigate = useNavigate();
   const { updatePlaybook } = usePlaybookMutations();
+  const queryClient = useQueryClient();
   
   const { data: playbook, isLoading } = useQuery({
     queryKey: ['playbook-detail', playbookId],
@@ -129,6 +131,13 @@ export default function PlaybookEditorPage() {
     if (!error) refetchPages();
   };
 
+  // Visibility change
+  const handleVisibilityChange = async (v: string) => {
+    if (!playbookId) return;
+    await updatePlaybook.mutateAsync({ id: playbookId, visibility: v });
+    queryClient.invalidateQueries({ queryKey: ['playbook-detail', playbookId] });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -239,6 +248,14 @@ export default function PlaybookEditorPage() {
               </Button>
             </div>
           ))}
+
+          {/* Access Panel */}
+          <Separator className="my-3" />
+          <PlaybookAccessPanel
+            playbookId={playbookId!}
+            visibility={playbook.visibility}
+            onVisibilityChange={handleVisibilityChange}
+          />
         </div>
 
         {/* Editor */}
