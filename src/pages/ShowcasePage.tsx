@@ -14,6 +14,7 @@ import {
   Mail, Video, MonitorPlay, Award, Lock, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BMIRadarChart, BMIGaugeBars, BMIConnectionFlow } from '@/components/showcase/BMIVisuals';
 
 
 /* ── Scroll reveal ── */
@@ -570,6 +571,28 @@ export default function ShowcasePage() {
             </p>
           </div>
 
+          {/* ── RADAR + GAUGES ── */}
+          <div className="grid md:grid-cols-2 gap-8 mb-12 items-center">
+            <div className="glass-card-glow p-6 md:p-8 rounded-2xl flex items-center justify-center">
+              <BMIRadarChart />
+            </div>
+            <div className="glass-card p-6 md:p-8 rounded-2xl border border-border/30">
+              <h3 className="font-display text-lg font-bold text-foreground mb-1">Pilares Emocionais</h3>
+              <p className="text-xs text-muted-foreground mb-6">Diagnóstico em tempo real por eixo comportamental</p>
+              <BMIGaugeBars />
+            </div>
+          </div>
+
+          {/* ── CONNECTION FLOW ── */}
+          <div className="glass-card-glow p-6 md:p-8 rounded-2xl mb-12">
+            <div className="text-center mb-4">
+              <h3 className="font-display text-lg font-bold text-foreground mb-1">Fluxo de Inteligência Comportamental</h3>
+              <p className="text-xs text-muted-foreground">A IA conecta os dois lados — do scraping social ao script de venda</p>
+            </div>
+            <BMIConnectionFlow />
+          </div>
+
+          {/* ── MENTOR / MENTORADO DUAL CARDS ── */}
           <div className="grid md:grid-cols-2 gap-8 mb-10">
             {/* Mentor Side */}
             <div className="glass-card-glow p-8 rounded-2xl relative overflow-hidden group">
@@ -583,7 +606,6 @@ export default function ShowcasePage() {
                   <p className="text-[11px] text-primary font-medium tracking-wide">Gestão de Sucesso Comportamental</p>
                 </div>
               </div>
-
               <div className="space-y-4 mb-6">
                 {[
                   { icon: Eye, title: 'Scraping Social Automatizado', desc: 'Instagram e LinkedIn do mentorado são lidos e analisados pela IA.' },
@@ -602,7 +624,6 @@ export default function ShowcasePage() {
                   </div>
                 ))}
               </div>
-
               <div className="p-4 rounded-xl bg-primary/5 border border-primary/15">
                 <p className="text-xs text-center font-medium text-foreground">
                   Resultado: O mentor sabe <strong className="text-primary">o que o aluno sente</strong> — não apenas o que faz.
@@ -622,7 +643,6 @@ export default function ShowcasePage() {
                   <p className="text-[11px] text-accent font-medium tracking-wide">Inteligência de Vendas Comportamental</p>
                 </div>
               </div>
-
               <div className="space-y-4 mb-6">
                 {[
                   { icon: Crosshair, title: 'Lead Scoring Comportamental', desc: 'Score baseado no perfil real do lead, não em dados superficiais.' },
@@ -641,7 +661,6 @@ export default function ShowcasePage() {
                   </div>
                 ))}
               </div>
-
               <div className="p-4 rounded-xl bg-accent/5 border border-accent/15">
                 <p className="text-xs text-center font-medium text-foreground">
                   Resultado: O mentorado sabe <strong className="text-accent">como o lead pensa</strong> — antes de ligar.
