@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Sparkles, Check, X, Loader2, Palette, Type, Eye, Brain, PenTool, MessageSquareText, ImagePlus } from 'lucide-react';
+import { Upload, Sparkles, Check, X, Loader2, Palette, Type, Eye, Brain, PenTool, MessageSquareText, ImagePlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -19,7 +19,6 @@ interface TenantBrandingPanelProps {
   membershipId?: string;
 }
 
-// Manual form state
 interface ManualBranding {
   suggested_name: string;
   brand_concept: string;
@@ -53,20 +52,15 @@ const EMPTY_MANUAL: ManualBranding = {
 export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: TenantBrandingPanelProps) {
   const { branding, isLoading, analyzebranding, approveBranding, rejectBranding, saveManualBranding } = useTenantBranding(tenantId);
   
-  // Shared
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // Tab: IA Visual
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Tab: IA Texto
   const [textPrompt, setTextPrompt] = useState('');
-
-  // Tab: Manual
   const [manual, setManual] = useState<ManualBranding>(EMPTY_MANUAL);
   const [savingManual, setSavingManual] = useState(false);
 
@@ -175,9 +169,9 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
   };
 
   const statusColors: Record<string, string> = {
-    draft: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    approved: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+    draft: 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    approved: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+    rejected: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
   };
 
   const statusLabels: Record<string, string> = {
@@ -189,21 +183,21 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Logo Upload - always visible */}
-      <Card className="bg-slate-900/50 border-slate-700/50">
+      {/* Logo Upload */}
+      <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-300">
-            <ImagePlus className="h-4 w-4 text-emerald-400" />
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ImagePlus className="h-4 w-4 text-primary" />
             Logo do Tenant
           </CardTitle>
-          <CardDescription className="text-slate-500">
+          <CardDescription>
             PNG com fundo transparente. Será usado em todos os modos.
           </CardDescription>
         </CardHeader>
@@ -211,17 +205,17 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
           <div className="flex items-center gap-4">
             <div
               onClick={() => logoInputRef.current?.click()}
-              className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-emerald-500/50 transition-colors overflow-hidden bg-slate-800/50"
+              className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden bg-muted/50"
             >
               {logoPreview || branding?.suggested_logo_url ? (
                 <img src={logoPreview || branding?.suggested_logo_url || ''} alt="Logo" className="w-full h-full object-contain p-1" />
               ) : (
-                <Upload className="h-6 w-6 text-slate-500" />
+                <Upload className="h-6 w-6 text-muted-foreground" />
               )}
             </div>
             <div className="flex-1">
-              <p className="text-sm text-slate-300">{logoFile?.name || 'Nenhum logo enviado'}</p>
-              <p className="text-xs text-slate-500">Clique no quadro para enviar</p>
+              <p className="text-sm text-foreground">{logoFile?.name || 'Nenhum logo enviado'}</p>
+              <p className="text-xs text-muted-foreground">Clique no quadro para enviar</p>
             </div>
             <input ref={logoInputRef} type="file" accept=".png" className="hidden" onChange={handleLogoSelect} />
           </div>
@@ -230,16 +224,16 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
 
       {/* Three modes */}
       <Tabs defaultValue="visual" className="w-full">
-        <TabsList className="w-full bg-slate-800/50 border border-slate-700/50">
-          <TabsTrigger value="visual" className="flex-1 gap-2 data-[state=active]:bg-emerald-600/20 data-[state=active]:text-emerald-400">
+        <TabsList className="w-full">
+          <TabsTrigger value="visual" className="flex-1 gap-2">
             <Brain className="h-4 w-4" />
             IA Visual
           </TabsTrigger>
-          <TabsTrigger value="text" className="flex-1 gap-2 data-[state=active]:bg-emerald-600/20 data-[state=active]:text-emerald-400">
+          <TabsTrigger value="text" className="flex-1 gap-2">
             <MessageSquareText className="h-4 w-4" />
             IA por Texto
           </TabsTrigger>
-          <TabsTrigger value="manual" className="flex-1 gap-2 data-[state=active]:bg-emerald-600/20 data-[state=active]:text-emerald-400">
+          <TabsTrigger value="manual" className="flex-1 gap-2">
             <PenTool className="h-4 w-4" />
             Manual
           </TabsTrigger>
@@ -247,34 +241,34 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
 
         {/* IA Visual Tab */}
         <TabsContent value="visual" className="mt-4">
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-slate-200">Análise por Imagens</CardTitle>
-              <CardDescription className="text-slate-500">
-                Envie prints do Instagram, materiais da marca de <strong className="text-slate-300">{tenantName}</strong>.
+              <CardTitle className="text-sm">Análise por Imagens</CardTitle>
+              <CardDescription>
+                Envie prints do Instagram, materiais da marca de <strong className="text-foreground">{tenantName}</strong>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-600 rounded-lg p-6 text-center cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all"
+                className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
               >
-                <Upload className="h-8 w-8 mx-auto text-slate-500 mb-2" />
-                <p className="text-sm text-slate-400">Prints, materiais visuais, fotos de produtos</p>
-                <p className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP — até 10 arquivos</p>
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">Prints, materiais visuais, fotos de produtos</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">PNG, JPG, WEBP — até 10 arquivos</p>
                 <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
               </div>
 
               {previews.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {previews.map((preview, i) => (
-                    <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-700">
+                    <div key={i} className="relative group rounded-lg overflow-hidden border border-border">
                       <img src={preview} alt={`Asset ${i + 1}`} className="w-full h-24 object-cover" />
                       <button
                         onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                        className="absolute top-1 right-1 bg-red-500/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 bg-destructive/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <X className="h-3 w-3 text-white" />
+                        <X className="h-3 w-3 text-destructive-foreground" />
                       </button>
                     </div>
                   ))}
@@ -284,7 +278,7 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
               <Button
                 onClick={handleAnalyzeVisual}
                 disabled={selectedFiles.length === 0 || analyzebranding.isPending}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full"
               >
                 {analyzebranding.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</>
@@ -298,10 +292,10 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
 
         {/* IA por Texto Tab */}
         <TabsContent value="text" className="mt-4">
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-slate-200">Análise por Descrição</CardTitle>
-              <CardDescription className="text-slate-500">
+              <CardTitle className="text-sm">Análise por Descrição</CardTitle>
+              <CardDescription>
                 Descreva a marca, o estilo, as cores desejadas. A IA gera a proposta baseada na sua descrição.
               </CardDescription>
             </CardHeader>
@@ -309,13 +303,13 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
               <Textarea
                 value={textPrompt}
                 onChange={(e) => setTextPrompt(e.target.value)}
-                placeholder={`Exemplo: "A marca do ${tenantName} é focada em consultoria para empresários de alto ticket. Cores sóbrias, estilo premium, tom de autoridade mas acolhedor. Usa muito preto, dourado e tons de cinza. O público são donos de negócios que faturam acima de 100k/mês..."`}
-                className="min-h-[150px] bg-slate-800 border-slate-600 text-slate-200 placeholder:text-slate-600"
+                placeholder={`Exemplo: "A marca do ${tenantName} é focada em consultoria para empresários de alto ticket. Cores sóbrias, estilo premium, tom de autoridade mas acolhedor..."`}
+                className="min-h-[150px]"
               />
               <Button
                 onClick={handleAnalyzeText}
                 disabled={!textPrompt.trim() || analyzebranding.isPending}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full"
               >
                 {analyzebranding.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando proposta...</>
@@ -329,87 +323,83 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
 
         {/* Manual Tab */}
         <TabsContent value="manual" className="mt-4">
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-sm text-slate-200">Configuração Manual</CardTitle>
-              <CardDescription className="text-slate-500">
+              <CardTitle className="text-sm">Configuração Manual</CardTitle>
+              <CardDescription>
                 Defina cada campo do branding manualmente.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Nome e Conceito */}
               <div className="space-y-3">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Identidade</h4>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identidade</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-slate-400">Nome exibido</Label>
+                    <Label className="text-xs">Nome exibido</Label>
                     <Input
                       value={manual.suggested_name}
                       onChange={(e) => setManual(p => ({ ...p, suggested_name: e.target.value }))}
                       placeholder={tenantName}
-                      className="bg-slate-800 border-slate-600 text-slate-200"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400">Tom de voz</Label>
+                    <Label className="text-xs">Tom de voz</Label>
                     <Input
                       value={manual.tone_of_voice}
                       onChange={(e) => setManual(p => ({ ...p, tone_of_voice: e.target.value }))}
                       placeholder="Profissional mas acolhedor"
-                      className="bg-slate-800 border-slate-600 text-slate-200"
                     />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-slate-400">Conceito da marca</Label>
+                  <Label className="text-xs">Conceito da marca</Label>
                   <Textarea
                     value={manual.brand_concept}
                     onChange={(e) => setManual(p => ({ ...p, brand_concept: e.target.value }))}
                     placeholder="Descreva o posicionamento e conceito da marca..."
-                    className="bg-slate-800 border-slate-600 text-slate-200 min-h-[80px]"
+                    className="min-h-[80px]"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-slate-400">Personalidade (separar por vírgula)</Label>
+                    <Label className="text-xs">Personalidade (separar por vírgula)</Label>
                     <Input
                       value={manual.personality}
                       onChange={(e) => setManual(p => ({ ...p, personality: e.target.value }))}
                       placeholder="Sofisticado, Inovador, Confiável"
-                      className="bg-slate-800 border-slate-600 text-slate-200"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400">Público-alvo</Label>
+                    <Label className="text-xs">Público-alvo</Label>
                     <Input
                       value={manual.target_audience}
                       onChange={(e) => setManual(p => ({ ...p, target_audience: e.target.value }))}
                       placeholder="Empresários que faturam 50k+/mês"
-                      className="bg-slate-800 border-slate-600 text-slate-200"
                     />
                   </div>
                 </div>
               </div>
 
-              <Separator className="bg-slate-700/50" />
+              <Separator />
 
               {/* Cores */}
               <div className="space-y-3">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Paleta de Cores (HSL)</h4>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paleta de Cores (HSL)</h4>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {(['primary', 'secondary', 'accent', 'background', 'foreground'] as const).map(key => (
                     <div key={key}>
-                      <Label className="text-xs text-slate-400 capitalize">{key}</Label>
+                      <Label className="text-xs capitalize">{key}</Label>
                       <div className="flex gap-2 items-center">
                         <Input
                           value={manual[key]}
                           onChange={(e) => setManual(p => ({ ...p, [key]: e.target.value }))}
                           placeholder="220 91% 45%"
-                          className="bg-slate-800 border-slate-600 text-slate-200 text-xs font-mono"
+                          className="text-xs font-mono"
                         />
                         {manual[key] && (
                           <div
-                            className="w-8 h-8 rounded border border-slate-600 shrink-0"
+                            className="w-8 h-8 rounded border border-border shrink-0"
                             style={{ backgroundColor: `hsl(${manual[key]})` }}
                           />
                         )}
@@ -419,28 +409,26 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
                 </div>
               </div>
 
-              <Separator className="bg-slate-700/50" />
+              <Separator />
 
               {/* Tipografia */}
               <div className="space-y-3">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tipografia (Google Fonts)</h4>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipografia (Google Fonts)</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-slate-400">Títulos / Display</Label>
+                    <Label className="text-xs">Títulos / Display</Label>
                     <Input
                       value={manual.display_font}
                       onChange={(e) => setManual(p => ({ ...p, display_font: e.target.value }))}
                       placeholder="Space Grotesk"
-                      className="bg-slate-800 border-slate-600 text-slate-200"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400">Corpo / Body</Label>
+                    <Label className="text-xs">Corpo / Body</Label>
                     <Input
                       value={manual.body_font}
                       onChange={(e) => setManual(p => ({ ...p, body_font: e.target.value }))}
                       placeholder="Inter"
-                      className="bg-slate-800 border-slate-600 text-slate-200"
                     />
                   </div>
                 </div>
@@ -449,7 +437,7 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
               <Button
                 onClick={handleSaveManual}
                 disabled={savingManual || saveManualBranding.isPending}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full"
               >
                 {savingManual || saveManualBranding.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
@@ -499,40 +487,40 @@ function BrandingResult({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-100">Proposta de Branding</h3>
+        <h3 className="text-lg font-semibold text-foreground">Proposta de Branding</h3>
         <Badge className={cn('border', statusColors[branding.status])}>
           {statusLabels[branding.status]}
         </Badge>
       </div>
 
       {branding.ai_analysis && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-slate-300">
-              <Eye className="h-4 w-4 text-emerald-400" />
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
               Análise
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-400 whitespace-pre-wrap">{branding.ai_analysis}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{branding.ai_analysis}</p>
           </CardContent>
         </Card>
       )}
 
       {branding.brand_concept && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-slate-300">
-              <Sparkles className="h-4 w-4 text-amber-400" />
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
               Conceito
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-300 whitespace-pre-wrap">{branding.brand_concept}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{branding.brand_concept}</p>
             {branding.suggested_name && (
-              <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <p className="text-xs text-emerald-400 mb-1">Nome sugerido</p>
-                <p className="text-lg font-bold text-emerald-300">{branding.suggested_name}</p>
+              <div className="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <p className="text-xs text-primary mb-1">Nome sugerido</p>
+                <p className="text-lg font-bold text-primary">{branding.suggested_name}</p>
               </div>
             )}
           </CardContent>
@@ -540,31 +528,31 @@ function BrandingResult({
       )}
 
       {branding.brand_attributes && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-slate-300">Atributos da Marca</CardTitle>
+            <CardTitle className="text-sm">Atributos da Marca</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {branding.brand_attributes.personality?.length > 0 && (
               <div>
-                <p className="text-xs text-slate-500 mb-1">Personalidade</p>
+                <p className="text-xs text-muted-foreground mb-1">Personalidade</p>
                 <div className="flex flex-wrap gap-1">
                   {branding.brand_attributes.personality.map((p: string, i: number) => (
-                    <Badge key={i} variant="outline" className="text-xs border-emerald-500/30 text-emerald-400">{p}</Badge>
+                    <Badge key={i} variant="outline" className="text-xs">{p}</Badge>
                   ))}
                 </div>
               </div>
             )}
             {branding.brand_attributes.tone_of_voice && (
               <div>
-                <p className="text-xs text-slate-500 mb-1">Tom de Voz</p>
-                <p className="text-sm text-slate-300">{branding.brand_attributes.tone_of_voice}</p>
+                <p className="text-xs text-muted-foreground mb-1">Tom de Voz</p>
+                <p className="text-sm text-foreground">{branding.brand_attributes.tone_of_voice}</p>
               </div>
             )}
             {branding.brand_attributes.target_audience && (
               <div>
-                <p className="text-xs text-slate-500 mb-1">Público-alvo</p>
-                <p className="text-sm text-slate-300">{branding.brand_attributes.target_audience}</p>
+                <p className="text-xs text-muted-foreground mb-1">Público-alvo</p>
+                <p className="text-sm text-foreground">{branding.brand_attributes.target_audience}</p>
               </div>
             )}
           </CardContent>
@@ -572,10 +560,10 @@ function BrandingResult({
       )}
 
       {branding.color_palette && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-slate-300">
-              <Palette className="h-4 w-4 text-purple-400" />
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Palette className="h-4 w-4 text-purple-500" />
               Paleta de Cores
             </CardTitle>
           </CardHeader>
@@ -586,37 +574,37 @@ function BrandingResult({
                 if (!color) return null;
                 return (
                   <div key={key} className="text-center">
-                    <div className="w-full h-12 rounded-lg border border-slate-600 mb-1" style={{ backgroundColor: `hsl(${color})` }} />
-                    <p className="text-[10px] text-slate-500 capitalize">{key}</p>
-                    <p className="text-[9px] text-slate-600 font-mono">{color}</p>
+                    <div className="w-full h-12 rounded-lg border border-border mb-1" style={{ backgroundColor: `hsl(${color})` }} />
+                    <p className="text-[10px] text-muted-foreground capitalize">{key}</p>
+                    <p className="text-[9px] text-muted-foreground/60 font-mono">{color}</p>
                   </div>
                 );
               })}
             </div>
             {branding.color_palette.rationale && (
-              <p className="text-xs text-slate-500 mt-2">{branding.color_palette.rationale}</p>
+              <p className="text-xs text-muted-foreground mt-2">{branding.color_palette.rationale}</p>
             )}
           </CardContent>
         </Card>
       )}
 
       {branding.typography && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-slate-300">
-              <Type className="h-4 w-4 text-blue-400" />
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Type className="h-4 w-4 text-blue-500" />
               Tipografia
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-slate-500">Display</p>
-                <p className="text-sm font-semibold text-slate-200">{branding.typography.display_font}</p>
+                <p className="text-xs text-muted-foreground">Display</p>
+                <p className="text-sm font-semibold text-foreground">{branding.typography.display_font}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Body</p>
-                <p className="text-sm text-slate-200">{branding.typography.body_font}</p>
+                <p className="text-xs text-muted-foreground">Body</p>
+                <p className="text-sm text-foreground">{branding.typography.body_font}</p>
               </div>
             </div>
           </CardContent>
@@ -624,18 +612,18 @@ function BrandingResult({
       )}
 
       {branding.system_colors && (
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-slate-300">Cores do Sistema</CardTitle>
+            <CardTitle className="text-sm">Cores do Sistema</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {Object.entries(branding.system_colors).map(([key, value]) => (
-                <div key={key} className="flex items-center gap-2 p-2 rounded bg-slate-800/50">
-                  <div className="w-6 h-6 rounded border border-slate-600 shrink-0" style={{ backgroundColor: `hsl(${value})` }} />
+                <div key={key} className="flex items-center gap-2 p-2 rounded bg-muted/50">
+                  <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${value})` }} />
                   <div className="min-w-0">
-                    <p className="text-[10px] text-slate-400 truncate">--{key.replace(/_/g, '-')}</p>
-                    <p className="text-[9px] text-slate-600 font-mono truncate">{value as string}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">--{key.replace(/_/g, '-')}</p>
+                    <p className="text-[9px] text-muted-foreground/60 font-mono truncate">{value as string}</p>
                   </div>
                 </div>
               ))}
@@ -644,15 +632,15 @@ function BrandingResult({
         </Card>
       )}
 
-      <Separator className="bg-slate-700/50" />
+      <Separator />
 
       {branding.status === 'draft' && (
         <div className="flex gap-3">
-          <Button onClick={onApprove} disabled={isApproving} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button onClick={onApprove} disabled={isApproving} className="flex-1">
             {isApproving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
             Aprovar e Aplicar
           </Button>
-          <Button onClick={onReject} disabled={isRejecting} variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+          <Button onClick={onReject} disabled={isRejecting} variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/10">
             <X className="h-4 w-4 mr-2" />
             Rejeitar
           </Button>
@@ -660,9 +648,22 @@ function BrandingResult({
       )}
 
       {branding.status === 'approved' && (
-        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
-          <Check className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
-          <p className="text-sm text-emerald-300">Branding aplicado ao tenant com sucesso</p>
+        <div className="space-y-3">
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
+            <Check className="h-6 w-6 text-primary mx-auto mb-2" />
+            <p className="text-sm text-primary font-medium">Branding aplicado ao tenant com sucesso</p>
+          </div>
+          <Button onClick={onReject} variant="outline" className="w-full gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refazer Branding
+          </Button>
+        </div>
+      )}
+
+      {branding.status === 'rejected' && (
+        <div className="p-4 rounded-lg bg-muted border border-border text-center">
+          <RefreshCw className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Proposta rejeitada. Use as abas acima para gerar uma nova.</p>
         </div>
       )}
     </div>
