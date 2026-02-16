@@ -100,7 +100,7 @@ async function sendWelcomeEmail(params: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "MentorFlow.io <no-reply@equipe.aceleracaoforti.online>",
+        from: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
         to: [email],
         subject: "Bem-vindo ao MentorFlow.io | Seu acesso está pronto",
         html: htmlBody,
