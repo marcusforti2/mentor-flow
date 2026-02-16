@@ -6,12 +6,28 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // ============================================
 // HELPER: Send Welcome Email via Resend
 // ============================================
+// ── White-label branding helper ──
+interface TenantBranding { name: string; logoUrl: string | null; primaryColor: string; fromEmail: string; }
+const DEFAULT_BRANDING: TenantBranding = { name: "MentorFlow.io", logoUrl: null, primaryColor: "#d4af37", fromEmail: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>" };
+
+async function getTenantBranding(supabase: any, tenantId: string | null): Promise<TenantBranding> {
+  if (!tenantId) return DEFAULT_BRANDING;
+  try {
+    const { data: tenant } = await supabase.from("tenants").select("name, logo_url, brand_attributes").eq("id", tenantId).maybeSingle();
+    if (!tenant) return DEFAULT_BRANDING;
+    const attrs = tenant.brand_attributes || {};
+    const brandName = tenant.name || DEFAULT_BRANDING.name;
+    return { name: brandName, logoUrl: tenant.logo_url || null, primaryColor: attrs.primary_color || "#d4af37", fromEmail: `${brandName} <noreply@equipe.aceleracaoforti.online>` };
+  } catch { return DEFAULT_BRANDING; }
+}
+
 async function sendWelcomeEmail(params: {
   email: string;
   fullName: string | null;
   role: string;
   tenantName: string;
   loginUrl: string;
+  branding: TenantBranding;
 }) {
   if (!RESEND_API_KEY) {
     console.warn("RESEND_API_KEY not configured, skipping email");
@@ -26,95 +42,44 @@ async function sendWelcomeEmail(params: {
                     role === 'admin' ? 'Administrador' : 
                     role === 'ops' ? 'Operador' : role;
 
-  const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1a1a2e; margin: 0; padding: 0; background-color: #f4f4f8; }
-    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-    .card { background: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-    .header { text-align: center; margin-bottom: 30px; }
-    .logo { font-size: 28px; font-weight: 700; color: #1a1a2e; }
-    .logo span { color: #d4af37; }
-    h1 { color: #1a1a2e; font-size: 24px; margin-bottom: 20px; }
-    .steps { background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .steps h3 { margin-top: 0; color: #1a1a2e; font-size: 16px; }
-    .steps ol { margin: 0; padding-left: 20px; }
-    .steps li { margin-bottom: 10px; }
-    .highlight { background: #d4af37; color: #1a1a2e; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
-    .info-box { border-left: 4px solid #d4af37; padding: 15px; background: #fdf9e8; margin: 20px 0; }
-    .info-box strong { color: #1a1a2e; }
-    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5; color: #666; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <div class="logo">Mentor <span>Flow.io</span></div>
-      </div>
-      
-      <h1>Olá ${displayName},</h1>
-      
-      <p>Seu acesso à plataforma <strong>MentorFlow.io</strong> já está liberado.</p>
-      
-      <div class="steps">
-        <h3>📋 Como acessar</h3>
-        <ol>
-          <li>Acesse a plataforma: <a href="${loginUrl}">${loginUrl}</a></li>
-          <li>Na tela de login, informe este email: <span class="highlight">${email}</span></li>
-          <li>Você receberá um código de acesso por email</li>
-          <li>Digite o código e pronto, você estará dentro da plataforma</li>
-        </ol>
-      </div>
-      
-      <div class="info-box">
-        <p style="margin: 0;"><strong>Seu perfil de acesso:</strong></p>
-        <p style="margin: 5px 0;">• Papel: <strong>${roleLabel}</strong></p>
-        <p style="margin: 5px 0;">• Empresa: <strong>${tenantName}</strong></p>
-      </div>
-      
-      <p>Se tiver qualquer dúvida ou dificuldade de acesso, fale com nosso suporte:</p>
-      <p>📧 <a href="mailto:suporte@equipe.aceleracaoforti.online">suporte@equipe.aceleracaoforti.online</a></p>
-      
-      <p>Seja bem-vindo(a)!</p>
-      
-      <div class="footer">
-        <p>Com carinho,<br><strong>Equipe MentorFlow.io</strong></p>
-        <p style="font-size: 12px; color: #999;">© ${new Date().getFullYear()} MentorFlow.io. Todos os direitos reservados.</p>
-      </div>
-    </div>
+  const { email, fullName, role, tenantName, loginUrl, branding } = params;
+  const displayName = fullName || email.split('@')[0];
+  const roleLabel = role === 'mentor' ? 'Mentor' : role === 'mentee' ? 'Mentorado' : role === 'admin' ? 'Administrador' : role === 'ops' ? 'Operador' : role;
+  const logoSection = branding.logoUrl
+    ? `<img src="${branding.logoUrl}" alt="${branding.name}" style="max-height: 48px; max-width: 200px;" />`
+    : `<div class="logo">${branding.name}</div>`;
+
+  const htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #1a1a2e; margin: 0; padding: 0; background-color: #f4f4f8; }
+  .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+  .card { background: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  .header { text-align: center; margin-bottom: 30px; }
+  .logo { font-size: 28px; font-weight: 700; color: #1a1a2e; }
+  .highlight { background: ${branding.primaryColor}; color: #0a0a0b; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .info-box { border-left: 4px solid ${branding.primaryColor}; padding: 15px; background: #fdf9e8; margin: 20px 0; }
+  .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5; color: #666; font-size: 14px; }
+</style></head><body>
+<div class="container"><div class="card">
+  <div class="header">${logoSection}</div>
+  <h1 style="color:#1a1a2e;">Olá ${displayName},</h1>
+  <p>Seu acesso à plataforma <strong>${tenantName}</strong> já está liberado.</p>
+  <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin:20px 0;">
+    <h3 style="margin-top:0;">📋 Como acessar</h3>
+    <ol style="padding-left:20px;"><li>Acesse: <a href="${loginUrl}">${loginUrl}</a></li><li>Informe: <span class="highlight">${email}</span></li><li>Receba o código por email e acesse</li></ol>
   </div>
-</body>
-</html>
-  `;
+  <div class="info-box"><p style="margin:0;"><strong>Perfil:</strong></p><p style="margin:5px 0;">• Papel: <strong>${roleLabel}</strong></p><p style="margin:5px 0;">• Empresa: <strong>${tenantName}</strong></p></div>
+  <div class="footer"><p>Com carinho,<br><strong>Equipe ${branding.name}</strong></p><p style="font-size:12px;color:#999;">© ${new Date().getFullYear()} ${branding.name}</p></div>
+</div></div></body></html>`;
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
-        to: [email],
-        subject: "Bem-vindo ao MentorFlow.io | Seu acesso está pronto",
-        html: htmlBody,
-      }),
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: branding.fromEmail, to: [email], subject: `Bem-vindo ao ${tenantName} | Seu acesso está pronto`, html: htmlBody }),
     });
-
     const result = await response.json();
-    
-    if (!response.ok) {
-      console.error("Resend API error:", result);
-      return { success: false, error: result };
-    }
-
-    console.log("Welcome email sent successfully to:", email);
+    if (!response.ok) { console.error("Resend API error:", result); return { success: false, error: result }; }
     return { success: true, messageId: result.id };
   } catch (error: any) {
     console.error("Error sending welcome email:", error);

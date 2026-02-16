@@ -13,6 +13,81 @@ function generateOTPCode(): string {
   return Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join('');
 }
 
+// ── White-label branding helper ──
+interface TenantBranding {
+  name: string;
+  logoUrl: string | null;
+  primaryColor: string;
+  fromEmail: string;
+}
+
+const DEFAULT_BRANDING: TenantBranding = {
+  name: "MentorFlow.io",
+  logoUrl: null,
+  primaryColor: "#d4af37",
+  fromEmail: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
+};
+
+async function getTenantBranding(supabase: any, tenantId: string | null): Promise<TenantBranding> {
+  if (!tenantId) return DEFAULT_BRANDING;
+  try {
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("name, logo_url, brand_attributes")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (!tenant) return DEFAULT_BRANDING;
+    const attrs = tenant.brand_attributes || {};
+    const primaryColor = attrs.primary_color || "#d4af37";
+    const brandName = tenant.name || DEFAULT_BRANDING.name;
+    return {
+      name: brandName,
+      logoUrl: tenant.logo_url || null,
+      primaryColor,
+      fromEmail: `${brandName} <noreply@equipe.aceleracaoforti.online>`,
+    };
+  } catch { return DEFAULT_BRANDING; }
+}
+
+function buildOtpEmailHtml(code: string, b: TenantBranding): string {
+  const logoHtml = b.logoUrl
+    ? `<img src="${b.logoUrl}" alt="${b.name}" style="max-height: 48px; max-width: 200px; margin-bottom: 16px;" />`
+    : `<div style="width: 56px; height: 56px; background: linear-gradient(135deg, ${b.primaryColor} 0%, ${b.primaryColor}cc 100%); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <span style="font-size: 28px;">✨</span>
+      </div>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0b; padding: 40px 20px;">
+    <tr><td align="center">
+      <table width="100%" max-width="480" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #1a1a1d 0%, #0d0d0e 100%); border-radius: 16px; border: 1px solid #27272a; overflow: hidden;">
+        <tr><td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #27272a;">
+          ${logoHtml}
+          <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 700;">${b.name}</h1>
+          <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 14px;">Seu código de acesso chegou</p>
+        </td></tr>
+        <tr><td style="padding: 32px;">
+          <p style="margin: 0 0 16px; color: #d4d4d8; font-size: 15px; line-height: 1.6;">Use o código abaixo para acessar sua conta:</p>
+          <div style="background: linear-gradient(135deg, ${b.primaryColor} 0%, ${b.primaryColor}cc 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+            <span style="font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #0a0a0b; font-family: 'Monaco', 'Consolas', monospace;">${code}</span>
+          </div>
+          <p style="margin: 24px 0 0; color: #71717a; font-size: 13px; text-align: center;">⏱️ Este código expira em <strong style="color: ${b.primaryColor};">10 minutos</strong></p>
+        </td></tr>
+        <tr><td style="padding: 24px 32px; background-color: #09090b; border-top: 1px solid #27272a;">
+          <p style="margin: 0; color: #52525b; font-size: 12px; text-align: center; line-height: 1.5;">
+            Se você não solicitou este código, ignore este email.<br>
+            © ${new Date().getFullYear()} ${b.name}
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -21,14 +96,10 @@ serve(async (req) => {
   try {
     const { email, tenant_hint } = await req.json();
 
-    if (!email) {
-      throw new Error("Email é obrigatório");
-    }
+    if (!email) throw new Error("Email é obrigatório");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new Error("Email inválido");
-    }
+    if (!emailRegex.test(email)) throw new Error("Email inválido");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -37,12 +108,8 @@ serve(async (req) => {
     const normalizedEmail = email.toLowerCase().trim();
     console.log("send-otp: Checking permission for:", normalizedEmail, "tenant_hint:", tenant_hint);
 
-    // INVITE-ONLY CHECK: Verify if email has permission to receive OTP
     const { data: permissionRows, error: permError } = await supabase
-      .rpc('can_receive_otp', { 
-        _email: normalizedEmail,
-        _tenant_hint: tenant_hint || null 
-      });
+      .rpc('can_receive_otp', { _email: normalizedEmail, _tenant_hint: tenant_hint || null });
 
     if (permError) {
       console.error("Error checking OTP permission:", permError);
@@ -54,125 +121,42 @@ serve(async (req) => {
 
     if (!permission?.allowed) {
       if (permission?.reason === 'multiple_invites') {
-        // Multiple tenants - return list for user to choose
-        console.log("send-otp: Multiple invites found, returning tenant list");
         return new Response(
-          JSON.stringify({ 
-            error: 'multiple_tenants',
-            tenants: permission.tenants,
-            message: 'Selecione o programa que deseja acessar'
-          }),
+          JSON.stringify({ error: 'multiple_tenants', tenants: permission.tenants, message: 'Selecione o programa que deseja acessar' }),
           { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-      
-      // Not invited - block OTP
-      console.log("send-otp: OTP blocked for:", normalizedEmail, "reason:", permission?.reason);
       return new Response(
-        JSON.stringify({ 
-          error: 'Acesso não configurado. Você precisa ser convidado para acessar a plataforma.' 
-        }),
+        JSON.stringify({ error: 'Acesso não configurado. Você precisa ser convidado para acessar a plataforma.' }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    console.log("send-otp: OTP allowed for:", normalizedEmail, "reason:", permission.reason);
+    // Fetch tenant branding for white-label emails
+    const branding = await getTenantBranding(supabase, permission.tenant_id || tenant_hint || null);
 
-    // Generate OTP code
     const code = generateOTPCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Delete any existing unused codes for this email
-    await supabase
-      .from("otp_codes")
-      .delete()
-      .eq("email", normalizedEmail)
-      .or("used.is.null,used.eq.false");
+    await supabase.from("otp_codes").delete().eq("email", normalizedEmail).or("used.is.null,used.eq.false");
 
-    // Insert new OTP code
-    const { error: insertError } = await supabase
-      .from("otp_codes")
-      .insert({
-        email: normalizedEmail,
-        code: code,
-        expires_at: expiresAt.toISOString(),
-        used: false,
-      });
+    const { error: insertError } = await supabase.from("otp_codes").insert({
+      email: normalizedEmail, code, expires_at: expiresAt.toISOString(), used: false,
+    });
+    if (insertError) throw new Error("Erro ao gerar código");
 
-    if (insertError) {
-      console.error("Error inserting OTP:", insertError);
-      throw new Error("Erro ao gerar código");
-    }
+    if (!RESEND_API_KEY) throw new Error("Configuração de email não encontrada");
 
-    // Send email via Resend REST API (direct fetch for reliability)
-    if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY not configured!");
-      throw new Error("Configuração de email não encontrada");
-    }
+    console.log("send-otp: Sending branded email via Resend to:", normalizedEmail, "brand:", branding.name);
 
-    console.log("send-otp: Sending email via Resend API to:", normalizedEmail);
-    
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
+        from: branding.fromEmail,
         to: [normalizedEmail],
-        subject: "Seu código de acesso - MentorFlow.io",
-        html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 0; background-color: #0a0a0b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0b; padding: 40px 20px;">
-            <tr>
-              <td align="center">
-                <table width="100%" max-width="480" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #1a1a1d 0%, #0d0d0e 100%); border-radius: 16px; border: 1px solid #27272a; overflow: hidden;">
-                  <tr>
-                    <td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #27272a;">
-                      <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #c9a227 100%); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
-                        <span style="font-size: 28px;">✨</span>
-                      </div>
-                      <h1 style="margin: 0; color: #fafafa; font-size: 24px; font-weight: 700;">MentorFlow.io</h1>
-                      <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 14px;">Seu código de acesso chegou</p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 32px;">
-                      <p style="margin: 0 0 16px; color: #d4d4d8; font-size: 15px; line-height: 1.6;">
-                        Use o código abaixo para acessar sua conta:
-                      </p>
-                      <div style="background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #c9a227 100%); border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
-                        <span style="font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #0a0a0b; font-family: 'Monaco', 'Consolas', monospace;">
-                          ${code}
-                        </span>
-                      </div>
-                      <p style="margin: 24px 0 0; color: #71717a; font-size: 13px; text-align: center;">
-                        ⏱️ Este código expira em <strong style="color: #d4af37;">10 minutos</strong>
-                      </p>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 24px 32px; background-color: #09090b; border-top: 1px solid #27272a;">
-                      <p style="margin: 0; color: #52525b; font-size: 12px; text-align: center; line-height: 1.5;">
-                        Se você não solicitou este código, ignore este email.<br>
-                        © ${new Date().getFullYear()} MentorFlow.io - Plataforma para Mentores
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
-        `,
+        subject: `Seu código de acesso - ${branding.name}`,
+        html: buildOtpEmailHtml(code, branding),
       }),
     });
 
@@ -184,29 +168,15 @@ serve(async (req) => {
       throw new Error(`Erro ao enviar email: ${emailResult?.message || emailResult?.error || 'Resend API error'}`);
     }
 
-    console.log(`OTP sent to ${normalizedEmail}`);
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Código enviado para seu email",
-        // Include tenant info if resolved
-        tenant_id: permission.tenant_id,
-        role: permission.role,
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ success: true, message: "Código enviado para seu email", tenant_id: permission.tenant_id, role: permission.role }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
     console.error("Error in send-otp:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Erro interno" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 });
