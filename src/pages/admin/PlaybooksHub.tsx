@@ -17,11 +17,12 @@ import {
 import {
   BookOpen, Plus, FolderPlus, Search, MoreVertical, Edit3, Trash2,
   Loader2, Lock, Users, UserCheck, Globe, FileText, FolderOpen, ArrowLeft,
+  LayoutGrid, List,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const visibilityConfig = {
+const visibilityConfig: Record<string, { label: string; icon: any; color: string }> = {
   mentor_only: { label: 'Somente mentor', icon: Lock, color: 'text-amber-500' },
   all_mentees: { label: 'Todos mentorados', icon: Users, color: 'text-green-500' },
   specific_mentees: { label: 'Mentorados específicos', icon: UserCheck, color: 'text-blue-500' },
@@ -35,8 +36,7 @@ export default function PlaybooksHub() {
   const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook } = usePlaybookMutations();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterFolder, setFilterFolder] = useState<string>('all');
-  const [filterVisibility, setFilterVisibility] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery');
 
   // Dialog states
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
@@ -54,20 +54,26 @@ export default function PlaybooksHub() {
 
   const isLoading = foldersLoading || playbooksLoading;
 
-  // Filter playbooks
-  const filteredPlaybooks = playbooks.filter(pb => {
-    if (selectedFolder && pb.folder_id !== selectedFolder.id) return false;
-    if (!selectedFolder && filterFolder !== 'all') {
-      if (filterFolder === 'none' && pb.folder_id !== null) return false;
-      if (filterFolder !== 'none' && pb.folder_id !== filterFolder) return false;
-    }
-    if (filterVisibility !== 'all' && pb.visibility !== filterVisibility) return false;
-    if (searchTerm) {
-      const s = searchTerm.toLowerCase();
-      return pb.title.toLowerCase().includes(s) || pb.description?.toLowerCase().includes(s);
-    }
-    return true;
+  // Filter playbooks when inside a folder
+  const folderPlaybooks = selectedFolder
+    ? playbooks.filter(pb => pb.folder_id === selectedFolder.id)
+    : [];
+
+  // Filtered for search
+  const filteredFolders = folders.filter(f => {
+    if (!searchTerm) return true;
+    return f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      f.description?.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  const filteredPlaybooks = folderPlaybooks.filter(pb => {
+    if (!searchTerm) return true;
+    return pb.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pb.description?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Orphan playbooks (no folder)
+  const orphanPlaybooks = playbooks.filter(pb => !pb.folder_id);
 
   // Handlers
   const handleOpenFolderDialog = (folder?: PlaybookFolder) => {
@@ -158,7 +164,7 @@ export default function PlaybooksHub() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
           {selectedFolder && (
-            <Button variant="ghost" size="icon" onClick={() => setSelectedFolder(null)}>
+            <Button variant="ghost" size="icon" onClick={() => { setSelectedFolder(null); setSearchTerm(''); }}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
@@ -175,23 +181,41 @@ export default function PlaybooksHub() {
         </div>
 
         <div className="flex gap-2">
+          {/* View toggle */}
+          <div className="flex border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode('gallery')}
+              className={`p-2 transition-colors ${viewMode === 'gallery' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+
           {!selectedFolder && (
             <Button variant="outline" size="sm" onClick={() => handleOpenFolderDialog()}>
               <FolderPlus className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Nova Pasta</span>
             </Button>
           )}
-          <Button className="gradient-gold text-primary-foreground" size="sm" onClick={() => handleOpenPlaybookDialog()}>
-            <Plus className="h-4 w-4 mr-1" />
-            Novo Playbook
-          </Button>
+          {selectedFolder && (
+            <Button className="gradient-gold text-primary-foreground" size="sm" onClick={() => handleOpenPlaybookDialog()}>
+              <Plus className="h-4 w-4 mr-1" />
+              Novo Playbook
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Breadcrumb */}
       {selectedFolder && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <button onClick={() => setSelectedFolder(null)} className="hover:text-foreground transition-colors">
+          <button onClick={() => { setSelectedFolder(null); setSearchTerm(''); }} className="hover:text-foreground transition-colors">
             Playbooks
           </button>
           <span>/</span>
@@ -199,191 +223,147 @@ export default function PlaybooksHub() {
         </div>
       )}
 
-      {/* Filters */}
-      {!selectedFolder && (
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar playbooks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={filterFolder} onValueChange={setFilterFolder}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Pasta" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as pastas</SelectItem>
-              <SelectItem value="none">Sem pasta</SelectItem>
-              {folders.map(f => (
-                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterVisibility} onValueChange={setFilterVisibility}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Visibilidade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="mentor_only">Somente mentor</SelectItem>
-              <SelectItem value="all_mentees">Todos mentorados</SelectItem>
-              <SelectItem value="specific_mentees">Específicos</SelectItem>
-              <SelectItem value="public">Público</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Folders Grid (only on root view) */}
-      {!selectedFolder && folders.length > 0 && filterFolder === 'all' && !searchTerm && (
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">Pastas</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {folders.map(folder => {
-              const count = playbooks.filter(p => p.folder_id === folder.id).length;
-              return (
-                <Card
-                  key={folder.id}
-                  className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
-                  onClick={() => setSelectedFolder(folder)}
-                >
-                  <CardContent className="pt-5 pb-4 px-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <FolderOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenuItem onClick={() => handleOpenFolderDialog(folder)}>
-                            <Edit3 className="h-4 w-4 mr-2" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <h3 className="font-semibold text-foreground truncate">{folder.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">{count} playbook{count !== 1 ? 's' : ''}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Playbooks Grid */}
-      <div>
-        {!selectedFolder && !searchTerm && filterFolder === 'all' && folders.length > 0 && (
-          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">Playbooks</h2>
-        )}
-
-        {filteredPlaybooks.length === 0 ? (
-          <Card className="glass-card">
-            <CardContent className="py-12 text-center">
-              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                {searchTerm ? 'Nenhum resultado' : 'Nenhum playbook ainda'}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchTerm ? 'Tente ajustar a busca.' : 'Crie seu primeiro playbook para centralizar seu conhecimento operacional.'}
-              </p>
-              {!searchTerm && (
-                <Button onClick={() => handleOpenPlaybookDialog()} className="gradient-gold text-primary-foreground">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Playbook
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredPlaybooks.map(pb => {
-              const vis = visibilityConfig[pb.visibility];
-              const VisIcon = vis.icon;
-              return (
-                <Card
-                  key={pb.id}
-                  className="glass-card hover:border-primary/30 transition-all group overflow-hidden cursor-pointer"
-                  onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
-                >
-                  {/* Cover image */}
-                  {pb.cover_image_url ? (
-                    <div className="h-36 bg-muted overflow-hidden">
-                      <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
-                      <BookOpen className="h-8 w-8 text-primary/30" />
-                    </div>
-                  )}
-
-                  <CardContent className="pt-4 pb-4 px-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-foreground line-clamp-1 flex-1">{pb.title}</h3>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenPlaybookDialog(pb)}>
-                            <Edit3 className="h-4 w-4 mr-2" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {pb.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{pb.description}</p>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <VisIcon className={`h-3.5 w-3.5 ${vis.color}`} />
-                          {vis.label}
-                        </span>
-                        {pb.pages_count! > 0 && (
-                          <span className="flex items-center gap-1">
-                            <FileText className="h-3.5 w-3.5" />
-                            {pb.pages_count}
-                          </span>
-                        )}
-                      </div>
-                      <span>{formatDistanceToNow(new Date(pb.updated_at), { addSuffix: true, locale: ptBR })}</span>
-                    </div>
-
-                    {pb.folder_name && !selectedFolder && (
-                      <Badge variant="outline" className="mt-2 text-xs">{pb.folder_name}</Badge>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={selectedFolder ? 'Buscar playbooks...' : 'Buscar pastas...'}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
+
+      {/* === ROOT VIEW: Only Folders === */}
+      {!selectedFolder && (
+        <>
+          {filteredFolders.length === 0 && orphanPlaybooks.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="py-16 text-center">
+                <BookOpen className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">Nenhuma pasta criada</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Organize seus playbooks em pastas temáticas. Cada pasta pode ter uma imagem de capa personalizada.
+                </p>
+                <Button onClick={() => handleOpenFolderDialog()} className="gradient-gold text-primary-foreground">
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Criar Primeira Pasta
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Gallery View */}
+              {viewMode === 'gallery' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {filteredFolders.map(folder => {
+                    const count = playbooks.filter(p => p.folder_id === folder.id).length;
+                    return (
+                      <FolderCardGallery
+                        key={folder.id}
+                        folder={folder}
+                        playbookCount={count}
+                        onClick={() => setSelectedFolder(folder)}
+                        onEdit={() => handleOpenFolderDialog(folder)}
+                        onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredFolders.map(folder => {
+                    const count = playbooks.filter(p => p.folder_id === folder.id).length;
+                    return (
+                      <FolderCardList
+                        key={folder.id}
+                        folder={folder}
+                        playbookCount={count}
+                        onClick={() => setSelectedFolder(folder)}
+                        onEdit={() => handleOpenFolderDialog(folder)}
+                        onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Orphan playbooks */}
+              {orphanPlaybooks.length > 0 && !searchTerm && (
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Sem pasta</h2>
+                    <Button className="gradient-gold text-primary-foreground" size="sm" onClick={() => handleOpenPlaybookDialog()}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Novo Playbook
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {orphanPlaybooks.map(pb => (
+                      <PlaybookCard
+                        key={pb.id}
+                        playbook={pb}
+                        onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
+                        onEdit={() => handleOpenPlaybookDialog(pb)}
+                        onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* === FOLDER VIEW: Playbooks inside === */}
+      {selectedFolder && (
+        <>
+          {filteredPlaybooks.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="py-12 text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  {searchTerm ? 'Nenhum resultado' : 'Pasta vazia'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchTerm ? 'Tente ajustar a busca.' : 'Adicione playbooks a esta pasta.'}
+                </p>
+                {!searchTerm && (
+                  <Button onClick={() => handleOpenPlaybookDialog()} className="gradient-gold text-primary-foreground">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Playbook
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : viewMode === 'gallery' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredPlaybooks.map(pb => (
+                <PlaybookCard
+                  key={pb.id}
+                  playbook={pb}
+                  onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
+                  onEdit={() => handleOpenPlaybookDialog(pb)}
+                  onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredPlaybooks.map(pb => (
+                <PlaybookCardList
+                  key={pb.id}
+                  playbook={pb}
+                  onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
+                  onEdit={() => handleOpenPlaybookDialog(pb)}
+                  onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Folder Dialog */}
       <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
@@ -481,5 +461,274 @@ export default function PlaybooksHub() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/* ========== Sub-components ========== */
+
+function FolderCardGallery({
+  folder, playbookCount, onClick, onEdit, onDelete,
+}: {
+  folder: PlaybookFolder;
+  playbookCount: number;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Card
+      className="glass-card hover:border-primary/30 cursor-pointer transition-all group overflow-hidden"
+      onClick={onClick}
+    >
+      {/* Cover image - Notion-style */}
+      <div className="relative h-44 overflow-hidden">
+        {folder.cover_image_url ? (
+          <img
+            src={folder.cover_image_url}
+            alt=""
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+            <FolderOpen className="h-12 w-12 text-primary/30" />
+          </div>
+        )}
+        {/* Dark overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+
+        {/* Text on image */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <h3 className="font-display font-bold text-white text-lg leading-tight line-clamp-2 drop-shadow-lg">
+            {folder.name}
+          </h3>
+          {folder.description && (
+            <p className="text-white/70 text-xs mt-1 line-clamp-1">{folder.description}</p>
+          )}
+        </div>
+
+        {/* Menu */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/40 hover:bg-black/60 text-white">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit3 className="h-4 w-4 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <CardContent className="py-3 px-4">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5" />
+            {playbookCount} playbook{playbookCount !== 1 ? 's' : ''}
+          </span>
+          <span>{formatDistanceToNow(new Date(folder.updated_at), { addSuffix: true, locale: ptBR })}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FolderCardList({
+  folder, playbookCount, onClick, onEdit, onDelete,
+}: {
+  folder: PlaybookFolder;
+  playbookCount: number;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Card
+      className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
+      onClick={onClick}
+    >
+      <CardContent className="py-3 px-4 flex items-center gap-4">
+        {/* Thumbnail */}
+        <div className="h-14 w-20 rounded-lg overflow-hidden shrink-0">
+          {folder.cover_image_url ? (
+            <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+              <FolderOpen className="h-5 w-5 text-primary/30" />
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground truncate">{folder.name}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {playbookCount} playbook{playbookCount !== 1 ? 's' : ''}
+            {folder.description && ` • ${folder.description}`}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit3 className="h-4 w-4 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PlaybookCard({
+  playbook, onClick, onEdit, onDelete,
+}: {
+  playbook: Playbook;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
+  const VisIcon = vis.icon;
+
+  return (
+    <Card
+      className="glass-card hover:border-primary/30 transition-all group overflow-hidden cursor-pointer"
+      onClick={onClick}
+    >
+      {playbook.cover_image_url ? (
+        <div className="h-36 bg-muted overflow-hidden">
+          <img src={playbook.cover_image_url} alt="" className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
+          <BookOpen className="h-8 w-8 text-primary/30" />
+        </div>
+      )}
+
+      <CardContent className="pt-4 pb-4 px-4">
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="font-semibold text-foreground line-clamp-1 flex-1">{playbook.title}</h3>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit3 className="h-4 w-4 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {playbook.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{playbook.description}</p>
+        )}
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <VisIcon className={`h-3.5 w-3.5 ${vis.color}`} />
+              {vis.label}
+            </span>
+            {(playbook.pages_count ?? 0) > 0 && (
+              <span className="flex items-center gap-1">
+                <FileText className="h-3.5 w-3.5" />
+                {playbook.pages_count}
+              </span>
+            )}
+          </div>
+          <span>{formatDistanceToNow(new Date(playbook.updated_at), { addSuffix: true, locale: ptBR })}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PlaybookCardList({
+  playbook, onClick, onEdit, onDelete,
+}: {
+  playbook: Playbook;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
+  const VisIcon = vis.icon;
+
+  return (
+    <Card
+      className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
+      onClick={onClick}
+    >
+      <CardContent className="py-3 px-4 flex items-center gap-4">
+        <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0 bg-muted">
+          {playbook.cover_image_url ? (
+            <img src={playbook.cover_image_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
+              <BookOpen className="h-4 w-4 text-primary/30" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground truncate">{playbook.title}</h3>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            <span className="flex items-center gap-1">
+              <VisIcon className={`h-3 w-3 ${vis.color}`} />
+              {vis.label}
+            </span>
+            {(playbook.pages_count ?? 0) > 0 && (
+              <span className="flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                {playbook.pages_count} pág.
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit3 className="h-4 w-4 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
