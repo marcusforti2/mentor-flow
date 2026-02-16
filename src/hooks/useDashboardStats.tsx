@@ -117,7 +117,7 @@ export function useMentorDashboardStats() {
 
       // BATCH 1: All independent queries in parallel
       const [membershipsRes, trailsRes, meetingsRes, sosRes, sosDetailsRes, activityRes, winsRes] = await Promise.all([
-        supabase.from('memberships').select('id, status, user_id').eq('tenant_id', tenantId).eq('role', 'mentee'),
+        supabase.from('memberships').select('id, status, user_id').eq('tenant_id', tenantId).eq('role', 'mentee').eq('status', 'active'),
         supabase.from('trails').select('id, title').eq('tenant_id', tenantId),
         supabase.from('meetings').select('id').eq('tenant_id', tenantId)
           .gte('scheduled_at', startOfWeek.toISOString()).lt('scheduled_at', endOfWeek.toISOString()),
