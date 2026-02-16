@@ -47,7 +47,7 @@ interface TenantMember {
   id: string;
   user_id: string;
   role: string;
-  profiles: { display_name: string | null; avatar_url: string | null } | null;
+  profiles: { full_name: string | null; avatar_url: string | null; email: string | null } | null;
 }
 
 type ViewMode = "month" | "week";
@@ -100,7 +100,7 @@ export default function Calendario() {
     try {
       const [eventsRes, membersRes] = await Promise.all([
         supabase.from('calendar_events').select('*').eq('tenant_id', activeMembership.tenant_id).order('event_date', { ascending: true }),
-        supabase.from('memberships').select('id, user_id, role, profiles:user_id(display_name, avatar_url)').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').in('role', ['mentee']),
+        supabase.from('memberships').select('id, user_id, role, profiles:user_id(full_name, avatar_url, email)').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').eq('role', 'mentee'),
       ]);
       if (eventsRes.error) throw eventsRes.error;
       setEvents(eventsRes.data || []);
@@ -720,13 +720,32 @@ export default function Calendario() {
 
             {/* Specific mentees picker */}
             {newEvent.audience_type === 'specific' && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Selecionar mentorados</Label>
-                <div className="border border-border/50 rounded-xl p-2 max-h-[140px] overflow-y-auto space-y-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Selecionar mentorados</Label>
+                  {tenantMembers.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSelected = newEvent.audience_membership_ids.length === tenantMembers.length;
+                        setNewEvent(prev => ({
+                          ...prev,
+                          audience_membership_ids: allSelected ? [] : tenantMembers.map(m => m.id),
+                        }));
+                      }}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      {newEvent.audience_membership_ids.length === tenantMembers.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </button>
+                  )}
+                </div>
+                <div className="border border-border/50 rounded-xl max-h-[180px] overflow-y-auto">
                   {tenantMembers.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-2">Nenhum mentorado encontrado</p>
-                  ) : tenantMembers.map((member) => {
+                    <p className="text-xs text-muted-foreground text-center py-4">Nenhum mentorado ativo neste programa</p>
+                  ) : tenantMembers.map((member, idx) => {
                     const isSelected = newEvent.audience_membership_ids.includes(member.id);
+                    const name = member.profiles?.full_name || member.profiles?.email || `Mentorado`;
+                    const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                     return (
                       <div
                         key={member.id}
@@ -739,20 +758,39 @@ export default function Calendario() {
                           }));
                         }}
                         className={cn(
-                          "flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all text-sm",
-                          isSelected ? "bg-primary/15 border border-primary/30" : "hover:bg-secondary/50 border border-transparent"
+                          "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all",
+                          isSelected ? "bg-primary/10" : "hover:bg-secondary/50",
+                          idx !== 0 && "border-t border-border/20"
                         )}
                       >
-                        <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center transition-colors", isSelected ? "bg-primary border-primary" : "border-muted-foreground/30")}>
-                          {isSelected && <span className="text-[10px] text-primary-foreground">✓</span>}
+                        <div className={cn(
+                          "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0",
+                          isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        )}>
+                          {isSelected && <span className="text-[10px] text-primary-foreground font-bold">✓</span>}
                         </div>
-                        <span className="truncate">{member.profiles?.display_name || `Mentorado ${member.id.slice(0, 6)}`}</span>
+                        {member.profiles?.avatar_url ? (
+                          <img src={member.profiles.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-semibold text-primary">{initials}</span>
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium truncate">{name}</span>
+                          {member.profiles?.email && member.profiles?.full_name && (
+                            <span className="text-[11px] text-muted-foreground truncate">{member.profiles.email}</span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
                 {newEvent.audience_membership_ids.length > 0 && (
-                  <p className="text-[11px] text-muted-foreground">{newEvent.audience_membership_ids.length} selecionado(s)</p>
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3 h-3 text-primary" />
+                    <p className="text-[11px] text-primary font-medium">{newEvent.audience_membership_ids.length} mentorado(s) selecionado(s)</p>
+                  </div>
                 )}
               </div>
             )}
