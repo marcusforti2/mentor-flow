@@ -3165,6 +3165,7 @@ export type Database = {
           font_family: string | null
           id: string
           logo_url: string | null
+          monthly_value: number | null
           name: string
           primary_color: string | null
           secondary_color: string | null
@@ -3182,6 +3183,7 @@ export type Database = {
           font_family?: string | null
           id?: string
           logo_url?: string | null
+          monthly_value?: number | null
           name: string
           primary_color?: string | null
           secondary_color?: string | null
@@ -3199,6 +3201,7 @@ export type Database = {
           font_family?: string | null
           id?: string
           logo_url?: string | null
+          monthly_value?: number | null
           name?: string
           primary_color?: string | null
           secondary_color?: string | null
