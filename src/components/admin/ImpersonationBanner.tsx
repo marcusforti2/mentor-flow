@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/badge';
 
 const roleLabels: Record<string, string> = {
   master_admin: 'Master Admin',
-  admin: 'Admin',
-  ops: 'Ops',
   mentor: 'Mentor',
   mentee: 'Mentorado',
 };

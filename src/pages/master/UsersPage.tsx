@@ -27,8 +27,8 @@ import { toast } from 'sonner';
 
 const roleConfig = {
   master_admin: { label: 'Master Admin', variant: 'default' as const, color: 'bg-amber-500' },
-  admin: { label: 'Admin', variant: 'default' as const, color: 'bg-purple-500' },
-  ops: { label: 'Ops', variant: 'secondary' as const, color: 'bg-blue-500' },
+  admin: { label: 'Admin', variant: 'default' as const, color: 'bg-purple-500', hidden: true },
+  ops: { label: 'Ops', variant: 'secondary' as const, color: 'bg-blue-500', hidden: true },
   mentor: { label: 'Mentor', variant: 'secondary' as const, color: 'bg-green-500' },
   mentee: { label: 'Mentorado', variant: 'outline' as const, color: 'bg-muted-foreground' },
 };
@@ -311,7 +311,7 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos Papéis</SelectItem>
-                  {Object.entries(roleConfig).map(([key, config]) => (
+                  {Object.entries(roleConfig).filter(([, config]) => !(config as any).hidden).map(([key, config]) => (
                     <SelectItem key={key} value={key}>
                       {config.label}
                     </SelectItem>
