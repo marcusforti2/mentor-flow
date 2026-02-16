@@ -247,14 +247,25 @@ export default function MentoradoPlaybooks() {
                               <FolderOpen className="h-10 w-10 text-primary/30" />
                             </div>
                           )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                           <div className="absolute bottom-0 left-0 right-0 p-4">
-                            <h3 className="font-display font-bold text-white text-base leading-tight line-clamp-2 drop-shadow-lg">
+                            <h3 className="font-display font-bold text-white text-lg leading-tight line-clamp-2 drop-shadow-lg">
                               {folder.name}
                             </h3>
-                            <p className="text-white/60 text-xs mt-0.5">{folder.count} playbook{folder.count !== 1 ? 's' : ''}</p>
+                            {folder.description && (
+                              <p className="text-white/70 text-xs mt-1 line-clamp-1">{folder.description}</p>
+                            )}
                           </div>
                         </div>
+                        <CardContent className="py-3 px-4">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <FileText className="h-3.5 w-3.5" />
+                              {folder.count} playbook{folder.count !== 1 ? 's' : ''}
+                            </span>
+                            <span>{formatDistanceToNow(new Date(folder.updated_at), { addSuffix: true, locale: ptBR })}</span>
+                          </div>
+                        </CardContent>
                       </Card>
                     ))}
                   </div>
