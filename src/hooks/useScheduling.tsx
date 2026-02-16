@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { logActivity } from '@/hooks/useActivityLog';
 
 export interface AvailabilitySlot {
   id: string;
@@ -160,6 +161,25 @@ export function useScheduling() {
           tenant_id: tenantId,
         });
       if (error) throw error;
+
+      // Notify mentor via email (fire and forget)
+      supabase.functions.invoke('notify-mentor-booking', {
+        body: {
+          mentor_membership_id: booking.mentor_membership_id,
+          mentee_membership_id: membershipId,
+          scheduled_at: booking.scheduled_at,
+          duration_minutes: booking.duration_minutes,
+        },
+      }).catch(console.error);
+
+      // Log activity
+      await logActivity({
+        membershipId: membershipId!,
+        tenantId,
+        actionType: 'meeting_confirmed',
+        description: `Agendou sessão para ${new Date(booking.scheduled_at).toLocaleDateString('pt-BR')}`,
+        pointsEarned: 5,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session-bookings', membershipId] });
