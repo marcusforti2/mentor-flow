@@ -365,7 +365,31 @@ export function usePlaybookMutations() {
     },
   });
 
-  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, duplicatePlaybook, trackPlaybookView };
+  const reorderFolders = useMutation({
+    mutationFn: async (items: { id: string; position: number }[]) => {
+      for (const item of items) {
+        await supabase.from('playbook_folders').update({ position: item.position }).eq('id', item.id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['playbook-folders'] });
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao reordenar'),
+  });
+
+  const reorderPlaybooks = useMutation({
+    mutationFn: async (items: { id: string; position: number }[]) => {
+      for (const item of items) {
+        await supabase.from('playbooks').update({ position: item.position }).eq('id', item.id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['playbooks'] });
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao reordenar'),
+  });
+
+  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, duplicatePlaybook, trackPlaybookView, reorderFolders, reorderPlaybooks };
 }
 
 export function useRecentPlaybooks(limit = 5) {
