@@ -440,6 +440,41 @@ serve(async (req) => {
     const { tool, mentorado_id, data, stream } = await req.json();
     console.log(`AI Tools - Tool: ${tool}, Mentorado: ${mentorado_id}`);
 
+    // ========== IDOR CHECK: Validate caller has access to mentorado_id ==========
+    if (mentorado_id) {
+      const { data: callerUser } = await supabaseAuthClient.auth.getUser(authHeader.replace("Bearer ", ""));
+      const callerId = callerUser?.user?.id;
+
+      const { data: targetMembership } = await supabase
+        .from("memberships")
+        .select("user_id, tenant_id")
+        .eq("id", mentorado_id)
+        .single();
+
+      if (!targetMembership) {
+        return new Response(JSON.stringify({ error: "Membership not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (targetMembership.user_id !== callerId) {
+        const { data: isStaff } = await supabase
+          .from("memberships")
+          .select("id")
+          .eq("user_id", callerId)
+          .eq("tenant_id", targetMembership.tenant_id)
+          .in("role", ["admin", "ops", "mentor", "master_admin"])
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (!isStaff) {
+          return new Response(JSON.stringify({ error: "Access denied" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     // Fetch business profile by membership_id
     let { data: businessProfile } = await supabase
       .from("mentorado_business_profiles")

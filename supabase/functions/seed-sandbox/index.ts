@@ -249,11 +249,37 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
+      supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
+
+    // ========== AUTH: Require master_admin ==========
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
+      })
+    }
+    const supabaseAuth = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } }
+    })
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(authHeader.replace('Bearer ', ''))
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
+      })
+    }
+    const { data: isMaster } = await admin.from('memberships')
+      .select('id').eq('user_id', user.id).eq('role', 'master_admin').eq('status', 'active').maybeSingle()
+    if (!isMaster) {
+      return new Response(JSON.stringify({ error: 'Forbidden: master_admin required' }), {
+        status: 403, headers: { ...CORS, 'Content-Type': 'application/json' }
+      })
+    }
+
     const T = SANDBOX_TENANT
 
     console.log('[seed] Starting comprehensive simulation seed...')

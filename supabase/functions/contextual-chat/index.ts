@@ -49,6 +49,27 @@ serve(async (req) => {
     if (!membership) throw new Error("Membership not found");
     const tenantId = membership.tenant_id;
 
+    // ========== IDOR CHECK: Validate caller owns this membership or is staff ==========
+    const { data: callerUser } = await supabaseAuth.auth.getUser(authHeader.replace("Bearer ", ""));
+    const callerId = callerUser?.user?.id;
+
+    if (membership.user_id !== callerId) {
+      const { data: isStaff } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("user_id", callerId)
+        .eq("tenant_id", tenantId)
+        .in("role", ["admin", "ops", "mentor", "master_admin"])
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (!isStaff) {
+        return new Response(JSON.stringify({ error: "Access denied" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Get or create conversation
     let convId = conversation_id;
     if (!convId) {
