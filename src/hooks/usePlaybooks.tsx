@@ -24,6 +24,7 @@ export interface Playbook {
   cover_image_url: string | null;
   content: any;
   visibility: 'mentor_only' | 'all_mentees' | 'specific_mentees' | 'public';
+  public_slug: string | null;
   position: number;
   tags: string[];
   created_by_membership_id: string;

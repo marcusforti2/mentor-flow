@@ -2509,6 +2509,7 @@ export type Database = {
           folder_id: string | null
           id: string
           position: number
+          public_slug: string | null
           tags: string[] | null
           tenant_id: string
           title: string
@@ -2524,6 +2525,7 @@ export type Database = {
           folder_id?: string | null
           id?: string
           position?: number
+          public_slug?: string | null
           tags?: string[] | null
           tenant_id: string
           title: string
@@ -2539,6 +2541,7 @@ export type Database = {
           folder_id?: string | null
           id?: string
           position?: number
+          public_slug?: string | null
           tags?: string[] | null
           tenant_id?: string
           title?: string
