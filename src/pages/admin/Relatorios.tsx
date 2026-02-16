@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useMentorReports } from "@/hooks/useMentorReports";
 import { MenteeRanking } from "@/components/admin/MenteeRanking";
 import { PerformanceChart } from "@/components/admin/PerformanceChart";
+import { MonthlyComparisonChart } from "@/components/admin/MonthlyComparisonChart";
+import { MenteeReportSheet } from "@/components/admin/MenteeReportSheet";
+import { ReportPeriodFilter, getDefaultPeriod, type PeriodRange } from "@/components/admin/ReportPeriodFilter";
+import type { MenteeScore } from "@/components/admin/MenteeScoreCard";
 import {
   Users,
   Target,
@@ -11,22 +17,16 @@ import {
   TrendingUp,
   PieChart,
   BarChart3,
+  Download,
 } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
   PieChart as RechartsPieChart,
   Pie,
   Cell,
+  Tooltip,
+  ResponsiveContainer,
   Legend,
 } from "recharts";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--secondary))', '#f59e0b', '#10b981', '#6366f1'];
 
@@ -39,7 +39,28 @@ const STATUS_LABELS: Record<string, string> = {
   perdido: 'Perdido',
 };
 
+function exportCSV(menteeScores: MenteeScore[], stats: any) {
+  const header = 'Nome,Score,Leads,Tarefas Concluídas,Trilhas (%),Atividades,Última Atividade\n';
+  const rows = menteeScores
+    .sort((a, b) => b.score - a.score)
+    .map(m => `"${m.name}",${m.score.toFixed(0)},${m.leadsCount},${m.tasksCompleted},${m.trailsProgress},${m.activitiesCount},"${m.lastActivityAt || 'N/A'}"`)
+    .join('\n');
+
+  const summary = `\n\nResumo\nTotal Mentorados,${stats?.totalMentorados || 0}\nMentorados Ativos,${stats?.activeMentorados || 0}\nTotal Leads,${stats?.totalLeads || 0}\nTaxa Conclusão,${(stats?.trailCompletionRate || 0).toFixed(1)}%\n`;
+
+  const blob = new Blob([header + rows + summary], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `relatorio-mentorados-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Relatorios() {
+  const [period, setPeriod] = useState<PeriodRange>(getDefaultPeriod());
+  const [selectedMentee, setSelectedMentee] = useState<MenteeScore | null>(null);
+
   const {
     stats,
     statsLoading,
@@ -49,17 +70,36 @@ export default function Relatorios() {
     menteeScoresLoading,
     weeklyEvolution,
     weeklyEvolutionLoading,
-  } = useMentorReports();
+    monthlyComparison,
+    monthlyComparisonLoading,
+  } = useMentorReports(period);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-display font-bold text-foreground">Relatórios</h1>
-        <p className="text-muted-foreground">
-          Visão consolidada do desempenho dos seus mentorados
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-foreground">Relatórios</h1>
+          <p className="text-muted-foreground">
+            Visão consolidada do desempenho dos seus mentorados
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => exportCSV(menteeScores, stats)}
+            disabled={menteeScoresLoading}
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
+
+      {/* Period Filter */}
+      <ReportPeriodFilter value={period} onChange={setPeriod} />
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -144,6 +184,9 @@ export default function Relatorios() {
 
       {/* Weekly Evolution Chart */}
       <PerformanceChart data={weeklyEvolution} isLoading={weeklyEvolutionLoading} />
+
+      {/* Monthly Comparison */}
+      <MonthlyComparisonChart data={monthlyComparison} isLoading={monthlyComparisonLoading} />
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -245,7 +288,18 @@ export default function Relatorios() {
       </div>
 
       {/* Mentee Ranking */}
-      <MenteeRanking mentees={menteeScores} isLoading={menteeScoresLoading} />
+      <MenteeRanking
+        mentees={menteeScores}
+        isLoading={menteeScoresLoading}
+        onMenteeClick={(mentee) => setSelectedMentee(mentee)}
+      />
+
+      {/* Individual Report Sheet */}
+      <MenteeReportSheet
+        mentee={selectedMentee}
+        open={!!selectedMentee}
+        onOpenChange={(open) => { if (!open) setSelectedMentee(null); }}
+      />
     </div>
   );
 }
