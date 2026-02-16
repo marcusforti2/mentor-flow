@@ -39,8 +39,6 @@ interface ActivityItem {
 
 const roleConfig = {
   master_admin: { label: 'Master Admin', color: 'bg-amber-500' },
-  admin: { label: 'Admin', color: 'bg-purple-500' },
-  ops: { label: 'Ops', color: 'bg-blue-500' },
   mentor: { label: 'Mentor', color: 'bg-green-500' },
   mentee: { label: 'Mentorado', color: 'bg-slate-500' },
 };
