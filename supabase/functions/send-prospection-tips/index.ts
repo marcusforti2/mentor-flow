@@ -6,6 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ── White-label branding helper ──
+interface TenantBranding { name: string; logoUrl: string | null; primaryColor: string; fromEmail: string; }
+const DEFAULT_BRANDING: TenantBranding = { name: "MentorFlow.io", logoUrl: null, primaryColor: "#d4af37", fromEmail: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>" };
+
+async function getTenantBranding(supabase: any, tenantId: string | null): Promise<TenantBranding> {
+  if (!tenantId) return DEFAULT_BRANDING;
+  try {
+    const { data: tenant } = await supabase.from("tenants").select("name, logo_url, brand_attributes").eq("id", tenantId).maybeSingle();
+    if (!tenant) return DEFAULT_BRANDING;
+    const attrs = tenant.brand_attributes || {};
+    const brandName = tenant.name || DEFAULT_BRANDING.name;
+    return { name: brandName, logoUrl: tenant.logo_url || null, primaryColor: attrs.primary_color || "#d4af37", fromEmail: `${brandName} <noreply@equipe.aceleracaoforti.online>` };
+  } catch { return DEFAULT_BRANDING; }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -17,48 +32,20 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // 1. Fetch business profile
-    const { data: bp, error: bpErr } = await supabase
-      .from("mentorado_business_profiles")
-      .select("*")
-      .eq("membership_id", membership_id)
-      .maybeSingle();
+    const { data: bp, error: bpErr } = await supabase.from("mentorado_business_profiles").select("*").eq("membership_id", membership_id).maybeSingle();
+    if (bpErr || !bp) return new Response(JSON.stringify({ error: "Business profile not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    if (bpErr || !bp) {
-      return new Response(JSON.stringify({ error: "Business profile not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 2. Fetch user profile (name, email)
-    const { data: membership } = await supabase
-      .from("memberships")
-      .select("user_id, tenant_id")
-      .eq("id", membership_id)
-      .single();
-
+    const { data: membership } = await supabase.from("memberships").select("user_id, tenant_id").eq("id", membership_id).single();
     if (!membership) throw new Error("Membership not found");
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, email")
-      .eq("user_id", membership.user_id)
-      .single();
-
+    const { data: profile } = await supabase.from("profiles").select("full_name, email").eq("user_id", membership.user_id).single();
     if (!profile?.email) throw new Error("User email not found");
 
-    // 3. Fetch tenant info for branding
-    const { data: tenant } = await supabase
-      .from("tenants")
-      .select("name")
-      .eq("id", membership.tenant_id)
-      .single();
+    // Fetch tenant branding
+    const branding = await getTenantBranding(supabase, membership.tenant_id || null);
 
-    // 4. Generate AI tips based on business profile
     const dailyGoal = bp.daily_prospection_goal || 10;
     const businessContext = [
       bp.business_name ? `Negócio: ${bp.business_name}` : null,
@@ -75,99 +62,64 @@ serve(async (req) => {
     ].filter(Boolean).join("\n");
 
     let aiTips = "";
-
     if (lovableKey) {
       try {
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "google/gemini-3-flash-preview",
             messages: [
-              {
-                role: "system",
-                content: `Você é um coach de vendas especializado em mentoria high ticket. 
-Gere um email motivacional e prático em HTML para um mentorado que acabou de cadastrar seu perfil de negócio.
-O email deve:
-1. Parabenizar pela ação de organizar o negócio
-2. Analisar a meta diária de prospecção e dar 3 dicas ESPECÍFICAS baseadas no perfil do negócio
-3. Dar uma estratégia de ritmo e consistência personalizada para o tipo de negócio
-4. Terminar com uma frase motivacional de impacto
-
-Use formatação HTML limpa (h2, p, ul, li, strong). NÃO use markdown.
-Mantenha o tom profissional mas encorajador. Max 400 palavras.
-NÃO inclua tags html/head/body, apenas o conteúdo interno.`,
-              },
-              {
-                role: "user",
-                content: `Perfil do mentorado:\nNome: ${profile.full_name}\n\n${businessContext}`,
-              },
+              { role: "system", content: `Você é um coach de vendas especializado em mentoria high ticket. Gere um email motivacional e prático em HTML para um mentorado que acabou de cadastrar seu perfil de negócio.\nO email deve:\n1. Parabenizar pela ação\n2. Analisar a meta diária e dar 3 dicas ESPECÍFICAS\n3. Dar uma estratégia de ritmo personalizada\n4. Terminar com frase motivacional\n\nUse HTML (h2, p, ul, li, strong). NÃO use markdown. Max 400 palavras.\nNÃO inclua tags html/head/body.` },
+              { role: "user", content: `Perfil do mentorado:\nNome: ${profile.full_name}\n\n${businessContext}` },
             ],
           }),
         });
-
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
           aiTips = aiData.choices?.[0]?.message?.content || "";
-        } else {
-          console.error("AI gateway error:", aiResponse.status);
         }
-      } catch (e) {
-        console.error("AI error:", e);
-      }
+      } catch (e) { console.error("AI error:", e); }
     }
 
-    // Fallback if AI fails
     if (!aiTips) {
-      aiTips = `
-        <h2>🎯 Sua meta: ${dailyGoal} prospecções por dia</h2>
-        <p>Olá ${profile.full_name?.split(" ")[0] || ""}!</p>
-        <p>Parabéns por cadastrar seu perfil de negócio! Isso mostra comprometimento com seus resultados.</p>
-        <h3>3 dicas para manter o ritmo:</h3>
-        <ul>
-          <li><strong>Bloqueie horários fixos</strong> para prospecção — trate como uma reunião inadiável</li>
-          <li><strong>Use a regra dos 5 minutos</strong> — se não tem vontade, faça apenas 5 minutos. A ação gera motivação</li>
-          <li><strong>Registre cada contato</strong> no CRM — o que não é medido não é gerenciado</li>
-        </ul>
-        <p><strong>Consistência supera intensidade.</strong> ${dailyGoal} contatos por dia = ${dailyGoal * 22} por mês. Os resultados vêm!</p>
-      `;
+      aiTips = `<h2>🎯 Sua meta: ${dailyGoal} prospecções por dia</h2>
+<p>Olá ${profile.full_name?.split(" ")[0] || ""}!</p>
+<p>Parabéns por cadastrar seu perfil de negócio!</p>
+<h3>3 dicas para manter o ritmo:</h3>
+<ul>
+  <li><strong>Bloqueie horários fixos</strong> para prospecção</li>
+  <li><strong>Use a regra dos 5 minutos</strong> — a ação gera motivação</li>
+  <li><strong>Registre cada contato</strong> no CRM</li>
+</ul>
+<p><strong>Consistência supera intensidade.</strong> ${dailyGoal} contatos/dia = ${dailyGoal * 22}/mês!</p>`;
     }
 
-    // 5. Send email via Resend
     if (!resendKey) {
-      console.warn("RESEND_API_KEY not configured, skipping email");
-      return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_resend_key" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_resend_key" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const mentorName = tenant?.name || "Sua Mentoria";
-    const emailHtml = `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #0f0f13; color: #e4e4e7; border-radius: 16px;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="font-size: 24px; color: #d4af37; margin: 0;">🚀 Seu plano de prospecção está ativo!</h1>
-          <p style="color: #a1a1aa; font-size: 14px; margin-top: 8px;">${mentorName}</p>
-        </div>
-        <div style="background: #18181b; padding: 24px; border-radius: 12px; border: 1px solid #27272a;">
-          ${aiTips}
-        </div>
-        <div style="text-align: center; margin-top: 24px;">
-          <p style="color: #71717a; font-size: 12px;">Este email foi gerado automaticamente pela IA da ${mentorName}</p>
-        </div>
-      </div>
-    `;
+    const logoSection = branding.logoUrl
+      ? `<img src="${branding.logoUrl}" alt="${branding.name}" style="max-height: 40px; max-width: 180px;" />`
+      : `<h1 style="font-size: 24px; color: ${branding.primaryColor}; margin: 0;">🚀 Seu plano de prospecção está ativo!</h1>`;
+
+    const emailHtml = `<div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #0f0f13; color: #e4e4e7; border-radius: 16px;">
+  <div style="text-align: center; margin-bottom: 24px;">
+    ${logoSection}
+    ${branding.logoUrl ? `<h1 style="font-size: 20px; color: ${branding.primaryColor}; margin: 12px 0 0;">🚀 Seu plano de prospecção está ativo!</h1>` : ''}
+    <p style="color: #a1a1aa; font-size: 14px; margin-top: 8px;">${branding.name}</p>
+  </div>
+  <div style="background: #18181b; padding: 24px; border-radius: 12px; border: 1px solid #27272a;">${aiTips}</div>
+  <div style="text-align: center; margin-top: 24px;">
+    <p style="color: #71717a; font-size: 12px;">© ${new Date().getFullYear()} ${branding.name}</p>
+  </div>
+</div>`;
 
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: `${mentorName} <onboarding@resend.dev>`,
+        from: branding.fromEmail,
         to: [profile.email],
         subject: `🎯 ${profile.full_name?.split(" ")[0]}, sua meta de ${dailyGoal} prospecções/dia está ativa!`,
         html: emailHtml,
@@ -177,14 +129,9 @@ NÃO inclua tags html/head/body, apenas o conteúdo interno.`,
     const emailResult = await emailRes.json();
     console.log("Email sent:", emailResult);
 
-    return new Response(JSON.stringify({ success: true, email_sent: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ success: true, email_sent: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("send-prospection-tips error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
