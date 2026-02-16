@@ -208,11 +208,11 @@ const Onboarding = () => {
         return;
       }
 
-      // Fetch behavioral questions via owner_membership_id
+      // Fetch behavioral questions for the tenant (collaborative)
       const { data: questionsData } = await supabase
         .from('behavioral_questions')
         .select('id, question_text, question_type, options, order_index, is_required')
-        .eq('owner_membership_id', targetMembershipId)
+        .eq('tenant_id', membership.tenant_id)
         .eq('is_active', true)
         .order('order_index', { ascending: true });
 

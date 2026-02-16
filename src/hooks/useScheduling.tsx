@@ -59,10 +59,7 @@ export function useScheduling() {
         .order('day_of_week')
         .order('start_time');
 
-      // If mentor, only show own
-      if (role === 'mentor' || role === 'admin') {
-        query.eq('mentor_membership_id', membershipId!);
-      }
+      // Collaborative: all staff see all availability in the tenant
 
       const { data, error } = await query;
       if (error) throw error;
@@ -85,7 +82,8 @@ export function useScheduling() {
       if (role === 'mentee') {
         query = query.eq('mentee_membership_id', membershipId);
       } else {
-        query = query.eq('mentor_membership_id', membershipId);
+        // Collaborative: staff sees all bookings in the tenant
+        query = query.eq('tenant_id', activeMembership?.tenant_id!);
       }
 
       const { data, error } = await query;

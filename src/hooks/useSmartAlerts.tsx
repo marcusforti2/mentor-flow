@@ -26,14 +26,14 @@ export function useSmartAlerts() {
   const queryClient = useQueryClient();
 
   const alertsQuery = useQuery({
-    queryKey: ['smart-alerts', membershipId],
+    queryKey: ['smart-alerts', tenantId],
     queryFn: async (): Promise<SmartAlert[]> => {
-      if (!membershipId) throw new Error('No membership');
+      if (!tenantId) throw new Error('No tenant');
 
       const { data, error } = await supabase
         .from('smart_alerts')
         .select('*')
-        .eq('mentor_membership_id', membershipId)
+        .eq('tenant_id', tenantId)
         .eq('is_dismissed', false)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -41,14 +41,14 @@ export function useSmartAlerts() {
       if (error) throw error;
       return (data || []) as unknown as SmartAlert[];
     },
-    enabled: !!membershipId,
+    enabled: !!tenantId,
   });
 
   const unreadCount = alertsQuery.data?.filter(a => !a.is_read).length || 0;
 
   // Realtime subscription
   useEffect(() => {
-    if (!membershipId) return;
+    if (!tenantId) return;
 
     const channel = supabase
       .channel('smart-alerts-realtime')
@@ -58,16 +58,16 @@ export function useSmartAlerts() {
           event: '*',
           schema: 'public',
           table: 'smart_alerts',
-          filter: `mentor_membership_id=eq.${membershipId}`,
+          filter: `tenant_id=eq.${tenantId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['smart-alerts', membershipId] });
+          queryClient.invalidateQueries({ queryKey: ['smart-alerts', tenantId] });
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [membershipId, queryClient]);
+  }, [tenantId, queryClient]);
 
   const markAsRead = useMutation({
     mutationFn: async (alertId: string) => {
@@ -77,20 +77,20 @@ export function useSmartAlerts() {
         .eq('id', alertId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['smart-alerts', membershipId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['smart-alerts', tenantId] }),
   });
 
   const markAllRead = useMutation({
     mutationFn: async () => {
-      if (!membershipId) return;
+      if (!tenantId) return;
       const { error } = await supabase
         .from('smart_alerts')
         .update({ is_read: true } as Record<string, unknown>)
-        .eq('mentor_membership_id', membershipId)
+        .eq('tenant_id', tenantId)
         .eq('is_read', false);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['smart-alerts', membershipId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['smart-alerts', tenantId] }),
   });
 
   const dismissAlert = useMutation({
@@ -101,7 +101,7 @@ export function useSmartAlerts() {
         .eq('id', alertId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['smart-alerts', membershipId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['smart-alerts', tenantId] }),
   });
 
   return {
