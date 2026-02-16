@@ -52,6 +52,7 @@ const MentorPerfil = lazy(() => import("./pages/admin/MentorPerfil"));
 const AdminCentroSOS = lazy(() => import("./pages/admin/CentroSOS"));
 const Agendamento = lazy(() => import("./pages/admin/Agendamento"));
 const PlaybooksHub = lazy(() => import("./pages/admin/PlaybooksHub"));
+const PlaybookEditorPage = lazy(() => import("./pages/admin/PlaybookEditorPage"));
 
 // Member Pages
 const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
@@ -155,6 +156,7 @@ const App = () => (
                     <Route path="devtools" element={<DevTools />} />
                     <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
                     <Route path="playbooks" element={<PlaybooksHub />} />
+                    <Route path="playbooks/:playbookId" element={<PlaybookEditorPage />} />
                   </Route>
 
                   {/* Mentorado Routes */}

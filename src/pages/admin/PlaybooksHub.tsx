@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,7 @@ const visibilityConfig = {
 };
 
 export default function PlaybooksHub() {
+  const navigate = useNavigate();
   const { data: folders = [], isLoading: foldersLoading } = usePlaybookFolders();
   const { data: playbooks = [], isLoading: playbooksLoading } = usePlaybooks();
   const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook } = usePlaybookMutations();
@@ -315,7 +317,8 @@ export default function PlaybooksHub() {
               return (
                 <Card
                   key={pb.id}
-                  className="glass-card hover:border-primary/30 transition-all group overflow-hidden"
+                  className="glass-card hover:border-primary/30 transition-all group overflow-hidden cursor-pointer"
+                  onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
                 >
                   {/* Cover image */}
                   {pb.cover_image_url ? (
