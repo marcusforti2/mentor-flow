@@ -206,14 +206,14 @@ export default function ShowcasePage() {
   }, []);
 
   const aiTools = [
-    { icon: Crosshair, name: 'Qualificador de Leads', color: 'hsl(45 93% 48%)', desc: 'Score 0-100, temperatura e estratégia de abordagem.', expanded: { subtitle: 'Perfis sociais → oportunidades qualificadas', details: 'Scraping automático de Instagram e LinkedIn, cruzado com o Pitch do mentorado.', features: ['Score de 0 a 100 com justificativa', 'Temperatura: quente, morno ou frio', 'Abordagem personalizada', 'Detecção de dores', 'Script sugerido', 'Integração com CRM'], impact: 'Foco em quem tem maior probabilidade de fechar.' } },
-    { icon: Send, name: 'Cold Messages', color: 'hsl(220 91% 65%)', desc: 'WhatsApp, IG, LinkedIn, Email com tom DISC.', expanded: { subtitle: 'Mensagens que abrem portas — em qualquer canal', details: 'Prospecção adaptada ao perfil DISC do lead e canal escolhido.', features: ['4 canais de comunicação', 'Tom DISC adaptado', 'Variações A/B', 'Follow-up sequencial', 'Personalização contextual', 'Gatilhos mentais calibrados'], impact: 'Taxa de resposta superior por mensagem cirurgicamente adaptada.' } },
-    { icon: Swords, name: 'Simulador de Objeções', color: 'hsl(0 84% 55%)', desc: '9 fases de negociação High Ticket.', expanded: { subtitle: 'Treine antes de entrar na call', details: 'Role-play com IA em 9 fases de negociação High Ticket com objeções calibradas.', features: ['9 fases especializadas', 'Objeções por nicho', 'Feedback em tempo real', 'Score por sessão', 'Rebates sugeridos', 'Dificuldade progressiva'], impact: 'Confiança e repertório para calls reais.' } },
-    { icon: FileSignature, name: 'Gerador de Propostas', color: 'hsl(270 91% 65%)', desc: 'Ancoragem de valor personalizada por lead.', expanded: { subtitle: 'Propostas profissionais em segundos', details: 'Propostas com ancoragem de valor, usando contexto do negócio e dados do lead.', features: ['Ancoragem de preço', 'Personalização por lead', 'Entregáveis detalhados', 'Gatilhos de urgência', 'Formato email/PDF', 'Tom configurável'], impact: 'Percepção elevada da oferta do mentorado.' } },
-    { icon: LineChart, name: 'Análise de Conversão', color: 'hsl(160 84% 39%)', desc: 'Nota IA, objeções perdidas, evolução entre calls.', expanded: { subtitle: 'Diagnóstico IA de cada call', details: 'Transcrição → análise de performance, argumentação e oportunidades perdidas.', features: ['Nota 0-100', 'Pontos fortes', 'Objeções perdidas', 'Melhorias concretas', 'Análise de tom', 'Evolução entre calls'], impact: 'Cada call vira oportunidade de aprendizado.' } },
-    { icon: UserCircle, name: 'Gerador de Bio', color: 'hsl(190 95% 45%)', desc: 'Bio otimizada para cada rede social.', expanded: { subtitle: 'Primeira impressão que converte', details: 'Bios que comunicam autoridade e proposta de valor por plataforma.', features: ['Instagram, LinkedIn, WhatsApp', 'Autoridade + CTA', 'Variações de tom', 'Palavras-chave', 'Emojis estratégicos', 'Posicionamento alinhado'], impact: 'Credibilidade antes do primeiro contato.' } },
-    { icon: PenTool, name: 'Gerador de Conteúdo', color: 'hsl(45 100% 51%)', desc: 'Posts, carrosséis, stories alinhados à oferta.', expanded: { subtitle: 'Conteúdo estratégico sem bloqueio criativo', details: 'Conteúdos alinhados com oferta, público e estilo do mentorado.', features: ['Todos os formatos', 'Calendário editorial', 'Tom personalizado', 'CTAs estratégicos', 'Prova social', 'Hashtags otimizadas'], impact: 'Leads orgânicos qualificados para o pipeline.' } },
-    { icon: Bot, name: 'Mentor Virtual 24/7', color: 'hsl(270 91% 55%)', desc: 'Chat contextual com histórico completo.', expanded: { subtitle: 'Um mentor que nunca dorme', details: 'IA com acesso a todo o contexto do mentorado: perfil, trilhas, CRM, tarefas.', features: ['Dados reais do aluno', 'Histórico completo', 'Orientação prática', 'Conversas salvas', 'Markdown formatado', '24/7 sem fila'], impact: 'Nunca fica travado — complementando o mentor real.' } },
+    { icon: Crosshair, name: 'Qualificador de Leads', color: 'hsl(45 93% 48%)', desc: 'Engenharia psicológica social aplicada à qualificação de leads.', expanded: { subtitle: 'Diagnóstico comportamental do lead antes do contato', details: 'Análise de perfil social via engenharia psicológica: padrões emocionais, gatilhos de decisão e vulnerabilidades de compra — cruzados com o pitch do mentorado.', features: ['Score comportamental 0 a 100', 'Mapa emocional do lead', 'Gatilhos de decisão identificados', 'Objeções prováveis previstas', 'Script de abordagem emocional', 'Integração com CRM'], impact: 'Sabe como o lead pensa antes de ligar.' } },
+    { icon: Send, name: 'Cold Messages', color: 'hsl(220 91% 65%)', desc: 'Abordagem calibrada por perfil emocional e comportamental.', expanded: { subtitle: 'Mensagens que conectam emocionalmente', details: 'Prospecção baseada em diagnóstico comportamental do lead — tom, linguagem e gatilhos adaptados ao perfil psicológico.', features: ['4 canais de comunicação', 'Tom adaptado ao perfil emocional', 'Gatilhos de conexão calibrados', 'Follow-up sequencial', 'Personalização por diagnóstico', 'Engenharia de persuasão aplicada'], impact: 'Taxa de resposta superior por conexão emocional genuína.' } },
+    { icon: Swords, name: 'Simulador de Objeções', color: 'hsl(0 84% 55%)', desc: '9 fases com objeções baseadas em padrões emocionais reais.', expanded: { subtitle: 'Treine contra objeções emocionais reais', details: 'Role-play com IA que simula objeções baseadas em padrões comportamentais reais — medo, desconfiança, procrastinação.', features: ['9 fases especializadas', 'Objeções emocionais calibradas', 'Feedback comportamental', 'Score por sessão', 'Rebates por perfil psicológico', 'Dificuldade progressiva'], impact: 'Preparado para lidar com a emoção do lead, não só o argumento.' } },
+    { icon: FileSignature, name: 'Gerador de Propostas', color: 'hsl(270 91% 65%)', desc: 'Ancoragem de valor com gatilhos emocionais por lead.', expanded: { subtitle: 'Propostas que falam a língua emocional do lead', details: 'Propostas com ancoragem psicológica: falam diretamente às dores, medos e aspirações mapeados no perfil do lead.', features: ['Ancoragem emocional de preço', 'Personalização por diagnóstico', 'Entregáveis que resolvem dores', 'Gatilhos de urgência calibrados', 'Formato email/PDF', 'Tom configurável'], impact: 'O lead sente que a proposta foi feita para ele.' } },
+    { icon: LineChart, name: 'Análise de Conversão', color: 'hsl(160 84% 39%)', desc: 'Diagnóstico emocional da call: tom, conexão e oportunidades.', expanded: { subtitle: 'IA que lê a emoção da conversa', details: 'Transcrição → análise de performance emocional, conexão com o lead e oportunidades de persuasão perdidas.', features: ['Nota 0-100', 'Análise de conexão emocional', 'Objeções emocionais perdidas', 'Melhorias de tom e empatia', 'Padrões de autossabotagem', 'Evolução entre calls'], impact: 'Cada call revela onde a conexão falhou.' } },
+    { icon: UserCircle, name: 'Gerador de Bio', color: 'hsl(190 95% 45%)', desc: 'Bio com posicionamento de autoridade emocional.', expanded: { subtitle: 'Primeira impressão que gera confiança', details: 'Bios que comunicam autoridade e conexão emocional — posicionando o mentorado como referência no nicho.', features: ['Instagram, LinkedIn, WhatsApp', 'Autoridade + conexão emocional', 'Variações de tom', 'Palavras-chave de impacto', 'Posicionamento alinhado', 'CTA com gatilho emocional'], impact: 'Credibilidade emocional antes do primeiro contato.' } },
+    { icon: PenTool, name: 'Gerador de Conteúdo', color: 'hsl(45 100% 51%)', desc: 'Conteúdo com engenharia de conexão emocional.', expanded: { subtitle: 'Conteúdo que gera identificação e desejo', details: 'Conteúdos desenhados para criar conexão emocional com o público — storytelling, vulnerabilidade e autoridade calibrados.', features: ['Todos os formatos', 'Storytelling emocional', 'Tom personalizado', 'CTAs com gatilho psicológico', 'Prova social', 'Engajamento por identificação'], impact: 'Leads orgânicos que já chegam emocionalmente conectados.' } },
+    { icon: Bot, name: 'Mentor Virtual 24/7', color: 'hsl(270 91% 55%)', desc: 'Chat contextual com diagnóstico comportamental integrado.', expanded: { subtitle: 'Orientação personalizada por perfil emocional', details: 'IA com acesso ao perfil comportamental completo: diagnóstico de negócio, padrões emocionais, bloqueios e gatilhos de motivação.', features: ['Diagnóstico comportamental integrado', 'Histórico completo', 'Orientação por perfil emocional', 'Conversas salvas', 'Desbloqueio de autossabotagem', '24/7 sem fila'], impact: 'Orientação que entende a emoção, não só a técnica.' } },
   ];
 
   
@@ -314,12 +314,12 @@ export default function ShowcasePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {[
               {
-                number: 1, title: 'Mentorado entra → Governo começa', icon: UserCheck,
+                number: 1, title: 'Mentorado entra → Diagnóstico começa', icon: UserCheck,
                 accent: 'hsl(var(--primary))',
-                description: 'Onboarding + Governo do Negócio + atribuição automática à Jornada CS.',
+                description: 'Onboarding + Governo do Negócio + diagnóstico comportamental + Jornada CS.',
                 details: (
                   <div className="grid grid-cols-3 gap-2 pt-2">
-                    {['Perfil', 'Jornada', 'Score'].map((item, i) => (
+                    {['Perfil', 'Diagnóstico', 'Emocional'].map((item, i) => (
                       <div key={i} className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-center">
                         <span className="text-[10px] text-primary font-semibold">{item}</span>
                       </div>
@@ -328,9 +328,9 @@ export default function ShowcasePage() {
                 ),
               },
               {
-                number: 2, title: 'Arsenal IA ativado', icon: Brain,
+                number: 2, title: 'Arsenal de Inteligência Emocional ativado', icon: Brain,
                 accent: 'hsl(var(--accent))',
-                description: '8 IAs calibradas no negócio. CRM, qualificação, cold messages, objeções.',
+                description: '8 IAs com engenharia psicológica social. Qualificação, abordagem e objeções baseadas em emoção.',
                 details: (
                   <div className="flex flex-wrap gap-1.5 pt-2">
                     {aiTools.slice(0, 4).map((t, i) => (
@@ -381,14 +381,14 @@ export default function ShowcasePage() {
                 ),
               },
               {
-                number: 5, title: 'Mentor intervém com dados', icon: Shield,
+                number: 5, title: 'Mentor intervém com diagnóstico emocional', icon: Shield,
                 accent: 'hsl(var(--primary))',
-                description: 'Score, ranking, jornada CS, análise comportamental — decisão cirúrgica.',
+                description: 'Score, análise comportamental, medos ocultos, linguagem ideal — intervenção cirúrgica.',
                 details: (
                   <div className="grid grid-cols-2 gap-2 pt-2">
                     {[
-                      { l: 'Score IA', v: 78 }, { l: 'Leads', v: 42 },
-                      { l: 'Streak', v: 12 }, { l: 'Dia', v: 47 },
+                      { l: 'Score IA', v: 78 }, { l: 'Emocional', v: 85 },
+                      { l: 'Bloqueios', v: 3 }, { l: 'Gatilhos', v: 7 },
                     ].map((kpi, i) => (
                       <div key={i} className="text-center p-2 rounded-lg bg-primary/5 border border-primary/15">
                         <div className="text-base font-display font-bold text-primary"><AnimatedCounter target={kpi.v} /></div>
@@ -399,9 +399,9 @@ export default function ShowcasePage() {
                 ),
               },
               {
-                number: 6, title: 'Resultado governado', icon: TrendingUp,
+                number: 6, title: 'Resultado governado por comportamento', icon: TrendingUp,
                 accent: 'hsl(var(--accent))',
-                description: 'Resultados previsíveis. Quem executa sobe. Quem trava é resgatado.',
+                description: 'Resultados previsíveis porque são baseados em dados emocionais reais, não achismo.',
                 details: (
                   <div className="pt-2">
                     <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 text-center">
@@ -442,10 +442,10 @@ export default function ShowcasePage() {
               <span className="text-xs font-medium text-primary tracking-wider uppercase">Arsenal de Vendas IA</span>
             </div>
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              <span className="text-gradient-gold">8 IAs</span> calibradas no negócio do mentorado
+              <span className="text-gradient-gold">8 IAs</span> com engenharia psicológica social integrada
             </h2>
             <p className="text-muted-foreground max-w-3xl mx-auto">
-              Passe o mouse em qualquer ferramenta para ver exatamente o que ela faz e qual o impacto no resultado.
+              Cada ferramenta usa diagnóstico comportamental e emocional do lead e do mentorado. Passe o mouse para ver o impacto.
             </p>
           </div>
 
@@ -487,8 +487,8 @@ export default function ShowcasePage() {
 
           <div className="mt-8 p-5 rounded-2xl bg-primary/5 border border-primary/15 text-center">
             <p className="text-sm text-foreground">
-              <Activity className="w-4 h-4 inline-block mr-1.5 text-primary" />
-              <strong>Telemetria completa:</strong> O mentor sabe quem está usando, com que frequência e para quais leads.
+              <Brain className="w-4 h-4 inline-block mr-1.5 text-primary" />
+              <strong>Inteligência comportamental integrada:</strong> Cada ferramenta lê o perfil emocional do lead e do mentorado para calibrar respostas.
             </p>
           </div>
         </div>
@@ -510,15 +510,15 @@ export default function ShowcasePage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: BarChart3, title: 'Score IA por Mentorado', desc: 'Performance ponderada de 0 a 100 atualizada em tempo real.', experience: 'O mentor abre o painel e vê, em um número, quem está performando e quem precisa de atenção imediata.', result: 'Decisões cirúrgicas em segundos — sem achismo.' },
-              { icon: Trophy, title: 'Ranking Competitivo', desc: 'Posição relativa entre mentorados — gamificação por resultado.', experience: 'Tabela de classificação que atualiza em tempo real conforme a execução. Mentorados se comparam entre si.', result: 'Competição saudável que acelera a execução da turma.' },
-              { icon: TrendingUp, title: 'Evolução Temporal', desc: 'Gráficos de progresso por semana, mês e jornada.', experience: 'Curvas de evolução que mostram se o mentorado está acelerando, estagnando ou regredindo.', result: 'Antecipar problemas antes que virem desistência.' },
-              { icon: AlertTriangle, title: 'Alertas Inteligentes', desc: 'Inatividade, tarefas atrasadas e SOS — antes que vire problema.', experience: 'Notificações automáticas no sino: quem sumiu, quem atrasou, quem pediu socorro.', result: 'Nenhum aluno fica invisível — o sistema não permite.' },
-              { icon: Brain, title: 'Análise Comportamental', desc: 'DISC, medos ocultos, bloqueios e linguagem ideal — automático.', experience: 'Perfil psicológico gerado por IA com gatilhos de motivação e erros a evitar.', result: 'Comunicação calibrada para cada personalidade.' },
-              { icon: Target, title: 'Jornada CS', desc: 'Progresso por etapa configurável com Kanban visual.', experience: 'Kanban visual onde cada mentorado aparece na etapa exata da sua jornada de evolução.', result: 'Visibilidade total do pipeline de sucesso do cliente.' },
-              { icon: Users, title: 'Gestão 360°', desc: 'Perfil completo, KPIs, resumo IA, timeline e contato direto.', experience: 'Um clique abre tudo: KPIs, governo do negócio, atividades, contato via WhatsApp.', result: 'Monitoramento estratégico sem impersonation.' },
-              { icon: Flame, title: 'Distribuição por Faixas', desc: 'Excelente, Bom, Regular, Atenção — visão da turma inteira.', experience: 'Gráfico que segmenta a turma por performance: quantos estão voando e quantos estão travados.', result: 'Visão macro para decisões de escala.' },
-              { icon: Activity, title: 'Logs de Atividade', desc: 'Registro de cada ação do mentorado — transparência total.', experience: 'Feed em tempo real com cada lead criado, tarefa concluída e login registrado.', result: 'Prova concreta de execução — ou de ausência.' },
+              { icon: BarChart3, title: 'Score IA Comportamental', desc: 'Performance ponderada que inclui dados emocionais e de execução.', experience: 'O mentor vê não só o que o aluno faz, mas como se comporta emocionalmente frente aos desafios.', result: 'Decisões baseadas em dados comportamentais reais — não em achismo.' },
+              { icon: Trophy, title: 'Ranking por Engajamento Real', desc: 'Posição que combina execução técnica com perfil emocional.', experience: 'Tabela que valoriza consistência emocional e não apenas volume de ações.', result: 'Competição saudável baseada em evolução real.' },
+              { icon: TrendingUp, title: 'Evolução Comportamental', desc: 'Gráficos de progresso emocional e técnico ao longo da jornada.', experience: 'Curvas que mostram se o mentorado está evoluindo emocionalmente ou repetindo padrões.', result: 'Identificar ciclos de autossabotagem antes que se instalem.' },
+              { icon: AlertTriangle, title: 'Alertas Emocionais', desc: 'Sinais de desengajamento emocional detectados antes de virar desistência.', experience: 'Alertas preditivos baseados em padrões comportamentais: medo, procrastinação, resistência.', result: 'Intervenção emocional precisa antes da crise.' },
+              { icon: Brain, title: 'Mapa Psicológico Completo', desc: 'Medos ocultos, vícios emocionais, bloqueios e linguagem ideal — automático.', experience: 'Engenharia psicológica social: perfil profundo com gatilhos de motivação, padrões de autossabotagem e erros a evitar.', result: 'Comunicação emocionalmente calibrada para cada personalidade.' },
+              { icon: Target, title: 'Jornada CS Emocional', desc: 'Progresso que combina etapas técnicas com maturidade emocional.', experience: 'Kanban visual onde cada mentorado aparece com seu estágio técnico e emocional sobrepostos.', result: 'Visibilidade do pipeline de sucesso com camada comportamental.' },
+              { icon: Users, title: 'Diagnóstico 360° Comportamental', desc: 'Perfil completo com KPIs técnicos e mapa emocional integrado.', experience: 'Um clique revela: Score IA, mapa psicológico, bloqueios emocionais, gatilhos de motivação e contato direto.', result: 'Monitoramento estratégico que lê comportamento, não só números.' },
+              { icon: Flame, title: 'Distribuição Emocional', desc: 'Mapeamento da turma por padrões emocionais predominantes.', experience: 'Gráfico que segmenta: quem está confiante, quem está em medo, quem está em procrastinação.', result: 'Visão macro emocional para intervenções em grupo.' },
+              { icon: Activity, title: 'Logs de Comportamento', desc: 'Registro de padrões emocionais detectados ao longo do tempo.', experience: 'Timeline de evolução comportamental: quando bloqueou, quando desbloqueou, o que mudou.', result: 'Prova concreta de evolução emocional — ou de estagnação.' },
             ].map(({ icon: Icon, title, desc, experience, result }, i) => (
               <div key={i} className="glass-card rounded-2xl border border-border/30 hover:border-primary/30 transition-all duration-500 group relative overflow-hidden">
                 <div className="p-6">
@@ -675,7 +675,7 @@ export default function ShowcasePage() {
               O que o mentorado vê <span className="text-gradient-gold">no seu painel</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              O mentorado não é passivo. Ele opera um negócio — com ferramentas, metas e visibilidade.
+              O mentorado não é passivo. Ele opera com inteligência emocional aplicada — ferramentas, diagnóstico e visibilidade.
             </p>
           </div>
 
@@ -683,7 +683,7 @@ export default function ShowcasePage() {
             {[
               { icon: LayoutDashboard, title: 'Dashboard Pessoal', desc: 'Score IA, metas, streak e progresso da jornada em tempo real.', experience: 'Tela inicial com visão completa: onde está, o que falta e quanto já evoluiu.', result: 'Clareza total sobre o próprio progresso.' },
               { icon: Target, title: 'CRM Kanban', desc: 'Pipeline de vendas pessoal com estágios customizáveis e histórico.', experience: 'Arrasta leads entre colunas, registra interações e acompanha cada negociação.', result: 'Prospecção organizada — sem planilha, sem esquecimento.' },
-              { icon: Brain, title: '8 Ferramentas IA', desc: 'Qualificação, cold messages, objeções, propostas — tudo contextualizado.', experience: 'Clica na ferramenta, a IA já sabe o negócio, o público e o pitch. Resultado em segundos.', result: 'Arsenal de vendas pessoal calibrado no seu negócio.' },
+              { icon: Brain, title: '8 Ferramentas IA Comportamentais', desc: 'Qualificação por perfil emocional, abordagens calibradas, objeções previstas.', experience: 'Clica na ferramenta, a IA já sabe o negócio, o perfil emocional e os gatilhos. Resultado em segundos.', result: 'Arsenal de vendas baseado em engenharia psicológica social.' },
               { icon: BookOpen, title: 'Trilhas de Conteúdo', desc: 'Vídeos, textos e materiais com progresso dinâmico e certificados.', experience: 'Interface estilo Netflix com progresso automático e certificado ao concluir.', result: 'Aprendizado estruturado que gera certificação.' },
               { icon: ClipboardList, title: 'Tarefas com Kanban', desc: 'Criação autônoma e tarefas extraídas de reuniões com prioridade.', experience: 'Kanban pessoal: cria tarefas, prioriza e move entre colunas. Tarefas de reunião aparecem automaticamente.', result: 'Execução visível e rastreável.' },
               { icon: Trophy, title: 'Gamificação & Badges', desc: 'Pontos por execução real, badges de conquista e streak contínuo.', experience: 'Cada ação gera pontos. Streaks recompensam consistência. Badges celebram conquistas.', result: 'Motivação intrínseca atrelada a resultado.' },
@@ -692,7 +692,7 @@ export default function ShowcasePage() {
               { icon: Calendar, title: 'Agendamento', desc: 'Marcação direta de sessões com o mentor integrada ao calendário.', experience: 'Escolhe horário disponível e agenda direto — sem mensagem, sem espera.', result: 'Acesso ao mentor sem fricção.' },
               { icon: Award, title: 'Certificados', desc: 'Micro-certificações automáticas por trilha concluída, compartilháveis.', experience: 'Ao completar uma trilha, o certificado é gerado e pode ser compartilhado no LinkedIn.', result: 'Prova social de evolução profissional.' },
               { icon: AlertTriangle, title: 'Centro SOS', desc: 'Canal direto de urgência para momentos críticos da operação.', experience: 'Botão de emergência que notifica o mentor imediatamente com contexto do problema.', result: 'Resgate antes da desistência.' },
-              { icon: Settings, title: 'Governo do Negócio', desc: 'Perfil estratégico: faturamento, gargalos, público e maturidade.', experience: 'Formulário estratégico que calibra toda a IA e alimenta o diagnóstico do mentor.', result: 'Contexto profundo desde o primeiro dia.' },
+              { icon: Settings, title: 'Governo do Negócio + Diagnóstico', desc: 'Perfil estratégico com mapeamento de gargalos emocionais e técnicos.', experience: 'Formulário estratégico que calibra toda a IA e alimenta o diagnóstico comportamental do mentor.', result: 'Contexto emocional e técnico profundo desde o primeiro dia.' },
             ].map(({ icon: Icon, title, desc, experience, result }, i) => (
               <div key={i} className="glass-card rounded-2xl border border-accent/10 hover:border-accent/30 transition-all duration-500 group relative overflow-hidden">
                 <div className="p-6">
@@ -751,13 +751,13 @@ export default function ShowcasePage() {
               </div>
               <ul className="space-y-3">
                 {[
-                  'Dashboard com KPIs e Score IA',
-                  'Gestão individual com perfil 360°',
-                  'Análise comportamental automática',
-                  'Jornada CS configurável',
-                  'Trilhas, gamificação e tarefas',
-                  'Relatórios e ranking',
-                  'Alertas inteligentes + Centro SOS',
+                  'Dashboard com KPIs e Score IA comportamental',
+                  'Gestão individual com mapa psicológico',
+                  'Análise comportamental com engenharia social',
+                  'Diagnóstico emocional automatizado',
+                  'Medos ocultos, bloqueios e linguagem ideal',
+                  'Gatilhos de motivação personalizados',
+                  'Alertas preditivos de desengajamento',
                   'Reuniões com extração IA de tarefas',
                   'Email marketing automatizado',
                   'Branding White-Label completo',
@@ -785,18 +785,18 @@ export default function ShowcasePage() {
               </div>
               <ul className="space-y-3">
                 {[
-                  'Dashboard pessoal com Score e metas',
-                  'CRM Kanban com pipeline de vendas',
-                  '8 ferramentas IA contextualizadas',
-                  'Trilhas com vídeo e certificados',
+                  'Dashboard pessoal com Score comportamental',
+                  'CRM Kanban com lead scoring emocional',
+                  '8 IAs com engenharia psicológica integrada',
+                  'Qualificação por perfil emocional do lead',
+                  'Scripts calibrados por diagnóstico',
+                  'Objeções previstas por padrão comportamental',
                   'Gamificação, ranking e badges',
-                  'Tarefas com Kanban e prioridade',
+                  'Mentor Virtual com perfil emocional',
                   'Comunidade e networking',
                   'Agendamento com o mentor',
                   'Centro SOS para urgências',
-                  'Meus arquivos e materiais',
-                  'Perfil + Governo do Negócio',
-                  'Certificados profissionais',
+                  'Governo do Negócio + Diagnóstico',
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                     <Star className="w-4 h-4 text-accent shrink-0 mt-0.5" />
@@ -848,12 +848,12 @@ export default function ShowcasePage() {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full opacity-[0.06] pointer-events-none blur-3xl bg-accent" />
             <div className="relative z-10">
               <h2 className="font-display text-3xl md:text-4xl font-bold mb-6">
-                {PLATFORM.name} é <span className="text-gradient-gold">gestão estrutural</span>
+                {PLATFORM.name} é <span className="text-gradient-gold">inteligência comportamental</span>
                 <br />
-                para escala de mentorias high ticket.
+                aplicada à escala de mentorias high ticket.
               </h2>
               <p className="text-xl text-muted-foreground mb-2">
-                O resto é ferramenta.
+                Engenharia psicológica social. Diagnóstico personalizado. Resultado real.
               </p>
               <p className="text-sm text-muted-foreground mb-10 max-w-xl mx-auto">
                 Se você quer saber como isso funciona na prática para a sua operação, fale com a equipe.
