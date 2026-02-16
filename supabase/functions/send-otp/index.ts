@@ -1,8 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,12 +104,25 @@ serve(async (req) => {
       throw new Error("Erro ao gerar código");
     }
 
-    // Send email via Resend
-    const { error: emailError } = await resend.emails.send({
-      from: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
-      to: [normalizedEmail],
-      subject: "Seu código de acesso - MentorFlow.io",
-      html: `
+    // Send email via Resend REST API (direct fetch for reliability)
+    if (!RESEND_API_KEY) {
+      console.error("RESEND_API_KEY not configured!");
+      throw new Error("Configuração de email não encontrada");
+    }
+
+    console.log("send-otp: Sending email via Resend API to:", normalizedEmail);
+    
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
+        to: [normalizedEmail],
+        subject: "Seu código de acesso - MentorFlow.io",
+        html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -160,12 +172,16 @@ serve(async (req) => {
           </table>
         </body>
         </html>
-      `,
+        `,
+      }),
     });
 
-    if (emailError) {
-      console.error("Error sending email:", emailError);
-      throw new Error("Erro ao enviar email. Verifique se o email está correto.");
+    const emailResult = await emailResponse.json();
+    console.log("send-otp: Resend API response:", emailResponse.status, JSON.stringify(emailResult));
+
+    if (!emailResponse.ok) {
+      console.error("send-otp: Resend API error:", emailResponse.status, emailResult);
+      throw new Error(`Erro ao enviar email: ${emailResult?.message || emailResult?.error || 'Resend API error'}`);
     }
 
     console.log(`OTP sent to ${normalizedEmail}`);
