@@ -43,31 +43,40 @@ serve(async (req) => {
     const systemPrompt = `Você é um designer de produto sênior especializado em Design Systems para plataformas SaaS.
 
 CONTEXTO TÉCNICO CRÍTICO:
-A plataforma usa um layout DARK MODE para as áreas dos mentores e mentorados.
-O fundo padrão é escuro (ex: 220 15% 10%), os cards são ligeiramente mais claros (ex: 220 15% 13%), e os textos são claros sobre fundo escuro.
+A plataforma suporta DOIS modos de tema: dark e light. Você DEVE decidir qual modo combina melhor com a marca analisada.
+
+CRITÉRIOS PARA ESCOLHER O MODO:
+- **dark**: Marcas premium, tech, luxo, masculinas, corporativas sérias, coaching executivo. Cores vibrantes sobre fundo escuro.
+- **light**: Marcas femininas, wellness, educação, saúde, infantis, naturais, clean, coloridas. Cores sobre fundo claro.
+
 As cores são definidas em formato HSL SEM wrapper — apenas os três valores: "220 15% 10%" (NÃO "hsl(220 15% 10%)").
 
-REGRAS OBRIGATÓRIAS PARA CORES:
-1. FORMATO: Sempre "H S% L%" — exemplo: "250 80% 60%". NUNCA inclua "hsl()" ao redor.
-2. DARK MODE: background deve ter luminosidade entre 5-15%, foreground entre 85-98%.
-3. CARDS: Luminosidade 2-5% acima do background. Card-foreground igual ao foreground.
-4. PRIMARY: Cor vibrante (saturação > 50%, luminosidade 40-65%) que funcione sobre fundo escuro.
-5. PRIMARY-FOREGROUND: Cor que contraste com a primary (geralmente branco "0 0% 98%" ou escuro "0 0% 10%").
-6. SECONDARY: Versão menos saturada/mais escura da primary, ou cor complementar sutil.
-7. ACCENT: Cor de destaque diferente da primary, vibrante.
-8. MUTED: Fundo sutil para badges/tags — luminosidade 15-25%.
-9. MUTED-FOREGROUND: Texto secundário — luminosidade 55-70%.
-10. BORDER: Sutil sobre dark — luminosidade 18-28%.
-11. DESTRUCTIVE: Sempre um vermelho — ex: "0 84% 60%".
-12. CONTRASTE: Diferença de luminosidade mínima de 40% entre texto e fundo.
+REGRAS PARA DARK MODE:
+- background: luminosidade 5-15%, foreground: 85-98%
+- cards: 2-5% mais claro que background
+- muted: luminosidade 15-25%, muted-foreground: 55-70%
+- border: luminosidade 18-28%
+
+REGRAS PARA LIGHT MODE:
+- background: luminosidade 95-100%, foreground: 5-20%
+- cards: luminosidade 98-100% (branco ou quase)
+- muted: luminosidade 88-95%, muted-foreground: 35-50%
+- border: luminosidade 82-92%
+
+REGRAS PARA AMBOS:
+1. FORMATO: Sempre "H S% L%". NUNCA inclua "hsl()".
+2. PRIMARY: Cor vibrante (saturação > 50%, luminosidade 40-65%).
+3. PRIMARY-FOREGROUND: Contraste com primary (branco "0 0% 98%" ou escuro "0 0% 10%").
+4. CONTRASTE: Diferença mínima de 40% luminosidade entre texto e fundo.
+5. DESTRUCTIVE: Sempre vermelho — "0 84% 60%".
 
 ${hasImages
-  ? 'Analise as imagens da marca (Instagram, logo, materiais) e EXTRAIA as cores dominantes para criar uma paleta coerente adaptada ao dark mode.'
-  : 'Baseado na descrição fornecida, crie uma identidade visual premium adaptada ao dark mode.'}
+  ? 'Analise as imagens da marca (Instagram, logo, materiais) e EXTRAIA cores dominantes. DECIDA se dark ou light combina melhor.'
+  : 'Baseado na descrição, crie uma identidade visual premium. DECIDA se dark ou light combina melhor.'}
 
 O tenant se chama: "${tenant?.name || "Não definido"}"
 
-IMPORTANTE: Foque apenas no branding da marca apresentada. Ignore quaisquer elementos de interface de outras apps visíveis nas imagens (ex: barras de navegação do Instagram, ícones do sistema operacional, etc.).`;
+IMPORTANTE: Foque apenas no branding da marca. Ignore elementos de UI de outras apps visíveis nas imagens.`;
 
     const userContent = hasImages
       ? [
@@ -93,10 +102,15 @@ IMPORTANTE: Foque apenas no branding da marca apresentada. Ignore quaisquer elem
             type: "function",
             function: {
               name: "generate_branding_proposal",
-              description: "Gera proposta de branding para dark mode SaaS. TODAS as cores em formato HSL raw: 'H S% L%' — SEM hsl() wrapper.",
+              description: "Gera proposta de branding para SaaS. TODAS as cores em formato HSL raw: 'H S% L%' — SEM hsl() wrapper. Decida se dark ou light mode.",
               parameters: {
                 type: "object",
                 properties: {
+                  theme_mode: {
+                    type: "string",
+                    enum: ["dark", "light"],
+                    description: "Modo de tema escolhido para esta marca. 'dark' para marcas premium/tech/executivas. 'light' para marcas femininas/wellness/clean/educação.",
+                  },
                   brand_concept: {
                     type: "string",
                     description: "Conceito geral da marca em 2-3 parágrafos: posicionamento, tom de voz, personalidade.",
@@ -119,9 +133,9 @@ IMPORTANTE: Foque apenas no branding da marca apresentada. Ignore quaisquer elem
                       primary: { type: "string", description: "Cor primária vibrante. Ex: 250 80% 60%" },
                       secondary: { type: "string", description: "Cor secundária. Ex: 220 60% 55%" },
                       accent: { type: "string", description: "Cor de destaque. Ex: 45 90% 55%" },
-                      background: { type: "string", description: "Fundo ESCURO (dark mode). Luminosidade 5-15%. Ex: 220 15% 10%" },
-                      foreground: { type: "string", description: "Texto CLARO sobre fundo escuro. Luminosidade 85-98%. Ex: 220 10% 95%" },
-                      muted: { type: "string", description: "Cor sutil para backgrounds secundários. Ex: 220 12% 18%" },
+                      background: { type: "string", description: "Dark: lum 5-15% (ex: 220 15% 10%). Light: lum 95-100% (ex: 0 0% 98%)" },
+                      foreground: { type: "string", description: "Dark: lum 85-98% (ex: 220 10% 95%). Light: lum 5-20% (ex: 220 15% 15%)" },
+                      muted: { type: "string", description: "Dark: lum 15-25%. Light: lum 88-95%." },
                       rationale: { type: "string", description: "Justificativa das escolhas" },
                     },
                     required: ["primary", "secondary", "accent", "background", "foreground", "rationale"],
@@ -136,13 +150,13 @@ IMPORTANTE: Foque apenas no branding da marca apresentada. Ignore quaisquer elem
                       secondary_foreground: { type: "string", description: "Texto sobre secondary. Ex: 220 10% 90%" },
                       accent: { type: "string", description: "Cor de destaque. Ex: 45 90% 55%" },
                       accent_foreground: { type: "string", description: "Texto sobre accent. Ex: 0 0% 10%" },
-                      background: { type: "string", description: "Fundo da página (escuro). Ex: 220 15% 10%" },
-                      foreground: { type: "string", description: "Texto principal (claro). Ex: 220 10% 95%" },
-                      card: { type: "string", description: "Fundo de cards (2-5% mais claro que background). Ex: 220 15% 13%" },
-                      card_foreground: { type: "string", description: "Texto nos cards. Ex: 220 10% 95%" },
-                      muted: { type: "string", description: "Fundo sutil de badges/tags. Ex: 220 12% 18%" },
-                      muted_foreground: { type: "string", description: "Texto secundário/apagado. Ex: 220 10% 60%" },
-                      border: { type: "string", description: "Cor de bordas sutis. Ex: 220 12% 22%" },
+                      background: { type: "string", description: "Fundo da página. Dark: lum 5-15%. Light: lum 95-100%." },
+                      foreground: { type: "string", description: "Texto principal. Dark: lum 85-98%. Light: lum 5-20%." },
+                      card: { type: "string", description: "Fundo de cards. Dark: 2-5% mais claro que bg. Light: 98-100%." },
+                      card_foreground: { type: "string", description: "Texto em cards. Igual ao foreground." },
+                      muted: { type: "string", description: "Fundo sutil. Dark: lum 15-25%. Light: lum 88-95%." },
+                      muted_foreground: { type: "string", description: "Texto secundário. Dark: lum 55-70%. Light: lum 35-50%." },
+                      border: { type: "string", description: "Bordas sutis. Dark: lum 18-28%. Light: lum 82-92%." },
                       destructive: { type: "string", description: "Vermelho de erro. Ex: 0 84% 60%" },
                       destructive_foreground: { type: "string", description: "Texto sobre destructive. Ex: 0 0% 98%" },
                     },
@@ -166,7 +180,7 @@ IMPORTANTE: Foque apenas no branding da marca apresentada. Ignore quaisquer elem
                     description: "Análise do que foi percebido: pontos fortes, atenção, oportunidades. Foque na MARCA, não em elementos de UI de outras apps.",
                   },
                 },
-                required: ["brand_concept", "brand_attributes", "color_palette", "system_colors", "suggested_name", "typography", "ai_analysis"],
+                required: ["theme_mode", "brand_concept", "brand_attributes", "color_palette", "system_colors", "suggested_name", "typography", "ai_analysis"],
                 additionalProperties: false,
               },
             },
@@ -230,6 +244,7 @@ IMPORTANTE: Foque apenas no branding da marca apresentada. Ignore quaisquer elem
         tenant_id,
         status: "draft",
         uploaded_assets: asset_urls,
+        theme_mode: proposal.theme_mode || "dark",
         brand_concept: proposal.brand_concept,
         brand_attributes: proposal.brand_attributes,
         color_palette: proposal.color_palette,

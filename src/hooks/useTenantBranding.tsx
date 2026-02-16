@@ -13,6 +13,7 @@ export interface BrandingProposal {
   id: string;
   tenant_id: string;
   status: 'draft' | 'approved' | 'rejected';
+  theme_mode: 'dark' | 'light';
   uploaded_assets: string[];
   brand_concept: string | null;
   brand_attributes: any;
@@ -133,6 +134,7 @@ export function useTenantBranding(tenantId: string | null) {
       if (b.color_palette?.accent) tenantUpdate.accent_color = b.color_palette.accent;
       if (b.typography?.display_font) tenantUpdate.font_family = b.typography.display_font;
       if (b.suggested_logo_url) tenantUpdate.logo_url = b.suggested_logo_url;
+      if (b.theme_mode) tenantUpdate.theme_mode = b.theme_mode;
 
       // Build brand_attributes with UI tokens from color_palette (NOT personality data)
       const uiTokens: Record<string, string> = {};
@@ -203,6 +205,7 @@ export function useTenantBranding(tenantId: string | null) {
         if (b.color_palette?.accent) tenantUpdate.accent_color = b.color_palette.accent;
         if (b.typography?.display_font) tenantUpdate.font_family = b.typography.display_font;
         if (b.suggested_logo_url) tenantUpdate.logo_url = b.suggested_logo_url;
+        if (b.theme_mode) tenantUpdate.theme_mode = b.theme_mode;
 
         const uiTokens: Record<string, string> = {};
         if (b.color_palette?.background) uiTokens.background = b.color_palette.background;

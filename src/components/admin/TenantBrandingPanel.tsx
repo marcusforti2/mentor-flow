@@ -429,6 +429,7 @@ function BrandingResult({
   const [editTypography, setEditTypography] = useState<{ display_font: string; body_font: string }>({ display_font: '', body_font: '' });
   const [editName, setEditName] = useState('');
   const [editConcept, setEditConcept] = useState('');
+  const [editThemeMode, setEditThemeMode] = useState<'dark' | 'light'>('dark');
 
   if (!branding) return null;
 
@@ -483,6 +484,7 @@ function BrandingResult({
     });
     setEditName(branding.suggested_name || '');
     setEditConcept(branding.brand_concept || '');
+    setEditThemeMode(branding.theme_mode || 'dark');
     setEditMode(mode);
   };
 
@@ -490,6 +492,7 @@ function BrandingResult({
     const updates: Partial<BrandingProposal> = {
       color_palette: editColors,
       system_colors: editSystemColors,
+      theme_mode: editThemeMode,
     };
     if (!isColorOnly) {
       updates.typography = { ...branding.typography, ...editTypography };
@@ -508,12 +511,17 @@ function BrandingResult({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">Proposta de Branding</h3>
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground">Proposta de Branding</h3>
           <Badge className={cn('border', statusColors[branding.status])}>
             {statusLabels[branding.status]}
           </Badge>
+          <Badge variant="outline" className="text-xs gap-1">
+            {(branding.theme_mode || 'dark') === 'dark' ? '🌙 Dark' : '☀️ Light'}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
           {!isEditing && (branding.status === 'draft' || branding.status === 'approved') && (
             <>
               <Button variant="outline" size="sm" onClick={() => startEditing('colors')} className="gap-1.5 h-7 text-xs">
@@ -531,18 +539,42 @@ function BrandingResult({
 
       {/* Editing banner */}
       {isEditing && (
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between flex-wrap gap-2">
-          <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
-            {isColorOnly ? '🎨 Editando cores — selecione e salve.' : '✏️ Modo de edição — altere cores, fontes ou conceito e salve.'}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEditMode('off')} className="h-7 text-xs">
-              Cancelar
-            </Button>
-            <Button size="sm" onClick={handleSaveEdits} disabled={isUpdating} className="h-7 text-xs gap-1.5">
-              {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Salvar Alterações
-            </Button>
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between flex-wrap gap-2">
+            <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+              {isColorOnly ? '🎨 Editando cores — selecione e salve.' : '✏️ Modo de edição — altere cores, fontes ou conceito e salve.'}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setEditMode('off')} className="h-7 text-xs">
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={handleSaveEdits} disabled={isUpdating} className="h-7 text-xs gap-1.5">
+                {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Salvar Alterações
+              </Button>
+            </div>
+          </div>
+          {/* Theme mode toggle */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+            <span className="text-xs font-medium text-muted-foreground">Modo de Tema:</span>
+            <div className="flex gap-1">
+              <Button
+                variant={editThemeMode === 'dark' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => setEditThemeMode('dark')}
+              >
+                🌙 Dark
+              </Button>
+              <Button
+                variant={editThemeMode === 'light' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => setEditThemeMode('light')}
+              >
+                ☀️ Light
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -17,6 +17,7 @@ export interface Tenant {
   accent_color?: string | null;
   font_family?: string | null;
   brand_attributes?: Json | null;
+  theme_mode?: string;
   settings: Json;
 }
 
@@ -259,6 +260,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Apply theme mode class (light tenants get theme-light on body)
+    const isLightTenant = tenant.theme_mode === 'light';
+    if (isLightTenant) {
+      body.classList.add('theme-light');
+    }
+
     // Core colors
     inject('--primary', tenant.primary_color);
     inject('--primary-foreground', '0 0% 98%');
@@ -288,9 +295,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       injectedProps.push('--font-display', '--font-body');
     }
 
-    console.log('[Branding] Body vars injected for', tenant.name, ':', injectedProps.length, 'vars');
+    console.log('[Branding] Body vars injected for', tenant.name, ':', injectedProps.length, 'vars, theme:', tenant.theme_mode || 'dark');
 
-    return cleanup;
+    return () => {
+      cleanup();
+      body.classList.remove('theme-light');
+    };
   }, [tenant, realMembership?.role, isImpersonating]);
 
   // Helper to fetch a single membership by ID from DB (for master_admin cross-tenant access)
