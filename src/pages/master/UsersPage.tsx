@@ -298,7 +298,7 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos Tenants</SelectItem>
-                  {tenants.map((tenant) => (
+                  {tenants.filter(t => t.id !== 'b0000000-0000-0000-0000-000000000002').map((tenant) => (
                     <SelectItem key={tenant.id} value={tenant.id}>
                       {tenant.name}
                     </SelectItem>

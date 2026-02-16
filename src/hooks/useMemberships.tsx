@@ -31,9 +31,11 @@ export function useMemberships(tenantFilter?: string) {
     queryKey: ['all-memberships', tenantFilter],
     queryFn: async () => {
       // Fetch memberships
+      const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
       let query = supabase
         .from('memberships')
         .select('*')
+        .neq('tenant_id', SANDBOX_TENANT_ID)
         .order('created_at', { ascending: false });
 
       if (tenantFilter) {
