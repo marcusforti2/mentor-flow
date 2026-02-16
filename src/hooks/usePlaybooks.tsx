@@ -11,6 +11,7 @@ export interface PlaybookFolder {
   cover_image_url: string | null;
   cover_position: string;
   icon: string;
+  is_pinned: boolean;
   position: number;
   created_by_membership_id: string;
   created_at: string;
@@ -25,6 +26,7 @@ export interface Playbook {
   description: string | null;
   cover_image_url: string | null;
   cover_position: string;
+  is_pinned: boolean;
   content: any;
   visibility: 'mentor_only' | 'all_mentees' | 'specific_mentees' | 'public';
   public_slug: string | null;
@@ -261,6 +263,35 @@ export function usePlaybookMutations() {
     },
     onError: (e: any) => toast.error(e.message || 'Erro ao excluir playbook'),
   });
+  const togglePinFolder = useMutation({
+    mutationFn: async ({ id, is_pinned }: { id: string; is_pinned: boolean }) => {
+      const { error } = await supabase
+        .from('playbook_folders')
+        .update({ is_pinned })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['playbook-folders'] });
+      toast.success('Atualizado!');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao fixar'),
+  });
 
-  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook };
+  const togglePinPlaybook = useMutation({
+    mutationFn: async ({ id, is_pinned }: { id: string; is_pinned: boolean }) => {
+      const { error } = await supabase
+        .from('playbooks')
+        .update({ is_pinned })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['playbooks'] });
+      toast.success('Atualizado!');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao fixar'),
+  });
+
+  return { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook };
 }

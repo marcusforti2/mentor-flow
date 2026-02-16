@@ -2,7 +2,7 @@ import { usePlaybooks, usePlaybookFolders, usePlaybookPages } from '@/hooks/useP
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { BookOpen, FolderOpen, FileText, Loader2, ArrowLeft, ChevronRight, Search, LayoutGrid, List } from 'lucide-react';
+import { BookOpen, FolderOpen, FileText, Loader2, ArrowLeft, ChevronRight, Search, LayoutGrid, List, Pin } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -49,7 +49,8 @@ export default function MentoradoPlaybooks() {
     return folders.map(f => ({
       ...f,
       count: playbooks.filter(p => p.folder_id === f.id).length,
-    })).filter(f => f.count > 0);
+    })).filter(f => f.count > 0)
+      .sort((a, b) => (a.is_pinned === b.is_pinned ? 0 : a.is_pinned ? -1 : 1));
   }, [folders, playbooks]);
 
   // Filter logic
@@ -59,7 +60,7 @@ export default function MentoradoPlaybooks() {
       return playbooks.filter(p =>
         p.folder_id === selectedFolder.id &&
         (!s || p.title.toLowerCase().includes(s) || p.description?.toLowerCase().includes(s))
-      );
+      ).sort((a, b) => (a.is_pinned === b.is_pinned ? 0 : a.is_pinned ? -1 : 1));
     }
     // Root: filter folders
     const filteredFolders = foldersWithCounts.filter(f =>
@@ -260,6 +261,7 @@ export default function MentoradoPlaybooks() {
                         <CardContent className="py-3 px-4">
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span className="flex items-center gap-1.5">
+                              {folder.is_pinned && <Pin className="h-3 w-3 text-primary" />}
                               <FileText className="h-3.5 w-3.5" />
                               {folder.count} playbook{folder.count !== 1 ? 's' : ''}
                             </span>

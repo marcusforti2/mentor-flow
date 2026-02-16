@@ -2409,6 +2409,7 @@ export type Database = {
           description: string | null
           icon: string | null
           id: string
+          is_pinned: boolean | null
           name: string
           position: number
           tenant_id: string
@@ -2422,6 +2423,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          is_pinned?: boolean | null
           name: string
           position?: number
           tenant_id: string
@@ -2435,6 +2437,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          is_pinned?: boolean | null
           name?: string
           position?: number
           tenant_id?: string
@@ -2515,6 +2518,7 @@ export type Database = {
           description: string | null
           folder_id: string | null
           id: string
+          is_pinned: boolean | null
           position: number
           public_slug: string | null
           tags: string[] | null
@@ -2532,6 +2536,7 @@ export type Database = {
           description?: string | null
           folder_id?: string | null
           id?: string
+          is_pinned?: boolean | null
           position?: number
           public_slug?: string | null
           tags?: string[] | null
@@ -2549,6 +2554,7 @@ export type Database = {
           description?: string | null
           folder_id?: string | null
           id?: string
+          is_pinned?: boolean | null
           position?: number
           public_slug?: string | null
           tags?: string[] | null
