@@ -5,12 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePlaybookMutations, usePlaybookPages, type Playbook, type PlaybookPage } from '@/hooks/usePlaybooks';
 import { PlaybookTipTapEditor } from '@/components/playbooks/PlaybookTipTapEditor';
 import { PlaybookAccessPanel } from '@/components/playbooks/PlaybookAccessPanel';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield, Link2, Copy, GripVertical } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield, GripVertical, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PlaybookEditorPage() {
@@ -139,24 +139,6 @@ export default function PlaybookEditorPage() {
     queryClient.invalidateQueries({ queryKey: ['playbook-detail', playbookId] });
   };
 
-  // Generate public slug
-  const handleGenerateSlug = async () => {
-    if (!playbookId || !playbook) return;
-    const slug = playbook.public_slug || `${playbook.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now().toString(36)}`;
-    await supabase.from('playbooks').update({ public_slug: slug }).eq('id', playbookId);
-    queryClient.invalidateQueries({ queryKey: ['playbook-detail', playbookId] });
-    toast.success('Link público gerado!');
-  };
-
-  const publicUrl = playbook?.public_slug ? `${window.location.origin}/p/${playbook.public_slug}` : null;
-
-  const handleCopyLink = () => {
-    if (publicUrl) {
-      navigator.clipboard.writeText(publicUrl);
-      toast.success('Link copiado!');
-    }
-  };
-
   // Drag-drop reorder pages
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -172,7 +154,6 @@ export default function PlaybookEditorPage() {
     const reordered = [...pages];
     const [removed] = reordered.splice(dragItem.current, 1);
     reordered.splice(dragOverItem.current, 0, removed);
-    // Update positions in DB
     await Promise.all(reordered.map((p, i) =>
       supabase.from('playbook_pages').update({ position: i }).eq('id', p.id)
     ));
@@ -219,32 +200,31 @@ export default function PlaybookEditorPage() {
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Share link */}
-          <Popover>
-            <PopoverTrigger asChild>
+          {/* Share Sheet */}
+          <Sheet>
+            <SheetTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
-                <Link2 className="h-3.5 w-3.5" /> Compartilhar
+                <Share2 className="h-3.5 w-3.5" /> Compartilhar
               </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 space-y-3">
-              <p className="text-sm font-medium">Link público</p>
-              {playbook.visibility !== 'public' ? (
-                <p className="text-xs text-muted-foreground">Altere a visibilidade para "Público" na sidebar para gerar um link compartilhável.</p>
-              ) : !publicUrl ? (
-                <Button size="sm" onClick={handleGenerateSlug} className="w-full">Gerar link público</Button>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input value={publicUrl} readOnly className="text-xs h-8" />
-                    <Button size="sm" variant="outline" className="shrink-0 h-8" onClick={handleCopyLink}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Qualquer pessoa com este link pode visualizar o playbook.</p>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
+            </SheetTrigger>
+            <SheetContent className="w-[380px] sm:w-[420px] overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  Acesso & Compartilhamento
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <PlaybookAccessPanel
+                  playbookId={playbookId!}
+                  visibility={playbook.visibility}
+                  onVisibilityChange={handleVisibilityChange}
+                  publicSlug={playbook.public_slug}
+                  variant="sheet"
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
 
           {saved ? (
             <Badge variant="outline" className="gap-1 text-green-600 border-green-200">
@@ -329,14 +309,6 @@ export default function PlaybookEditorPage() {
               </Button>
             </div>
           ))}
-
-          {/* Access Panel */}
-          <Separator className="my-3" />
-          <PlaybookAccessPanel
-            playbookId={playbookId!}
-            visibility={playbook.visibility}
-            onVisibilityChange={handleVisibilityChange}
-          />
         </div>
 
         {/* Editor */}

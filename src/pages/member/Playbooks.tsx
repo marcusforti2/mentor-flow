@@ -1,8 +1,9 @@
 import { usePlaybooks, usePlaybookFolders, usePlaybookPages } from '@/hooks/usePlaybooks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, FolderOpen, FileText, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { BookOpen, FolderOpen, FileText, Loader2, ArrowLeft, ChevronRight, Search, LayoutGrid, List } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +20,8 @@ export default function MentoradoPlaybooks() {
   const [selectedFolder, setSelectedFolder] = useState<PlaybookFolder | null>(null);
   const [selectedPlaybook, setSelectedPlaybook] = useState<Playbook | null>(null);
   const [activePageId, setActivePageId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery');
 
   // Fetch pages for selected playbook
   const { data: pages = [], isLoading: pagesLoading } = usePlaybookPages(selectedPlaybook?.id ?? null);
@@ -41,9 +44,33 @@ export default function MentoradoPlaybooks() {
 
   const isLoading = foldersLoading || playbooksLoading;
 
-  const visiblePlaybooks = selectedFolder
-    ? playbooks.filter(p => p.folder_id === selectedFolder.id)
-    : playbooks;
+  // Folders with playbook counts (only show folders that have accessible playbooks)
+  const foldersWithCounts = useMemo(() => {
+    return folders.map(f => ({
+      ...f,
+      count: playbooks.filter(p => p.folder_id === f.id).length,
+    })).filter(f => f.count > 0);
+  }, [folders, playbooks]);
+
+  // Filter logic
+  const filteredItems = useMemo(() => {
+    const s = searchTerm.toLowerCase();
+    if (selectedFolder) {
+      return playbooks.filter(p =>
+        p.folder_id === selectedFolder.id &&
+        (!s || p.title.toLowerCase().includes(s) || p.description?.toLowerCase().includes(s))
+      );
+    }
+    // Root: filter folders
+    const filteredFolders = foldersWithCounts.filter(f =>
+      !s || f.name.toLowerCase().includes(s) || f.description?.toLowerCase().includes(s)
+    );
+    // Also search playbooks globally if searching
+    const matchingPlaybooks = s
+      ? playbooks.filter(p => p.title.toLowerCase().includes(s) || p.description?.toLowerCase().includes(s))
+      : [];
+    return { folders: filteredFolders, playbooks: matchingPlaybooks };
+  }, [selectedFolder, playbooks, foldersWithCounts, searchTerm]);
 
   // === Reading a playbook ===
   if (selectedPlaybook) {
@@ -121,86 +148,268 @@ export default function MentoradoPlaybooks() {
     );
   }
 
+  const isRootView = !selectedFolder;
+  const rootData = isRootView ? filteredItems as { folders: typeof foldersWithCounts; playbooks: Playbook[] } : null;
+  const folderPlaybooks = !isRootView ? filteredItems as Playbook[] : [];
+
   return (
     <div className="space-y-6 px-4 md:px-6">
-      <div className="flex items-center gap-3">
-        {selectedFolder && (
-          <Button variant="ghost" size="icon" onClick={() => setSelectedFolder(null)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">
-            {selectedFolder ? selectedFolder.name : 'Playbooks'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {selectedFolder ? selectedFolder.description : 'Material operacional da sua mentoria'}
-          </p>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {selectedFolder && (
+            <Button variant="ghost" size="icon" onClick={() => { setSelectedFolder(null); setSearchTerm(''); }}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              {selectedFolder ? selectedFolder.name : 'Playbooks'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {selectedFolder ? selectedFolder.description || 'Playbooks desta pasta' : 'Material operacional da sua mentoria'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode('gallery')}
+              className={`p-2 transition-colors ${viewMode === 'gallery' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Folders */}
-      {!selectedFolder && folders.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {folders.map(folder => {
-            const count = playbooks.filter(p => p.folder_id === folder.id).length;
-            if (count === 0) return null;
-            return (
-              <Card key={folder.id} className="glass-card hover:border-primary/30 cursor-pointer transition-all" onClick={() => setSelectedFolder(folder)}>
-                <CardContent className="pt-5 pb-4 px-4">
-                  <FolderOpen className="h-6 w-6 text-primary mb-2" />
-                  <h3 className="font-semibold text-foreground truncate">{folder.name}</h3>
-                  <p className="text-xs text-muted-foreground">{count} playbook{count !== 1 ? 's' : ''}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+      {/* Breadcrumb */}
+      {selectedFolder && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <button onClick={() => { setSelectedFolder(null); setSearchTerm(''); }} className="hover:text-foreground transition-colors">
+            Playbooks
+          </button>
+          <span>/</span>
+          <span className="text-foreground font-medium">{selectedFolder.name}</span>
         </div>
       )}
 
-      {/* Playbooks */}
-      {visiblePlaybooks.length === 0 ? (
-        <Card className="glass-card">
-          <CardContent className="py-12 text-center">
-            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum playbook disponível</h3>
-            <p className="text-muted-foreground">Seu mentor ainda não liberou playbooks para você.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {visiblePlaybooks.map(pb => (
-            <Card
-              key={pb.id}
-              className="glass-card hover:border-primary/30 transition-all overflow-hidden cursor-pointer group"
-              onClick={() => setSelectedPlaybook(pb)}
-            >
-              {pb.cover_image_url ? (
-                <div className="h-32 bg-muted overflow-hidden">
-                  <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="h-20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-primary/30" />
-                </div>
-              )}
-              <CardContent className="pt-4 pb-4 px-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-foreground line-clamp-1 flex-1">{pb.title}</h3>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                </div>
-                {pb.description && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{pb.description}</p>}
-                <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-                  {pb.pages_count! > 0 && (
-                    <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" />{pb.pages_count}</span>
-                  )}
-                  <span>{formatDistanceToNow(new Date(pb.updated_at), { addSuffix: true, locale: ptBR })}</span>
-                </div>
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={selectedFolder ? 'Buscar playbooks...' : 'Buscar pastas e playbooks...'}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Root View */}
+      {isRootView && rootData && (
+        <>
+          {rootData.folders.length === 0 && rootData.playbooks.length === 0 && !searchTerm ? (
+            <Card className="glass-card">
+              <CardContent className="py-12 text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum playbook disponível</h3>
+                <p className="text-muted-foreground">Seu mentor ainda não liberou playbooks para você.</p>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          ) : (
+            <>
+              {/* Folders */}
+              {rootData.folders.length > 0 && (
+                viewMode === 'gallery' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {rootData.folders.map(folder => (
+                      <Card
+                        key={folder.id}
+                        className="glass-card hover:border-primary/30 cursor-pointer transition-all group overflow-hidden"
+                        onClick={() => { setSelectedFolder(folder); setSearchTerm(''); }}
+                      >
+                        <div className="relative h-36 overflow-hidden">
+                          {folder.cover_image_url ? (
+                            <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+                              <FolderOpen className="h-10 w-10 text-primary/30" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-4">
+                            <h3 className="font-display font-bold text-white text-base leading-tight line-clamp-2 drop-shadow-lg">
+                              {folder.name}
+                            </h3>
+                            <p className="text-white/60 text-xs mt-0.5">{folder.count} playbook{folder.count !== 1 ? 's' : ''}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {rootData.folders.map(folder => (
+                      <Card
+                        key={folder.id}
+                        className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
+                        onClick={() => { setSelectedFolder(folder); setSearchTerm(''); }}
+                      >
+                        <CardContent className="py-3 px-4 flex items-center gap-4">
+                          <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0">
+                            {folder.cover_image_url ? (
+                              <img src={folder.cover_image_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+                                <FolderOpen className="h-5 w-5 text-primary/30" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground truncate">{folder.name}</h3>
+                            <p className="text-xs text-muted-foreground">{folder.count} playbook{folder.count !== 1 ? 's' : ''}</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {/* Search results - show matching playbooks */}
+              {searchTerm && rootData.playbooks.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                    Playbooks encontrados
+                  </h2>
+                  <PlaybookGrid
+                    playbooks={rootData.playbooks}
+                    viewMode={viewMode}
+                    onSelect={setSelectedPlaybook}
+                  />
+                </div>
+              )}
+
+              {searchTerm && rootData.folders.length === 0 && rootData.playbooks.length === 0 && (
+                <div className="text-center py-12">
+                  <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">Nenhum resultado para "{searchTerm}"</p>
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
+
+      {/* Folder View */}
+      {!isRootView && (
+        <>
+          {folderPlaybooks.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="py-12 text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">
+                  {searchTerm ? 'Nenhum resultado' : 'Nenhum playbook disponível'}
+                </h3>
+              </CardContent>
+            </Card>
+          ) : (
+            <PlaybookGrid
+              playbooks={folderPlaybooks}
+              viewMode={viewMode}
+              onSelect={setSelectedPlaybook}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ========== Sub-components ==========
+
+function PlaybookGrid({ playbooks, viewMode, onSelect }: {
+  playbooks: Playbook[];
+  viewMode: 'gallery' | 'list';
+  onSelect: (pb: Playbook) => void;
+}) {
+  if (viewMode === 'gallery') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {playbooks.map(pb => (
+          <Card
+            key={pb.id}
+            className="glass-card hover:border-primary/30 transition-all overflow-hidden cursor-pointer group"
+            onClick={() => onSelect(pb)}
+          >
+            {pb.cover_image_url ? (
+              <div className="h-32 bg-muted overflow-hidden">
+                <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              </div>
+            ) : (
+              <div className="h-20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
+                <BookOpen className="h-6 w-6 text-primary/30" />
+              </div>
+            )}
+            <CardContent className="pt-4 pb-4 px-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground line-clamp-1 flex-1">{pb.title}</h3>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              </div>
+              {pb.description && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{pb.description}</p>}
+              <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                {pb.pages_count! > 0 && (
+                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" />{pb.pages_count}</span>
+                )}
+                <span>{formatDistanceToNow(new Date(pb.updated_at), { addSuffix: true, locale: ptBR })}</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {playbooks.map(pb => (
+        <Card
+          key={pb.id}
+          className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
+          onClick={() => onSelect(pb)}
+        >
+          <CardContent className="py-3 px-4 flex items-center gap-4">
+            <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0 bg-muted">
+              {pb.cover_image_url ? (
+                <img src={pb.cover_image_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
+                  <BookOpen className="h-4 w-4 text-primary/30" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-foreground truncate">{pb.title}</h3>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                {pb.pages_count! > 0 && (
+                  <span className="flex items-center gap-1"><FileText className="h-3 w-3" />{pb.pages_count} pág.</span>
+                )}
+                <span>{formatDistanceToNow(new Date(pb.updated_at), { addSuffix: true, locale: ptBR })}</span>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
