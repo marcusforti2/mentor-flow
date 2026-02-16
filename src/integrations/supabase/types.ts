@@ -86,13 +86,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ai_tool_usage_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ai_tool_usage_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -184,13 +177,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "badges_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "badges_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -233,15 +219,7 @@ export type Database = {
           question_text?: string
           question_type?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "behavioral_questions_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       behavioral_reports: {
         Row: {
@@ -283,15 +261,7 @@ export type Database = {
           strengths?: Json | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "behavioral_reports_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       behavioral_responses: {
         Row: {
@@ -319,13 +289,6 @@ export type Database = {
           tenant_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "behavioral_responses_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "behavioral_responses_question_id_fkey"
             columns: ["question_id"]
@@ -386,13 +349,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "calendar_events_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "calendar_events_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -483,15 +439,7 @@ export type Database = {
           transcript_text?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "call_transcripts_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       campan_tasks: {
         Row: {
@@ -596,13 +544,6 @@ export type Database = {
           trail_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "certificates_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "certificates_trail_id_fkey"
             columns: ["trail_id"]
@@ -710,13 +651,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "community_comments_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "community_comments_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
@@ -745,13 +679,6 @@ export type Database = {
           post_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "community_likes_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "community_likes_post_id_fkey"
             columns: ["post_id"]
@@ -784,13 +711,6 @@ export type Database = {
           tenant_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "community_messages_author_membership_id_fkey"
-            columns: ["author_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "community_messages_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -838,13 +758,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "community_posts_author_membership_id_fkey"
-            columns: ["author_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "community_posts_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -946,13 +859,6 @@ export type Database = {
           value?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "crm_leads_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "crm_leads_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1066,13 +972,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "crm_prospections_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "crm_prospections_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1210,13 +1109,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "email_automations_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "email_automations_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -1262,13 +1154,6 @@ export type Database = {
             columns: ["flow_id"]
             isOneToOne: false
             referencedRelation: "email_flows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_flow_executions_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
         ]
@@ -1350,13 +1235,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "email_flows_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "email_flows_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1411,13 +1289,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "email_logs_recipient_membership_id_fkey"
-            columns: ["recipient_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "email_logs_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -1464,13 +1335,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "email_templates_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "email_templates_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1629,13 +1493,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "invites_created_by_membership_id_fkey"
-            columns: ["created_by_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "invites_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -1678,13 +1535,6 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "meeting_attendees_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
         ]
@@ -1845,13 +1695,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "meetings_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "meetings_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2379,15 +2222,7 @@ export type Database = {
           unique_value_proposition?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "mentorado_business_profiles_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       mentorado_files: {
         Row: {
@@ -2445,13 +2280,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "mentorado_files_owner_membership_id_fkey"
-            columns: ["owner_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "mentorado_files_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2597,15 +2425,7 @@ export type Database = {
           points?: number | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ranking_entries_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       reward_catalog: {
         Row: {
@@ -2681,13 +2501,6 @@ export type Database = {
           status?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "reward_redemptions_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "reward_redemptions_reward_id_fkey"
             columns: ["reward_id"]
@@ -2859,20 +2672,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "smart_alerts_mentee_membership_id_fkey"
-            columns: ["mentee_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "smart_alerts_mentor_membership_id_fkey"
-            columns: ["mentor_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "smart_alerts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -2939,13 +2738,6 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sos_requests_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
           {
@@ -3084,20 +2876,6 @@ export type Database = {
           uploaded_assets?: string[] | null
         }
         Relationships: [
-          {
-            foreignKeyName: "tenant_branding_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tenant_branding_generated_by_fkey"
-            columns: ["generated_by"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "tenant_branding_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -3298,13 +3076,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "trail_progress_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "trail_progress_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -3354,13 +3125,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "trails_creator_membership_id_fkey"
-            columns: ["creator_membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "trails_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -3413,15 +3177,7 @@ export type Database = {
           pontos_fracos?: Json | null
           resumo?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "training_analyses_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_badges: {
         Row: {
@@ -3448,13 +3204,6 @@ export type Database = {
             columns: ["badge_id"]
             isOneToOne: false
             referencedRelation: "badges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_badges_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
         ]
@@ -3484,15 +3233,7 @@ export type Database = {
           membership_id?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_streaks_membership_id_fkey"
-            columns: ["membership_id"]
-            isOneToOne: false
-            referencedRelation: "memberships"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
