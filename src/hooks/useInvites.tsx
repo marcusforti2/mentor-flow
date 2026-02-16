@@ -28,10 +28,12 @@ export function useInvites(tenantFilter?: string) {
   const invitesQuery = useQuery({
     queryKey: ['all-invites', tenantFilter],
     queryFn: async () => {
+      const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
       let query = supabase
         .from('invites')
         .select('*')
         .eq('status', 'pending')
+        .neq('tenant_id', SANDBOX_TENANT_ID)
         .order('created_at', { ascending: false });
 
       if (tenantFilter) {
