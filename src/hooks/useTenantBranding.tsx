@@ -174,6 +174,57 @@ export function useTenantBranding(tenantId: string | null) {
     },
   });
 
+  const updateBranding = useMutation({
+    mutationFn: async ({ brandingId, updates }: { brandingId: string; updates: Partial<BrandingProposal> }) => {
+      // Update the branding record
+      const { data: branding, error: brandingError } = await supabase
+        .from('tenant_branding' as any)
+        .update(updates as any)
+        .eq('id', brandingId)
+        .select()
+        .single();
+
+      if (brandingError) throw brandingError;
+      const b = branding as unknown as BrandingProposal;
+
+      // If approved, also sync changes to tenant
+      if (b.status === 'approved') {
+        const tenantUpdate: any = {};
+        if (b.suggested_name) tenantUpdate.name = b.suggested_name;
+        if (b.color_palette?.primary) tenantUpdate.primary_color = b.color_palette.primary;
+        if (b.color_palette?.secondary) tenantUpdate.secondary_color = b.color_palette.secondary;
+        if (b.color_palette?.accent) tenantUpdate.accent_color = b.color_palette.accent;
+        if (b.typography?.display_font) tenantUpdate.font_family = b.typography.display_font;
+        if (b.suggested_logo_url) tenantUpdate.logo_url = b.suggested_logo_url;
+
+        const uiTokens: Record<string, string> = {};
+        if (b.color_palette?.background) uiTokens.background = b.color_palette.background;
+        if (b.color_palette?.foreground) uiTokens.foreground = b.color_palette.foreground;
+        if (b.color_palette?.muted) uiTokens.muted = b.color_palette.muted;
+        if (b.system_colors?.card) uiTokens.card = b.system_colors.card;
+        if (b.system_colors?.card_foreground) uiTokens.card_foreground = b.system_colors.card_foreground;
+        if (b.system_colors?.muted_foreground) uiTokens.muted_foreground = b.system_colors.muted_foreground;
+        if (b.system_colors?.border) uiTokens.border = b.system_colors.border;
+        if (Object.keys(uiTokens).length > 0) tenantUpdate.brand_attributes = uiTokens;
+
+        if (Object.keys(tenantUpdate).length > 0) {
+          const { error: tenantError } = await supabase.from('tenants').update(tenantUpdate).eq('id', b.tenant_id);
+          if (tenantError) throw tenantError;
+        }
+      }
+
+      return branding;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-branding', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['tenants-with-counts'] });
+      toast.success('Branding atualizado e aplicado!');
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao atualizar: ${error.message}`);
+    },
+  });
+
   return {
     branding: brandingQuery.data,
     isLoading: brandingQuery.isLoading,
@@ -181,5 +232,6 @@ export function useTenantBranding(tenantId: string | null) {
     approveBranding,
     rejectBranding,
     saveManualBranding,
+    updateBranding,
   };
 }

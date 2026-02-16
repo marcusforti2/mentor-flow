@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Sparkles, Check, X, Loader2, Palette, Type, Eye, Brain, PenTool, MessageSquareText, ImagePlus, RefreshCw } from 'lucide-react';
+import { Upload, Sparkles, Check, X, Loader2, Palette, Type, Eye, Brain, PenTool, MessageSquareText, ImagePlus, RefreshCw, Pencil, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -50,7 +50,7 @@ const EMPTY_MANUAL: ManualBranding = {
 };
 
 export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: TenantBrandingPanelProps) {
-  const { branding, isLoading, analyzebranding, approveBranding, rejectBranding, saveManualBranding } = useTenantBranding(tenantId);
+  const { branding, isLoading, analyzebranding, approveBranding, rejectBranding, saveManualBranding, updateBranding } = useTenantBranding(tenantId);
   
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -83,7 +83,6 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
     return signedData?.signedUrl || null;
   };
 
-  // IA Visual handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setSelectedFiles(prev => [...prev, ...files]);
@@ -108,12 +107,10 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
     analyzebranding.mutate({ tenantId, files: [], membershipId, textPrompt: textPrompt.trim() });
   };
 
-  // Manual save
   const handleSaveManual = async () => {
     setSavingManual(true);
     try {
       const logoUrl = await uploadLogo();
-      
       const proposal = {
         tenant_id: tenantId,
         status: 'draft' as const,
@@ -148,7 +145,6 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
         ai_analysis: 'Branding configurado manualmente pela equipe MentorFlow.',
         generated_by: membershipId || null,
       };
-
       saveManualBranding.mutate(proposal);
     } catch (err) {
       toast.error('Erro ao salvar branding manual');
@@ -157,7 +153,6 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
     }
   };
 
-  // Approve / Reject
   const handleApprove = () => {
     if (!branding?.id || !membershipId) return;
     approveBranding.mutate({ brandingId: branding.id, membershipId });
@@ -275,11 +270,7 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
                 </div>
               )}
 
-              <Button
-                onClick={handleAnalyzeVisual}
-                disabled={selectedFiles.length === 0 || analyzebranding.isPending}
-                className="w-full"
-              >
+              <Button onClick={handleAnalyzeVisual} disabled={selectedFiles.length === 0 || analyzebranding.isPending} className="w-full">
                 {analyzebranding.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</>
                 ) : (
@@ -303,14 +294,10 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
               <Textarea
                 value={textPrompt}
                 onChange={(e) => setTextPrompt(e.target.value)}
-                placeholder={`Exemplo: "A marca do ${tenantName} é focada em consultoria para empresários de alto ticket. Cores sóbrias, estilo premium, tom de autoridade mas acolhedor..."`}
+                placeholder={`Exemplo: "A marca do ${tenantName} é focada em consultoria para empresários de alto ticket. Cores sóbrias, estilo premium..."`}
                 className="min-h-[150px]"
               />
-              <Button
-                onClick={handleAnalyzeText}
-                disabled={!textPrompt.trim() || analyzebranding.isPending}
-                className="w-full"
-              >
+              <Button onClick={handleAnalyzeText} disabled={!textPrompt.trim() || analyzebranding.isPending} className="w-full">
                 {analyzebranding.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando proposta...</>
                 ) : (
@@ -326,64 +313,37 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Configuração Manual</CardTitle>
-              <CardDescription>
-                Defina cada campo do branding manualmente.
-              </CardDescription>
+              <CardDescription>Defina cada campo do branding manualmente.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Nome e Conceito */}
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identidade</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Nome exibido</Label>
-                    <Input
-                      value={manual.suggested_name}
-                      onChange={(e) => setManual(p => ({ ...p, suggested_name: e.target.value }))}
-                      placeholder={tenantName}
-                    />
+                    <Input value={manual.suggested_name} onChange={(e) => setManual(p => ({ ...p, suggested_name: e.target.value }))} placeholder={tenantName} />
                   </div>
                   <div>
                     <Label className="text-xs">Tom de voz</Label>
-                    <Input
-                      value={manual.tone_of_voice}
-                      onChange={(e) => setManual(p => ({ ...p, tone_of_voice: e.target.value }))}
-                      placeholder="Profissional mas acolhedor"
-                    />
+                    <Input value={manual.tone_of_voice} onChange={(e) => setManual(p => ({ ...p, tone_of_voice: e.target.value }))} placeholder="Profissional mas acolhedor" />
                   </div>
                 </div>
                 <div>
                   <Label className="text-xs">Conceito da marca</Label>
-                  <Textarea
-                    value={manual.brand_concept}
-                    onChange={(e) => setManual(p => ({ ...p, brand_concept: e.target.value }))}
-                    placeholder="Descreva o posicionamento e conceito da marca..."
-                    className="min-h-[80px]"
-                  />
+                  <Textarea value={manual.brand_concept} onChange={(e) => setManual(p => ({ ...p, brand_concept: e.target.value }))} placeholder="Descreva o posicionamento..." className="min-h-[80px]" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Personalidade (separar por vírgula)</Label>
-                    <Input
-                      value={manual.personality}
-                      onChange={(e) => setManual(p => ({ ...p, personality: e.target.value }))}
-                      placeholder="Sofisticado, Inovador, Confiável"
-                    />
+                    <Input value={manual.personality} onChange={(e) => setManual(p => ({ ...p, personality: e.target.value }))} placeholder="Sofisticado, Inovador, Confiável" />
                   </div>
                   <div>
                     <Label className="text-xs">Público-alvo</Label>
-                    <Input
-                      value={manual.target_audience}
-                      onChange={(e) => setManual(p => ({ ...p, target_audience: e.target.value }))}
-                      placeholder="Empresários que faturam 50k+/mês"
-                    />
+                    <Input value={manual.target_audience} onChange={(e) => setManual(p => ({ ...p, target_audience: e.target.value }))} placeholder="Empresários que faturam 50k+/mês" />
                   </div>
                 </div>
               </div>
-
               <Separator />
-
-              {/* Cores */}
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paleta de Cores (HSL)</h4>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -391,59 +351,29 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
                     <div key={key}>
                       <Label className="text-xs capitalize">{key}</Label>
                       <div className="flex gap-2 items-center">
-                        <Input
-                          value={manual[key]}
-                          onChange={(e) => setManual(p => ({ ...p, [key]: e.target.value }))}
-                          placeholder="220 91% 45%"
-                          className="text-xs font-mono"
-                        />
-                        {manual[key] && (
-                          <div
-                            className="w-8 h-8 rounded border border-border shrink-0"
-                            style={{ backgroundColor: `hsl(${manual[key]})` }}
-                          />
-                        )}
+                        <Input value={manual[key]} onChange={(e) => setManual(p => ({ ...p, [key]: e.target.value }))} placeholder="220 91% 45%" className="text-xs font-mono" />
+                        {manual[key] && <div className="w-8 h-8 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${manual[key]})` }} />}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
               <Separator />
-
-              {/* Tipografia */}
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipografia (Google Fonts)</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Títulos / Display</Label>
-                    <Input
-                      value={manual.display_font}
-                      onChange={(e) => setManual(p => ({ ...p, display_font: e.target.value }))}
-                      placeholder="Space Grotesk"
-                    />
+                    <Input value={manual.display_font} onChange={(e) => setManual(p => ({ ...p, display_font: e.target.value }))} placeholder="Space Grotesk" />
                   </div>
                   <div>
                     <Label className="text-xs">Corpo / Body</Label>
-                    <Input
-                      value={manual.body_font}
-                      onChange={(e) => setManual(p => ({ ...p, body_font: e.target.value }))}
-                      placeholder="Inter"
-                    />
+                    <Input value={manual.body_font} onChange={(e) => setManual(p => ({ ...p, body_font: e.target.value }))} placeholder="Inter" />
                   </div>
                 </div>
               </div>
-
-              <Button
-                onClick={handleSaveManual}
-                disabled={savingManual || saveManualBranding.isPending}
-                className="w-full"
-              >
-                {savingManual || saveManualBranding.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
-                ) : (
-                  <><PenTool className="h-4 w-4 mr-2" />Salvar Branding Manual</>
-                )}
+              <Button onClick={handleSaveManual} disabled={savingManual || saveManualBranding.isPending} className="w-full">
+                {savingManual || saveManualBranding.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : <><PenTool className="h-4 w-4 mr-2" />Salvar Branding Manual</>}
               </Button>
             </CardContent>
           </Card>
@@ -457,43 +387,148 @@ export function TenantBrandingPanel({ tenantId, tenantName, membershipId }: Tena
         statusLabels={statusLabels}
         onApprove={handleApprove}
         onReject={handleReject}
+        onUpdate={(updates) => {
+          if (!branding?.id) return;
+          updateBranding.mutate({ brandingId: branding.id, updates });
+        }}
         isApproving={approveBranding.isPending}
         isRejecting={rejectBranding.isPending}
+        isUpdating={updateBranding.isPending}
       />
     </div>
   );
 }
 
-// Extracted result display component
+// ==================== Editable Result Component ====================
 function BrandingResult({
   branding,
   statusColors,
   statusLabels,
   onApprove,
   onReject,
+  onUpdate,
   isApproving,
   isRejecting,
+  isUpdating,
 }: {
   branding: BrandingProposal | null;
   statusColors: Record<string, string>;
   statusLabels: Record<string, string>;
   onApprove: () => void;
   onReject: () => void;
+  onUpdate: (updates: Partial<BrandingProposal>) => void;
   isApproving: boolean;
   isRejecting: boolean;
+  isUpdating: boolean;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editColors, setEditColors] = useState<Record<string, string>>({});
+  const [editSystemColors, setEditSystemColors] = useState<Record<string, string>>({});
+  const [editTypography, setEditTypography] = useState<{ display_font: string; body_font: string }>({ display_font: '', body_font: '' });
+  const [editName, setEditName] = useState('');
+  const [editConcept, setEditConcept] = useState('');
+
   if (!branding) return null;
+
+  const startEditing = () => {
+    setEditColors({ ...branding.color_palette });
+    setEditSystemColors({ ...branding.system_colors });
+    setEditTypography({
+      display_font: branding.typography?.display_font || '',
+      body_font: branding.typography?.body_font || '',
+    });
+    setEditName(branding.suggested_name || '');
+    setEditConcept(branding.brand_concept || '');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdits = () => {
+    onUpdate({
+      color_palette: editColors,
+      system_colors: editSystemColors,
+      typography: { ...branding.typography, ...editTypography },
+      suggested_name: editName || branding.suggested_name,
+      brand_concept: editConcept || branding.brand_concept,
+    });
+    setIsEditing(false);
+  };
+
+  const colorKeys = ['primary', 'secondary', 'accent', 'background', 'foreground', 'muted'];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">Proposta de Branding</h3>
-        <Badge className={cn('border', statusColors[branding.status])}>
-          {statusLabels[branding.status]}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={cn('border', statusColors[branding.status])}>
+            {statusLabels[branding.status]}
+          </Badge>
+          {!isEditing && (branding.status === 'draft' || branding.status === 'approved') && (
+            <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5 h-7 text-xs">
+              <Pencil className="h-3 w-3" />
+              Editar
+            </Button>
+          )}
+        </div>
       </div>
 
-      {branding.ai_analysis && (
+      {/* Editing banner */}
+      {isEditing && (
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+          <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+            ✏️ Modo de edição — altere cores, fontes ou conceito e salve.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} className="h-7 text-xs">
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleSaveEdits} disabled={isUpdating} className="h-7 text-xs gap-1.5">
+              {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Salvar Alterações
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Name & Concept */}
+      {(branding.brand_concept || branding.suggested_name) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              Conceito
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isEditing ? (
+              <>
+                <div>
+                  <Label className="text-xs">Nome sugerido</Label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">Conceito</Label>
+                  <Textarea value={editConcept} onChange={(e) => setEditConcept(e.target.value)} className="min-h-[80px] text-sm" />
+                </div>
+              </>
+            ) : (
+              <>
+                {branding.brand_concept && (
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{branding.brand_concept}</p>
+                )}
+                {branding.suggested_name && (
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-xs text-primary mb-1">Nome sugerido</p>
+                    <p className="text-lg font-bold text-primary">{branding.suggested_name}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {branding.ai_analysis && !isEditing && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -507,27 +542,7 @@ function BrandingResult({
         </Card>
       )}
 
-      {branding.brand_concept && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
-              Conceito
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{branding.brand_concept}</p>
-            {branding.suggested_name && (
-              <div className="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
-                <p className="text-xs text-primary mb-1">Nome sugerido</p>
-                <p className="text-lg font-bold text-primary">{branding.suggested_name}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {branding.brand_attributes && (
+      {branding.brand_attributes && !isEditing && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Atributos da Marca</CardTitle>
@@ -559,6 +574,7 @@ function BrandingResult({
         </Card>
       )}
 
+      {/* Color Palette */}
       {branding.color_palette && (
         <Card>
           <CardHeader className="pb-3">
@@ -568,26 +584,51 @@ function BrandingResult({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-              {['primary', 'secondary', 'accent', 'background', 'foreground', 'muted'].map((key) => {
-                const color = branding.color_palette?.[key];
-                if (!color) return null;
-                return (
-                  <div key={key} className="text-center">
-                    <div className="w-full h-12 rounded-lg border border-border mb-1" style={{ backgroundColor: `hsl(${color})` }} />
-                    <p className="text-[10px] text-muted-foreground capitalize">{key}</p>
-                    <p className="text-[9px] text-muted-foreground/60 font-mono">{color}</p>
-                  </div>
-                );
-              })}
-            </div>
-            {branding.color_palette.rationale && (
-              <p className="text-xs text-muted-foreground mt-2">{branding.color_palette.rationale}</p>
+            {isEditing ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {colorKeys.map((key) => {
+                  const val = editColors[key] || '';
+                  return (
+                    <div key={key}>
+                      <Label className="text-xs capitalize">{key}</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          value={val}
+                          onChange={(e) => setEditColors(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="220 91% 45%"
+                          className="text-xs font-mono"
+                        />
+                        {val && <div className="w-8 h-8 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${val})` }} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  {colorKeys.map((key) => {
+                    const color = branding.color_palette?.[key];
+                    if (!color) return null;
+                    return (
+                      <div key={key} className="text-center">
+                        <div className="w-full h-12 rounded-lg border border-border mb-1" style={{ backgroundColor: `hsl(${color})` }} />
+                        <p className="text-[10px] text-muted-foreground capitalize">{key}</p>
+                        <p className="text-[9px] text-muted-foreground/60 font-mono">{color}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                {branding.color_palette.rationale && (
+                  <p className="text-xs text-muted-foreground mt-2">{branding.color_palette.rationale}</p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
       )}
 
+      {/* Typography */}
       {branding.typography && (
         <Card>
           <CardHeader className="pb-3">
@@ -597,44 +638,78 @@ function BrandingResult({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Display</p>
-                <p className="text-sm font-semibold text-foreground">{branding.typography.display_font}</p>
+            {isEditing ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Display</Label>
+                  <Input value={editTypography.display_font} onChange={(e) => setEditTypography(p => ({ ...p, display_font: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Body</Label>
+                  <Input value={editTypography.body_font} onChange={(e) => setEditTypography(p => ({ ...p, body_font: e.target.value }))} />
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Body</p>
-                <p className="text-sm text-foreground">{branding.typography.body_font}</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Display</p>
+                  <p className="text-sm font-semibold text-foreground">{branding.typography.display_font}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Body</p>
+                  <p className="text-sm text-foreground">{branding.typography.body_font}</p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
 
+      {/* System Colors */}
       {branding.system_colors && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Cores do Sistema</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {Object.entries(branding.system_colors).map(([key, value]) => (
-                <div key={key} className="flex items-center gap-2 p-2 rounded bg-muted/50">
-                  <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${value})` }} />
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground truncate">--{key.replace(/_/g, '-')}</p>
-                    <p className="text-[9px] text-muted-foreground/60 font-mono truncate">{value as string}</p>
+            {isEditing ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {Object.entries(editSystemColors).map(([key, value]) => (
+                  <div key={key}>
+                    <Label className="text-xs">--{key.replace(/_/g, '-')}</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        value={value as string}
+                        onChange={(e) => setEditSystemColors(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="220 91% 45%"
+                        className="text-xs font-mono"
+                      />
+                      {value && <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${value})` }} />}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {Object.entries(branding.system_colors).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2 p-2 rounded bg-muted/50">
+                    <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${value})` }} />
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted-foreground truncate">--{key.replace(/_/g, '-')}</p>
+                      <p className="text-[9px] text-muted-foreground/60 font-mono truncate">{value as string}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
       <Separator />
 
-      {branding.status === 'draft' && (
+      {/* Actions */}
+      {branding.status === 'draft' && !isEditing && (
         <div className="flex gap-3">
           <Button onClick={onApprove} disabled={isApproving} className="flex-1">
             {isApproving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
@@ -647,7 +722,7 @@ function BrandingResult({
         </div>
       )}
 
-      {branding.status === 'approved' && (
+      {branding.status === 'approved' && !isEditing && (
         <div className="space-y-3">
           <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
             <Check className="h-6 w-6 text-primary mx-auto mb-2" />
@@ -655,12 +730,12 @@ function BrandingResult({
           </div>
           <Button onClick={onReject} variant="outline" className="w-full gap-2">
             <RefreshCw className="h-4 w-4" />
-            Refazer Branding
+            Refazer Branding do Zero
           </Button>
         </div>
       )}
 
-      {branding.status === 'rejected' && (
+      {branding.status === 'rejected' && !isEditing && (
         <div className="p-4 rounded-lg bg-muted border border-border text-center">
           <RefreshCw className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Proposta rejeitada. Use as abas acima para gerar uma nova.</p>
