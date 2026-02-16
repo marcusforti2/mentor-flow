@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,6 +83,8 @@ const QUESTION_TYPES = [
 ];
 
 const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
+  const { activeMembership } = useTenant();
+  const tenantId = activeMembership?.tenant_id;
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -102,7 +105,7 @@ const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
   const { toast } = useToast();
 
   const fetchQuestions = async () => {
-    if (!mentorId) return;
+    if (!tenantId) return;
     
     setIsLoading(true);
     
@@ -110,7 +113,7 @@ const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
       const { data, error } = await supabase
         .from('behavioral_questions')
         .select('*')
-        .eq('owner_membership_id', mentorId)
+        .eq('tenant_id', tenantId)
         .order('order_index', { ascending: true });
       
       if (error) throw error;
@@ -129,7 +132,7 @@ const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
 
   useEffect(() => {
     fetchQuestions();
-  }, [mentorId]);
+  }, [tenantId]);
 
   const handleAddQuestion = async () => {
     if (!mentorId || !newQuestion.question_text.trim()) {
@@ -150,6 +153,7 @@ const Formularios = ({ mentorId, onBack }: FormulariosProps) => {
         .from('behavioral_questions')
         .insert({
           owner_membership_id: mentorId,
+          tenant_id: tenantId,
           question_text: newQuestion.question_text,
           question_type: newQuestion.question_type,
           options: newQuestion.question_type === 'multiple_choice' ? newQuestion.options : [],

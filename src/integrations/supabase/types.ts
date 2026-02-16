@@ -196,6 +196,7 @@ export type Database = {
           owner_membership_id: string | null
           question_text: string
           question_type: string | null
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -207,6 +208,7 @@ export type Database = {
           owner_membership_id?: string | null
           question_text: string
           question_type?: string | null
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -218,8 +220,17 @@ export type Database = {
           owner_membership_id?: string | null
           question_text?: string
           question_type?: string | null
+          tenant_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_questions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       behavioral_reports: {
         Row: {
