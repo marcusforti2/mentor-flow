@@ -318,6 +318,8 @@ export type Database = {
       }
       calendar_events: {
         Row: {
+          audience_membership_ids: string[] | null
+          audience_type: string
           created_at: string
           description: string | null
           event_date: string
@@ -332,6 +334,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audience_membership_ids?: string[] | null
+          audience_type?: string
           created_at?: string
           description?: string | null
           event_date: string
@@ -346,6 +350,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audience_membership_ids?: string[] | null
+          audience_type?: string
           created_at?: string
           description?: string | null
           event_date?: string

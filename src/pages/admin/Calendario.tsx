@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2,
   ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List,
-  MapPin, ExternalLink, Sparkles, CalendarDays
+  MapPin, ExternalLink, Sparkles, CalendarDays, Users, Lock, Eye
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -39,6 +39,15 @@ interface CalendarEvent {
   is_recurring: boolean;
   created_at: string;
   owner_membership_id: string | null;
+  audience_type: string;
+  audience_membership_ids: string[];
+}
+
+interface TenantMember {
+  id: string;
+  user_id: string;
+  role: string;
+  profiles: { display_name: string | null; avatar_url: string | null } | null;
 }
 
 type ViewMode = "month" | "week";
@@ -74,7 +83,10 @@ export default function Calendario() {
     meeting_url: "",
     is_recurring: false,
     recurrence_type: "weekly",
+    audience_type: "all_mentees" as string,
+    audience_membership_ids: [] as string[],
   });
+  const [tenantMembers, setTenantMembers] = useState<TenantMember[]>([]);
 
   const { user } = useAuth();
   const { activeMembership } = useTenant();
@@ -84,13 +96,16 @@ export default function Calendario() {
     if (!user || !activeMembership?.tenant_id) { setEvents([]); setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('tenant_id', activeMembership.tenant_id)
-        .order('event_date', { ascending: true });
-      if (error) throw error;
-      setEvents(data || []);
+      const [eventsRes, membersRes] = await Promise.all([
+        supabase.from('calendar_events').select('*').eq('tenant_id', activeMembership.tenant_id).order('event_date', { ascending: true }),
+        supabase.from('memberships').select('id, user_id, role, profiles:user_id(display_name, avatar_url)').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').in('role', ['mentee']),
+      ]);
+      if (eventsRes.error) throw eventsRes.error;
+      setEvents(eventsRes.data || []);
+      setTenantMembers((membersRes.data as any[] || []).map((m: any) => ({
+        id: m.id, user_id: m.user_id, role: m.role,
+        profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles,
+      })));
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({ title: "Erro", description: "Não foi possível carregar os eventos.", variant: "destructive" });
@@ -102,7 +117,7 @@ export default function Calendario() {
   useEffect(() => { fetchData(); }, [user, activeMembership]);
 
   const resetForm = () => {
-    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly" });
+    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [] });
     setEditingEvent(null);
   };
 
@@ -118,11 +133,17 @@ export default function Calendario() {
           title: newEvent.title, description: newEvent.description || null,
           event_date: format(newEvent.event_date, 'yyyy-MM-dd'), event_time: newEvent.event_time || null,
           event_type: newEvent.event_type, meeting_url: newEvent.meeting_url || null, is_recurring: newEvent.is_recurring,
-        }).eq('id', editingEvent.id);
+          audience_type: newEvent.audience_type,
+          audience_membership_ids: newEvent.audience_type === 'specific' ? newEvent.audience_membership_ids : [],
+        } as any).eq('id', editingEvent.id);
         if (error) throw error;
         toast({ title: "✅ Evento atualizado!" });
       } else {
         const eventsToCreate = [];
+        const audienceFields = {
+          audience_type: newEvent.audience_type,
+          audience_membership_ids: newEvent.audience_type === 'specific' ? newEvent.audience_membership_ids : [],
+        };
         if (newEvent.is_recurring) {
           const iterations = newEvent.recurrence_type === "weekly" ? 12 : 6;
           for (let i = 0; i < iterations; i++) {
@@ -132,6 +153,7 @@ export default function Calendario() {
               title: newEvent.title, description: newEvent.description || null,
               event_date: format(eventDate, 'yyyy-MM-dd'), event_time: newEvent.event_time || null,
               event_type: newEvent.event_type, meeting_url: newEvent.meeting_url || null, is_recurring: true,
+              ...audienceFields,
             });
           }
         } else {
@@ -140,9 +162,10 @@ export default function Calendario() {
             title: newEvent.title, description: newEvent.description || null,
             event_date: format(newEvent.event_date, 'yyyy-MM-dd'), event_time: newEvent.event_time || null,
             event_type: newEvent.event_type, meeting_url: newEvent.meeting_url || null, is_recurring: false,
+            ...audienceFields,
           });
         }
-        const { error } = await supabase.from('calendar_events').insert(eventsToCreate);
+        const { error } = await supabase.from('calendar_events').insert(eventsToCreate as any);
         if (error) throw error;
         toast({ title: "✅ Evento criado!", description: newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined });
       }
@@ -178,6 +201,8 @@ export default function Calendario() {
         event_date: parseISO(event.event_date), event_time: event.event_time?.slice(0, 5) || "09:00",
         event_type: event.event_type, meeting_url: event.meeting_url || "",
         is_recurring: event.is_recurring, recurrence_type: "weekly",
+        audience_type: event.audience_type || "all_mentees",
+        audience_membership_ids: (event.audience_membership_ids || []) as string[],
       });
     } else {
       resetForm();
@@ -419,7 +444,7 @@ export default function Calendario() {
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <h4 className="text-sm font-semibold text-foreground truncate">{event.title}</h4>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
                                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {event.event_time?.slice(0, 5) || "Dia todo"}
@@ -429,6 +454,16 @@ export default function Calendario() {
                                   </Badge>
                                   {event.is_recurring && (
                                     <Repeat className="w-3 h-3 text-muted-foreground" />
+                                  )}
+                                  {event.audience_type === 'staff_only' && (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-amber-500/40 text-amber-600">
+                                      <Lock className="w-2.5 h-2.5 mr-0.5" /> Staff
+                                    </Badge>
+                                  )}
+                                  {event.audience_type === 'specific' && (
+                                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-blue-500/40 text-blue-600">
+                                      <Users className="w-2.5 h-2.5 mr-0.5" /> {(event.audience_membership_ids || []).length}
+                                    </Badge>
                                   )}
                                 </div>
                               </div>
@@ -606,6 +641,66 @@ export default function Calendario() {
                 />
               </div>
             </div>
+
+            {/* Audience selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Para quem é este evento?</Label>
+              <Select value={newEvent.audience_type} onValueChange={(v) => setNewEvent({ ...newEvent, audience_type: v, audience_membership_ids: v === 'specific' ? newEvent.audience_membership_ids : [] })}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-50">
+                  <SelectItem value="all_mentees">
+                    <span className="flex items-center gap-2">👥 Todos os mentorados</span>
+                  </SelectItem>
+                  <SelectItem value="specific">
+                    <span className="flex items-center gap-2">🎯 Mentorados específicos</span>
+                  </SelectItem>
+                  <SelectItem value="staff_only">
+                    <span className="flex items-center gap-2">🔒 Só equipe (staff)</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Specific mentees picker */}
+            {newEvent.audience_type === 'specific' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Selecionar mentorados</Label>
+                <div className="border border-border/50 rounded-xl p-2 max-h-[140px] overflow-y-auto space-y-1">
+                  {tenantMembers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">Nenhum mentorado encontrado</p>
+                  ) : tenantMembers.map((member) => {
+                    const isSelected = newEvent.audience_membership_ids.includes(member.id);
+                    return (
+                      <div
+                        key={member.id}
+                        onClick={() => {
+                          setNewEvent(prev => ({
+                            ...prev,
+                            audience_membership_ids: isSelected
+                              ? prev.audience_membership_ids.filter(id => id !== member.id)
+                              : [...prev.audience_membership_ids, member.id],
+                          }));
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all text-sm",
+                          isSelected ? "bg-primary/15 border border-primary/30" : "hover:bg-secondary/50 border border-transparent"
+                        )}
+                      >
+                        <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center transition-colors", isSelected ? "bg-primary border-primary" : "border-muted-foreground/30")}>
+                          {isSelected && <span className="text-[10px] text-primary-foreground">✓</span>}
+                        </div>
+                        <span className="truncate">{member.profiles?.display_name || `Mentorado ${member.id.slice(0, 6)}`}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {newEvent.audience_membership_ids.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground">{newEvent.audience_membership_ids.length} selecionado(s)</p>
+                )}
+              </div>
+            )}
 
             {/* Recurrence info */}
             {newEvent.is_recurring && !editingEvent && (
