@@ -425,3 +425,56 @@ export function useRecentPlaybooks(limit = 5) {
     enabled: !!tenantId && !!membershipId,
   });
 }
+
+export function usePlaybookAnalytics() {
+  const { activeMembership } = useTenant();
+  const tenantId = activeMembership?.tenant_id;
+
+  return useQuery({
+    queryKey: ['playbook-analytics', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return { totalViews: 0, uniqueViewers: 0, topPlaybooks: [] };
+
+      const { data: views, error } = await supabase
+        .from('playbook_views')
+        .select('playbook_id, membership_id, viewed_at')
+        .eq('tenant_id', tenantId);
+      if (error) throw error;
+
+      const totalViews = views?.length || 0;
+      const uniqueViewers = new Set(views?.map(v => v.membership_id)).size;
+
+      // Count views per playbook
+      const viewCounts: Record<string, number> = {};
+      (views || []).forEach(v => {
+        viewCounts[v.playbook_id] = (viewCounts[v.playbook_id] || 0) + 1;
+      });
+
+      // Get top 5
+      const topIds = Object.entries(viewCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      let topPlaybooks: { id: string; title: string; views: number }[] = [];
+      if (topIds.length > 0) {
+        const { data: pbs } = await supabase
+          .from('playbooks')
+          .select('id, title')
+          .in('id', topIds.map(t => t[0]));
+        topPlaybooks = topIds.map(([id, count]) => ({
+          id,
+          title: pbs?.find(p => p.id === id)?.title || 'Sem título',
+          views: count,
+        }));
+      }
+
+      // Views last 7 days
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const recentViews = (views || []).filter(v => new Date(v.viewed_at) > weekAgo).length;
+
+      return { totalViews, uniqueViewers, topPlaybooks, recentViews };
+    },
+    enabled: !!tenantId,
+  });
+}

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
 import { EmojiPicker } from '@/components/playbooks/EmojiPicker';
 import { useNavigate } from 'react-router-dom';
-import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, useRecentPlaybooks, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
+import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, useRecentPlaybooks, usePlaybookAnalytics, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,7 @@ import {
 import {
   BookOpen, Plus, FolderPlus, Search, MoreVertical, Edit3, Trash2,
   Loader2, Lock, Users, UserCheck, Globe, FileText, FolderOpen, ArrowLeft,
-  LayoutGrid, List, Pin, PinOff, Copy, FolderInput, GripVertical, LayoutTemplate,
+  LayoutGrid, List, Pin, PinOff, Copy, FolderInput, GripVertical, LayoutTemplate, Eye, TrendingUp,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -103,6 +103,7 @@ export default function PlaybooksHub() {
   const { data: playbooks = [], isLoading: playbooksLoading } = usePlaybooks();
   const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, duplicatePlaybook, trackPlaybookView, reorderFolders, reorderPlaybooks } = usePlaybookMutations();
   const { data: recentPlaybooks = [] } = useRecentPlaybooks(5);
+  const { data: analytics } = usePlaybookAnalytics();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery');
@@ -365,7 +366,58 @@ export default function PlaybooksHub() {
         />
       </div>
 
-      {/* === RECENTES === */}
+      {/* === ANALYTICS === */}
+      {!selectedFolder && !searchTerm && analytics && analytics.totalViews > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="glass-card">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Eye className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{analytics.totalViews}</p>
+                <p className="text-xs text-muted-foreground">Visualizações</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-accent/10">
+                <Users className="h-4 w-4 text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{analytics.uniqueViewers}</p>
+                <p className="text-xs text-muted-foreground">Leitores únicos</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-secondary">
+                <TrendingUp className="h-4 w-4 text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{analytics.recentViews}</p>
+                <p className="text-xs text-muted-foreground">Últimos 7 dias</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardContent className="p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2">🔥 Mais acessados</p>
+              <div className="space-y-1">
+                {analytics.topPlaybooks.slice(0, 3).map((tp, i) => (
+                  <div key={tp.id} className="flex items-center justify-between text-xs">
+                    <span className="text-foreground truncate flex-1 mr-2">{i + 1}. {tp.title}</span>
+                    <span className="text-muted-foreground shrink-0">{tp.views}x</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {!selectedFolder && !searchTerm && recentPlaybooks.length > 0 && (
         <div className="mb-6">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
