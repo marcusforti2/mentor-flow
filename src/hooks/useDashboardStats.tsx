@@ -142,7 +142,7 @@ export function useMentorDashboardStats() {
       const meetingsThisWeek = meetingsRes.data?.length || 0;
       const engagementRate = mentoradosCount > 0 ? Math.round((activeMentoradosCount / mentoradosCount) * 100) : 0;
 
-      // Map activity
+      // Map activity type helper
       const mapActivityType = (actionType: string): ActivityItem['type'] => {
         if (actionType.includes('closed_won') || actionType.includes('trail_completed')) return 'trail_completed';
         if (actionType.includes('lead') || actionType.includes('prospection')) return 'prospection';
@@ -151,16 +151,6 @@ export function useMentorDashboardStats() {
         if (actionType.includes('meeting')) return 'meeting';
         return 'prospection';
       };
-
-      const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => {
-        const userId = membershipToUser.get(a.membership_id || '') || '';
-        const name = profileMap.get(userId) || '';
-        return {
-          id: a.id, type: mapActivityType(a.action_type),
-          title: a.action_description || a.action_type, timestamp: a.created_at,
-          mentoradoName: name || undefined,
-        };
-      });
 
       // BATCH 2: Dependent queries - ranking, trail progress, SOS details, at-risk, wins - ALL in parallel
       const membershipIds = menteeMemberships.map(m => m.id);
@@ -192,6 +182,17 @@ export function useMentorDashboardStats() {
 
       const profileMap = new Map<string, string>(((profilesRes as any).data || []).map((p: any) => [p.user_id, p.full_name]));
       const membershipToUser = new Map(menteeMemberships.map(m => [m.id, m.user_id]));
+
+      // Build recentActivity (now that profileMap and membershipToUser are available)
+      const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => {
+        const userId = membershipToUser.get(a.membership_id || '') || '';
+        const name = profileMap.get(userId) || '';
+        return {
+          id: a.id, type: mapActivityType(a.action_type),
+          title: a.action_description || a.action_type, timestamp: a.created_at,
+          mentoradoName: name || undefined,
+        };
+      });
 
       // Build ranking
       let topRanking: RankingItem[] = [];
