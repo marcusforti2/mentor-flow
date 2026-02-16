@@ -250,7 +250,7 @@ export default function MentoradoPlaybooks() {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                           <div className="absolute bottom-0 left-0 right-0 p-4">
                             <h3 className="font-display font-bold text-white text-lg leading-tight line-clamp-2 drop-shadow-lg">
-                              {folder.name}
+                              <span className="mr-1.5">{folder.icon || '📁'}</span>{folder.name}
                             </h3>
                             {folder.description && (
                               <p className="text-white/70 text-xs mt-1 line-clamp-1">{folder.description}</p>
@@ -288,7 +288,7 @@ export default function MentoradoPlaybooks() {
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground truncate">{folder.name}</h3>
+                            <h3 className="font-semibold text-foreground truncate"><span className="mr-1.5">{folder.icon || '📁'}</span>{folder.name}</h3>
                             <p className="text-xs text-muted-foreground">{folder.count} playbook{folder.count !== 1 ? 's' : ''}</p>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />

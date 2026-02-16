@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
+import { EmojiPicker } from '@/components/playbooks/EmojiPicker';
 import { useNavigate } from 'react-router-dom';
 import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ export default function PlaybooksHub() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'folder' | 'playbook'; id: string; name: string } | null>(null);
 
   // Form states
-  const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '', cover_position: 'center' as string });
+  const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '', cover_position: 'center' as string, icon: '📁' });
   const [playbookForm, setPlaybookForm] = useState({ title: '', description: '', folder_id: '', visibility: 'mentor_only' });
 
   // Selected folder view
@@ -80,10 +81,10 @@ export default function PlaybooksHub() {
   const handleOpenFolderDialog = (folder?: PlaybookFolder) => {
     if (folder) {
       setEditingFolder(folder);
-      setFolderForm({ name: folder.name, description: folder.description || '', cover_image_url: folder.cover_image_url || '', cover_position: folder.cover_position || 'center' });
+      setFolderForm({ name: folder.name, description: folder.description || '', cover_image_url: folder.cover_image_url || '', cover_position: folder.cover_position || 'center', icon: folder.icon || '📁' });
     } else {
       setEditingFolder(null);
-      setFolderForm({ name: '', description: '', cover_image_url: '', cover_position: 'center' });
+      setFolderForm({ name: '', description: '', cover_image_url: '', cover_position: 'center', icon: '📁' });
     }
     setFolderDialogOpen(true);
   };
@@ -91,9 +92,9 @@ export default function PlaybooksHub() {
   const handleSaveFolder = async () => {
     if (!folderForm.name.trim()) return;
     if (editingFolder) {
-      await updateFolder.mutateAsync({ id: editingFolder.id, name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null, cover_position: folderForm.cover_position });
+      await updateFolder.mutateAsync({ id: editingFolder.id, name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null, cover_position: folderForm.cover_position, icon: folderForm.icon });
     } else {
-      await createFolder.mutateAsync({ name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null, cover_position: folderForm.cover_position });
+      await createFolder.mutateAsync({ name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null, cover_position: folderForm.cover_position, icon: folderForm.icon });
     }
     setFolderDialogOpen(false);
   };
@@ -386,8 +387,11 @@ export default function PlaybooksHub() {
               />
             </div>
             <div>
-              <Label>Nome *</Label>
-              <Input value={folderForm.name} onChange={e => setFolderForm({ ...folderForm, name: e.target.value })} placeholder="Ex: Prospecção" />
+              <Label>Ícone & Nome *</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <EmojiPicker value={folderForm.icon} onChange={(emoji) => setFolderForm({ ...folderForm, icon: emoji })} />
+                <Input value={folderForm.name} onChange={e => setFolderForm({ ...folderForm, name: e.target.value })} placeholder="Ex: Prospecção" className="flex-1" />
+              </div>
             </div>
             <div>
               <Label>Descrição</Label>
@@ -519,7 +523,7 @@ function FolderCardGallery({
         {/* Text on image */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <h3 className="font-display font-bold text-white text-lg leading-tight line-clamp-2 drop-shadow-lg">
-            {folder.name}
+            <span className="mr-1.5">{folder.icon || '📁'}</span>{folder.name}
           </h3>
           {folder.description && (
             <p className="text-white/70 text-xs mt-1 line-clamp-1">{folder.description}</p>
@@ -588,7 +592,7 @@ function FolderCardList({
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground truncate">{folder.name}</h3>
+          <h3 className="font-semibold text-foreground truncate"><span className="mr-1.5">{folder.icon || '📁'}</span>{folder.name}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {playbookCount} playbook{playbookCount !== 1 ? 's' : ''}
             {folder.description && ` • ${folder.description}`}
