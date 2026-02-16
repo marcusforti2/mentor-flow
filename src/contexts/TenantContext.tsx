@@ -242,11 +242,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     const inject = (prop: string, value: string | null | undefined) => {
       if (!value) return;
+      // Strip accidental hsl() wrapper: "hsl(220 15% 10%)" -> "220 15% 10%"
+      let cleaned = value;
+      const hslMatch = value.match(/^hsl\(([^)]+)\)$/i);
+      if (hslMatch) cleaned = hslMatch[1].trim();
+      
       let hsl: string | null;
-      if (isHslValue(value)) {
-        hsl = value.trim();
+      if (isHslValue(cleaned)) {
+        hsl = cleaned;
       } else {
-        hsl = hexToHsl(value);
+        hsl = hexToHsl(cleaned);
       }
       if (hsl) {
         body.style.setProperty(prop, hsl);
