@@ -2833,6 +2833,7 @@ export type Database = {
           suggested_name: string | null
           system_colors: Json | null
           tenant_id: string
+          theme_mode: string | null
           typography: Json | null
           updated_at: string
           uploaded_assets: string[] | null
@@ -2852,6 +2853,7 @@ export type Database = {
           suggested_name?: string | null
           system_colors?: Json | null
           tenant_id: string
+          theme_mode?: string | null
           typography?: Json | null
           updated_at?: string
           uploaded_assets?: string[] | null
@@ -2871,6 +2873,7 @@ export type Database = {
           suggested_name?: string | null
           system_colors?: Json | null
           tenant_id?: string
+          theme_mode?: string | null
           typography?: Json | null
           updated_at?: string
           uploaded_assets?: string[] | null
@@ -2900,6 +2903,7 @@ export type Database = {
           settings: Json | null
           slug: string
           status: string | null
+          theme_mode: string
           updated_at: string | null
         }
         Insert: {
@@ -2916,6 +2920,7 @@ export type Database = {
           settings?: Json | null
           slug: string
           status?: string | null
+          theme_mode?: string
           updated_at?: string | null
         }
         Update: {
@@ -2932,6 +2937,7 @@ export type Database = {
           settings?: Json | null
           slug?: string
           status?: string | null
+          theme_mode?: string
           updated_at?: string | null
         }
         Relationships: []
