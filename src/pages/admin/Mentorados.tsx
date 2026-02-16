@@ -941,7 +941,7 @@ const Mentorados = () => {
 
                   {/* Business Summary */}
                   <MentoradoBusinessSummary
-                    legacyMentoradoId={selectedMentorado.legacy_mentorado_id}
+                    legacyMentoradoId={selectedMentorado.membership_id}
                   />
 
                   {/* Activity Timeline */}
