@@ -432,6 +432,13 @@ function BrandingResult({
 
   if (!branding) return null;
 
+  // Strip wrapping hsl(...) if present, returning raw "220 91% 45%"
+  const stripHsl = (val: string): string => {
+    if (!val) return '';
+    const m = val.match(/^hsl\(([^)]+)\)$/i);
+    return m ? m[1].trim() : val.trim();
+  };
+
   // HSL string "220 91% 45%" <-> hex "#RRGGBB"
   const hslToHex = (hslStr: string): string => {
     if (!hslStr) return '#888888';
@@ -464,7 +471,12 @@ function BrandingResult({
 
   const startEditing = (mode: 'full' | 'colors') => {
     setEditColors({ ...branding.color_palette });
-    setEditSystemColors({ ...branding.system_colors });
+    // Strip hsl() wrappers from system_colors
+    const cleaned: Record<string, string> = {};
+    Object.entries(branding.system_colors || {}).forEach(([k, v]) => {
+      cleaned[k] = stripHsl(v as string);
+    });
+    setEditSystemColors(cleaned);
     setEditTypography({
       display_font: branding.typography?.display_font || '',
       body_font: branding.typography?.body_font || '',
@@ -722,6 +734,7 @@ function BrandingResult({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Cores do Sistema</CardTitle>
+            <CardDescription>Variáveis CSS aplicadas nos componentes (cards, bordas, botões). Derivadas da paleta acima.</CardDescription>
           </CardHeader>
           <CardContent>
             {isEditing ? (
@@ -748,15 +761,18 @@ function BrandingResult({
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {Object.entries(branding.system_colors).map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-2 p-2 rounded bg-muted/50">
-                    <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: `hsl(${value})` }} />
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-muted-foreground truncate">--{key.replace(/_/g, '-')}</p>
-                      <p className="text-[9px] text-muted-foreground/60 font-mono truncate">{value as string}</p>
+                {Object.entries(branding.system_colors).map(([key, value]) => {
+                  const raw = stripHsl(value as string);
+                  return (
+                    <div key={key} className="flex items-center gap-2 p-2 rounded bg-muted/50">
+                      <div className="w-6 h-6 rounded border border-border shrink-0" style={{ backgroundColor: raw ? `hsl(${raw})` : 'transparent' }} />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-muted-foreground truncate">--{key.replace(/_/g, '-')}</p>
+                        <p className="text-[9px] text-muted-foreground/60 font-mono truncate">{raw}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -785,7 +801,7 @@ function BrandingResult({
             <Check className="h-6 w-6 text-primary mx-auto mb-2" />
             <p className="text-sm text-primary font-medium">Branding aplicado ao tenant com sucesso</p>
           </div>
-          <Button onClick={onReject} variant="outline" className="w-full gap-2">
+          <Button onClick={onReject} variant="outline" className="w-full gap-2 text-foreground border-border">
             <RefreshCw className="h-4 w-4" />
             Refazer Branding do Zero
           </Button>
