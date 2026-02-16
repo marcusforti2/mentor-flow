@@ -13,11 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2, 
-  ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List
+  ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List, CalendarClock
 } from "lucide-react";
+import { AvailabilityEditor } from "@/components/scheduling/AvailabilityEditor";
+import { BookingCalendar } from "@/components/scheduling/BookingCalendar";
 import { 
   format, startOfMonth, endOfMonth, eachDayOfInterval, 
   isSameDay, addMonths, subMonths, isToday, parseISO, startOfWeek, 
@@ -334,7 +337,19 @@ export default function Calendario() {
   }
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4">
+    <Tabs defaultValue="calendar" className="h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4">
+      <TabsList className="self-start">
+        <TabsTrigger value="calendar" className="gap-2">
+          <CalendarIcon className="h-4 w-4" />
+          Eventos
+        </TabsTrigger>
+        <TabsTrigger value="scheduling" className="gap-2">
+          <CalendarClock className="h-4 w-4" />
+          Agendamento
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="calendar" className="flex-1 flex flex-col gap-4 mt-0 min-h-0">
       {/* Compact Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-4">
@@ -825,6 +840,12 @@ export default function Calendario() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="scheduling" className="flex-1 mt-0 min-h-0 space-y-6">
+        <AvailabilityEditor />
+        <BookingCalendar />
+      </TabsContent>
+    </Tabs>
   );
 }

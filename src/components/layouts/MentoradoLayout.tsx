@@ -1,45 +1,51 @@
- import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
- import { FloatingDock } from '@/components/FloatingDock';
- import { useAuth } from '@/hooks/useAuth';
-  import { useTenant } from '@/contexts/TenantContext';
- import { WhatsAppGroupModal } from '@/components/WhatsAppGroupModal';
- import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
- import { useQuery } from '@tanstack/react-query';
- import { supabase } from '@/integrations/supabase/client';
- import { Button } from '@/components/ui/button';
- import { LogOut, ArrowLeft } from 'lucide-react';
- import { BrandLogo } from '@/components/BrandLogo';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { FloatingDock, type DockItem } from '@/components/FloatingDock';
+import { useAuth } from '@/hooks/useAuth';
+ import { useTenant } from '@/contexts/TenantContext';
+import { WhatsAppGroupModal } from '@/components/WhatsAppGroupModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { LogOut, ArrowLeft } from 'lucide-react';
+import { BrandLogo } from '@/components/BrandLogo';
 import {
   LayoutDashboard,
   BookOpen,
   Target,
   Calendar,
-  AlertTriangle,
   User,
   Sparkles,
   FolderOpen,
   ClipboardCheck,
-  CalendarClock,
   BookMarked,
 } from 'lucide-react';
- import {
-   Tooltip,
-   TooltipContent,
-   TooltipTrigger,
- } from '@/components/ui/tooltip';
- import { cn } from '@/lib/utils';
- 
-const menuItems = [
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+const menuItems: DockItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/mentorado' },
-  { icon: BookOpen, label: 'Trilhas', path: '/mentorado/trilhas' },
-  { icon: BookMarked, label: 'Playbooks', path: '/mentorado/playbooks' },
-  { icon: ClipboardCheck, label: 'Minhas Tarefas', path: '/mentorado/tarefas' },
-  { icon: Target, label: 'Meu CRM', path: '/mentorado/meu-crm' },
-  { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
-  { icon: FolderOpen, label: 'Arquivos & Reuniões', path: '/mentorado/meus-arquivos' },
+  {
+    icon: BookOpen, label: 'Aprender',
+    children: [
+      { icon: BookOpen, label: 'Trilhas', path: '/mentorado/trilhas' },
+      { icon: BookMarked, label: 'Playbooks', path: '/mentorado/playbooks' },
+    ],
+  },
+  {
+    icon: Target, label: 'Vendas',
+    children: [
+      { icon: Target, label: 'Meu CRM', path: '/mentorado/meu-crm' },
+      { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
+      { icon: ClipboardCheck, label: 'Minhas Tarefas', path: '/mentorado/tarefas' },
+    ],
+  },
   { icon: Calendar, label: 'Calendário', path: '/mentorado/calendario' },
-  { icon: CalendarClock, label: 'Agendar Sessão', path: '/mentorado/agendamento' },
-  { icon: AlertTriangle, label: 'Centro SOS', path: '/mentorado/sos' },
+  { icon: FolderOpen, label: 'Arquivos & Reuniões', path: '/mentorado/meus-arquivos' },
   { icon: User, label: 'Meu Perfil', path: '/mentorado/perfil' },
 ];
  
@@ -66,9 +72,10 @@ const menuItems = [
 
     const displayProfile = isImpersonating && impersonatedProfile ? impersonatedProfile : profile;
   
-    const isDashboard = location.pathname === '/mentorado';
-    const currentPage = menuItems.find(item => item.path === location.pathname);
-    const pageTitle = currentPage?.label || 'Página';
+  const isDashboard = location.pathname === '/mentorado';
+  const allPages = menuItems.flatMap(item => item.children ? item.children : [item]);
+  const currentPage = allPages.find(item => item.path === location.pathname);
+  const pageTitle = currentPage?.label || 'Página';
 
     const isMasterViewing = realMembership?.role === 'master_admin';
     const showReturnBanner = isImpersonating || isMasterViewing;
