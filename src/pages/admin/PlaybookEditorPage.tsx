@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlaybookMutations, usePlaybookPages, type Playbook, type PlaybookPage } from '@/hooks/usePlaybooks';
 import { PlaybookTipTapEditor } from '@/components/playbooks/PlaybookTipTapEditor';
 import { PlaybookAccessPanel } from '@/components/playbooks/PlaybookAccessPanel';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield, Link2, Copy, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PlaybookEditorPage() {
@@ -138,6 +139,48 @@ export default function PlaybookEditorPage() {
     queryClient.invalidateQueries({ queryKey: ['playbook-detail', playbookId] });
   };
 
+  // Generate public slug
+  const handleGenerateSlug = async () => {
+    if (!playbookId || !playbook) return;
+    const slug = playbook.public_slug || `${playbook.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now().toString(36)}`;
+    await supabase.from('playbooks').update({ public_slug: slug }).eq('id', playbookId);
+    queryClient.invalidateQueries({ queryKey: ['playbook-detail', playbookId] });
+    toast.success('Link público gerado!');
+  };
+
+  const publicUrl = playbook?.public_slug ? `${window.location.origin}/p/${playbook.public_slug}` : null;
+
+  const handleCopyLink = () => {
+    if (publicUrl) {
+      navigator.clipboard.writeText(publicUrl);
+      toast.success('Link copiado!');
+    }
+  };
+
+  // Drag-drop reorder pages
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  const handleDragStart = (index: number) => { dragItem.current = index; };
+  const handleDragEnter = (index: number) => { dragOverItem.current = index; };
+  const handleDragEnd = async () => {
+    if (dragItem.current === null || dragOverItem.current === null || dragItem.current === dragOverItem.current) {
+      dragItem.current = null;
+      dragOverItem.current = null;
+      return;
+    }
+    const reordered = [...pages];
+    const [removed] = reordered.splice(dragItem.current, 1);
+    reordered.splice(dragOverItem.current, 0, removed);
+    // Update positions in DB
+    await Promise.all(reordered.map((p, i) =>
+      supabase.from('playbook_pages').update({ position: i }).eq('id', p.id)
+    ));
+    dragItem.current = null;
+    dragOverItem.current = null;
+    refetchPages();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -176,6 +219,33 @@ export default function PlaybookEditorPage() {
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Share link */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Link2 className="h-3.5 w-3.5" /> Compartilhar
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 space-y-3">
+              <p className="text-sm font-medium">Link público</p>
+              {playbook.visibility !== 'public' ? (
+                <p className="text-xs text-muted-foreground">Altere a visibilidade para "Público" na sidebar para gerar um link compartilhável.</p>
+              ) : !publicUrl ? (
+                <Button size="sm" onClick={handleGenerateSlug} className="w-full">Gerar link público</Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input value={publicUrl} readOnly className="text-xs h-8" />
+                    <Button size="sm" variant="outline" className="shrink-0 h-8" onClick={handleCopyLink}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Qualquer pessoa com este link pode visualizar o playbook.</p>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
           {saved ? (
             <Badge variant="outline" className="gap-1 text-green-600 border-green-200">
               <Check className="h-3 w-3" /> Salvo
@@ -226,12 +296,23 @@ export default function PlaybookEditorPage() {
             <span className="truncate">Página principal</span>
           </button>
 
-          {/* Subpages */}
-          {pages.map(page => (
-            <div key={page.id} className="group flex items-center gap-1">
+          {/* Subpages with drag-drop */}
+          {pages.map((page, index) => (
+            <div
+              key={page.id}
+              className="group flex items-center gap-1"
+              draggable
+              onDragStart={() => handleDragStart(index)}
+              onDragEnter={() => handleDragEnter(index)}
+              onDragEnd={handleDragEnd}
+              onDragOver={e => e.preventDefault()}
+            >
+              <span className="cursor-grab opacity-0 group-hover:opacity-50 shrink-0">
+                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              </span>
               <button
                 onClick={() => { setActivePage(page.id); setActivePageContent(page.content); }}
-                className={`flex-1 text-left text-sm px-3 py-2 rounded-lg transition-colors flex items-center gap-2 min-w-0 ${
+                className={`flex-1 text-left text-sm px-2 py-2 rounded-lg transition-colors flex items-center gap-2 min-w-0 ${
                   activePage === page.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
