@@ -402,25 +402,32 @@ function PlaybookGrid({ playbooks, viewMode, onSelect }: {
             className="glass-card hover:border-primary/30 transition-all overflow-hidden cursor-pointer group"
             onClick={() => onSelect(pb)}
           >
-            {pb.cover_image_url ? (
-              <div className="h-36 bg-muted overflow-hidden">
+            <div className="relative h-44 overflow-hidden">
+              {pb.cover_image_url ? (
                 <img src={pb.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(pb.cover_position)} transition-transform duration-500 group-hover:scale-105`} />
-              </div>
-            ) : (
-              <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
-                <BookOpen className="h-8 w-8 text-primary/30" />
-              </div>
-            )}
-            <CardContent className="pt-4 pb-4 px-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground line-clamp-1 flex-1">{pb.title}</h3>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-              </div>
-              {pb.description && <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{pb.description}</p>}
-              <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-                {pb.pages_count! > 0 && (
-                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" />{pb.pages_count}</span>
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+                  <BookOpen className="h-10 w-10 text-primary/30" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <h3 className="font-display font-bold text-white text-lg leading-tight line-clamp-2 drop-shadow-lg">
+                  {pb.title}
+                </h3>
+                {pb.description && (
+                  <p className="text-white/70 text-xs mt-1 line-clamp-1">{pb.description}</p>
                 )}
+              </div>
+            </div>
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  {pb.is_pinned && <Pin className="h-3 w-3 text-primary" />}
+                  {pb.pages_count! > 0 && (
+                    <><FileText className="h-3.5 w-3.5" />{pb.pages_count} pág.</>
+                  )}
+                </span>
                 <span>{formatDistanceToNow(new Date(pb.updated_at), { addSuffix: true, locale: ptBR })}</span>
               </div>
             </CardContent>
