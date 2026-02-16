@@ -106,11 +106,39 @@ export function useTenantBranding(tenantId: string | null) {
         .single();
 
       if (error) throw error;
+
+      // Also sync key fields directly to tenants table so changes are visible immediately
+      const tid = proposal.tenant_id;
+      if (tid) {
+        const tenantUpdate: any = {};
+        if (proposal.suggested_name) tenantUpdate.name = proposal.suggested_name;
+        if (proposal.color_palette?.primary) tenantUpdate.primary_color = proposal.color_palette.primary;
+        if (proposal.color_palette?.secondary) tenantUpdate.secondary_color = proposal.color_palette.secondary;
+        if (proposal.color_palette?.accent) tenantUpdate.accent_color = proposal.color_palette.accent;
+        if (proposal.typography?.display_font) tenantUpdate.font_family = proposal.typography.display_font;
+        if (proposal.suggested_logo_url) tenantUpdate.logo_url = proposal.suggested_logo_url;
+
+        const uiTokens: Record<string, string> = {};
+        if (proposal.color_palette?.background) uiTokens.background = proposal.color_palette.background;
+        if (proposal.color_palette?.foreground) uiTokens.foreground = proposal.color_palette.foreground;
+        if (proposal.system_colors?.card) uiTokens.card = stripHsl(proposal.system_colors.card);
+        if (proposal.system_colors?.card_foreground) uiTokens.card_foreground = stripHsl(proposal.system_colors.card_foreground);
+        if (proposal.system_colors?.muted_foreground) uiTokens.muted_foreground = stripHsl(proposal.system_colors.muted_foreground);
+        if (proposal.system_colors?.border) uiTokens.border = stripHsl(proposal.system_colors.border);
+        if (Object.keys(uiTokens).length > 0) tenantUpdate.brand_attributes = uiTokens;
+
+        if (Object.keys(tenantUpdate).length > 0) {
+          await supabase.from('tenants').update(tenantUpdate).eq('id', tid);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-branding', tenantId] });
-      toast.success('Branding manual salvo como rascunho!');
+      queryClient.invalidateQueries({ queryKey: ['tenants-with-counts'] });
+      refreshTenant();
+      toast.success('Branding salvo e aplicado ao tenant!');
     },
     onError: (error: Error) => {
       toast.error(`Erro ao salvar: ${error.message}`);
