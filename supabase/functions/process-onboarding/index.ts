@@ -59,20 +59,20 @@ Deno.serve(async (req) => {
 
     console.log('Processing onboarding for:', email);
     
-    // Validate invite token if provided
+    // Validate invite token if provided (uses new 'invites' table)
     let inviteRecord = null;
     if (inviteToken) {
       const { data: invite, error: inviteError } = await supabase
-        .from('mentorado_invites')
+        .from('invites')
         .select('*')
-        .eq('invite_token', inviteToken)
+        .eq('id', inviteToken)
         .eq('status', 'pending')
         .single();
       
       if (inviteError || !invite) {
         return new Response(JSON.stringify({ error: 'Convite inválido ou já utilizado' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      if (new Date(invite.expires_at) < new Date()) {
+      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
         return new Response(JSON.stringify({ error: 'Convite expirado' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       inviteRecord = invite;
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
 
     // 10. Mark invite as accepted
     if (inviteRecord) {
-      await supabase.from('mentorado_invites').update({
+      await supabase.from('invites').update({
         status: 'accepted',
         accepted_at: new Date().toISOString(),
       }).eq('id', inviteRecord.id);

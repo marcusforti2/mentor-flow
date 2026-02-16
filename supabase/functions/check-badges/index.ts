@@ -25,6 +25,41 @@ interface UserStats {
   aiToolsUsed: number;
 }
 
+function evaluateCriteria(criteria: string, stats: UserStats): boolean {
+  if (!criteria) return false;
+  try {
+    const match = criteria.match(/(\w+)\s*(>=|<=|>|<|=)\s*(\d+)/);
+    if (!match) return false;
+
+    const [, field, operator, valueStr] = match;
+    const value = parseInt(valueStr, 10);
+
+    const fieldMap: Record<string, number | undefined> = {
+      prospection_count: stats.prospectionCount,
+      lessons_completed: stats.lessonsCompleted,
+      modules_completed: stats.modulesCompleted,
+      trails_completed: stats.trailsCompleted,
+      weekly_rank: stats.weeklyRank === 0 ? undefined : stats.weeklyRank,
+      streak_days: stats.streakDays,
+      ai_tools_used: stats.aiToolsUsed,
+    };
+
+    const statValue = fieldMap[field];
+    if (statValue === undefined) return false;
+
+    switch (operator) {
+      case ">=": return statValue >= value;
+      case "<=": return statValue <= value;
+      case ">": return statValue > value;
+      case "<": return statValue < value;
+      case "=": return statValue === value;
+      default: return false;
+    }
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,80 +75,93 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user from token
+    // Authenticate user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
     if (userError || !user) {
       throw new Error("Invalid user token");
     }
 
-    // Get mentorado ID
-    const { data: mentorado, error: mentoradoError } = await supabase
-      .from("mentorados")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
+    // Get membership_id from body or find active mentee membership
+    const body = await req.json().catch(() => ({}));
+    let membershipId: string;
 
-    if (mentoradoError || !mentorado) {
-      throw new Error("Mentorado not found");
+    if (body.membership_id) {
+      // Validate ownership: the membership must belong to this user
+      const { data: membership, error: memError } = await supabase
+        .from("memberships")
+        .select("id, tenant_id")
+        .eq("id", body.membership_id)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .single();
+
+      if (memError || !membership) {
+        throw new Error("Membership not found or unauthorized");
+      }
+      membershipId = membership.id;
+    } else {
+      // Fallback: find first active mentee membership
+      const { data: membership, error: memError } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("role", "mentee")
+        .eq("status", "active")
+        .limit(1)
+        .single();
+
+      if (memError || !membership) {
+        throw new Error("No active mentee membership found");
+      }
+      membershipId = membership.id;
     }
 
-    const mentoradoId = mentorado.id;
-
-    // Get all badges
+    // Get all badges for this tenant
     const { data: allBadges, error: badgesError } = await supabase
       .from("badges")
       .select("*");
 
-    if (badgesError) {
-      throw new Error("Error fetching badges");
-    }
+    if (badgesError) throw new Error("Error fetching badges");
 
     // Get already unlocked badges
     const { data: unlockedBadges } = await supabase
       .from("user_badges")
       .select("badge_id")
-      .eq("mentorado_id", mentoradoId);
+      .eq("membership_id", membershipId);
 
     const unlockedBadgeIds = new Set(unlockedBadges?.map((ub) => ub.badge_id) || []);
 
-    // Calculate user stats
-    const [
-      prospectionsRes,
-      progressRes,
-      streakRes,
-      aiUsageRes,
-    ] = await Promise.all([
+    // Calculate user stats using membership_id
+    const [prospectionsRes, progressRes, streakRes, aiUsageRes] = await Promise.all([
       supabase
         .from("crm_prospections")
         .select("id", { count: "exact" })
-        .eq("mentorado_id", mentoradoId),
+        .eq("membership_id", membershipId),
       supabase
         .from("trail_progress")
         .select("id, completed, lesson_id")
-        .eq("mentorado_id", mentoradoId)
+        .eq("membership_id", membershipId)
         .eq("completed", true),
       supabase
         .from("user_streaks")
         .select("current_streak")
-        .eq("mentorado_id", mentoradoId)
+        .eq("membership_id", membershipId)
         .maybeSingle(),
       supabase
         .from("ai_tool_usage")
         .select("tool_type")
-        .eq("mentorado_id", mentoradoId),
+        .eq("membership_id", membershipId),
     ]);
 
-    // Calculate unique AI tools used
     const uniqueAiTools = new Set(aiUsageRes.data?.map((u) => u.tool_type) || []);
 
     const stats: UserStats = {
       prospectionCount: prospectionsRes.count || 0,
       lessonsCompleted: progressRes.data?.length || 0,
-      modulesCompleted: 0, // Simplified - would need more complex query
-      trailsCompleted: 0, // Simplified - would need more complex query
-      weeklyRank: 0, // Would need ranking calculation
+      modulesCompleted: 0,
+      trailsCompleted: 0,
+      weeklyRank: 0,
       streakDays: streakRes.data?.current_streak || 0,
       aiToolsUsed: uniqueAiTools.size,
     };
@@ -122,20 +170,12 @@ Deno.serve(async (req) => {
     const newlyUnlockedBadges: Badge[] = [];
 
     for (const badge of allBadges as Badge[]) {
-      if (unlockedBadgeIds.has(badge.id)) {
-        continue; // Already unlocked
-      }
+      if (unlockedBadgeIds.has(badge.id)) continue;
 
-      const shouldUnlock = evaluateCriteria(badge.criteria, stats);
-      
-      if (shouldUnlock) {
-        // Insert new user_badge
+      if (evaluateCriteria(badge.criteria, stats)) {
         const { error: insertError } = await supabase
           .from("user_badges")
-          .insert({
-            mentorado_id: mentoradoId,
-            badge_id: badge.id,
-          });
+          .insert({ membership_id: membershipId, badge_id: badge.id });
 
         if (!insertError) {
           newlyUnlockedBadges.push(badge);
@@ -154,81 +194,14 @@ Deno.serve(async (req) => {
         })),
         stats,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
     console.error("Error in check-badges:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: errorMessage,
-      }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
-
-function evaluateCriteria(criteria: string, stats: UserStats): boolean {
-  if (!criteria) return false;
-
-  try {
-    // Parse simple criteria like "prospection_count >= 1"
-    const match = criteria.match(/(\w+)\s*(>=|<=|>|<|=)\s*(\d+)/);
-    if (!match) return false;
-
-    const [, field, operator, valueStr] = match;
-    const value = parseInt(valueStr, 10);
-
-    let statValue: number;
-    switch (field) {
-      case "prospection_count":
-        statValue = stats.prospectionCount;
-        break;
-      case "lessons_completed":
-        statValue = stats.lessonsCompleted;
-        break;
-      case "modules_completed":
-        statValue = stats.modulesCompleted;
-        break;
-      case "trails_completed":
-        statValue = stats.trailsCompleted;
-        break;
-      case "weekly_rank":
-        // For rank, lower is better, so we invert the logic
-        if (stats.weeklyRank === 0) return false; // Not ranked
-        statValue = stats.weeklyRank;
-        break;
-      case "streak_days":
-        statValue = stats.streakDays;
-        break;
-      case "ai_tools_used":
-        statValue = stats.aiToolsUsed;
-        break;
-      default:
-        return false;
-    }
-
-    switch (operator) {
-      case ">=":
-        return statValue >= value;
-      case "<=":
-        return statValue <= value;
-      case ">":
-        return statValue > value;
-      case "<":
-        return statValue < value;
-      case "=":
-        return statValue === value;
-      default:
-        return false;
-    }
-  } catch {
-    return false;
-  }
-}

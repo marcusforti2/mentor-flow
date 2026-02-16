@@ -16,10 +16,40 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // ========== AUTH: Validate caller ==========
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { tenant_id, mentor_membership_id } = await req.json();
     if (!tenant_id || !mentor_membership_id) {
       return new Response(JSON.stringify({ error: "tenant_id and mentor_membership_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate ownership: the membership must belong to the caller
+    const { data: callerMembership } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("id", mentor_membership_id)
+      .eq("user_id", user.id)
+      .eq("tenant_id", tenant_id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (!callerMembership) {
+      return new Response(JSON.stringify({ error: "Forbidden: membership mismatch" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
