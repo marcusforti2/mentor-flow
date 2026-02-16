@@ -149,7 +149,7 @@ export function usePlaybookMutations() {
   const membershipId = activeMembership?.id;
 
   const createFolder = useMutation({
-    mutationFn: async (data: { name: string; description?: string }) => {
+    mutationFn: async (data: { name: string; description?: string; cover_image_url?: string | null }) => {
       if (!tenantId || !membershipId) throw new Error('Sem tenant/membership');
       const { data: result, error } = await supabase
         .from('playbook_folders')
@@ -157,6 +157,7 @@ export function usePlaybookMutations() {
           tenant_id: tenantId,
           name: data.name,
           description: data.description || null,
+          cover_image_url: data.cover_image_url || null,
           created_by_membership_id: membershipId,
         })
         .select()

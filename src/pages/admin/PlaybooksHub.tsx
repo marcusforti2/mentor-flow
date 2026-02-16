@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
 import { useNavigate } from 'react-router-dom';
 import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ export default function PlaybooksHub() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'folder' | 'playbook'; id: string; name: string } | null>(null);
 
   // Form states
-  const [folderForm, setFolderForm] = useState({ name: '', description: '' });
+  const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '' });
   const [playbookForm, setPlaybookForm] = useState({ title: '', description: '', folder_id: '', visibility: 'mentor_only' });
 
   // Selected folder view
@@ -79,10 +80,10 @@ export default function PlaybooksHub() {
   const handleOpenFolderDialog = (folder?: PlaybookFolder) => {
     if (folder) {
       setEditingFolder(folder);
-      setFolderForm({ name: folder.name, description: folder.description || '' });
+      setFolderForm({ name: folder.name, description: folder.description || '', cover_image_url: folder.cover_image_url || '' });
     } else {
       setEditingFolder(null);
-      setFolderForm({ name: '', description: '' });
+      setFolderForm({ name: '', description: '', cover_image_url: '' });
     }
     setFolderDialogOpen(true);
   };
@@ -90,9 +91,9 @@ export default function PlaybooksHub() {
   const handleSaveFolder = async () => {
     if (!folderForm.name.trim()) return;
     if (editingFolder) {
-      await updateFolder.mutateAsync({ id: editingFolder.id, name: folderForm.name, description: folderForm.description });
+      await updateFolder.mutateAsync({ id: editingFolder.id, name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null });
     } else {
-      await createFolder.mutateAsync({ name: folderForm.name, description: folderForm.description });
+      await createFolder.mutateAsync({ name: folderForm.name, description: folderForm.description, cover_image_url: folderForm.cover_image_url || null });
     }
     setFolderDialogOpen(false);
   };
@@ -367,12 +368,21 @@ export default function PlaybooksHub() {
 
       {/* Folder Dialog */}
       <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingFolder ? 'Editar Pasta' : 'Nova Pasta'}</DialogTitle>
             <DialogDescription>Organize seus playbooks em pastas temáticas.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div>
+              <Label className="mb-2 block">Imagem de Capa</Label>
+              <CoverImageUpload
+                currentUrl={folderForm.cover_image_url || null}
+                folder="folders"
+                onUploaded={(url) => setFolderForm({ ...folderForm, cover_image_url: url })}
+                onRemoved={() => setFolderForm({ ...folderForm, cover_image_url: '' })}
+              />
+            </div>
             <div>
               <Label>Nome *</Label>
               <Input value={folderForm.name} onChange={e => setFolderForm({ ...folderForm, name: e.target.value })} placeholder="Ex: Prospecção" />
