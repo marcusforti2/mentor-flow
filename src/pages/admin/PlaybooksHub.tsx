@@ -947,19 +947,39 @@ function PlaybookCard({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      {playbook.cover_image_url ? (
-        <div className="h-36 bg-muted overflow-hidden">
-          <img src={playbook.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(playbook.cover_position)}`} />
+      <div className="relative h-44 overflow-hidden">
+        {playbook.cover_image_url ? (
+          <img src={playbook.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(playbook.cover_position)} transition-transform duration-500 group-hover:scale-105`} />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+            <BookOpen className="h-10 w-10 text-primary/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <h3 className="font-display font-bold text-white text-lg leading-tight line-clamp-2 drop-shadow-lg">
+            {playbook.title}
+          </h3>
+          {playbook.description && (
+            <p className="text-white/70 text-xs mt-1 line-clamp-1">{playbook.description}</p>
+          )}
         </div>
-      ) : (
-        <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
-          <BookOpen className="h-8 w-8 text-primary/30" />
-        </div>
-      )}
+      </div>
 
-      <CardContent className="pt-4 pb-4 px-4">
+      <CardContent className="py-3 px-4">
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-semibold text-foreground line-clamp-1 flex-1">{playbook.title}</h3>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <VisIcon className={`h-3.5 w-3.5 ${vis.color}`} />
+              {vis.label}
+            </span>
+            {(playbook.pages_count ?? 0) > 0 && (
+              <span className="flex items-center gap-1">
+                <FileText className="h-3.5 w-3.5" />
+                {playbook.pages_count} pág.
+              </span>
+            )}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100">
@@ -1003,24 +1023,7 @@ function PlaybookCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        {playbook.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{playbook.description}</p>
-        )}
-
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <VisIcon className={`h-3.5 w-3.5 ${vis.color}`} />
-              {vis.label}
-            </span>
-            {(playbook.pages_count ?? 0) > 0 && (
-              <span className="flex items-center gap-1">
-                <FileText className="h-3.5 w-3.5" />
-                {playbook.pages_count}
-              </span>
-            )}
-          </div>
           <span>{formatDistanceToNow(new Date(playbook.updated_at), { addSuffix: true, locale: ptBR })}</span>
         </div>
       </CardContent>
