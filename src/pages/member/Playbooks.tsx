@@ -278,7 +278,7 @@ export default function MentoradoPlaybooks() {
                         onClick={() => { setSelectedFolder(folder); setSearchTerm(''); }}
                       >
                         <CardContent className="py-3 px-4 flex items-center gap-4">
-                          <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0">
+                          <div className="h-14 w-20 rounded-lg overflow-hidden shrink-0">
                             {folder.cover_image_url ? (
                               <img src={folder.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(folder.cover_position)}`} />
                             ) : (
@@ -376,8 +376,8 @@ function PlaybookGrid({ playbooks, viewMode, onSelect }: {
                 <img src={pb.cover_image_url} alt="" className={`w-full h-full object-cover ${coverPositionClass(pb.cover_position)} transition-transform duration-500 group-hover:scale-105`} />
               </div>
             ) : (
-              <div className="h-20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-primary/30" />
+              <div className="h-24 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent flex items-center justify-center">
+                <BookOpen className="h-8 w-8 text-primary/30" />
               </div>
             )}
             <CardContent className="pt-4 pb-4 px-4">
