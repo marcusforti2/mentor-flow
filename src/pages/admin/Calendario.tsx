@@ -100,14 +100,26 @@ export default function Calendario() {
     try {
       const [eventsRes, membersRes] = await Promise.all([
         supabase.from('calendar_events').select('*').eq('tenant_id', activeMembership.tenant_id).order('event_date', { ascending: true }),
-        supabase.from('memberships').select('id, user_id, role, profiles:user_id(full_name, avatar_url, email)').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').eq('role', 'mentee'),
+        supabase.from('memberships').select('id, user_id, role').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').eq('role', 'mentee'),
       ]);
       if (eventsRes.error) throw eventsRes.error;
       setEvents(eventsRes.data || []);
-      setTenantMembers((membersRes.data as any[] || []).map((m: any) => ({
-        id: m.id, user_id: m.user_id, role: m.role,
-        profiles: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles,
-      })));
+
+      const members = membersRes.data || [];
+      if (members.length > 0) {
+        const userIds = [...new Set(members.map((m: any) => m.user_id))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, avatar_url, email')
+          .in('user_id', userIds);
+        const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+        setTenantMembers(members.map((m: any) => ({
+          id: m.id, user_id: m.user_id, role: m.role,
+          profiles: profileMap.get(m.user_id) || null,
+        })));
+      } else {
+        setTenantMembers([]);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({ title: "Erro", description: "Não foi possível carregar os eventos.", variant: "destructive" });
