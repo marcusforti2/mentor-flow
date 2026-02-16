@@ -2,6 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Strip hsl() wrapper if present: "hsl(220 15% 10%)" -> "220 15% 10%"
+const stripHsl = (val: string): string => {
+  if (!val || typeof val !== 'string') return val;
+  const m = val.match(/^hsl\(([^)]+)\)$/i);
+  return m ? m[1].trim() : val.trim();
+};
+
 export interface BrandingProposal {
   id: string;
   tenant_id: string;
@@ -133,10 +140,10 @@ export function useTenantBranding(tenantId: string | null) {
       if (b.color_palette?.foreground) uiTokens.foreground = b.color_palette.foreground;
       if (b.color_palette?.muted) uiTokens.muted = b.color_palette.muted;
       // Map system_colors for card, muted_foreground, border if available
-      if (b.system_colors?.card) uiTokens.card = b.system_colors.card;
-      if (b.system_colors?.card_foreground) uiTokens.card_foreground = b.system_colors.card_foreground;
-      if (b.system_colors?.muted_foreground) uiTokens.muted_foreground = b.system_colors.muted_foreground;
-      if (b.system_colors?.border) uiTokens.border = b.system_colors.border;
+      if (b.system_colors?.card) uiTokens.card = stripHsl(b.system_colors.card);
+      if (b.system_colors?.card_foreground) uiTokens.card_foreground = stripHsl(b.system_colors.card_foreground);
+      if (b.system_colors?.muted_foreground) uiTokens.muted_foreground = stripHsl(b.system_colors.muted_foreground);
+      if (b.system_colors?.border) uiTokens.border = stripHsl(b.system_colors.border);
       
       if (Object.keys(uiTokens).length > 0) {
         tenantUpdate.brand_attributes = uiTokens;
@@ -201,10 +208,10 @@ export function useTenantBranding(tenantId: string | null) {
         if (b.color_palette?.background) uiTokens.background = b.color_palette.background;
         if (b.color_palette?.foreground) uiTokens.foreground = b.color_palette.foreground;
         if (b.color_palette?.muted) uiTokens.muted = b.color_palette.muted;
-        if (b.system_colors?.card) uiTokens.card = b.system_colors.card;
-        if (b.system_colors?.card_foreground) uiTokens.card_foreground = b.system_colors.card_foreground;
-        if (b.system_colors?.muted_foreground) uiTokens.muted_foreground = b.system_colors.muted_foreground;
-        if (b.system_colors?.border) uiTokens.border = b.system_colors.border;
+        if (b.system_colors?.card) uiTokens.card = stripHsl(b.system_colors.card);
+        if (b.system_colors?.card_foreground) uiTokens.card_foreground = stripHsl(b.system_colors.card_foreground);
+        if (b.system_colors?.muted_foreground) uiTokens.muted_foreground = stripHsl(b.system_colors.muted_foreground);
+        if (b.system_colors?.border) uiTokens.border = stripHsl(b.system_colors.border);
         if (Object.keys(uiTokens).length > 0) tenantUpdate.brand_attributes = uiTokens;
 
         if (Object.keys(tenantUpdate).length > 0) {
