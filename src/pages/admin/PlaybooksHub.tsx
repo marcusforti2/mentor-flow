@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
 import { EmojiPicker } from '@/components/playbooks/EmojiPicker';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +20,7 @@ import {
 import {
   BookOpen, Plus, FolderPlus, Search, MoreVertical, Edit3, Trash2,
   Loader2, Lock, Users, UserCheck, Globe, FileText, FolderOpen, ArrowLeft,
-  LayoutGrid, List, Pin, PinOff, Copy, FolderInput, GripVertical,
+  LayoutGrid, List, Pin, PinOff, Copy, FolderInput, GripVertical, LayoutTemplate,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -30,6 +31,71 @@ const visibilityConfig: Record<string, { label: string; icon: any; color: string
   specific_mentees: { label: 'Mentorados específicos', icon: UserCheck, color: 'text-blue-500' },
   public: { label: 'Público', icon: Globe, color: 'text-purple-500' },
 };
+
+const PLAYBOOK_TEMPLATES = [
+  {
+    id: 'onboarding',
+    icon: '🚀',
+    title: 'Onboarding do Mentorado',
+    description: 'Guia completo para receber e integrar novos mentorados ao programa.',
+    pages: [
+      { title: 'Boas-vindas', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Boas-vindas ao Programa' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Parabéns por fazer parte! Aqui você encontra tudo que precisa para começar sua jornada.' }] }, { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'O que esperar' }] }, { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Sessões semanais de mentoria' }] }] }, { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Acesso a materiais exclusivos' }] }] }, { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Comunidade de apoio' }] }] }] }] } },
+      { title: 'Primeiros Passos', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Primeiros Passos' }] }, { type: 'orderedList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Complete seu perfil com foto e informações do negócio' }] }] }, { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Assista o vídeo de orientação' }] }] }, { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Agende sua primeira sessão' }] }] }] }] } },
+      { title: 'Regras e Compromissos', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Regras e Compromissos' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Para que sua experiência seja a melhor possível, siga estas diretrizes:' }] }] } },
+    ],
+  },
+  {
+    id: 'sales-process',
+    icon: '💰',
+    title: 'Processo de Vendas',
+    description: 'Estrutura completa do processo comercial com scripts e objeções.',
+    pages: [
+      { title: 'Funil de Vendas', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Funil de Vendas' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Estrutura do funil comercial com etapas e métricas de conversão.' }] }] } },
+      { title: 'Scripts de Abordagem', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Scripts de Abordagem' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Modelos prontos para prospecção ativa e passiva.' }] }] } },
+      { title: 'Quebra de Objeções', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Quebra de Objeções' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'As objeções mais comuns e como responder cada uma.' }] }] } },
+    ],
+  },
+  {
+    id: 'weekly-routine',
+    icon: '📅',
+    title: 'Rotina Semanal',
+    description: 'Modelo de organização semanal para alta performance.',
+    pages: [
+      { title: 'Planejamento Semanal', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Planejamento Semanal' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Template para planejar suas atividades da semana.' }] }] } },
+      { title: 'Checklist Diário', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Checklist Diário' }] }, { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Revisar metas do dia' }] }] }, { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Prospecção ativa (1h)' }] }] }, { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Follow-ups pendentes' }] }] }] }] } },
+    ],
+  },
+  {
+    id: 'mindset',
+    icon: '🧠',
+    title: 'Mindset & Desenvolvimento',
+    description: 'Framework de desenvolvimento pessoal e mentalidade empreendedora.',
+    pages: [
+      { title: 'Pilares do Mindset', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Pilares do Mindset Empreendedor' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Os fundamentos para construir uma mentalidade de crescimento.' }] }] } },
+      { title: 'Exercícios Práticos', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Exercícios Práticos' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Atividades para fortalecer sua mentalidade diariamente.' }] }] } },
+    ],
+  },
+  {
+    id: 'client-success',
+    icon: '🏆',
+    title: 'Sucesso do Cliente',
+    description: 'Processo de acompanhamento e retenção de clientes.',
+    pages: [
+      { title: 'Jornada do Cliente', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Jornada do Cliente' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Mapa completo da experiência do cliente do onboarding ao sucesso.' }] }] } },
+      { title: 'Métricas de Sucesso', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Métricas de Sucesso' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'KPIs para medir saúde e satisfação dos clientes.' }] }] } },
+    ],
+  },
+  {
+    id: 'social-media',
+    icon: '📱',
+    title: 'Conteúdo & Social Media',
+    description: 'Estratégia de conteúdo e calendário editorial.',
+    pages: [
+      { title: 'Estratégia de Conteúdo', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Estratégia de Conteúdo' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Defina pilares de conteúdo, formatos e frequência de publicação.' }] }] } },
+      { title: 'Calendário Editorial', content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Calendário Editorial' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'Organize suas publicações semanais com antecedência.' }] }] } },
+    ],
+  },
+];
 
 export default function PlaybooksHub() {
   const navigate = useNavigate();
@@ -47,6 +113,7 @@ export default function PlaybooksHub() {
   const [editingFolder, setEditingFolder] = useState<PlaybookFolder | null>(null);
   const [editingPlaybook, setEditingPlaybook] = useState<Playbook | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'folder' | 'playbook'; id: string; name: string } | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
 
   // Form states
   const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '', cover_position: 'center' as string, icon: '📁' });
@@ -183,6 +250,33 @@ export default function PlaybooksHub() {
     setDeleteTarget(null);
   };
 
+  const handleCreateFromTemplate = async (template: typeof PLAYBOOK_TEMPLATES[0]) => {
+    try {
+      const result = await createPlaybook.mutateAsync({
+        title: template.title,
+        description: template.description,
+        folder_id: selectedFolder?.id || null,
+        visibility: 'mentor_only',
+      });
+      if (result && template.pages.length > 0) {
+        const pages = template.pages.map((p, i) => ({
+          playbook_id: result.id,
+          tenant_id: result.tenant_id,
+          title: p.title,
+          content: p.content,
+          position: i,
+        }));
+        await supabase.from('playbook_pages').insert(pages);
+      }
+      setTemplateDialogOpen(false);
+      if (result) {
+        navigate(`/mentor/playbooks/${result.id}`);
+      }
+    } catch (e) {
+      // error already handled by mutation
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -230,6 +324,10 @@ export default function PlaybooksHub() {
             </button>
           </div>
 
+          <Button variant="outline" size="sm" onClick={() => setTemplateDialogOpen(true)}>
+            <LayoutTemplate className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Templates</span>
+          </Button>
           {!selectedFolder && (
             <Button variant="outline" size="sm" onClick={() => handleOpenFolderDialog()}>
               <FolderPlus className="h-4 w-4 mr-1" />
@@ -544,7 +642,43 @@ export default function PlaybooksHub() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Template Dialog */}
+      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5 text-primary" />
+              Criar a partir de template
+            </DialogTitle>
+            <DialogDescription>Escolha um modelo pré-definido para começar rapidamente.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2">
+            {PLAYBOOK_TEMPLATES.map(tpl => (
+              <Card
+                key={tpl.id}
+                className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
+                onClick={() => handleCreateFromTemplate(tpl)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{tpl.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-foreground text-sm">{tpl.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tpl.description}</p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {tpl.pages.length} página{tpl.pages.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
