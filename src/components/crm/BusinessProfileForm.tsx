@@ -236,7 +236,7 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
       const { data, error } = await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+        .eq('membership_id', mentoradoId)
         .maybeSingle();
 
       if (data && !error) {
@@ -283,7 +283,6 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
     setIsSaving(true);
     try {
       const payload = {
-        mentorado_id: resolvedMentoradoId,
         membership_id: resolvedMentoradoId,
         business_name: profile.business_name || null,
         business_type: profile.business_type || null,
