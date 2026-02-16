@@ -2407,6 +2407,7 @@ export type Database = {
           created_at: string
           created_by_membership_id: string
           description: string | null
+          icon: string | null
           id: string
           name: string
           position: number
@@ -2419,6 +2420,7 @@ export type Database = {
           created_at?: string
           created_by_membership_id: string
           description?: string | null
+          icon?: string | null
           id?: string
           name: string
           position?: number
@@ -2431,6 +2433,7 @@ export type Database = {
           created_at?: string
           created_by_membership_id?: string
           description?: string | null
+          icon?: string | null
           id?: string
           name?: string
           position?: number

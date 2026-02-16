@@ -10,6 +10,7 @@ export interface PlaybookFolder {
   description: string | null;
   cover_image_url: string | null;
   cover_position: string;
+  icon: string;
   position: number;
   created_by_membership_id: string;
   created_at: string;
@@ -151,7 +152,7 @@ export function usePlaybookMutations() {
   const membershipId = activeMembership?.id;
 
   const createFolder = useMutation({
-    mutationFn: async (data: { name: string; description?: string; cover_image_url?: string | null; cover_position?: string }) => {
+    mutationFn: async (data: { name: string; description?: string; cover_image_url?: string | null; cover_position?: string; icon?: string }) => {
       if (!tenantId || !membershipId) throw new Error('Sem tenant/membership');
       const { data: result, error } = await supabase
         .from('playbook_folders')
@@ -161,6 +162,7 @@ export function usePlaybookMutations() {
           description: data.description || null,
           cover_image_url: data.cover_image_url || null,
           cover_position: data.cover_position || 'center',
+          icon: data.icon || '📁',
           created_by_membership_id: membershipId,
         })
         .select()
@@ -176,7 +178,7 @@ export function usePlaybookMutations() {
   });
 
   const updateFolder = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; cover_image_url?: string | null; cover_position?: string }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; cover_image_url?: string | null; cover_position?: string; icon?: string }) => {
       const { error } = await supabase
         .from('playbook_folders')
         .update(data)

@@ -1,0 +1,1 @@
+ALTER TABLE public.playbook_folders ADD COLUMN icon TEXT DEFAULT '📁';
