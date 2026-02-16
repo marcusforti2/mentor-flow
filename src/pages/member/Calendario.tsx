@@ -42,13 +42,23 @@ export default function CalendarioMembro() {
     try {
       const { data: tenantEvents, error: tenantError } = await supabase
         .from('calendar_events')
-        .select('id, title, description, event_date, event_time, event_type, meeting_url')
+        .select('id, title, description, event_date, event_time, event_type, meeting_url, audience_type, audience_membership_ids')
         .eq('tenant_id', activeMembership.tenant_id)
         .gte('event_date', format(new Date(), 'yyyy-MM-dd'))
         .order('event_date', { ascending: true });
 
       if (tenantError) throw tenantError;
-      setEvents(tenantEvents || []);
+      
+      // Filter: mentorado only sees all_mentees or events specifically targeted at them
+      const filtered = (tenantEvents || []).filter((e: any) => {
+        if (e.audience_type === 'staff_only') return false;
+        if (e.audience_type === 'all_mentees') return true;
+        if (e.audience_type === 'specific' && activeMembership?.id) {
+          return (e.audience_membership_ids || []).includes(activeMembership.id);
+        }
+        return true;
+      });
+      setEvents(filtered);
     } catch (error) {
       console.error('Error fetching events:', error);
       toast({ title: "Erro", description: "Não foi possível carregar os eventos.", variant: "destructive" });
