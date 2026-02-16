@@ -30,41 +30,54 @@ export function BookingCalendar() {
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const [menteeNames, setMenteeNames] = useState<Map<string, string>>(new Map());
+  // menteeNames removed — replaced by participantInfo
 
   const isMentor = role !== 'mentee';
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
 
-  // Resolve mentee names for bookings
+  // Resolve mentee/mentor names and emails for bookings
+  const [participantInfo, setParticipantInfo] = useState<Map<string, { name: string; email: string }>>(new Map());
+
   useEffect(() => {
-    if (!isMentor || bookings.length === 0) return;
-    const menteeIds = [...new Set(bookings.map(b => b.mentee_membership_id).filter(Boolean))];
-    if (menteeIds.length === 0) return;
+    if (bookings.length === 0) return;
+    
+    const ids = isMentor 
+      ? [...new Set(bookings.map(b => b.mentee_membership_id).filter(Boolean))]
+      : [...new Set(bookings.map(b => b.mentor_membership_id).filter(Boolean))];
+    if (ids.length === 0) return;
 
     (async () => {
       const { data: memberships } = await supabase
         .from('memberships')
         .select('id, user_id')
-        .in('id', menteeIds);
+        .in('id', ids);
       if (!memberships?.length) return;
 
       const userIds = memberships.map(m => m.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, full_name')
+        .select('user_id, full_name, email')
         .in('user_id', userIds);
 
-      const userToName = new Map((profiles || []).map(p => [p.user_id, p.full_name || '']));
-      const nameMap = new Map<string, string>();
+      const userToInfo = new Map((profiles || []).map(p => [p.user_id, { name: p.full_name || '', email: p.email || '' }]));
+      const infoMap = new Map<string, { name: string; email: string }>();
       memberships.forEach(m => {
-        nameMap.set(m.id, userToName.get(m.user_id) || 'Mentorado');
+        const info = userToInfo.get(m.user_id);
+        infoMap.set(m.id, info || { name: isMentor ? 'Mentorado' : 'Mentor', email: '' });
       });
-      setMenteeNames(nameMap);
+      setParticipantInfo(infoMap);
     })();
   }, [bookings, isMentor]);
 
-  const getMenteeName = (booking: SessionBooking) => 
-    menteeNames.get(booking.mentee_membership_id) || 'Mentorado';
+  const getParticipantName = (booking: SessionBooking) => {
+    const id = isMentor ? booking.mentee_membership_id : booking.mentor_membership_id;
+    return participantInfo.get(id)?.name || (isMentor ? 'Mentorado' : 'Mentor');
+  };
+
+  const getParticipantEmail = (booking: SessionBooking) => {
+    const id = isMentor ? booking.mentee_membership_id : booking.mentor_membership_id;
+    return participantInfo.get(id)?.email || '';
+  };
 
   // Generate slots for each day
   const slotsForDay = (date: Date): TimeSlot[] => {
@@ -211,9 +224,12 @@ export function BookingCalendar() {
                               )}>
                                 <div className="font-medium">{slot.time}</div>
                                 <div className="text-[10px] mt-0.5">
-                                  {isMentor && <span className="font-semibold">{getMenteeName(slot.booking)}</span>}
-                                  {!isMentor && (slot.booking.status === 'confirmed' ? '✓ Agendado' : slot.booking.status)}
+                                  {isMentor && <span className="font-semibold">{getParticipantName(slot.booking)}</span>}
+                                  {!isMentor && <span className="font-semibold">{getParticipantName(slot.booking)}</span>}
                                 </div>
+                                {getParticipantEmail(slot.booking) && (
+                                  <div className="text-[9px] text-muted-foreground truncate">{getParticipantEmail(slot.booking)}</div>
+                                )}
                                 {isMentor && slot.booking.status === 'confirmed' && (
                                   <div className="flex gap-0.5 mt-1">
                                     <Button
@@ -290,7 +306,9 @@ export function BookingCalendar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">
-                    {isMentor && <span className="text-primary">{getMenteeName(b)} — </span>}
+                    <span className="text-primary">{getParticipantName(b)}</span>
+                    {getParticipantEmail(b) && <span className="text-muted-foreground text-xs ml-1">({getParticipantEmail(b)})</span>}
+                    <span> — </span>
                     {format(parseISO(b.scheduled_at), "EEEE", { locale: ptBR })} às {format(parseISO(b.scheduled_at), 'HH:mm')}
                   </p>
                   <p className="text-xs text-muted-foreground">{b.duration_minutes}min • {b.notes || 'Sem observações'}</p>

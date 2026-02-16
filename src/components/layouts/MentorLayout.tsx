@@ -1,49 +1,61 @@
- import { useState } from 'react';
- import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
- import { FloatingDock } from '@/components/FloatingDock';
- import { useAuth } from '@/hooks/useAuth';
- import { useTenant } from '@/contexts/TenantContext';
- import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
- import { AlertsBell } from '@/components/admin/AlertsBell';
- import { AlertsPanel } from '@/components/admin/AlertsPanel';
- import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
- import { Button } from '@/components/ui/button';
- import { LogOut, Settings, ArrowLeft, UserCircle, CalendarClock, BookMarked } from 'lucide-react';
- import { BrandLogo } from '@/components/BrandLogo';
-  import {
-    LayoutDashboard,
-    Users,
-    BookOpen,
-    Calendar,
-    AlertTriangle,
-    
-    Mail,
-    BarChart3,
-    Compass,
-    Target,
-  } from 'lucide-react';
+import { useState } from 'react';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { FloatingDock, type DockItem } from '@/components/FloatingDock';
+import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/contexts/TenantContext';
+import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
+import { AlertsBell } from '@/components/admin/AlertsBell';
+import { AlertsPanel } from '@/components/admin/AlertsPanel';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked } from 'lucide-react';
+import { BrandLogo } from '@/components/BrandLogo';
  import {
-   Tooltip,
-   TooltipContent,
-   TooltipTrigger,
- } from '@/components/ui/tooltip';
- import { cn } from '@/lib/utils';
- 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/mentor' },
-    { icon: Compass, label: 'Jornada CS', path: '/mentor/jornada-cs' },
-    { icon: Users, label: 'Mentorados', path: '/mentor/mentorados' },
-    { icon: Target, label: 'CRM', path: '/mentor/crm' },
-    { icon: BookOpen, label: 'Trilhas', path: '/mentor/trilhas' },
-    { icon: BookMarked, label: 'Playbooks', path: '/mentor/playbooks' },
-    { icon: Calendar, label: 'Calendário', path: '/mentor/calendario' },
-    { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
-    
-    { icon: Mail, label: 'Emails', path: '/mentor/emails' },
-    { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
-    { icon: CalendarClock, label: 'Agendamento', path: '/mentor/agendamento' },
-    { icon: UserCircle, label: 'Meu Perfil', path: '/mentor/perfil' },
-  ];
+   LayoutDashboard,
+   Users,
+   BookOpen,
+   Calendar,
+   AlertTriangle,
+   Mail,
+   BarChart3,
+   Compass,
+   Target,
+ } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+const menuItems: DockItem[] = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/mentor' },
+  {
+    icon: Users, label: 'Mentorados',
+    children: [
+      { icon: Users, label: 'Mentorados', path: '/mentor/mentorados' },
+      { icon: Compass, label: 'Jornada CS', path: '/mentor/jornada-cs' },
+      { icon: Target, label: 'CRM', path: '/mentor/crm' },
+    ],
+  },
+  {
+    icon: BookOpen, label: 'Conteúdo',
+    children: [
+      { icon: BookOpen, label: 'Trilhas', path: '/mentor/trilhas' },
+      { icon: BookMarked, label: 'Playbooks', path: '/mentor/playbooks' },
+    ],
+  },
+  { icon: Calendar, label: 'Calendário', path: '/mentor/calendario' },
+  {
+    icon: Mail, label: 'Comunicação',
+    children: [
+      { icon: Mail, label: 'Emails', path: '/mentor/emails' },
+      { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
+    ],
+  },
+  { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
+  { icon: UserCircle, label: 'Meu Perfil', path: '/mentor/perfil' },
+];
  
   export function MentorLayout() {
     const { profile, signOut } = useAuth();
@@ -52,9 +64,10 @@
     const location = useLocation();
     const navigate = useNavigate();
   
-    const isDashboard = location.pathname === '/mentor';
-    const currentPage = menuItems.find(item => item.path === location.pathname);
-    const pageTitle = currentPage?.label || 'Página';
+  const isDashboard = location.pathname === '/mentor';
+  const allPages = menuItems.flatMap(item => item.children ? item.children : [item]);
+  const currentPage = allPages.find(item => item.path === location.pathname);
+  const pageTitle = currentPage?.label || 'Página';
 
     const isMasterViewing = realMembership?.role === 'master_admin';
     const showReturnBanner = isImpersonating || isMasterViewing;

@@ -5,11 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CalendarIcon, Clock, Video, ChevronLeft, ChevronRight, Bell } from "lucide-react";
+import { Loader2, CalendarIcon, Clock, Video, ChevronLeft, ChevronRight, Bell, CalendarClock } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { BookingCalendar } from "@/components/scheduling/BookingCalendar";
 
 interface CalendarEvent {
   id: string; title: string; description: string | null; event_date: string;
@@ -38,7 +40,6 @@ export default function CalendarioMembro() {
     
     setIsLoading(true);
     try {
-      // Fetch events via tenant_id
       const { data: tenantEvents, error: tenantError } = await supabase
         .from('calendar_events')
         .select('id, title, description, event_date, event_time, event_type, meeting_url')
@@ -47,8 +48,6 @@ export default function CalendarioMembro() {
         .order('event_date', { ascending: true });
 
       if (tenantError) throw tenantError;
-
-      // No legacy fallback needed - calendar_events now uses tenant_id only
       setEvents(tenantEvents || []);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -73,92 +72,111 @@ export default function CalendarioMembro() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div><h1 className="text-3xl font-display font-bold text-foreground">Calendário</h1><p className="text-muted-foreground">Eventos e datas importantes da mentoria</p></div>
+      <div><h1 className="text-3xl font-display font-bold text-foreground">Calendário</h1><p className="text-muted-foreground">Eventos e sessões de mentoria</p></div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 glass-card">
-          <CardHeader className="flex-row items-center justify-between pb-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="w-5 h-5" /></Button>
-              <CardTitle className="text-xl font-display capitalize">{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="w-5 h-5" /></Button>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>Hoje</Button>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">{day}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {Array.from({ length: monthStart.getDay() }).map((_, i) => <div key={`empty-${i}`} className="aspect-square" />)}
-              {daysInMonth.map((day) => {
-                const dayEvents = getEventsForDate(day);
-                const isSelected = selectedDate && isSameDay(day, selectedDate);
-                return (
-                  <div key={day.toISOString()} onClick={() => setSelectedDate(day)}
-                    className={cn("aspect-square p-1 rounded-lg cursor-pointer transition-all border border-transparent", "hover:border-primary/50 hover:bg-white/5",
-                      isToday(day) && "bg-primary/10 border-primary/30", isSelected && "border-primary bg-primary/20", !isSameMonth(day, currentMonth) && "opacity-30")}>
-                    <div className="text-sm font-medium text-center mb-1">{format(day, 'd')}</div>
-                    <div className="flex flex-wrap gap-0.5 justify-center">
-                      {dayEvents.slice(0, 3).map((event) => <div key={event.id} className={cn("w-1.5 h-1.5 rounded-full", eventTypeColors[event.event_type])} title={event.title} />)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {selectedDate && (
-              <div className="mt-6 pt-6 border-t border-border/50">
-                <h3 className="font-semibold mb-3">Eventos em {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}</h3>
-                {getEventsForDate(selectedDate).length === 0 ? <p className="text-sm text-muted-foreground">Nenhum evento nesta data</p> : (
-                  <div className="space-y-2">{getEventsForDate(selectedDate).map((event) => (
-                    <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
-                      <div className={cn("w-2 h-8 rounded-full", eventTypeColors[event.event_type])} />
-                      <div className="flex-1"><p className="font-medium">{event.title}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          {event.event_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.event_time.slice(0, 5)}</span>}
-                          <Badge variant="outline" className="text-xs">{eventTypeLabels[event.event_type]}</Badge>
-                        </div>
-                        {event.description && <p className="text-sm text-muted-foreground mt-1">{event.description}</p>}
-                      </div>
-                      {event.meeting_url && <a href={event.meeting_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center gap-1 hover:bg-primary/90 transition-colors"><Video className="w-4 h-4" />Entrar</a>}
-                    </div>
-                  ))}</div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="events" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="events" className="gap-2">
+            <CalendarIcon className="h-4 w-4" />
+            Eventos
+          </TabsTrigger>
+          <TabsTrigger value="booking" className="gap-2">
+            <CalendarClock className="h-4 w-4" />
+            Agendar Sessão
+          </TabsTrigger>
+        </TabsList>
 
-        <Card className="glass-card">
-          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Bell className="w-5 h-5 text-primary" />Próximos Eventos</CardTitle></CardHeader>
-          <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
-            {upcomingEvents.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground"><CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Nenhum evento agendado</p></div>
-            ) : (
-              upcomingEvents.map((event) => (
-                <div key={event.id} className="p-4 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all">
-                  <div className="flex items-start gap-3">
-                    <div className={cn("w-12 h-12 rounded-lg flex flex-col items-center justify-center text-white text-sm font-bold", eventTypeColors[event.event_type])}>
-                      <span className="text-lg leading-none">{format(parseISO(event.event_date), "dd")}</span>
-                      <span className="text-[10px] uppercase opacity-80">{format(parseISO(event.event_date), "MMM", { locale: ptBR })}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{event.title}</p>
-                      <p className="text-sm text-muted-foreground">{format(parseISO(event.event_date), "EEEE", { locale: ptBR })}{event.event_time && ` às ${event.event_time.slice(0, 5)}`}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">{eventTypeLabels[event.event_type]}</Badge>
-                        {event.meeting_url && <a href={event.meeting_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><Video className="w-3 h-3" />Entrar na reunião</a>}
-                      </div>
-                    </div>
-                  </div>
+        <TabsContent value="events">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2 glass-card">
+              <CardHeader className="flex-row items-center justify-between pb-4">
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="w-5 h-5" /></Button>
+                  <CardTitle className="text-xl font-display capitalize">{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</CardTitle>
+                  <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="w-5 h-5" /></Button>
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>Hoje</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+                    <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">{day}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: monthStart.getDay() }).map((_, i) => <div key={`empty-${i}`} className="aspect-square" />)}
+                  {daysInMonth.map((day) => {
+                    const dayEvents = getEventsForDate(day);
+                    const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    return (
+                      <div key={day.toISOString()} onClick={() => setSelectedDate(day)}
+                        className={cn("aspect-square p-1 rounded-lg cursor-pointer transition-all border border-transparent", "hover:border-primary/50 hover:bg-white/5",
+                          isToday(day) && "bg-primary/10 border-primary/30", isSelected && "border-primary bg-primary/20", !isSameMonth(day, currentMonth) && "opacity-30")}>
+                        <div className="text-sm font-medium text-center mb-1">{format(day, 'd')}</div>
+                        <div className="flex flex-wrap gap-0.5 justify-center">
+                          {dayEvents.slice(0, 3).map((event) => <div key={event.id} className={cn("w-1.5 h-1.5 rounded-full", eventTypeColors[event.event_type])} title={event.title} />)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {selectedDate && (
+                  <div className="mt-6 pt-6 border-t border-border/50">
+                    <h3 className="font-semibold mb-3">Eventos em {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}</h3>
+                    {getEventsForDate(selectedDate).length === 0 ? <p className="text-sm text-muted-foreground">Nenhum evento nesta data</p> : (
+                      <div className="space-y-2">{getEventsForDate(selectedDate).map((event) => (
+                        <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
+                          <div className={cn("w-2 h-8 rounded-full", eventTypeColors[event.event_type])} />
+                          <div className="flex-1"><p className="font-medium">{event.title}</p>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              {event.event_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{event.event_time.slice(0, 5)}</span>}
+                              <Badge variant="outline" className="text-xs">{eventTypeLabels[event.event_type]}</Badge>
+                            </div>
+                            {event.description && <p className="text-sm text-muted-foreground mt-1">{event.description}</p>}
+                          </div>
+                          {event.meeting_url && <a href={event.meeting_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center gap-1 hover:bg-primary/90 transition-colors"><Video className="w-4 h-4" />Entrar</a>}
+                        </div>
+                      ))}</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Bell className="w-5 h-5 text-primary" />Próximos Eventos</CardTitle></CardHeader>
+              <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
+                {upcomingEvents.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground"><CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>Nenhum evento agendado</p></div>
+                ) : (
+                  upcomingEvents.map((event) => (
+                    <div key={event.id} className="p-4 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all">
+                      <div className="flex items-start gap-3">
+                        <div className={cn("w-12 h-12 rounded-lg flex flex-col items-center justify-center text-white text-sm font-bold", eventTypeColors[event.event_type])}>
+                          <span className="text-lg leading-none">{format(parseISO(event.event_date), "dd")}</span>
+                          <span className="text-[10px] uppercase opacity-80">{format(parseISO(event.event_date), "MMM", { locale: ptBR })}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{event.title}</p>
+                          <p className="text-sm text-muted-foreground">{format(parseISO(event.event_date), "EEEE", { locale: ptBR })}{event.event_time && ` às ${event.event_time.slice(0, 5)}`}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline" className="text-xs">{eventTypeLabels[event.event_type]}</Badge>
+                            {event.meeting_url && <a href={event.meeting_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1"><Video className="w-3 h-3" />Entrar na reunião</a>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="booking">
+          <BookingCalendar />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
