@@ -95,7 +95,7 @@
           <header className="fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
             <div className="flex items-center gap-4">
               <Link to="/mentor">
-               <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} />
+               <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
              </Link>
              <div className="h-6 w-px bg-border/50" />
              <Button
@@ -140,7 +140,7 @@
        {isDashboard && (
           <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0">
              <Link to="/mentor" className="md:ml-28">
-               <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} />
+               <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
              </Link>
  
             <div className="flex items-center gap-3">

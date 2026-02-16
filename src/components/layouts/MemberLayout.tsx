@@ -103,7 +103,7 @@ export function MemberLayout() {
         <header className="fixed top-0 left-0 right-0 z-40 p-4 flex items-center justify-between">
           {/* Logo on the left */}
           <Link to="/app" className="ml-28">
-            <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} />
+            <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
           </Link>
 
           {/* User controls on the right */}
