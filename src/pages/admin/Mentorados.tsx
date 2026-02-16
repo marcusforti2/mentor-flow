@@ -829,11 +829,15 @@ const Mentorados = () => {
               </SheetHeader>
               
               <Tabs defaultValue="info" className="mt-4">
-                <TabsList className="w-full grid grid-cols-4">
+                <TabsList className="w-full grid grid-cols-5">
                   <TabsTrigger value="info" className="text-xs">Perfil</TabsTrigger>
+                  <TabsTrigger value="files" className="text-xs">
+                    <FolderOpen className="h-3 w-3 mr-1" />
+                    Arquivos
+                  </TabsTrigger>
                   <TabsTrigger value="analysis" className="text-xs">
                     <Brain className="h-3 w-3 mr-1" />
-                    Análise IA
+                    Análise
                   </TabsTrigger>
                   <TabsTrigger value="meetings" className="text-xs">
                     <Video className="h-3 w-3 mr-1" />
@@ -964,14 +968,7 @@ const Mentorados = () => {
                     </div>
                   </div>
 
-                  {/* Files Manager */}
-                  <MentoradoFilesManager
-                    mentoradoId={selectedMentorado.legacy_mentorado_id}
-                    mentorId={selectedMentorado.legacy_mentor_id}
-                    mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
-                    tenantId={activeMembership?.tenant_id}
-                    ownerMembershipId={selectedMentorado.membership_id}
-                  />
+                  {/* Files Manager moved to its own tab */}
 
                   {/* Delete Button */}
                   <div className="pt-4 border-t border-destructive/20">
@@ -1002,6 +999,17 @@ const Mentorados = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
+                </TabsContent>
+
+                {/* === TAB: Arquivos === */}
+                <TabsContent value="files" className="space-y-3 mt-4">
+                  <MentoradoFilesManager
+                    mentoradoId={selectedMentorado.legacy_mentorado_id}
+                    mentorId={selectedMentorado.legacy_mentor_id}
+                    mentoradoName={selectedMentorado.profile?.full_name || 'Mentorado'}
+                    tenantId={activeMembership?.tenant_id}
+                    ownerMembershipId={selectedMentorado.membership_id}
+                  />
                 </TabsContent>
 
                 {/* === TAB: Análise IA === */}
