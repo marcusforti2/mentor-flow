@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
 import { EmojiPicker } from '@/components/playbooks/EmojiPicker';
 import { useNavigate } from 'react-router-dom';
-import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
+import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, useRecentPlaybooks, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,7 +35,8 @@ export default function PlaybooksHub() {
   const navigate = useNavigate();
   const { data: folders = [], isLoading: foldersLoading } = usePlaybookFolders();
   const { data: playbooks = [], isLoading: playbooksLoading } = usePlaybooks();
-  const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook } = usePlaybookMutations();
+  const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, trackPlaybookView } = usePlaybookMutations();
+  const { data: recentPlaybooks = [] } = useRecentPlaybooks(5);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'gallery' | 'list'>('gallery');
@@ -76,6 +77,11 @@ export default function PlaybooksHub() {
 
   // Orphan playbooks (no folder)
   const orphanPlaybooks = playbooks.filter(pb => !pb.folder_id);
+
+  const handleOpenPlaybook = (pb: Playbook) => {
+    trackPlaybookView.mutate(pb.id);
+    navigate(`/mentor/playbooks/${pb.id}`);
+  };
 
   // Handlers
   const handleOpenFolderDialog = (folder?: PlaybookFolder) => {
@@ -236,6 +242,33 @@ export default function PlaybooksHub() {
         />
       </div>
 
+      {/* === RECENTES === */}
+      {!selectedFolder && !searchTerm && recentPlaybooks.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+            🕐 Acessados recentemente
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            {recentPlaybooks.map(pb => (
+              <Card
+                key={pb.id}
+                className="glass-card hover:border-primary/30 cursor-pointer transition-all group"
+                onClick={() => handleOpenPlaybook(pb)}
+              >
+                <CardContent className="p-3">
+                  <p className="text-sm font-medium text-foreground line-clamp-1">{pb.title}</p>
+                  {pb.folder_name && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <FolderOpen className="h-3 w-3" /> {pb.folder_name}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* === ROOT VIEW: Only Folders === */}
       {!selectedFolder && (
         <>
@@ -307,7 +340,7 @@ export default function PlaybooksHub() {
                       <PlaybookCard
                         key={pb.id}
                         playbook={pb}
-                        onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
+                        onClick={() => handleOpenPlaybook(pb)}
                         onEdit={() => handleOpenPlaybookDialog(pb)}
                         onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                         onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
@@ -348,7 +381,7 @@ export default function PlaybooksHub() {
                 <PlaybookCard
                   key={pb.id}
                   playbook={pb}
-                  onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
+                  onClick={() => handleOpenPlaybook(pb)}
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
@@ -361,7 +394,7 @@ export default function PlaybooksHub() {
                 <PlaybookCardList
                   key={pb.id}
                   playbook={pb}
-                  onClick={() => navigate(`/mentor/playbooks/${pb.id}`)}
+                  onClick={() => handleOpenPlaybook(pb)}
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}

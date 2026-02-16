@@ -2508,6 +2508,45 @@ export type Database = {
           },
         ]
       }
+      playbook_views: {
+        Row: {
+          id: string
+          membership_id: string
+          playbook_id: string
+          tenant_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          membership_id: string
+          playbook_id: string
+          tenant_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          membership_id?: string
+          playbook_id?: string
+          tenant_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_views_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_views_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       playbooks: {
         Row: {
           content: Json | null
