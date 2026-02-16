@@ -40,7 +40,7 @@ export default function MeusArquivos() {
           const { data, error } = await supabase
             .from('mentorado_files')
             .select('*')
-            .or(`owner_membership_id.eq.${activeMembership.id},mentorado_id.eq.${activeMembership.id}`)
+            .eq('owner_membership_id', activeMembership.id)
             .order('created_at', { ascending: false });
           
           if (error) throw error;
