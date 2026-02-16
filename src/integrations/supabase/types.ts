@@ -2358,6 +2358,217 @@ export type Database = {
         }
         Relationships: []
       }
+      playbook_access_rules: {
+        Row: {
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          membership_id: string
+          playbook_id: string
+        }
+        Insert: {
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          membership_id: string
+          playbook_id: string
+        }
+        Update: {
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          membership_id?: string
+          playbook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_access_rules_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_access_rules_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_folders: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          created_by_membership_id: string
+          description: string | null
+          id: string
+          name: string
+          position: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by_membership_id: string
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          created_by_membership_id?: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_folders_created_by_membership_id_fkey"
+            columns: ["created_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_folders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_pages: {
+        Row: {
+          content: Json | null
+          created_at: string
+          id: string
+          playbook_id: string
+          position: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          playbook_id: string
+          position?: number
+          tenant_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          playbook_id?: string
+          position?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_pages_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_pages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbooks: {
+        Row: {
+          content: Json | null
+          cover_image_url: string | null
+          created_at: string
+          created_by_membership_id: string
+          description: string | null
+          folder_id: string | null
+          id: string
+          position: number
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          content?: Json | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by_membership_id: string
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          position?: number
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          content?: Json | null
+          cover_image_url?: string | null
+          created_at?: string
+          created_by_membership_id?: string
+          description?: string | null
+          folder_id?: string | null
+          id?: string
+          position?: number
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbooks_created_by_membership_id_fkey"
+            columns: ["created_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbooks_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "playbook_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbooks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3263,6 +3474,10 @@ export type Database = {
         Args: { _mentee_membership_id: string; _viewer_membership_id: string }
         Returns: boolean
       }
+      can_view_playbook: {
+        Args: { _playbook_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_expired_otp_codes: { Args: never; Returns: undefined }
       end_impersonation: { Args: { _log_id: string }; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
@@ -3302,6 +3517,10 @@ export type Database = {
         Returns: boolean
       }
       is_master_admin: { Args: { _user_id?: string }; Returns: boolean }
+      is_playbook_staff: {
+        Args: { _playbook_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id?: string }
         Returns: boolean

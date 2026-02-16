@@ -8,7 +8,7 @@
  import { AlertsPanel } from '@/components/admin/AlertsPanel';
  import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
  import { Button } from '@/components/ui/button';
- import { LogOut, Settings, ArrowLeft, UserCircle, CalendarClock } from 'lucide-react';
+ import { LogOut, Settings, ArrowLeft, UserCircle, CalendarClock, BookMarked } from 'lucide-react';
  import { BrandLogo } from '@/components/BrandLogo';
   import {
     LayoutDashboard,
@@ -35,6 +35,7 @@
     { icon: Users, label: 'Mentorados', path: '/mentor/mentorados' },
     { icon: Target, label: 'CRM', path: '/mentor/crm' },
     { icon: BookOpen, label: 'Trilhas', path: '/mentor/trilhas' },
+    { icon: BookMarked, label: 'Playbooks', path: '/mentor/playbooks' },
     { icon: Calendar, label: 'Calendário', path: '/mentor/calendario' },
     { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
     
