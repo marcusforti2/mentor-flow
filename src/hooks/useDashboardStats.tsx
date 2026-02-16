@@ -300,6 +300,12 @@ export function useMenteeDashboardStats() {
   const [stats, setStats] = useState<MenteeDashboardStats>(EMPTY_MENTEE_STATS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [version, setVersion] = useState(0);
+
+  // Force refetch when component remounts (e.g. navigating back to dashboard)
+  useEffect(() => {
+    setVersion(v => v + 1);
+  }, []);
 
   const fetchStats = useCallback(async () => {
     if (!activeMembership?.id || !activeMembership?.tenant_id || !user?.id) {
@@ -402,7 +408,7 @@ export function useMenteeDashboardStats() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeMembership?.id, activeMembership?.tenant_id, user?.id]);
+  }, [activeMembership?.id, activeMembership?.tenant_id, user?.id, version]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   return { stats, isLoading, error, refetch: fetchStats };

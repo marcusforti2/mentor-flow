@@ -80,16 +80,15 @@ export function DailyGoalCounter({ mentoradoId, className }: DailyGoalCounterPro
 
         setTodayCount(count || 0);
 
-        // Daily goal: use mentee_profiles business_profile JSONB instead of non-existent table
-        const { data: menteeProfile } = await supabase
-          .from("mentee_profiles")
-          .select("business_profile")
+        // Daily goal: fetch from mentorado_business_profiles table
+        const { data: businessProfile } = await supabase
+          .from("mentorado_business_profiles")
+          .select("daily_prospection_goal")
           .eq("membership_id", mentoradoId)
           .maybeSingle();
 
-        const bp = menteeProfile?.business_profile as Record<string, any> | null;
-        if (bp?.daily_prospection_goal) {
-          setGoal(bp.daily_prospection_goal);
+        if (businessProfile?.daily_prospection_goal) {
+          setGoal(businessProfile.daily_prospection_goal);
         }
 
         // Check if goal was already met today (from localStorage)
