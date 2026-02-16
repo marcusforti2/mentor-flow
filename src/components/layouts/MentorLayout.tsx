@@ -92,21 +92,21 @@
  
        {/* Back Header - visible on sub-pages */}
        {!isDashboard && (
-          <header className="fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
-            <div className="flex items-center gap-4">
-              <Link to="/mentor">
+          <header className="fixed left-0 right-0 z-40 h-14 md:h-16 flex items-center justify-between px-3 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
+            <div className="flex items-center gap-2 md:gap-4 min-w-0">
+              <Link to="/mentor" className="hidden md:block">
                <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
              </Link>
-             <div className="h-6 w-px bg-border/50" />
+             <div className="hidden md:block h-6 w-px bg-border/50" />
              <Button
                variant="ghost"
                size="icon"
                onClick={() => navigate('/mentor')}
-               className="h-9 w-9 rounded-full hover:bg-primary/10"
+               className="h-9 w-9 rounded-full hover:bg-primary/10 shrink-0"
              >
                <ArrowLeft className="h-4 w-4" />
              </Button>
-             <h1 className="font-display font-semibold text-lg text-foreground">
+             <h1 className="font-display font-semibold text-base md:text-lg text-foreground truncate">
                {pageTitle}
              </h1>
            </div>
@@ -190,7 +190,7 @@
           "min-h-screen transition-all duration-300",
           isDashboard 
             ? "md:ml-28 pt-20 px-4 md:px-6 pb-24 md:pb-6" 
-            : "pt-20 px-4 md:px-6 pb-6"
+            : "pt-14 md:pt-20 px-4 md:px-6 pb-24 md:pb-6"
         )}>
           <Outlet />
        </main>

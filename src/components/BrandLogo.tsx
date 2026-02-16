@@ -56,9 +56,9 @@ export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl, b
   // Full variant
   if (hasTenantBrand) {
     return (
-      <div className={cn('flex items-center gap-2', className)}>
+      <div className={cn('flex items-center gap-2 min-w-0', className)}>
         {logoUrl && <LogoIcon />}
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>{brandName}</span>
+        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary truncate max-w-[140px] sm:max-w-none')}>{brandName}</span>
       </div>
     );
   }

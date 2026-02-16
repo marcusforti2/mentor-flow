@@ -106,17 +106,17 @@ const menuItems = [
  
        {/* Back Header - visible on sub-pages */}
        {!isDashboard && (
-          <header className="fixed left-0 right-0 z-40 h-16 flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
-           <div className="flex items-center gap-3">
+          <header className="fixed left-0 right-0 z-40 h-14 md:h-16 flex items-center justify-between px-3 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
+           <div className="flex items-center gap-2 md:gap-3 min-w-0">
              <Button
                variant="ghost"
                size="icon"
                onClick={() => navigate('/mentorado')}
-               className="h-10 w-10 rounded-full hover:bg-primary/10"
+               className="h-9 w-9 rounded-full hover:bg-primary/10 shrink-0"
              >
                <ArrowLeft className="h-5 w-5" />
              </Button>
-             <h1 className="font-display font-semibold text-lg text-foreground">
+             <h1 className="font-display font-semibold text-base md:text-lg text-foreground truncate">
                {pageTitle}
              </h1>
            </div>
@@ -183,7 +183,7 @@ const menuItems = [
           "min-h-screen transition-all duration-300",
           isDashboard 
             ? "md:ml-28 pt-20 px-4 md:px-6 pb-24 md:pb-6" 
-            : "pt-16 pb-24 md:pb-6"
+            : "pt-14 md:pt-16 pb-24 md:pb-6"
         )}>
          <Outlet />
        </main>

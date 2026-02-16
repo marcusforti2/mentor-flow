@@ -452,32 +452,50 @@ const Mentorados = () => {
           <p className="text-muted-foreground">Gerencie sua base de mentorados</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => setShowFormEditor(true)}
             disabled={!activeMembership}
           >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            Formulário Onboarding
+            <ClipboardList className="h-4 w-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Formulário Onboarding</span>
+            <span className="sm:hidden">Onboarding</span>
           </Button>
           
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => setIsUploadModalOpen(true)}
             disabled={!activeMembership}
           >
-            <FileUp className="h-4 w-4 mr-2" />
-            Importar Planilha
+            <FileUp className="h-4 w-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Importar Planilha</span>
+            <span className="sm:hidden">Importar</span>
           </Button>
            
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gradient-gold text-primary-foreground">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Mentorado
-              </Button>
-            </DialogTrigger>
+          <Button 
+            className="hidden md:flex gradient-gold text-primary-foreground"
+            onClick={() => setIsAddDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Mentorado
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile FAB for adding mentorado */}
+      <Button 
+        className="md:hidden fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg shadow-primary/30 gradient-gold text-primary-foreground"
+        size="icon"
+        onClick={() => setIsAddDialogOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
+
+      {/* Add Mentorado Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Adicionar Mentorado</DialogTitle>
@@ -498,7 +516,7 @@ const Mentorados = () => {
                     <span className="font-semibold">Enviar Formulário de Onboarding</span>
                   </div>
                   <span className="text-sm text-muted-foreground text-left">
-                    Gere um link de cadastro com o formulário completo de onboarding
+                    O mentorado preenche seus dados em um formulário personalizado
                   </span>
                 </Button>
                 
@@ -509,156 +527,71 @@ const Mentorados = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Edit3 className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Preencher Manualmente</span>
+                    <span className="font-semibold">Cadastro Manual</span>
                   </div>
                   <span className="text-sm text-muted-foreground text-left">
-                    Cadastre um mentorado preenchendo os dados você mesmo
+                    Preencha os dados do mentorado diretamente
                   </span>
                 </Button>
               </div>
             ) : addMethod === 'form' ? (
-              <div className="space-y-4 py-4">
-                <div className="p-4 bg-secondary/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Copie o link abaixo e envie para o seu mentorado. Ele preencherá o formulário de onboarding completo com perguntas personalizadas.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      readOnly
-                      value={`${window.location.origin}/onboarding?mentor=${activeMembership?.id || ''}`}
-                      className="bg-background"
-                    />
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/onboarding?mentor=${activeMembership?.id}`);
-                        toast({ title: "Link copiado!" });
-                      }}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
-                </div>
-                <Button variant="ghost" onClick={() => setAddMethod(null)} className="w-full">
-                  Voltar
+              <div className="py-4 space-y-4">
+                <p className="text-sm text-muted-foreground">Use o botão "Formulário Onboarding" na página principal para configurar e enviar formulários de onboarding.</p>
+                <Button variant="outline" onClick={() => { setAddMethod(null); setIsAddDialogOpen(false); setShowFormEditor(true); }}>
+                  Abrir Editor de Formulário
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Nome Completo *</Label>
-                    <Input
-                      id="full_name"
-                      value={manualForm.full_name}
-                      onChange={(e) => setManualForm({...manualForm, full_name: e.target.value})}
-                      placeholder="João Silva"
-                    />
+              <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="full_name">Nome completo *</Label>
+                    <Input id="full_name" value={manualForm.full_name} onChange={e => setManualForm({...manualForm, full_name: e.target.value})} placeholder="Nome do mentorado" />
                   </div>
-                  <div className="space-y-2">
+                  <div>
                     <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={manualForm.email}
-                      onChange={(e) => setManualForm({...manualForm, email: e.target.value})}
-                      placeholder="joao@email.com"
-                    />
+                    <Input id="email" type="email" value={manualForm.email} onChange={e => setManualForm({...manualForm, email: e.target.value})} placeholder="email@exemplo.com" />
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">WhatsApp</Label>
-                    <Input
-                      id="phone"
-                      value={manualForm.phone}
-                      onChange={(e) => setManualForm({...manualForm, phone: e.target.value})}
-                      placeholder="(11) 99999-9999"
-                    />
+                  <div>
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input id="phone" value={manualForm.phone} onChange={e => setManualForm({...manualForm, phone: e.target.value})} placeholder="(11) 99999-9999" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="joined_at">Data de Início</Label>
-                    <Input
-                      id="joined_at"
-                      type="date"
-                      value={manualForm.joined_at}
-                      onChange={(e) => setManualForm({...manualForm, joined_at: e.target.value})}
-                    />
+                  <div>
+                    <Label htmlFor="joined_at">Data de início</Label>
+                    <Input id="joined_at" type="date" value={manualForm.joined_at} onChange={e => setManualForm({...manualForm, joined_at: e.target.value})} />
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="business_name">Empresa / Negócio</Label>
-                    <Input
-                      id="business_name"
-                      value={manualForm.business_name}
-                      onChange={(e) => setManualForm({...manualForm, business_name: e.target.value})}
-                      placeholder="Empresa XYZ"
-                    />
+                  <div>
+                    <Label htmlFor="business_name">Empresa</Label>
+                    <Input id="business_name" value={manualForm.business_name} onChange={e => setManualForm({...manualForm, business_name: e.target.value})} placeholder="Nome da empresa" />
                   </div>
-                  <div className="space-y-2">
+                  <div>
                     <Label htmlFor="instagram">Instagram</Label>
-                    <Input
-                      id="instagram"
-                      value={manualForm.instagram}
-                      onChange={(e) => setManualForm({...manualForm, instagram: e.target.value})}
-                      placeholder="@usuario"
-                    />
+                    <Input id="instagram" value={manualForm.instagram} onChange={e => setManualForm({...manualForm, instagram: e.target.value})} placeholder="@usuario" />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div>
                     <Label htmlFor="linkedin">LinkedIn</Label>
-                    <Input
-                      id="linkedin"
-                      value={manualForm.linkedin}
-                      onChange={(e) => setManualForm({...manualForm, linkedin: e.target.value})}
-                      placeholder="linkedin.com/in/usuario"
-                    />
+                    <Input id="linkedin" value={manualForm.linkedin} onChange={e => setManualForm({...manualForm, linkedin: e.target.value})} placeholder="linkedin.com/in/usuario" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Site / Portfolio</Label>
-                    <Input
-                      id="website"
-                      value={manualForm.website}
-                      onChange={(e) => setManualForm({...manualForm, website: e.target.value})}
-                      placeholder="https://meusite.com"
-                    />
+                  <div>
+                    <Label htmlFor="website">Website</Label>
+                    <Input id="website" value={manualForm.website} onChange={e => setManualForm({...manualForm, website: e.target.value})} placeholder="www.site.com" />
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Observações</Label>
+                    <Textarea id="notes" value={manualForm.notes} onChange={e => setManualForm({...manualForm, notes: e.target.value})} placeholder="Notas internas sobre o mentorado..." rows={3} />
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={manualForm.notes}
-                    onChange={(e) => setManualForm({...manualForm, notes: e.target.value})}
-                    placeholder="Anotações sobre o mentorado..."
-                    className="min-h-[60px]"
-                  />
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button variant="ghost" onClick={() => setAddMethod(null)} className="flex-1">
-                    Voltar
-                  </Button>
-                  <Button 
-                    onClick={handleManualAdd} 
-                    disabled={createMembership.isPending}
-                    className="flex-1 gradient-gold text-primary-foreground"
-                  >
-                    {createMembership.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setAddMethod(null)} className="flex-1">Voltar</Button>
+                  <Button onClick={handleManualAdd} disabled={createMembership.isPending} className="flex-1">
+                    {createMembership.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Cadastrar
                   </Button>
                 </div>
               </div>
             )}
           </DialogContent>
         </Dialog>
-        </div>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
