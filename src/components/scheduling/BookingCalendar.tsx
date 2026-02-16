@@ -1,15 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarIcon, Clock, Video, ChevronLeft, ChevronRight, Loader2, Check, X } from 'lucide-react';
+import { CalendarIcon, Clock, Video, ChevronLeft, ChevronRight, Loader2, Check, X, User } from 'lucide-react';
 import { useScheduling, getDayLabel, type AvailabilitySlot, type SessionBooking } from '@/hooks/useScheduling';
 import { format, addDays, startOfWeek, isSameDay, isBefore, setHours, setMinutes, parseISO, addWeeks, subWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TimeSlot {
   time: string;
@@ -29,9 +30,41 @@ export function BookingCalendar() {
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [menteeNames, setMenteeNames] = useState<Map<string, string>>(new Map());
 
   const isMentor = role !== 'mentee';
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
+
+  // Resolve mentee names for bookings
+  useEffect(() => {
+    if (!isMentor || bookings.length === 0) return;
+    const menteeIds = [...new Set(bookings.map(b => b.mentee_membership_id).filter(Boolean))];
+    if (menteeIds.length === 0) return;
+
+    (async () => {
+      const { data: memberships } = await supabase
+        .from('memberships')
+        .select('id, user_id')
+        .in('id', menteeIds);
+      if (!memberships?.length) return;
+
+      const userIds = memberships.map(m => m.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+
+      const userToName = new Map((profiles || []).map(p => [p.user_id, p.full_name || '']));
+      const nameMap = new Map<string, string>();
+      memberships.forEach(m => {
+        nameMap.set(m.id, userToName.get(m.user_id) || 'Mentorado');
+      });
+      setMenteeNames(nameMap);
+    })();
+  }, [bookings, isMentor]);
+
+  const getMenteeName = (booking: SessionBooking) => 
+    menteeNames.get(booking.mentee_membership_id) || 'Mentorado';
 
   // Generate slots for each day
   const slotsForDay = (date: Date): TimeSlot[] => {
@@ -178,7 +211,8 @@ export function BookingCalendar() {
                               )}>
                                 <div className="font-medium">{slot.time}</div>
                                 <div className="text-[10px] mt-0.5">
-                                  {slot.booking.status === 'confirmed' ? '✓ Agendado' : slot.booking.status}
+                                  {isMentor && <span className="font-semibold">{getMenteeName(slot.booking)}</span>}
+                                  {!isMentor && (slot.booking.status === 'confirmed' ? '✓ Agendado' : slot.booking.status)}
                                 </div>
                                 {isMentor && slot.booking.status === 'confirmed' && (
                                   <div className="flex gap-0.5 mt-1">
@@ -256,6 +290,7 @@ export function BookingCalendar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">
+                    {isMentor && <span className="text-primary">{getMenteeName(b)} — </span>}
                     {format(parseISO(b.scheduled_at), "EEEE", { locale: ptBR })} às {format(parseISO(b.scheduled_at), 'HH:mm')}
                   </p>
                   <p className="text-xs text-muted-foreground">{b.duration_minutes}min • {b.notes || 'Sem observações'}</p>
