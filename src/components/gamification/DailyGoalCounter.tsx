@@ -70,25 +70,26 @@ export function DailyGoalCounter({ mentoradoId, className }: DailyGoalCounterPro
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
 
-        // Fetch today's prospections count (check both membership_id and mentorado_id)
+        // Fetch today's prospections count using only membership_id (mentorado_id column doesn't exist)
         const { count } = await supabase
           .from("crm_prospections")
           .select("id", { count: "exact" })
-          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+          .eq("membership_id", mentoradoId)
           .gte("created_at", todayStart.toISOString())
           .lte("created_at", todayEnd.toISOString());
 
         setTodayCount(count || 0);
 
-        // Fetch daily goal from business profile
-        const { data: profile } = await supabase
-          .from("mentorado_business_profiles")
-          .select("daily_prospection_goal")
-          .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+        // Daily goal: use mentee_profiles business_profile JSONB instead of non-existent table
+        const { data: menteeProfile } = await supabase
+          .from("mentee_profiles")
+          .select("business_profile")
+          .eq("membership_id", mentoradoId)
           .maybeSingle();
 
-        if (profile?.daily_prospection_goal) {
-          setGoal(profile.daily_prospection_goal);
+        const bp = menteeProfile?.business_profile as Record<string, any> | null;
+        if (bp?.daily_prospection_goal) {
+          setGoal(bp.daily_prospection_goal);
         }
 
         // Check if goal was already met today (from localStorage)

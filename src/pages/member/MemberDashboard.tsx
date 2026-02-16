@@ -55,34 +55,10 @@ export default function MemberDashboard() {
   useEffect(() => { updateStreak(); }, [updateStreak]);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!user || activeMembership?.role === 'mentor' || activeMembership?.role === 'admin' || activeMembership?.role === 'ops') return;
-      
-      try {
-        const membershipId = activeMembership?.id;
-        if (!membershipId) { setIsLoadingStats(false); return; }
-        
-        const { data: analyses } = await supabaseClient
-          .from("training_analyses" as any)
-          .select("nota_geral")
-          .eq("mentorado_id", membershipId) as { data: { nota_geral: number | null }[] | null };
-        
-        if (analyses && analyses.length > 0) {
-          const avg = Math.round(analyses.reduce((acc, a) => acc + (a.nota_geral || 0), 0) / analyses.length);
-          setAvgScore(avg);
-          setTotalAnalyses(analyses.length);
-        } else {
-          setAvgScore(null);
-          setTotalAnalyses(0);
-        }
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-    
-    fetchStats();
+    // training_analyses table doesn't exist yet — skip to avoid 400 errors
+    setAvgScore(null);
+    setTotalAnalyses(0);
+    setIsLoadingStats(false);
   }, [user, activeMembership, mentoradoId]);
 
   const getScoreColor = (score: number) => {
