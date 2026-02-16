@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Trash2, Brain, Video, ClipboardList, FolderOpen } from "lucide-react";
+import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Brain, Video, ClipboardList, FolderOpen } from "lucide-react";
+import { DangerZoneDelete } from "@/components/admin/DangerZoneDelete";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -268,31 +269,12 @@ const MentoradoDetail = () => {
 
               <MentoradoActivityTimeline membershipId={mentorado.membership_id} />
 
-              {/* Delete */}
-              <div className="pt-4 border-t border-destructive/20">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" className="w-full" disabled={isDeleting}>
-                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                      Excluir Mentorado
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir mentorado?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Isso vai desativar o acesso de <strong>{mentorado.profile?.full_name}</strong> à plataforma. Os dados podem ser reativados depois.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Confirmar Exclusão
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+              {/* Danger Zone - hidden inside collapsible */}
+              <DangerZoneDelete
+                name={mentorado.profile?.full_name || "Mentorado"}
+                isDeleting={isDeleting}
+                onConfirmDelete={handleDelete}
+              />
             </div>
           </div>
         </TabsContent>
