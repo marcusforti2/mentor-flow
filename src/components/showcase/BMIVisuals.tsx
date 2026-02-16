@@ -3,24 +3,30 @@ import { cn } from '@/lib/utils';
 import { Brain, Target, Activity, MessageSquare, Zap, ArrowRight } from 'lucide-react';
 
 /* ── Intersection Observer hook ── */
-function useAnimateOnView(threshold = 0.3) {
+function useAnimateOnView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Check if already in viewport (e.g. navigated via #hash)
-    const rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight && rect.bottom > 0) {
-      setVisible(true);
-      return;
-    }
+
     const obs = new IntersectionObserver(
       ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } },
-      { threshold }
+      { threshold, rootMargin: '50px' }
     );
     obs.observe(el);
-    return () => obs.disconnect();
+
+    // Fallback: check after layout settles (handles #hash navigation)
+    const raf = requestAnimationFrame(() => {
+      setTimeout(() => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight + 50 && rect.bottom > -50) {
+          setVisible(true);
+        }
+      }, 300);
+    });
+
+    return () => { obs.disconnect(); cancelAnimationFrame(raf); };
   }, [threshold]);
   return { ref, visible };
 }
