@@ -49,7 +49,7 @@ export function PlaybookReadOnly({ content }: PlaybookReadOnlyProps) {
   if (!editor) return null;
 
   return (
-    <div className="tiptap-editor readonly prose prose-sm max-w-none">
+    <div className="tiptap-editor readonly prose prose-sm prose-invert max-w-none">
       <EditorContent editor={editor} />
     </div>
   );

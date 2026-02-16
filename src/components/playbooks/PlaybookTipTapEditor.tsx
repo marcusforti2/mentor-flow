@@ -68,7 +68,7 @@ export function PlaybookTipTapEditor({ content, onUpdate, editable = true }: Pla
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose dark:prose-invert max-w-none focus:outline-none min-h-[300px] px-4 py-3',
+        class: 'prose prose-sm sm:prose prose-invert max-w-none focus:outline-none min-h-[300px] px-4 py-3',
       },
     },
   });
