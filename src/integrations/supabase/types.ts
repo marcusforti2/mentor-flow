@@ -2629,36 +2629,48 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
+          instagram: string | null
+          linkedin: string | null
           phone: string | null
           tldv_api_key: string | null
           updated_at: string | null
           user_id: string
+          website: string | null
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          instagram?: string | null
+          linkedin?: string | null
           phone?: string | null
           tldv_api_key?: string | null
           updated_at?: string | null
           user_id: string
+          website?: string | null
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          instagram?: string | null
+          linkedin?: string | null
           phone?: string | null
           tldv_api_key?: string | null
           updated_at?: string | null
           user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
