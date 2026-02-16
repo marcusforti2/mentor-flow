@@ -122,12 +122,27 @@ const MentoradoDetail = () => {
     if (!mentorado) return;
     setIsDeleting(true);
     try {
-      await supabase.from("memberships").update({ status: "suspended" }).eq("id", mentorado.membership_id);
-      await supabase.from("mentor_mentee_assignments").update({ status: "inactive" }).eq("mentee_membership_id", mentorado.membership_id);
+      const { error: membershipError } = await supabase
+        .from("memberships")
+        .update({ status: "suspended" })
+        .eq("id", mentorado.membership_id);
+      
+      if (membershipError) {
+        console.error("Membership update error:", membershipError);
+        throw new Error(membershipError.message);
+      }
+
+      // Best-effort: deactivate assignments
+      await supabase
+        .from("mentor_mentee_assignments")
+        .update({ status: "inactive" })
+        .eq("mentee_membership_id", mentorado.membership_id);
+
       toast({ title: "Mentorado removido", description: `${mentorado.profile?.full_name || "Mentorado"} foi desativado.` });
       navigate("/mentor/mentorados", { replace: true });
     } catch (error: any) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      console.error("Delete mentorado error:", error);
+      toast({ title: "Erro ao excluir", description: error.message || "Falha ao desativar mentorado.", variant: "destructive" });
     } finally {
       setIsDeleting(false);
     }
