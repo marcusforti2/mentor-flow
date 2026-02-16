@@ -116,11 +116,12 @@ export function useScheduling() {
       if (!membershipId || !tenantId) throw new Error('Missing context');
 
       // Delete existing
-      await supabase
+      const { error: deleteError } = await supabase
         .from('mentor_availability')
         .delete()
         .eq('mentor_membership_id', membershipId)
         .eq('tenant_id', tenantId);
+      if (deleteError) throw deleteError;
 
       if (slots.length === 0) return;
 
