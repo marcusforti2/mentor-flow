@@ -100,8 +100,7 @@ export function useMentorDashboardStats() {
 
   const fetchStats = useCallback(async () => {
     if (!activeMembership?.tenant_id || !user?.id) {
-      setStats(EMPTY_MENTOR_STATS);
-      setIsLoading(false);
+      // Don't set isLoading to false if we're still waiting for context
       return;
     }
 
@@ -153,10 +152,15 @@ export function useMentorDashboardStats() {
         return 'prospection';
       };
 
-      const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => ({
-        id: a.id, type: mapActivityType(a.action_type),
-        title: a.action_description || a.action_type, timestamp: a.created_at,
-      }));
+      const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => {
+        const userId = membershipToUser.get(a.membership_id || '') || '';
+        const name = profileMap.get(userId) || '';
+        return {
+          id: a.id, type: mapActivityType(a.action_type),
+          title: a.action_description || a.action_type, timestamp: a.created_at,
+          mentoradoName: name || undefined,
+        };
+      });
 
       // BATCH 2: Dependent queries - ranking, trail progress, SOS details, at-risk, wins - ALL in parallel
       const membershipIds = menteeMemberships.map(m => m.id);
@@ -298,8 +302,7 @@ export function useMenteeDashboardStats() {
 
   const fetchStats = useCallback(async () => {
     if (!activeMembership?.id || !activeMembership?.tenant_id || !user?.id) {
-      setStats(EMPTY_MENTEE_STATS);
-      setIsLoading(false);
+      // Don't set isLoading to false if we're still waiting for context
       return;
     }
 
