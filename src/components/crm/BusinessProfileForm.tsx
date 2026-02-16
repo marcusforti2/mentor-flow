@@ -200,36 +200,13 @@ export function BusinessProfileForm({ membershipId }: BusinessProfileFormProps) 
   });
 
   useEffect(() => {
-    resolveMentoradoId();
-  }, []);
-
-  const resolveMentoradoId = async () => {
-    try {
-      // Use activeMembership if available, otherwise fall back to auth user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        console.error("Could not get authenticated user:", authError);
-        setIsLoading(false);
-        return;
-      }
-
-      // Get the membership ID for this user
-      const { data: membership } = await supabase
-        .from("memberships")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("role", "mentee")
-        .eq("status", "active")
-        .maybeSingle();
-
-      const effectiveId = membership?.id || user.id;
-      setResolvedMentoradoId(effectiveId);
-      loadProfile(effectiveId);
-    } catch (error) {
-      console.error("Error resolving mentorado id:", error);
+    if (membershipId) {
+      setResolvedMentoradoId(membershipId);
+      loadProfile(membershipId);
+    } else {
       setIsLoading(false);
     }
-  };
+  }, [membershipId]);
 
   const loadProfile = async (mentoradoId: string) => {
     try {
