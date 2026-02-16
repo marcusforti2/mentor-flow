@@ -125,8 +125,22 @@ export function useTenantBranding(tenantId: string | null) {
       if (b.color_palette?.secondary) tenantUpdate.secondary_color = b.color_palette.secondary;
       if (b.color_palette?.accent) tenantUpdate.accent_color = b.color_palette.accent;
       if (b.typography?.display_font) tenantUpdate.font_family = b.typography.display_font;
-      if (b.brand_attributes) tenantUpdate.brand_attributes = b.brand_attributes;
       if (b.suggested_logo_url) tenantUpdate.logo_url = b.suggested_logo_url;
+
+      // Build brand_attributes with UI tokens from color_palette (NOT personality data)
+      const uiTokens: Record<string, string> = {};
+      if (b.color_palette?.background) uiTokens.background = b.color_palette.background;
+      if (b.color_palette?.foreground) uiTokens.foreground = b.color_palette.foreground;
+      if (b.color_palette?.muted) uiTokens.muted = b.color_palette.muted;
+      // Map system_colors for card, muted_foreground, border if available
+      if (b.system_colors?.card) uiTokens.card = b.system_colors.card;
+      if (b.system_colors?.card_foreground) uiTokens.card_foreground = b.system_colors.card_foreground;
+      if (b.system_colors?.muted_foreground) uiTokens.muted_foreground = b.system_colors.muted_foreground;
+      if (b.system_colors?.border) uiTokens.border = b.system_colors.border;
+      
+      if (Object.keys(uiTokens).length > 0) {
+        tenantUpdate.brand_attributes = uiTokens;
+      }
 
       const { error: tenantError } = await supabase.from('tenants').update(tenantUpdate).eq('id', b.tenant_id);
       if (tenantError) throw tenantError;

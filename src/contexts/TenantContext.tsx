@@ -16,6 +16,7 @@ export interface Tenant {
   secondary_color: string | null;
   accent_color?: string | null;
   font_family?: string | null;
+  brand_attributes?: Json | null;
   settings: Json;
 }
 
@@ -220,11 +221,19 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       } catch { return null; }
     };
 
+    // Detect if a value is already HSL (e.g. "220 91% 45%") vs HEX
+    const isHslValue = (val: string): boolean => /^\d+\s+\d+%\s+\d+%$/.test(val.trim());
+
     const injectedProps: string[] = [];
 
-    const inject = (prop: string, hex: string | null | undefined) => {
-      if (!hex) return;
-      const hsl = hexToHsl(hex);
+    const inject = (prop: string, value: string | null | undefined) => {
+      if (!value) return;
+      let hsl: string | null;
+      if (isHslValue(value)) {
+        hsl = value.trim();
+      } else {
+        hsl = hexToHsl(value);
+      }
       if (hsl) {
         root.style.setProperty(prop, hsl);
         injectedProps.push(prop);
@@ -237,7 +246,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     inject('--accent', tenant.accent_color);
 
     // Advanced brand_attributes (background, foreground, card, etc.)
-    const attrs = (tenant as any).brand_attributes as Record<string, string> | null;
+    const attrs = tenant.brand_attributes as Record<string, string> | null;
     if (attrs) {
       inject('--background', attrs.background);
       inject('--foreground', attrs.foreground);
@@ -246,8 +255,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       inject('--muted', attrs.muted);
       inject('--muted-foreground', attrs.muted_foreground);
       inject('--border', attrs.border);
-      inject('--input', attrs.border); // input uses same as border
-      inject('--popover', attrs.card); // popover uses same as card
+      inject('--input', attrs.border);
+      inject('--popover', attrs.card);
       inject('--popover-foreground', attrs.card_foreground);
     }
 
