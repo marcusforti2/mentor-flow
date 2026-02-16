@@ -47,6 +47,12 @@ interface SOSRequest {
   ai_chat_history: ChatMessage[];
 }
 
+interface MentorResponse {
+  id: string;
+  message: string;
+  created_at: string;
+}
+
 export default function CentroSOS() {
   const { user } = useAuth();
   const { activeMembership } = useTenant();
@@ -61,6 +67,7 @@ export default function CentroSOS() {
   const [lastTriageResult, setLastTriageResult] = useState<TriageResult | null>(null);
   const [sosRequests, setSOSRequests] = useState<SOSRequest[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [responsesMap, setResponsesMap] = useState<Map<string, MentorResponse[]>>(new Map());
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -82,11 +89,10 @@ export default function CentroSOS() {
   const fetchSOSRequests = async () => {
     if (!mentoradoId) return;
 
-    // Query by membership_id (modern) OR mentorado_id (legacy)
     const { data, error } = await supabase
       .from("sos_requests")
       .select("*")
-      .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+      .eq("membership_id", mentoradoId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -94,7 +100,28 @@ export default function CentroSOS() {
       return;
     }
 
-    setSOSRequests((data as unknown as SOSRequest[]) || []);
+    const requests = (data as unknown as SOSRequest[]) || [];
+    setSOSRequests(requests);
+
+    // Fetch mentor responses for all requests
+    if (requests.length > 0) {
+      const requestIds = requests.map(r => r.id);
+      const { data: resData } = await supabase
+        .from("sos_responses")
+        .select("*")
+        .in("request_id", requestIds)
+        .order("created_at", { ascending: true });
+
+      if (resData && resData.length > 0) {
+        const map = new Map<string, MentorResponse[]>();
+        (resData as any[]).forEach(r => {
+          const list = map.get(r.request_id) || [];
+          list.push({ id: r.id, message: r.message, created_at: r.created_at });
+          map.set(r.request_id, list);
+        });
+        setResponsesMap(map);
+      }
+    }
   };
 
   const startTriage = async () => {
@@ -111,7 +138,7 @@ export default function CentroSOS() {
       const { data: businessProfile } = mentoradoId ? await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+        .eq("membership_id", mentoradoId)
         .maybeSingle() : { data: null };
 
       const businessContext = businessProfile ? {
@@ -170,7 +197,7 @@ export default function CentroSOS() {
       const { data: businessProfile } = mentoradoId ? await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .or(`membership_id.eq.${mentoradoId},mentorado_id.eq.${mentoradoId}`)
+        .eq("membership_id", mentoradoId)
         .maybeSingle() : { data: null };
 
       const businessContext = businessProfile ? {
@@ -523,38 +550,57 @@ export default function CentroSOS() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {sosRequests.map((request) => (
-                <Card key={request.id}>
-                  <CardContent className="py-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1">
-                        <h3 className="font-medium">{request.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {request.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {getStatusBadge(request.status)}
-                          {request.priority && getPriorityBadge(request.priority)}
-                          {request.category && (
-                            <Badge variant="outline">{request.category}</Badge>
-                          )}
+              {sosRequests.map((request) => {
+                const responses = responsesMap.get(request.id) || [];
+                return (
+                  <Card key={request.id}>
+                    <CardContent className="py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1 flex-1">
+                          <h3 className="font-medium">{request.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {request.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {getStatusBadge(request.status)}
+                            {request.priority && getPriorityBadge(request.priority)}
+                            {request.category && (
+                              <Badge variant="outline">{request.category}</Badge>
+                            )}
+                          </div>
                         </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(request.created_at).toLocaleDateString("pt-BR")}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(request.created_at).toLocaleDateString("pt-BR")}
-                      </span>
-                    </div>
-                    {request.initial_guidance && (
-                      <div className="mt-4 p-3 bg-muted rounded-lg">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          💡 Direcionamento inicial:
-                        </p>
-                        <p className="text-sm">{request.initial_guidance}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      {request.initial_guidance && (
+                        <div className="mt-4 p-3 bg-muted rounded-lg">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            💡 Direcionamento inicial:
+                          </p>
+                          <p className="text-sm">{request.initial_guidance}</p>
+                        </div>
+                      )}
+                      {responses.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-xs font-semibold text-primary flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            Respostas do Mentor ({responses.length})
+                          </p>
+                          {responses.map((r) => (
+                            <div key={r.id} className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                              <p className="text-sm">{r.message}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(r.created_at).toLocaleString("pt-BR")}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
