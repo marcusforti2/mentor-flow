@@ -25,11 +25,42 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // ========== AUTH: Validate caller ==========
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const tempClient = createClient(supabaseUrl, serviceKey);
+    const { data: { user }, error: authError } = await tempClient.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { membership_id } = await req.json();
     if (!membership_id) throw new Error("membership_id required");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Validate ownership
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const { data: ownerCheck } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("id", membership_id)
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (!ownerCheck) {
+      return new Response(JSON.stringify({ error: "Forbidden: not your membership" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);

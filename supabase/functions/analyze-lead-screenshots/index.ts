@@ -64,7 +64,7 @@ serve(async (req) => {
 
     console.log(`Processing ${images.length} images for user ${user.id}`);
 
-    // Get membership record (try new architecture first, fallback to legacy)
+    // Get membership record
     const { data: membership } = await supabase
       .from("memberships")
       .select("id, tenant_id")
@@ -73,52 +73,44 @@ serve(async (req) => {
       .eq("status", "active")
       .maybeSingle();
 
-    // Fallback to legacy mentorados table
-    const { data: mentorado } = await supabase
-      .from("mentorados")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!membership && !mentorado) {
-      return new Response(JSON.stringify({ error: "Mentorado not found" }), {
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Active mentee membership not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get business profile for context (try mentee_profiles first, then legacy)
+    // Get business profile for context
     let businessProfile: BusinessProfile | null = null;
     
-    if (membership) {
-      const { data: menteeProfile } = await supabase
-        .from("mentee_profiles")
-        .select("business_profile")
-        .eq("membership_id", membership.id)
-        .maybeSingle();
-      
-      if (menteeProfile?.business_profile) {
-        const bp = menteeProfile.business_profile as any;
-        businessProfile = {
-          business_name: bp.business_name || null,
-          business_type: bp.business_type || null,
-          target_audience: bp.target_audience || null,
-          main_offer: bp.main_offer || null,
-          price_range: bp.price_range || null,
-          unique_value_proposition: bp.unique_value_proposition || null,
-          pain_points_solved: bp.pain_points_solved || null,
-          ideal_client_profile: bp.ideal_client_profile || null,
-        };
-      }
+    const { data: menteeProfile } = await supabase
+      .from("mentee_profiles")
+      .select("business_profile")
+      .eq("membership_id", membership.id)
+      .maybeSingle();
+    
+    if (menteeProfile?.business_profile) {
+      const bp = menteeProfile.business_profile as any;
+      businessProfile = {
+        business_name: bp.business_name || null,
+        business_type: bp.business_type || null,
+        target_audience: bp.target_audience || null,
+        main_offer: bp.main_offer || null,
+        price_range: bp.price_range || null,
+        unique_value_proposition: bp.unique_value_proposition || null,
+        pain_points_solved: bp.pain_points_solved || null,
+        ideal_client_profile: bp.ideal_client_profile || null,
+      };
     }
     
-    if (!businessProfile && mentorado) {
-      const { data: legacyProfile } = await supabase
+    // Fallback: try mentorado_business_profiles with membership_id
+    if (!businessProfile) {
+      const { data: mbp } = await supabase
         .from("mentorado_business_profiles")
         .select("*")
-        .eq("mentorado_id", mentorado.id)
+        .eq("membership_id", membership.id)
         .maybeSingle();
-      businessProfile = legacyProfile;
+      businessProfile = mbp;
     }
 
     // Build context from business profile
