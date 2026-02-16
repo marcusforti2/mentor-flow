@@ -9,6 +9,7 @@ export interface PlaybookFolder {
   name: string;
   description: string | null;
   cover_image_url: string | null;
+  cover_position: string;
   position: number;
   created_by_membership_id: string;
   created_at: string;
@@ -22,6 +23,7 @@ export interface Playbook {
   title: string;
   description: string | null;
   cover_image_url: string | null;
+  cover_position: string;
   content: any;
   visibility: 'mentor_only' | 'all_mentees' | 'specific_mentees' | 'public';
   public_slug: string | null;
@@ -149,7 +151,7 @@ export function usePlaybookMutations() {
   const membershipId = activeMembership?.id;
 
   const createFolder = useMutation({
-    mutationFn: async (data: { name: string; description?: string; cover_image_url?: string | null }) => {
+    mutationFn: async (data: { name: string; description?: string; cover_image_url?: string | null; cover_position?: string }) => {
       if (!tenantId || !membershipId) throw new Error('Sem tenant/membership');
       const { data: result, error } = await supabase
         .from('playbook_folders')
@@ -158,6 +160,7 @@ export function usePlaybookMutations() {
           name: data.name,
           description: data.description || null,
           cover_image_url: data.cover_image_url || null,
+          cover_position: data.cover_position || 'center',
           created_by_membership_id: membershipId,
         })
         .select()
@@ -173,7 +176,7 @@ export function usePlaybookMutations() {
   });
 
   const updateFolder = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; cover_image_url?: string | null }) => {
+    mutationFn: async ({ id, ...data }: { id: string; name?: string; description?: string; cover_image_url?: string | null; cover_position?: string }) => {
       const { error } = await supabase
         .from('playbook_folders')
         .update(data)
@@ -229,7 +232,7 @@ export function usePlaybookMutations() {
   });
 
   const updatePlaybook = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; title?: string; description?: string; folder_id?: string | null; visibility?: string; content?: any; cover_image_url?: string | null; tags?: string[] }) => {
+    mutationFn: async ({ id, ...data }: { id: string; title?: string; description?: string; folder_id?: string | null; visibility?: string; content?: any; cover_image_url?: string | null; cover_position?: string; tags?: string[] }) => {
       const { error } = await supabase
         .from('playbooks')
         .update(data)

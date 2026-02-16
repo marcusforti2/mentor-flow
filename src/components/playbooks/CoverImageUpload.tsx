@@ -2,14 +2,18 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, Sparkles, Loader2, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, Sparkles, Loader2, X, Image as ImageIcon, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { toast } from 'sonner';
+
+type CoverPosition = 'top' | 'center' | 'bottom';
 
 interface CoverImageUploadProps {
   currentUrl?: string | null;
   onUploaded: (url: string) => void;
   onRemoved?: () => void;
-  folder?: string; // subfolder in bucket
+  onPositionChange?: (position: CoverPosition) => void;
+  coverPosition?: CoverPosition;
+  folder?: string;
   aspectRatio?: string;
 }
 
@@ -17,6 +21,8 @@ export function CoverImageUpload({
   currentUrl,
   onUploaded,
   onRemoved,
+  onPositionChange,
+  coverPosition = 'center',
   folder = 'general',
   aspectRatio = '16/9',
 }: CoverImageUploadProps) {
@@ -28,6 +34,12 @@ export function CoverImageUpload({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const displayUrl = previewUrl || currentUrl;
+
+  const positionClass: Record<CoverPosition, string> = {
+    top: 'object-top',
+    center: 'object-center',
+    bottom: 'object-bottom',
+  };
 
   const uploadToStorage = async (file: File | Blob, ext: string): Promise<string> => {
     const fileName = `${folder}/${crypto.randomUUID()}.${ext}`;
@@ -100,7 +112,8 @@ export function CoverImageUpload({
       toast.success('Capa gerada com IA!');
     } catch (error: any) {
       console.error('AI cover generation error:', error);
-      toast.error('Erro ao gerar imagem com IA');
+      const msg = error?.message || error?.context?.body?.error || 'Erro ao gerar imagem com IA';
+      toast.error(msg);
     } finally {
       setGenerating(false);
     }
@@ -120,7 +133,11 @@ export function CoverImageUpload({
       >
         {displayUrl ? (
           <>
-            <img src={displayUrl} alt="" className="w-full h-full object-cover object-center" />
+            <img
+              src={displayUrl}
+              alt=""
+              className={`w-full h-full object-cover ${positionClass[coverPosition]}`}
+            />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <Button
                 type="button"
@@ -142,6 +159,42 @@ export function CoverImageUpload({
                 Remover
               </Button>
             </div>
+
+            {/* Position controls */}
+            {onPositionChange && (
+              <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className={`h-7 w-7 ${coverPosition === 'top' ? 'ring-2 ring-primary' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onPositionChange('top'); }}
+                  title="Alinhar topo"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className={`h-7 w-7 ${coverPosition === 'center' ? 'ring-2 ring-primary' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onPositionChange('center'); }}
+                  title="Centralizar"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className={`h-7 w-7 ${coverPosition === 'bottom' ? 'ring-2 ring-primary' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onPositionChange('bottom'); }}
+                  title="Alinhar base"
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 py-8">
