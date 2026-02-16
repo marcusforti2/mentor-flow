@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Settings, Palette, ToggleLeft, Shield, Key,
+  Settings, Palette, ToggleLeft, Key,
   Save, Loader2, CheckCircle2, XCircle, Globe, Building2,
 } from 'lucide-react';
 
@@ -247,64 +247,7 @@ function FeatureFlagsSection({ tenantId }: { tenantId: string }) {
   );
 }
 
-// ─── Auth Settings ───────────────────────────────────────────
-
-function AuthSection() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
-          Autenticação
-        </CardTitle>
-        <CardDescription>
-          Configurações de acesso e segurança
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
-            <p className="text-sm font-medium text-foreground">Método de Login</p>
-            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
-              <CheckCircle2 className="h-3 w-3 mr-1" /> OTP via Email
-            </Badge>
-            <p className="text-xs text-muted-foreground">Login sem senha via código de verificação</p>
-          </div>
-
-          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
-            <p className="text-sm font-medium text-foreground">Governança</p>
-            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
-              <CheckCircle2 className="h-3 w-3 mr-1" /> Invite-Only
-            </Badge>
-            <p className="text-xs text-muted-foreground">Apenas usuários convidados podem acessar</p>
-          </div>
-
-          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
-            <p className="text-sm font-medium text-foreground">Auto-confirm Email</p>
-            <Badge className="bg-red-500/20 text-red-600 border-red-500/30">
-              <XCircle className="h-3 w-3 mr-1" /> Desativado
-            </Badge>
-            <p className="text-xs text-muted-foreground">Emails precisam ser verificados</p>
-          </div>
-
-          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
-            <p className="text-sm font-medium text-foreground">OAuth / SSO</p>
-            <Badge variant="secondary">
-              Não configurado
-            </Badge>
-            <p className="text-xs text-muted-foreground">Google e Apple disponíveis via Cloud</p>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <p className="text-xs text-amber-600">
-            ⚡ Para alterar configurações de auth avançadas, utilize o painel de Cloud Settings.
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// Auth section removed — static display, not actionable
 
 // ─── Secrets / Integrations ──────────────────────────────────
 
@@ -449,10 +392,6 @@ export default function ConfigPage() {
               <ToggleLeft className="h-4 w-4 mr-2" />
               Features
             </TabsTrigger>
-            <TabsTrigger value="auth" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-              <Shield className="h-4 w-4 mr-2" />
-              Auth
-            </TabsTrigger>
             <TabsTrigger value="secrets" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
               <Key className="h-4 w-4 mr-2" />
               Integrações
@@ -465,10 +404,6 @@ export default function ConfigPage() {
 
           <TabsContent value="features" className="mt-6">
             <FeatureFlagsSection tenantId={selectedTenantId} />
-          </TabsContent>
-
-          <TabsContent value="auth" className="mt-6">
-            <AuthSection />
           </TabsContent>
 
           <TabsContent value="secrets" className="mt-6">
