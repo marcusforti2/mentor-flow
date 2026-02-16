@@ -46,9 +46,15 @@ TAREFA: Analisar a identidade visual de uma marca e gerar um branding PREMIUM co
 
 CONTEXTO: A plataforma suporta dois modos de tema: dark e light. Você DEVE decidir qual combina melhor com a marca.
 
-CRITÉRIOS PARA ESCOLHER O MODO:
-- **dark**: Marcas premium, tech, luxo, masculinas, corporativas sérias, coaching executivo, segurança, fintech
-- **light**: Marcas femininas, wellness, educação, saúde, infantis, naturais, clean, coloridas, criativas
+⚠️ REGRA #1 PARA ESCOLHER O MODO — PRIORIDADE MÁXIMA:
+Se imagens de referência foram fornecidas, OBSERVE O TEMA VISUAL DAS IMAGENS:
+- Se as imagens têm fundo claro/branco → escolha **light**
+- Se as imagens têm fundo escuro/preto → escolha **dark**
+- A evidência visual das imagens SEMPRE tem prioridade sobre categorias genéricas
+
+CRITÉRIOS SECUNDÁRIOS (usar APENAS se não houver imagens ou se as imagens forem ambíguas):
+- **dark**: Marcas que já usam identidade escura, com cores neon/vibrantes sobre fundo escuro
+- **light**: Marcas que já usam identidade clara, fundos brancos, tons pastéis ou cores sobre branco
 
 ⚠️ REGRA CRÍTICA DE FORMATO: Todas as cores devem ser HSL raw: "H S% L%" — NUNCA "hsl()", NUNCA hex, NUNCA rgb.
 
