@@ -48,7 +48,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="glass-card px-3 py-1.5 rounded-full flex items-center gap-2 shrink-0">
-          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           <span className="text-xs sm:text-sm text-muted-foreground">Sistemas operacionais</span>
         </div>
       </div>
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <Users className="h-6 w-6 text-primary" />
                 {stats.activeMentoradosCount > 0 && (
-                  <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                  <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full">
                     {stats.activeMentoradosCount} ativos
                   </span>
                 )}
@@ -76,12 +76,12 @@ export default function AdminDashboard() {
         </Link>
 
         <Link to="/mentor/relatorios" className="contents">
-          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
+          <BentoCard size="sm" className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all">
             <div className="flex flex-col justify-between h-full">
               <div className="flex items-center justify-between">
-                <TrendingUp className="h-6 w-6 text-emerald-500" />
+                <TrendingUp className="h-6 w-6 text-primary" />
                 {stats.engagementRate > 0 && (
-                  <span className="text-xs text-emerald-500 font-medium bg-emerald-500/10 px-2 py-1 rounded-full">
+                  <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-1 rounded-full">
                     Engajamento
                   </span>
                 )}
@@ -140,8 +140,8 @@ export default function AdminDashboard() {
               <h3 className="font-semibold text-foreground text-base sm:text-lg">Ver Mentorados</h3>
               <p className="text-muted-foreground text-xs sm:text-sm mt-1">Gestão e progresso</p>
             </Link>
-            <Link to="/mentor/trilhas" className="flex-1 p-4 sm:p-6 group hover:bg-emerald-500/5 transition-colors">
-              <BookOpen className="h-6 sm:h-8 w-6 sm:w-8 text-emerald-500 mb-2 sm:mb-4 group-hover:scale-110 transition-transform" />
+            <Link to="/mentor/trilhas" className="flex-1 p-4 sm:p-6 group hover:bg-primary/5 transition-colors">
+              <BookOpen className="h-6 sm:h-8 w-6 sm:w-8 text-primary mb-2 sm:mb-4 group-hover:scale-110 transition-transform" />
               <h3 className="font-semibold text-foreground text-base sm:text-lg">Criar Trilha</h3>
               <p className="text-muted-foreground text-xs sm:text-sm mt-1">Novos conteúdos</p>
             </Link>
@@ -246,10 +246,10 @@ export default function AdminDashboard() {
 
               {/* Recent Wins */}
               {stats.recentWins.length > 0 && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Trophy className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                    <span className="text-xs font-semibold text-emerald-500">Conquistas Recentes</span>
+                    <Trophy className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-semibold text-primary">Conquistas Recentes</span>
                   </div>
                   <div className="space-y-1">
                     {stats.recentWins.slice(0, 3).map((win) => (
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-emerald-500" />
+                <BookOpen className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold text-foreground">Progresso nas Trilhas</h3>
               </div>
             </div>
@@ -341,11 +341,9 @@ function EmptyState({
 }
 
 const activityColorMap: Record<string, { bg: string; border: string; iconBg: string }> = {
-  emerald: { bg: 'bg-emerald-500/5', border: 'border-emerald-500/10', iconBg: 'bg-emerald-500/20' },
-  accent: { bg: 'bg-accent/5', border: 'border-accent/10', iconBg: 'bg-accent/20' },
   primary: { bg: 'bg-primary/5', border: 'border-primary/10', iconBg: 'bg-primary/20' },
-  purple: { bg: 'bg-purple-500/5', border: 'border-purple-500/10', iconBg: 'bg-purple-500/20' },
-  cyan: { bg: 'bg-cyan-500/5', border: 'border-cyan-500/10', iconBg: 'bg-cyan-500/20' },
+  accent: { bg: 'bg-accent/5', border: 'border-accent/10', iconBg: 'bg-accent/20' },
+  secondary: { bg: 'bg-secondary/5', border: 'border-secondary/10', iconBg: 'bg-secondary/20' },
   muted: { bg: 'bg-muted/5', border: 'border-muted/10', iconBg: 'bg-muted/20' },
 };
 
@@ -391,15 +389,15 @@ function TrailProgress({ name, progress }: { name: string; progress: number }) {
 function getActivityIcon(type: string) {
   switch (type) {
     case 'trail_completed':
-      return <TrendingUp className="h-4 w-4 text-emerald-500" />;
+      return <TrendingUp className="h-4 w-4 text-primary" />;
     case 'prospection':
       return <Target className="h-4 w-4 text-accent" />;
     case 'ranking_up':
       return <Trophy className="h-4 w-4 text-primary" />;
     case 'trail_started':
-      return <BookOpen className="h-4 w-4 text-purple-500" />;
+      return <BookOpen className="h-4 w-4 text-secondary" />;
     case 'meeting':
-      return <Calendar className="h-4 w-4 text-cyan-500" />;
+      return <Calendar className="h-4 w-4 text-accent" />;
     default:
       return <Activity className="h-4 w-4 text-muted-foreground" />;
   }
@@ -408,29 +406,31 @@ function getActivityIcon(type: string) {
 function getActivityColor(type: string) {
   switch (type) {
     case 'trail_completed':
-      return 'emerald';
+      return 'primary';
     case 'prospection':
       return 'accent';
     case 'ranking_up':
       return 'primary';
     case 'trail_started':
-      return 'purple';
+      return 'secondary';
     case 'meeting':
-      return 'cyan';
+      return 'accent';
     default:
       return 'muted';
   }
 }
 
-function formatRelativeTime(timestamp: string) {
+function formatRelativeTime(dateStr: string): string {
   const now = new Date();
-  const date = new Date(timestamp);
+  const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffHours < 1) return 'Agora';
-  if (diffHours < 24) return `${diffHours}h atrás`;
-  if (diffDays < 7) return `${diffDays}d atrás`;
-  return date.toLocaleDateString('pt-BR');
+  if (diffMins < 1) return 'agora';
+  if (diffMins < 60) return `${diffMins}min`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }

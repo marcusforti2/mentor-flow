@@ -59,11 +59,9 @@ export default function MemberDashboard() {
       if (!user || activeMembership?.role === 'mentor' || activeMembership?.role === 'admin' || activeMembership?.role === 'ops') return;
       
       try {
-        // Use membership ID to fetch training analyses
         const membershipId = activeMembership?.id;
         if (!membershipId) { setIsLoadingStats(false); return; }
         
-        // Use membership_id for training analyses
         const { data: analyses } = await supabaseClient
           .from("training_analyses" as any)
           .select("nota_geral")
@@ -88,9 +86,9 @@ export default function MemberDashboard() {
   }, [user, activeMembership, mentoradoId]);
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-emerald-500";
+    if (score >= 80) return "text-primary";
     if (score >= 60) return "text-amber-500";
-    return "text-red-500";
+    return "text-destructive";
   };
 
   const formatMeetingDate = (dateStr: string) => {
@@ -152,7 +150,7 @@ export default function MemberDashboard() {
               {hasTrailProgress ? (
                 <div className="space-y-5">
                   {dashboardStats.trailProgress.map((trail) => (
-                    <TrailProgress key={trail.id} name={trail.name} progress={trail.progress} color="primary" />
+                    <TrailProgress key={trail.id} name={trail.name} progress={trail.progress} />
                   ))}
                 </div>
               ) : (
@@ -184,12 +182,12 @@ export default function MemberDashboard() {
         <BentoCard size="md" data-tour="next-meeting">
           <div className="flex flex-col h-full">
             <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5 text-cyan-500" />
+              <Calendar className="h-5 w-5 text-secondary" />
               <h3 className="font-semibold text-foreground">Próximo Encontro</h3>
             </div>
-            <div className="flex-1 flex flex-col justify-center items-center text-center p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+            <div className="flex-1 flex flex-col justify-center items-center text-center p-4 rounded-xl bg-secondary/10 border border-secondary/20">
               {dashboardStats.nextMeeting ? (
-                <><Clock className="h-10 w-10 text-cyan-500 mb-3" />
+                <><Clock className="h-10 w-10 text-secondary mb-3" />
                   <p className="text-2xl font-bold text-foreground capitalize">{formatMeetingDate(dashboardStats.nextMeeting.scheduledAt)}</p>
                   <p className="text-muted-foreground mt-1">{dashboardStats.nextMeeting.title}</p>
                   {dashboardStats.nextMeeting.meetingUrl && (
@@ -233,8 +231,8 @@ export default function MemberDashboard() {
               <h3 className="font-semibold text-foreground text-lg">Registrar Prospecção</h3>
               <p className="text-muted-foreground text-sm mt-1">Ganhe pontos no ranking</p>
             </Link>
-            <Link to="/mentorado/ferramentas" className="flex-1 p-6 group hover:bg-emerald-500/5 transition-colors border-r border-border">
-              <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><TrendingUp className="h-6 w-6 text-emerald-500" /></div>
+            <Link to="/mentorado/ferramentas" className="flex-1 p-6 group hover:bg-primary/5 transition-colors border-r border-border">
+              <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><TrendingUp className="h-6 w-6 text-primary" /></div>
               <h3 className="font-semibold text-foreground text-lg">Ferramentas IA</h3>
               <p className="text-muted-foreground text-sm mt-1">IA analisa sua performance</p>
             </Link>
@@ -299,16 +297,14 @@ function EmptyState({ icon, title, description, action }: { icon: React.ReactNod
   );
 }
 
-function TrailProgress({ name, progress, color }: { name: string; progress: number; color: string; }) {
+function TrailProgress({ name, progress }: { name: string; progress: number; }) {
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
         <span className="text-foreground font-medium">{name}</span>
         <span className="text-muted-foreground">{progress}%</span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full bg-gradient-to-r from-${color} to-${color}/60 transition-all duration-500`} style={{ width: `${progress}%` }} />
-      </div>
+      <Progress value={progress} className="h-2" />
     </div>
   );
 }
