@@ -16,71 +16,118 @@ export interface Automation {
   updated_at: string;
 }
 
-const AUTOMATION_META: Record<string, { label: string; description: string; icon: string; hasSchedule: boolean }> = {
+export interface AutomationMeta {
+  label: string;
+  description: string;
+  howItWorks: string;
+  icon: string;
+  hasSchedule: boolean;
+  category: 'engagement' | 'intelligence' | 'communication' | 'growth';
+  frequencyLabel: string;
+}
+
+export const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
+  engagement: { label: '🔄 Engajamento', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  intelligence: { label: '🧠 Inteligência', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+  communication: { label: '📬 Comunicação', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  growth: { label: '🚀 Crescimento', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+};
+
+const AUTOMATION_META: Record<string, AutomationMeta> = {
   weekly_digest: {
     label: 'Digest Semanal',
-    description: 'Envia resumo semanal por email com estatísticas e insights de IA para cada mentorado.',
+    description: 'Resumo semanal personalizado para cada mentorado com suas métricas, progresso e insights gerados por IA.',
+    howItWorks: 'Todo início de semana, o sistema coleta dados de atividade, leads, tarefas e trilhas de cada mentorado e gera um email personalizado com insights de IA, destacando conquistas e áreas de melhoria.',
     icon: 'mail',
     hasSchedule: true,
+    category: 'communication',
+    frequencyLabel: 'Semanal',
   },
   re_engage_inactive: {
     label: 'Re-engajamento Inteligente',
-    description: 'Detecta mentorados inativos e envia email empático de re-engajamento.',
+    description: 'Detecta mentorados inativos e envia email empático incentivando o retorno à plataforma.',
+    howItWorks: 'A cada 12 horas, o sistema verifica quais mentorados não realizaram nenhuma atividade nos últimos X dias (configurável). Para cada inativo, gera um email motivacional com IA, destacando o que está perdendo e próximos passos.',
     icon: 'user-check',
     hasSchedule: true,
+    category: 'engagement',
+    frequencyLabel: 'A cada 12h',
   },
   auto_qualify_lead: {
     label: 'Auto-qualificação de Leads',
-    description: 'Qualifica leads automaticamente com IA ao serem criados com perfil social.',
+    description: 'Analisa o perfil social de novos leads com IA e atribui uma pontuação de qualificação automaticamente.',
+    howItWorks: 'Quando um lead é criado com URL de perfil social, a IA analisa informações públicas (LinkedIn, Instagram) e gera insights sobre potencial de conversão, objeções prováveis e abordagem recomendada.',
     icon: 'target',
     hasSchedule: false,
+    category: 'intelligence',
+    frequencyLabel: 'Sob demanda',
   },
   check_badges: {
     label: 'Verificação de Badges',
-    description: 'Verifica e concede medalhas automaticamente com base em pontos e atividades.',
+    description: 'Concede medalhas e conquistas automaticamente com base nos pontos e atividades realizadas.',
+    howItWorks: 'Periodicamente verifica os pontos acumulados de cada mentorado e compara com os requisitos de cada badge. Badges elegíveis são concedidas automaticamente e o mentorado é notificado.',
     icon: 'award',
     hasSchedule: true,
+    category: 'growth',
+    frequencyLabel: 'Diário',
   },
   check_alerts: {
     label: 'Alertas Inteligentes',
-    description: 'Monitora métricas do tenant e gera alertas automáticos para o mentor.',
+    description: 'Monitora a saúde da mentoria e gera alertas proativos sobre inatividade, atrasos e riscos.',
+    howItWorks: 'Analisa métricas de cada mentorado (último acesso, tarefas atrasadas, SOS pendentes) e gera alertas priorizados no sino de notificações do mentor, com deduplicação automática para evitar spam.',
     icon: 'bell',
     hasSchedule: true,
+    category: 'intelligence',
+    frequencyLabel: 'A cada 6h',
   },
   send_prospection_tips: {
     label: 'Dicas de Prospecção',
-    description: 'Envia dicas de prospecção por email para mentorados com base no perfil de negócio.',
+    description: 'Envia dicas personalizadas de prospecção por email com base no perfil de negócio do mentorado.',
+    howItWorks: 'A IA analisa o perfil de negócio, nicho e momento do mentorado para gerar dicas práticas e acionáveis de prospecção, enviadas por email com frequência configurável.',
     icon: 'lightbulb',
     hasSchedule: true,
+    category: 'growth',
+    frequencyLabel: 'Configurável',
   },
   welcome_onboarding: {
     label: 'Boas-vindas Automático',
-    description: 'Email personalizado com IA quando um novo mentorado entra na plataforma.',
+    description: 'Email de boas-vindas personalizado com IA quando um novo mentorado entra na plataforma.',
+    howItWorks: 'Ao detectar novos membros sem email de boas-vindas, gera uma mensagem personalizada com o nome do mentor, identidade do programa e primeiros passos recomendados.',
     icon: 'hand-heart',
     hasSchedule: true,
+    category: 'communication',
+    frequencyLabel: 'A cada 2h',
   },
   meeting_reminder: {
     label: 'Lembrete de Reunião',
-    description: 'Notificação por email antes de reuniões agendadas no calendário.',
+    description: 'Envia lembretes automáticos por email antes das reuniões agendadas no calendário.',
+    howItWorks: 'Verifica a cada 2 horas se há reuniões próximas dentro da janela configurada (padrão: 24h). Envia email com título, horário e link da reunião para todos os participantes.',
     icon: 'calendar-clock',
     hasSchedule: true,
+    category: 'communication',
+    frequencyLabel: 'A cada 2h',
   },
   monthly_mentor_report: {
     label: 'Relatório Mensal',
-    description: 'Relatório consolidado mensal com métricas de todos os mentorados para o mentor.',
+    description: 'Relatório consolidado mensal com métricas, tendências e insights de IA sobre todos os mentorados.',
+    howItWorks: 'No dia 1° de cada mês, coleta todas as métricas do período anterior (leads, tarefas, trilhas, badges, atividade) e gera um relatório detalhado com análise de IA, enviado ao email do mentor.',
     icon: 'bar-chart-3',
     hasSchedule: true,
+    category: 'intelligence',
+    frequencyLabel: 'Mensal',
   },
   celebrate_achievements: {
     label: 'Celebração de Conquistas',
-    description: 'Email automático parabenizando quando mentorado completa trilha ou ganha badge.',
+    description: 'Parabeniza mentorados automaticamente quando completam trilhas ou conquistam novas badges.',
+    howItWorks: 'Monitora novos badges e certificados de trilhas. Para cada conquista detectada, envia um email de celebração com mensagem motivacional gerada por IA e incentivo para os próximos desafios.',
     icon: 'party-popper',
     hasSchedule: true,
+    category: 'growth',
+    frequencyLabel: 'Diário',
   },
 };
 
-export function getAutomationMeta(key: string) {
-  return AUTOMATION_META[key] || { label: key, description: '', icon: 'zap', hasSchedule: false };
+export function getAutomationMeta(key: string): AutomationMeta {
+  return AUTOMATION_META[key] || { label: key, description: '', howItWorks: '', icon: 'zap', hasSchedule: false, category: 'engagement' as const, frequencyLabel: 'Sob demanda' };
 }
 
 export function useAutomations() {
