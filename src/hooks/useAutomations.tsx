@@ -53,6 +53,30 @@ const AUTOMATION_META: Record<string, { label: string; description: string; icon
     icon: 'lightbulb',
     hasSchedule: true,
   },
+  welcome_onboarding: {
+    label: 'Boas-vindas Automático',
+    description: 'Email personalizado com IA quando um novo mentorado entra na plataforma.',
+    icon: 'hand-heart',
+    hasSchedule: true,
+  },
+  meeting_reminder: {
+    label: 'Lembrete de Reunião',
+    description: 'Notificação por email antes de reuniões agendadas no calendário.',
+    icon: 'calendar-clock',
+    hasSchedule: true,
+  },
+  monthly_mentor_report: {
+    label: 'Relatório Mensal',
+    description: 'Relatório consolidado mensal com métricas de todos os mentorados para o mentor.',
+    icon: 'bar-chart-3',
+    hasSchedule: true,
+  },
+  celebrate_achievements: {
+    label: 'Celebração de Conquistas',
+    description: 'Email automático parabenizando quando mentorado completa trilha ou ganha badge.',
+    icon: 'party-popper',
+    hasSchedule: true,
+  },
 };
 
 export function getAutomationMeta(key: string) {
@@ -124,6 +148,10 @@ export function useAutomations() {
       check_badges: 'check-badges',
       check_alerts: 'check-alerts',
       send_prospection_tips: 'send-prospection-tips',
+      welcome_onboarding: 'welcome-onboarding',
+      meeting_reminder: 'meeting-reminder',
+      monthly_mentor_report: 'monthly-mentor-report',
+      celebrate_achievements: 'celebrate-achievements',
     };
 
     const fnName = fnMap[automationKey];
