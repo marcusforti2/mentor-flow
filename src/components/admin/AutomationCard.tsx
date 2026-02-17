@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Mail, UserCheck, Target, Award, Bell, Lightbulb, Zap, Play, Clock, Settings2, ChevronDown, ChevronUp,
+  HeartHandshake, CalendarClock, BarChart3, PartyPopper,
 } from 'lucide-react';
 import { type Automation, getAutomationMeta } from '@/hooks/useAutomations';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,6 +18,8 @@ import { cn } from '@/lib/utils';
 const iconMap: Record<string, React.ElementType> = {
   mail: Mail, 'user-check': UserCheck, target: Target,
   award: Award, bell: Bell, lightbulb: Lightbulb, zap: Zap,
+  'hand-heart': HeartHandshake, 'calendar-clock': CalendarClock,
+  'bar-chart-3': BarChart3, 'party-popper': PartyPopper,
 };
 
 interface Props {
@@ -152,7 +155,7 @@ export function AutomationCard({ automation, onToggle, onUpdateConfig, onRunNow,
               </div>
             )}
 
-            {['check_badges', 'check_alerts', 'send_prospection_tips'].includes(automation.automation_key) && (
+            {['check_badges', 'check_alerts', 'send_prospection_tips', 'celebrate_achievements'].includes(automation.automation_key) && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Frequência</Label>
                 <Select
@@ -169,6 +172,20 @@ export function AutomationCard({ automation, onToggle, onUpdateConfig, onRunNow,
                     <SelectItem value="weekly">Semanal</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {automation.automation_key === 'meeting_reminder' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Horas antes da reunião</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={48}
+                  className="h-8 text-sm"
+                  value={localConfig.hours_before || 24}
+                  onChange={(e) => setLocalConfig({ ...localConfig, hours_before: Number(e.target.value) })}
+                />
               </div>
             )}
 
