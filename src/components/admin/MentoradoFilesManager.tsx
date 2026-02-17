@@ -51,14 +51,16 @@ interface MentoradoFile {
 }
 
 interface MentoradoFilesManagerProps {
+  /** @deprecated Use ownerMembershipId instead */
   mentoradoId?: string | null;
+  /** @deprecated No longer used — kept for API compat */
   mentorId?: string | null;
   mentoradoName: string;
   tenantId?: string | null;
   ownerMembershipId?: string | null;
 }
 
-export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, tenantId, ownerMembershipId }: MentoradoFilesManagerProps) {
+export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ownerMembershipId }: MentoradoFilesManagerProps) {
   const [files, setFiles] = useState<MentoradoFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -128,8 +130,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
         file_size: file.size,
         mime_type: file.type,
       };
-      if (mentoradoId) insertData.mentorado_id = mentoradoId;
-      if (mentorId) insertData.mentor_id = mentorId;
+      // mentorado_id and mentor_id columns removed — owner_membership_id is already set above
 
       const { error: dbError } = await supabase
         .from('mentorado_files')
@@ -166,8 +167,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
         link_title: linkForm.title || linkForm.url,
         description: linkForm.description,
       };
-      if (mentoradoId) linkData.mentorado_id = mentoradoId;
-      if (mentorId) linkData.mentor_id = mentorId;
+      // legacy IDs removed — owner_membership_id is already set above
 
       const { error } = await supabase
         .from('mentorado_files')
@@ -204,8 +204,7 @@ export function MentoradoFilesManager({ mentoradoId, mentorId, mentoradoName, te
         note_content: noteForm.content,
         description: noteForm.description,
       };
-      if (mentoradoId) noteData.mentorado_id = mentoradoId;
-      if (mentorId) noteData.mentor_id = mentorId;
+      // legacy IDs removed — owner_membership_id is already set above
 
       const { error } = await supabase
         .from('mentorado_files')

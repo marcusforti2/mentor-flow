@@ -204,16 +204,5 @@ const App = () => (
   </QueryClientProvider>
 );
 
-// Placeholder component for routes not yet implemented
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-      <div className="text-center space-y-4">
-        <h1 className="text-2xl font-display font-bold text-foreground">{title}</h1>
-        <p className="text-muted-foreground">Esta página será implementada em breve.</p>
-      </div>
-    </div>
-  );
-}
 
 export default App;

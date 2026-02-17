@@ -235,7 +235,6 @@ export function DevToolsPanel() {
 
       for (let i = 0; i < questions.length; i++) {
         await supabase.from('behavioral_questions').insert({
-          mentor_id: membershipId, // legacy required field, using membership_id as placeholder
           owner_membership_id: membershipId,
           question_text: questions[i].question_text,
           options: questions[i].options,
