@@ -24,6 +24,8 @@ export interface AutomationMeta {
   hasSchedule: boolean;
   category: 'engagement' | 'intelligence' | 'communication' | 'growth';
   frequencyLabel: string;
+  audience: 'mentor' | 'mentorado' | 'ambos';
+  audienceLabel: string;
 }
 
 export const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
@@ -42,6 +44,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'communication',
     frequencyLabel: 'Semanal',
+    audience: 'mentorado',
+    audienceLabel: '📩 Enviado ao mentorado',
   },
   re_engage_inactive: {
     label: 'Re-engajamento Inteligente',
@@ -51,6 +55,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'engagement',
     frequencyLabel: 'A cada 12h',
+    audience: 'mentorado',
+    audienceLabel: '📩 Enviado ao mentorado',
   },
   auto_qualify_lead: {
     label: 'Auto-qualificação de Leads',
@@ -60,6 +66,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: false,
     category: 'intelligence',
     frequencyLabel: 'Sob demanda',
+    audience: 'mentor',
+    audienceLabel: '🧑‍💼 Visível para o mentor',
   },
   check_badges: {
     label: 'Verificação de Badges',
@@ -69,6 +77,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'growth',
     frequencyLabel: 'Diário',
+    audience: 'mentorado',
+    audienceLabel: '🏆 Notifica o mentorado',
   },
   check_alerts: {
     label: 'Alertas Inteligentes',
@@ -78,6 +88,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'intelligence',
     frequencyLabel: 'A cada 6h',
+    audience: 'mentor',
+    audienceLabel: '🔔 Alerta para o mentor',
   },
   send_prospection_tips: {
     label: 'Dicas de Prospecção',
@@ -87,6 +99,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'growth',
     frequencyLabel: 'Configurável',
+    audience: 'mentorado',
+    audienceLabel: '📩 Enviado ao mentorado',
   },
   welcome_onboarding: {
     label: 'Boas-vindas Automático',
@@ -96,6 +110,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'communication',
     frequencyLabel: 'A cada 2h',
+    audience: 'mentorado',
+    audienceLabel: '📩 Enviado ao mentorado',
   },
   meeting_reminder: {
     label: 'Lembrete de Reunião',
@@ -105,6 +121,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'communication',
     frequencyLabel: 'A cada 2h',
+    audience: 'ambos',
+    audienceLabel: '👥 Enviado a todos os participantes',
   },
   monthly_mentor_report: {
     label: 'Relatório Mensal',
@@ -114,6 +132,8 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'intelligence',
     frequencyLabel: 'Mensal',
+    audience: 'mentor',
+    audienceLabel: '📊 Enviado ao mentor',
   },
   celebrate_achievements: {
     label: 'Celebração de Conquistas',
@@ -123,11 +143,13 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     hasSchedule: true,
     category: 'growth',
     frequencyLabel: 'Diário',
+    audience: 'mentorado',
+    audienceLabel: '🎉 Notifica o mentorado',
   },
 };
 
 export function getAutomationMeta(key: string): AutomationMeta {
-  return AUTOMATION_META[key] || { label: key, description: '', howItWorks: '', icon: 'zap', hasSchedule: false, category: 'engagement' as const, frequencyLabel: 'Sob demanda' };
+  return AUTOMATION_META[key] || { label: key, description: '', howItWorks: '', icon: 'zap', hasSchedule: false, category: 'engagement' as const, frequencyLabel: 'Sob demanda', audience: 'ambos' as const, audienceLabel: '👥 Para todos' };
 }
 
 export function useAutomations() {

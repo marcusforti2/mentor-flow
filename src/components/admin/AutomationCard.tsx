@@ -92,8 +92,18 @@ export function AutomationCard({ automation, onToggle, onUpdateConfig, onRunNow,
       </CardHeader>
 
       <CardContent className="space-y-3 pt-0 flex-1 flex flex-col">
-        {/* Frequency + Status row */}
+        {/* Audience + Frequency + Status row */}
         <div className="flex items-center gap-2 flex-wrap">
+          <span className={cn(
+            "inline-flex items-center gap-1 text-[10px] rounded-full px-2 py-0.5 font-medium",
+            meta.audience === 'mentor'
+              ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+              : meta.audience === 'mentorado'
+              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+          )}>
+            {meta.audienceLabel}
+          </span>
           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-2 py-0.5">
             <Timer className="h-3 w-3" />
             {meta.frequencyLabel}
