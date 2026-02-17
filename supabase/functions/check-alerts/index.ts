@@ -53,6 +53,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check if automation is enabled for this tenant
+    const { data: automationConfig } = await supabase
+      .from("tenant_automations")
+      .select("is_enabled")
+      .eq("tenant_id", tenant_id)
+      .eq("automation_key", "check_alerts")
+      .maybeSingle();
+
+    if (automationConfig && !automationConfig.is_enabled) {
+      return new Response(JSON.stringify({ skipped: true, reason: "automation_disabled" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const alerts: Array<{
       tenant_id: string;
       mentor_membership_id: string;
@@ -187,6 +201,13 @@ Deno.serve(async (req) => {
       .eq("mentor_membership_id", mentor_membership_id)
       .eq("is_read", true)
       .lt("created_at", sevenDaysAgo);
+
+    // Update last_run status
+    await supabase
+      .from("tenant_automations")
+      .update({ last_run_at: new Date().toISOString(), last_run_status: "success" })
+      .eq("tenant_id", tenant_id)
+      .eq("automation_key", "check_alerts");
 
     return new Response(
       JSON.stringify({ alerts_created: newAlerts.length, total_detected: alerts.length }),

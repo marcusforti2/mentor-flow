@@ -53,6 +53,16 @@ Deno.serve(async (req) => {
     let totalSent = 0;
 
     for (const tenant of tenants) {
+      // Check if automation is enabled for this tenant
+      const { data: automationConfig } = await supabase
+        .from("tenant_automations")
+        .select("id, is_enabled")
+        .eq("tenant_id", tenant.id)
+        .eq("automation_key", "weekly_digest")
+        .maybeSingle();
+
+      if (automationConfig && !automationConfig.is_enabled) continue;
+
       const branding = await getTenantBranding(supabase, tenant.id);
 
       // Get active mentees for this tenant
@@ -150,6 +160,15 @@ Deno.serve(async (req) => {
           totalSent++;
         } catch (e) { console.error(`Digest error for ${mentee.id}:`, e); }
       }
+    }
+
+    // Update last_run status for all processed tenants
+    for (const tenant of tenants) {
+      await supabase
+        .from("tenant_automations")
+        .update({ last_run_at: new Date().toISOString(), last_run_status: "success" })
+        .eq("tenant_id", tenant.id)
+        .eq("automation_key", "weekly_digest");
     }
 
     return new Response(JSON.stringify({ success: true, emails_sent: totalSent }), {
