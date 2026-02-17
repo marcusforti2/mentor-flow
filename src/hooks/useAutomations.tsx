@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export interface Automation {
   id: string;
@@ -152,63 +153,94 @@ export function getAutomationMeta(key: string): AutomationMeta {
   return AUTOMATION_META[key] || { label: key, description: '', howItWorks: '', icon: 'zap', hasSchedule: false, category: 'engagement' as const, frequencyLabel: 'Sob demanda', audience: 'ambos' as const, audienceLabel: '👥 Para todos' };
 }
 
+function automationsQueryKey(tenantId: string | undefined) {
+  return ['automations', tenantId] as const;
+}
+
 export function useAutomations() {
   const { tenant } = useTenant();
-  const [automations, setAutomations] = useState<Automation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const tenantId = tenant?.id;
 
-  const fetchAutomations = useCallback(async () => {
-    if (!tenant?.id) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('tenant_automations')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .order('automation_key');
+  const { data: automations = [], isLoading: loading } = useQuery({
+    queryKey: automationsQueryKey(tenantId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_automations')
+        .select('*')
+        .eq('tenant_id', tenantId!)
+        .order('automation_key');
 
-    if (error) {
-      console.error('Error fetching automations:', error);
-      toast.error('Erro ao carregar automações');
-    } else {
-      setAutomations((data || []) as unknown as Automation[]);
-    }
-    setLoading(false);
-  }, [tenant?.id]);
+      if (error) {
+        toast.error('Erro ao carregar automações');
+        throw error;
+      }
+      return (data || []) as unknown as Automation[];
+    },
+    enabled: !!tenantId,
+  });
 
-  useEffect(() => {
-    fetchAutomations();
-  }, [fetchAutomations]);
-
-  const toggleAutomation = async (id: string, enabled: boolean) => {
-    const { error } = await supabase
-      .from('tenant_automations')
-      .update({ is_enabled: enabled })
-      .eq('id', id);
-
-    if (error) {
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+      const { error } = await supabase
+        .from('tenant_automations')
+        .update({ is_enabled: enabled })
+        .eq('id', id);
+      if (error) throw error;
+      return enabled;
+    },
+    onMutate: async ({ id, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: automationsQueryKey(tenantId) });
+      const prev = queryClient.getQueryData<Automation[]>(automationsQueryKey(tenantId));
+      queryClient.setQueryData<Automation[]>(automationsQueryKey(tenantId), old =>
+        (old || []).map(a => a.id === id ? { ...a, is_enabled: enabled } : a)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(automationsQueryKey(tenantId), context.prev);
       toast.error('Erro ao atualizar automação');
-      return;
-    }
-    toast.success(enabled ? 'Automação ativada' : 'Automação desativada');
-    setAutomations(prev => prev.map(a => a.id === id ? { ...a, is_enabled: enabled } : a));
-  };
+    },
+    onSuccess: (_data, { enabled }) => {
+      toast.success(enabled ? 'Automação ativada' : 'Automação desativada');
+    },
+  });
 
-  const updateConfig = async (id: string, config: Record<string, any>) => {
-    const { error } = await supabase
-      .from('tenant_automations')
-      .update({ config })
-      .eq('id', id);
-
-    if (error) {
+  const configMutation = useMutation({
+    mutationFn: async ({ id, config }: { id: string; config: Record<string, any> }) => {
+      const { error } = await supabase
+        .from('tenant_automations')
+        .update({ config })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, config }) => {
+      await queryClient.cancelQueries({ queryKey: automationsQueryKey(tenantId) });
+      const prev = queryClient.getQueryData<Automation[]>(automationsQueryKey(tenantId));
+      queryClient.setQueryData<Automation[]>(automationsQueryKey(tenantId), old =>
+        (old || []).map(a => a.id === id ? { ...a, config } : a)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(automationsQueryKey(tenantId), context.prev);
       toast.error('Erro ao salvar configuração');
-      return;
-    }
-    toast.success('Configuração salva');
-    setAutomations(prev => prev.map(a => a.id === id ? { ...a, config } : a));
-  };
+    },
+    onSuccess: () => {
+      toast.success('Configuração salva');
+    },
+  });
 
-  const runNow = async (automationKey: string) => {
-    if (!tenant?.id) return;
+  const toggleAutomation = useCallback((id: string, enabled: boolean) => {
+    toggleMutation.mutate({ id, enabled });
+  }, [toggleMutation]);
+
+  const updateConfig = useCallback((id: string, config: Record<string, any>) => {
+    configMutation.mutate({ id, config });
+  }, [configMutation]);
+
+  const runNow = useCallback(async (automationKey: string) => {
+    if (!tenantId) return;
 
     const fnMap: Record<string, string> = {
       weekly_digest: 'weekly-digest',
@@ -241,14 +273,13 @@ export function useAutomations() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ tenant_id: tenant.id }),
+          body: JSON.stringify({ tenant_id: tenantId }),
         }
       );
 
       if (res.ok) {
         toast.success('Automação executada com sucesso!');
-        // Refresh to get updated last_run
-        await fetchAutomations();
+        queryClient.invalidateQueries({ queryKey: automationsQueryKey(tenantId) });
       } else {
         const body = await res.text();
         toast.error(`Erro: ${body.slice(0, 100)}`);
@@ -256,7 +287,11 @@ export function useAutomations() {
     } catch (err: any) {
       toast.error(`Erro ao executar: ${err.message}`);
     }
-  };
+  }, [tenantId, queryClient]);
 
-  return { automations, loading, toggleAutomation, updateConfig, runNow, refetch: fetchAutomations };
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: automationsQueryKey(tenantId) });
+  }, [queryClient, tenantId]);
+
+  return { automations, loading, toggleAutomation, updateConfig, runNow, refetch };
 }

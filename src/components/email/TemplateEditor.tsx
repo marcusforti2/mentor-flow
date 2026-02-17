@@ -57,7 +57,7 @@ export default function TemplateEditor({ template, mentorId, onSave, onClose }: 
         const { error } = await supabase
           .from('email_templates')
           .insert({
-            mentor_id: mentorId,
+            owner_membership_id: mentorId,
             name,
             subject,
             body_html: bodyHtml,
