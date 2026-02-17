@@ -13,22 +13,101 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const body = await req.json().catch(() => ({}));
+    const isCronMode = !body.prospection_id && !body.membership_id;
+
+    // === CRON MODE: qualify unqualified leads across tenants ===
+    if (isCronMode) {
+      const { tenant_id } = body;
+      let tenants: { id: string }[];
+      if (tenant_id) {
+        tenants = [{ id: tenant_id }];
+      } else {
+        const { data } = await supabase.from("tenants").select("id");
+        tenants = data || [];
+      }
+
+      let totalQualified = 0;
+
+      for (const tenant of tenants) {
+        const { data: automationConfig } = await supabase
+          .from("tenant_automations")
+          .select("is_enabled")
+          .eq("tenant_id", tenant.id)
+          .eq("automation_key", "auto_qualify_lead")
+          .maybeSingle();
+
+        if (automationConfig && !automationConfig.is_enabled) continue;
+
+        // Get unqualified leads with profile_url but no ai_insights
+        const { data: leads } = await supabase
+          .from("crm_prospections")
+          .select("id, contact_name, profile_url, membership_id")
+          .eq("tenant_id", tenant.id)
+          .is("ai_insights", null)
+          .not("profile_url", "is", null)
+          .limit(10);
+
+        if (!leads?.length) continue;
+
+        for (const lead of leads) {
+          if (!lead.profile_url || !lead.membership_id) continue;
+
+          try {
+            const qualifyRes = await fetch(`${supabaseUrl}/functions/v1/lead-qualifier`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${serviceKey}`,
+                "Content-Type": "application/json",
+                apikey: serviceKey,
+              },
+              body: JSON.stringify({
+                profileUrl: lead.profile_url,
+                prospectionId: lead.id,
+                membershipId: lead.membership_id,
+              }),
+            });
+
+            if (qualifyRes.ok) {
+              totalQualified++;
+              console.log(`Auto-qualified: ${lead.contact_name}`);
+            } else {
+              const errText = await qualifyRes.text();
+              console.error(`Failed to qualify ${lead.contact_name}:`, errText);
+            }
+          } catch (e) {
+            console.error(`Error qualifying ${lead.contact_name}:`, e);
+          }
+        }
+
+        await supabase
+          .from("tenant_automations")
+          .update({ last_run_at: new Date().toISOString(), last_run_status: "success" })
+          .eq("tenant_id", tenant.id)
+          .eq("automation_key", "auto_qualify_lead");
+      }
+
+      return new Response(JSON.stringify({ success: true, leads_qualified: totalQualified }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === MANUAL MODE: specific lead ===
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { prospection_id, membership_id } = await req.json();
+    const { prospection_id, membership_id } = body;
     if (!prospection_id || !membership_id) {
       return new Response(JSON.stringify({ error: "prospection_id and membership_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Validate ownership
     const { data: membership } = await supabase
       .from("memberships")
       .select("id, tenant_id")
@@ -41,7 +120,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get the prospection
     const { data: prospection } = await supabase
       .from("crm_prospections")
       .select("id, contact_name, profile_url, ai_insights")
@@ -53,52 +131,27 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Prospection not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Skip if already qualified or no social URL
     if (prospection.ai_insights) {
-      return new Response(JSON.stringify({ success: true, skipped: true, reason: "already_qualified" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "already_qualified" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
     if (!prospection.profile_url) {
-      return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_profile_url" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_profile_url" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Call the existing lead-qualifier function internally
     const qualifyRes = await fetch(`${supabaseUrl}/functions/v1/lead-qualifier`, {
       method: "POST",
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-        apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
-      },
-      body: JSON.stringify({
-        profileUrl: prospection.profile_url,
-        prospectionId: prospection.id,
-        membershipId: membership_id,
-      }),
+      headers: { Authorization: authHeader, "Content-Type": "application/json", apikey: Deno.env.get("SUPABASE_ANON_KEY")! },
+      body: JSON.stringify({ profileUrl: prospection.profile_url, prospectionId: prospection.id, membershipId: membership_id }),
     });
 
     const qualifyResult = await qualifyRes.json();
-
     if (!qualifyRes.ok) {
-      console.error("Auto-qualify failed:", qualifyResult);
-      return new Response(JSON.stringify({ success: false, error: qualifyResult.error || "Qualification failed" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ success: false, error: qualifyResult.error || "Qualification failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    console.log(`Auto-qualified lead ${prospection.contact_name} (${prospection_id})`);
-
-    return new Response(JSON.stringify({ success: true, qualification: qualifyResult }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ success: true, qualification: qualifyResult }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("auto-qualify-lead error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
