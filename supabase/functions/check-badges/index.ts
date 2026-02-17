@@ -117,6 +117,29 @@ Deno.serve(async (req) => {
       membershipId = membership.id;
     }
 
+    // Check if automation is enabled for the tenant
+    const { data: membershipForTenant } = await supabase
+      .from("memberships")
+      .select("tenant_id")
+      .eq("id", membershipId)
+      .single();
+
+    if (membershipForTenant?.tenant_id) {
+      const { data: automationConfig } = await supabase
+        .from("tenant_automations")
+        .select("is_enabled")
+        .eq("tenant_id", membershipForTenant.tenant_id)
+        .eq("automation_key", "check_badges")
+        .maybeSingle();
+
+      if (automationConfig && !automationConfig.is_enabled) {
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "automation_disabled" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Get all badges for this tenant
     const { data: allBadges, error: badgesError } = await supabase
       .from("badges")

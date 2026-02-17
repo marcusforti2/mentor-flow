@@ -53,6 +53,20 @@ Deno.serve(async (req) => {
     let totalSent = 0;
 
     for (const tenant of tenants) {
+      // Check if automation is enabled for this tenant
+      const { data: automationConfig } = await supabase
+        .from("tenant_automations")
+        .select("id, is_enabled, config")
+        .eq("tenant_id", tenant.id)
+        .eq("automation_key", "re_engage_inactive")
+        .maybeSingle();
+
+      if (automationConfig && !automationConfig.is_enabled) continue;
+
+      // Use tenant-specific inactivity_days from config if available
+      const tenantInactivityDays = (automationConfig?.config as any)?.inactivity_days || inactivity_days;
+      const tenantCutoff = new Date(Date.now() - tenantInactivityDays * 24 * 60 * 60 * 1000).toISOString();
+
       const branding = await getTenantBranding(supabase, tenant.id);
 
       // Get active mentees
@@ -71,7 +85,7 @@ Deno.serve(async (req) => {
           .from("activity_logs")
           .select("id")
           .eq("membership_id", mentee.id)
-          .gte("created_at", cutoff)
+          .gte("created_at", tenantCutoff)
           .limit(1);
 
         if (recentActivity?.length) continue; // Active, skip
@@ -162,6 +176,15 @@ Deno.serve(async (req) => {
           totalSent++;
         }
       }
+    }
+
+    // Update last_run status
+    for (const tenant of tenants) {
+      await supabase
+        .from("tenant_automations")
+        .update({ last_run_at: new Date().toISOString(), last_run_status: "success" })
+        .eq("tenant_id", tenant.id)
+        .eq("automation_key", "re_engage_inactive");
     }
 
     return new Response(JSON.stringify({ success: true, emails_sent: totalSent }), {
