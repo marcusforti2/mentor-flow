@@ -19,6 +19,7 @@ import {
   FolderOpen,
   ClipboardCheck,
   BookMarked,
+  AlertCircle,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -45,6 +46,7 @@ const menuItems: DockItem[] = [
     ],
   },
   { icon: Calendar, label: 'Calendário', path: '/mentorado/calendario' },
+  { icon: AlertCircle, label: 'Centro SOS', path: '/mentorado/sos' },
   { icon: FolderOpen, label: 'Arquivos & Reuniões', path: '/mentorado/meus-arquivos' },
   { icon: User, label: 'Meu Perfil', path: '/mentorado/perfil' },
 ];
