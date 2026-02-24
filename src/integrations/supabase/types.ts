@@ -2958,30 +2958,42 @@ export type Database = {
       }
       program_investments: {
         Row: {
+          annual_program_value_cents: number
           created_at: string
           id: string
           investment_amount_cents: number
           membership_id: string
+          monthly_ads_cost_cents: number
+          monthly_other_cost_cents: number
+          monthly_team_cost_cents: number
           notes: string | null
           onboarding_date: string | null
           start_date: string | null
           tenant_id: string
         }
         Insert: {
+          annual_program_value_cents?: number
           created_at?: string
           id?: string
           investment_amount_cents: number
           membership_id: string
+          monthly_ads_cost_cents?: number
+          monthly_other_cost_cents?: number
+          monthly_team_cost_cents?: number
           notes?: string | null
           onboarding_date?: string | null
           start_date?: string | null
           tenant_id: string
         }
         Update: {
+          annual_program_value_cents?: number
           created_at?: string
           id?: string
           investment_amount_cents?: number
           membership_id?: string
+          monthly_ads_cost_cents?: number
+          monthly_other_cost_cents?: number
+          monthly_team_cost_cents?: number
           notes?: string | null
           onboarding_date?: string | null
           start_date?: string | null

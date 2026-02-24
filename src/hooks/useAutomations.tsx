@@ -147,8 +147,18 @@ const AUTOMATION_META: Record<string, AutomationMeta> = {
     audience: 'mentorado',
     audienceLabel: '🎉 Notifica o mentorado',
   },
+  metrics_reminder: {
+    label: 'Lembrete de Métricas',
+    description: 'Envia email toda segunda cobrando o preenchimento das métricas semanais do mentorado.',
+    howItWorks: 'Toda segunda-feira às 8h, verifica se cada mentorado preencheu atividades nos últimos 7 dias. Se não preencheu, envia email motivacional cobrando. Se preencheu, envia parabéns com resumo.',
+    icon: 'bar-chart-3',
+    hasSchedule: true,
+    category: 'engagement',
+    frequencyLabel: 'Semanal (seg)',
+    audience: 'mentorado',
+    audienceLabel: '📩 Enviado ao mentorado',
+  },
 };
-
 export function getAutomationMeta(key: string): AutomationMeta {
   return AUTOMATION_META[key] || { label: key, description: '', howItWorks: '', icon: 'zap', hasSchedule: false, category: 'engagement' as const, frequencyLabel: 'Sob demanda', audience: 'ambos' as const, audienceLabel: '👥 Para todos' };
 }

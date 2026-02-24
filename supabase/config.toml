@@ -100,3 +100,6 @@ verify_jwt = false
 
 [functions.re-engage-inactive]
 verify_jwt = false
+
+[functions.metrics-reminder]
+verify_jwt = false

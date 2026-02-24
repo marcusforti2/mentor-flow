@@ -8,21 +8,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Loader2, Plus, Trash2, DollarSign, Handshake, Activity, CreditCard,
-  TrendingUp, Target, HelpCircle, Calendar, ArrowRight, Pencil, RefreshCw,
-  MessageSquare, Phone, Users, FileText, Zap, BarChart3, Info, CheckCircle2,
-  Clock, AlertTriangle, ChevronRight, Sparkles
+  TrendingUp, Target, HelpCircle, Calendar, Pencil, RefreshCw,
+  MessageSquare, Phone, Users, FileText, Zap, BarChart3, CheckCircle2,
+  Clock, AlertTriangle, ChevronRight, ChevronDown, Sparkles, Minus, Save
 } from "lucide-react";
 import {
   useInvestment, useDeals, useActivities, usePayments,
   useMetricsMutations, formatCents,
   type MenteeDeal, type MenteePayment
 } from "@/hooks/useMetrics";
-import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 
 /* ──────── Constants ──────── */
 const STAGES = [
@@ -36,11 +38,11 @@ const STAGES = [
 ];
 
 const ACTIVITY_TYPES = [
-  { value: "msg_enviada", label: "Mensagens Enviadas", icon: MessageSquare, desc: "Quantidade de mensagens de prospecção enviadas" },
-  { value: "ligacao", label: "Ligações", icon: Phone, desc: "Ligações feitas para leads ou clientes" },
-  { value: "followup", label: "Follow-ups", icon: RefreshCw, desc: "Contatos de acompanhamento com leads" },
-  { value: "reuniao", label: "Reuniões Realizadas", icon: Users, desc: "Reuniões de vendas efetivamente realizadas" },
-  { value: "proposta", label: "Propostas Enviadas", icon: FileText, desc: "Propostas comerciais enviadas" },
+  { value: "msg_enviada", label: "Mensagens", icon: MessageSquare, emoji: "💬", desc: "Mensagens de prospecção enviadas" },
+  { value: "ligacao", label: "Ligações", icon: Phone, emoji: "📞", desc: "Ligações feitas para leads" },
+  { value: "followup", label: "Follow-ups", icon: RefreshCw, emoji: "🔄", desc: "Contatos de acompanhamento" },
+  { value: "reuniao", label: "Reuniões", icon: Users, emoji: "👥", desc: "Reuniões realizadas" },
+  { value: "proposta", label: "Propostas", icon: FileText, emoji: "📄", desc: "Propostas enviadas" },
 ];
 
 const PAYMENT_STATUSES = [
@@ -49,6 +51,13 @@ const PAYMENT_STATUSES = [
   { value: "atrasado", label: "Atrasado", color: "bg-red-500/20 text-red-400 border-red-500/30" },
   { value: "estornado", label: "Estornado", color: "bg-muted text-muted-foreground border-border" },
 ];
+
+/* CRM stage mapping */
+const CRM_STAGE_MAP: Record<string, string> = {
+  lead: "lead", new: "lead", contacted: "conversa",
+  meeting_scheduled: "reuniao_marcada", meeting_done: "reuniao_feita",
+  proposal: "proposta", won: "fechado", lost: "perdido",
+};
 
 /* ──────── Helpers ──────── */
 function InfoTip({ text }: { text: string }) {
@@ -64,46 +73,16 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-function EmptyState({ icon: Icon, title, desc, action }: { icon: any; title: string; desc: string; action?: React.ReactNode }) {
+function StepHeader({ step, title, desc }: { step: number; title: string; desc: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-        <Icon className="h-7 w-7 text-primary" />
+    <div className="flex items-start gap-3 mb-4">
+      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-primary-foreground text-sm font-bold">
+        {step}
       </div>
-      <h3 className="font-semibold text-foreground mb-1">{title}</h3>
-      <p className="text-sm text-muted-foreground max-w-sm mb-4">{desc}</p>
-      {action}
-    </div>
-  );
-}
-
-function SectionHeader({ icon: Icon, title, desc, badge, action }: { icon: any; title: string; desc: string; badge?: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-      <div className="flex items-start gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-            {badge && <Badge variant="secondary" className="text-[10px]">{badge}</Badge>}
-          </div>
-          <p className="text-sm text-muted-foreground">{desc}</p>
-        </div>
+      <div>
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-      {action}
-    </div>
-  );
-}
-
-/* ──────── Mini KPI for summary ──────── */
-function MiniKPI({ label, value, sub, trend }: { label: string; value: string; sub?: string; trend?: "up" | "down" | "neutral" }) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-4 text-center">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="text-xl font-bold text-foreground">{value}</p>
-      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -121,446 +100,486 @@ const Metricas = () => {
 
   const mutations = useMetricsMutations(membershipId || "", tenantId || "");
 
-  // Current month for summary
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-  const currentMonthLabel = format(now, "MMMM yyyy", { locale: ptBR });
+  const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  const weekLabel = `Semana ${format(today, "w")} · ${format(today, "dd MMM yyyy", { locale: ptBR })}`;
 
-  // Summary KPIs
-  const summary = useMemo(() => {
-    const dealsThisMonth = deals.filter(d => {
-      const dt = new Date(d.created_at);
-      return isWithinInterval(dt, { start: monthStart, end: monthEnd });
-    });
-    const closedDeals = dealsThisMonth.filter(d => d.stage === "fechado");
-    const closedRevenue = closedDeals.reduce((s, d) => s + d.value_cents, 0);
+  // Activity counters for quick check-in
+  const [counters, setCounters] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
 
-    const actsThisMonth = activities.filter(a => {
-      const dt = new Date(a.activity_date);
-      return isWithinInterval(dt, { start: monthStart, end: monthEnd });
-    });
-    const totalActs = actsThisMonth.reduce((s, a) => s + a.count, 0);
-    const reunioes = actsThisMonth.filter(a => a.type === "reuniao").reduce((s, a) => s + a.count, 0);
+  const inc = (type: string) => setCounters(prev => ({ ...prev, [type]: (prev[type] || 0) + 1 }));
+  const dec = (type: string) => setCounters(prev => ({ ...prev, [type]: Math.max(0, (prev[type] || 0) - 1) }));
+  const hasCounters = Object.values(counters).some(v => v > 0);
 
-    const paysThisMonth = payments.filter(p => {
-      if (!p.paid_at) return false;
-      const dt = new Date(p.paid_at);
-      return isWithinInterval(dt, { start: monthStart, end: monthEnd });
-    }).filter(p => p.status === "recebido");
-    const caixaRecebido = paysThisMonth.reduce((s, p) => s + p.amount_cents, 0);
-
-    return { closedRevenue, totalActs, reunioes, caixaRecebido, totalDeals: dealsThisMonth.length, closedCount: closedDeals.length };
-  }, [deals, activities, payments, monthStart, monthEnd]);
-
-  // Investment form state
-  const [invEditing, setInvEditing] = useState(false);
-  const [invAmount, setInvAmount] = useState("");
-  const [invStart, setInvStart] = useState("");
-  const [invOnboard, setInvOnboard] = useState("");
-  const [invNotes, setInvNotes] = useState("");
+  const saveAllActivities = async () => {
+    setSaving(true);
+    try {
+      const entries = Object.entries(counters).filter(([, v]) => v > 0);
+      for (const [type, count] of entries) {
+        await mutations.createActivity.mutateAsync({ type, count, activity_date: todayStr });
+      }
+      setCounters({});
+      toast.success(`${entries.length} atividade(s) registrada(s)! 🎉`);
+    } catch {
+      toast.error("Erro ao salvar atividades");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Deal modal
   const [dealOpen, setDealOpen] = useState(false);
   const [dealForm, setDealForm] = useState<Partial<MenteeDeal>>({});
 
-  // Activity quick-add
-  const [actOpen, setActOpen] = useState(false);
-  const [actForm, setActForm] = useState({ type: "msg_enviada", count: 1, activity_date: format(new Date(), "yyyy-MM-dd") });
-
   // Payment modal
   const [payOpen, setPayOpen] = useState(false);
   const [payForm, setPayForm] = useState<Partial<MenteePayment>>({});
+
+  // Costs section
+  const [costsOpen, setCostsOpen] = useState(false);
+  const [adsCost, setAdsCost] = useState("");
+  const [teamCost, setTeamCost] = useState("");
+  const [otherCost, setOtherCost] = useState("");
+  const [savingCosts, setSavingCosts] = useState(false);
+
+  // CRM sync
+  const [syncing, setSyncing] = useState(false);
+
+  // Summary calcs
+  const summary = useMemo(() => {
+    const weekActs = activities.filter(a => {
+      const d = new Date(a.activity_date + "T12:00:00");
+      return isWithinInterval(d, { start: weekStart, end: weekEnd });
+    });
+    const totalWeekActs = weekActs.reduce((s, a) => s + a.count, 0);
+
+    const monthDeals = deals.filter(d => isWithinInterval(new Date(d.created_at), { start: monthStart, end: monthEnd }));
+    const activeDeals = deals.filter(d => !["fechado", "perdido"].includes(d.stage));
+    const closedDeals = deals.filter(d => d.stage === "fechado");
+    const closedRevenue = closedDeals.reduce((s, d) => s + d.value_cents, 0);
+
+    const monthPays = payments.filter(p => p.paid_at && p.status === "recebido" && isWithinInterval(new Date(p.paid_at), { start: monthStart, end: monthEnd }));
+    const caixaRecebido = monthPays.reduce((s, p) => s + p.amount_cents, 0);
+
+    return { totalWeekActs, activeDeals: activeDeals.length, closedRevenue, caixaRecebido, totalDeals: deals.length };
+  }, [activities, deals, payments, weekStart, weekEnd, monthStart, monthEnd]);
+
+  // Load cost form when investment data arrives
+  useMemo(() => {
+    if (investment) {
+      setAdsCost(investment.monthly_ads_cost_cents ? String(investment.monthly_ads_cost_cents / 100) : "");
+      setTeamCost(investment.monthly_team_cost_cents ? String(investment.monthly_team_cost_cents / 100) : "");
+      setOtherCost(investment.monthly_other_cost_cents ? String(investment.monthly_other_cost_cents / 100) : "");
+    }
+  }, [investment]);
+
+  const saveCosts = async () => {
+    setSavingCosts(true);
+    try {
+      mutations.upsertInvestment.mutate({
+        id: investment?.id,
+        investment_amount_cents: investment?.investment_amount_cents || 0,
+        start_date: investment?.start_date || undefined,
+        onboarding_date: investment?.onboarding_date || undefined,
+        notes: investment?.notes || undefined,
+        monthly_ads_cost_cents: Math.round(parseFloat(adsCost || "0") * 100),
+        monthly_team_cost_cents: Math.round(parseFloat(teamCost || "0") * 100),
+        monthly_other_cost_cents: Math.round(parseFloat(otherCost || "0") * 100),
+      });
+      toast.success("Custos atualizados!");
+    } catch {
+      toast.error("Erro ao salvar custos");
+    } finally {
+      setSavingCosts(false);
+    }
+  };
+
+  // CRM sync handler
+  const syncFromCRM = async () => {
+    if (!membershipId || !tenantId) return;
+    setSyncing(true);
+    try {
+      const { data: prospections, error } = await supabase
+        .from("crm_prospections")
+        .select("id, contact_name, company, status, points, temperature")
+        .eq("membership_id", membershipId);
+
+      if (error) throw error;
+      if (!prospections || prospections.length === 0) {
+        toast.info("Nenhum lead encontrado no seu CRM.");
+        return;
+      }
+
+      let imported = 0;
+      for (const p of prospections) {
+        const stage = CRM_STAGE_MAP[p.status || ""] || "lead";
+        const exists = deals.find(d => d.source === "crm_sync" && d.deal_name === p.contact_name);
+        if (!exists) {
+          await mutations.createDeal.mutateAsync({
+            deal_name: `${p.contact_name}${p.company ? ` - ${p.company}` : ""}`,
+            stage,
+            value_cents: (p.points || 0) * 100,
+            source: "crm_sync",
+          });
+          imported++;
+        }
+      }
+      toast.success(imported > 0 ? `${imported} deal(s) importado(s) do CRM! 🔄` : "CRM já sincronizado, nenhum novo deal.");
+    } catch (err: any) {
+      toast.error("Erro ao sincronizar: " + err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (!membershipId || !tenantId) return null;
 
   const isLoading = loadingInv || loadingDeals || loadingAct || loadingPay;
 
-  const initInvForm = () => {
-    if (investment) {
-      setInvAmount(String(investment.investment_amount_cents / 100));
-      setInvStart(investment.start_date || "");
-      setInvOnboard(investment.onboarding_date || "");
-      setInvNotes(investment.notes || "");
-    } else {
-      setInvAmount(""); setInvStart(""); setInvOnboard(""); setInvNotes("");
-    }
-    setInvEditing(true);
-  };
-
-  const saveInvestment = () => {
-    mutations.upsertInvestment.mutate({
-      id: investment?.id,
-      investment_amount_cents: Math.round(parseFloat(invAmount || "0") * 100),
-      start_date: invStart || undefined,
-      onboarding_date: invOnboard || undefined,
-      notes: invNotes || undefined,
-    }, { onSuccess: () => setInvEditing(false) });
-  };
+  // Monthly cost total
+  const investmentMonthly = investment ? investment.investment_amount_cents / 12 : 0; // simple /12 estimate
+  const adsCents = investment?.monthly_ads_cost_cents || 0;
+  const teamCents = investment?.monthly_team_cost_cents || 0;
+  const otherCents = investment?.monthly_other_cost_cents || 0;
+  const totalMonthlyCost = investmentMonthly + adsCents + teamCents + otherCents;
 
   return (
-    <div className="max-w-[1100px] mx-auto space-y-8 p-4 pb-20">
+    <div className="max-w-[800px] mx-auto space-y-6 p-4 pb-20">
       {/* ──── HEADER ──── */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-            <BarChart3 className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">Painel de Resultados</h1>
-            <p className="text-sm text-muted-foreground">Acompanhe seus números semanalmente e veja sua evolução</p>
-          </div>
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium">
+          <Sparkles className="h-3.5 w-3.5" />
+          Check-in Diário
         </div>
+        <h1 className="text-2xl font-display font-bold text-foreground">
+          Como foi seu dia? 🎯
+        </h1>
+        <p className="text-sm text-muted-foreground">{weekLabel}</p>
       </div>
 
-      {/* ──── RESUMO MENSAL ──── */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <CardTitle className="text-base">Resumo de {currentMonthLabel}</CardTitle>
+      {/* ──── RESUMO DA SEMANA ──── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Atividades", value: String(summary.totalWeekActs), sub: "esta semana" },
+          { label: "Deals Ativos", value: String(summary.activeDeals), sub: "no pipeline" },
+          { label: "Receita Total", value: formatCents(summary.closedRevenue), sub: "deals fechados" },
+          { label: "Caixa Recebido", value: formatCents(summary.caixaRecebido), sub: "este mês" },
+        ].map((kpi, i) => (
+          <Card key={i} className="text-center">
+            <CardContent className="py-3 px-2">
+              <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
+              <p className="text-xl font-bold text-foreground">{kpi.value}</p>
+              <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* ──── PASSO 1: ATIVIDADES ──── */}
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <StepHeader
+            step={1}
+            title="Atividades do dia"
+            desc="Registre quantas ações de vendas você fez hoje. Seu mentor acompanha sua consistência."
+          />
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {ACTIVITY_TYPES.map(at => {
+              const count = counters[at.value] || 0;
+              const weekCount = activities
+                .filter(a => a.type === at.value && isWithinInterval(new Date(a.activity_date + "T12:00:00"), { start: weekStart, end: weekEnd }))
+                .reduce((s, a) => s + a.count, 0);
+
+              return (
+                <div key={at.value} className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border bg-card">
+                  <span className="text-lg">{at.emoji}</span>
+                  <span className="text-[11px] font-medium text-muted-foreground text-center leading-tight">{at.label}</span>
+
+                  {/* Stepper */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => dec(at.value)}
+                      disabled={count === 0}
+                      className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-8 text-center text-lg font-bold text-foreground">{count}</span>
+                    <button
+                      onClick={() => inc(at.value)}
+                      className="h-7 w-7 rounded-lg border border-primary/40 bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <span className="text-[9px] text-muted-foreground">{weekCount} esta semana</span>
+                </div>
+              );
+            })}
           </div>
-          <CardDescription>Seus principais indicadores do mês atual — atualize toda semana!</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <MiniKPI label="Receita Fechada" value={formatCents(summary.closedRevenue)} sub={`${summary.closedCount} deal(s) ganho(s)`} />
-              <MiniKPI label="Caixa Recebido" value={formatCents(summary.caixaRecebido)} sub="Valores efetivamente recebidos" />
-              <MiniKPI label="Atividades" value={String(summary.totalActs)} sub={`${summary.reunioes} reunião(ões)`} />
-              <MiniKPI label="Investimento" value={investment ? formatCents(investment.investment_amount_cents) : "—"} sub={investment ? "Valor do programa" : "Registre abaixo"} />
-            </div>
+
+          {hasCounters && (
+            <Button
+              className="w-full mt-4"
+              onClick={saveAllActivities}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Salvar atividades do dia
+            </Button>
           )}
         </CardContent>
       </Card>
 
-      {/* ──── 1. INVESTIMENTO ──── */}
-      <section>
-        <SectionHeader
-          icon={DollarSign}
-          title="Investimento no Programa"
-          desc="Quanto você investiu na mentoria. Isso é usado para calcular seu ROI e Payback."
-          badge="Preencha 1x"
-          action={
-            <Button size="sm" variant="outline" onClick={initInvForm}>
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />{investment ? "Editar" : "Registrar"}
-            </Button>
-          }
-        />
-        <Card>
-          <CardContent className="pt-6">
-            {loadingInv ? (
-              <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-            ) : investment ? (
-              <div className="flex flex-wrap items-center gap-6">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Valor investido</p>
-                  <p className="text-2xl font-bold text-primary">{formatCents(investment.investment_amount_cents)}</p>
-                </div>
-                {investment.start_date && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Início</p>
-                    <p className="text-sm font-medium">{format(new Date(investment.start_date + "T12:00:00"), "dd/MM/yyyy")}</p>
-                  </div>
-                )}
-                {investment.onboarding_date && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Onboarding</p>
-                    <p className="text-sm font-medium">{format(new Date(investment.onboarding_date + "T12:00:00"), "dd/MM/yyyy")}</p>
-                  </div>
-                )}
-                {investment.notes && (
-                  <div className="basis-full">
-                    <p className="text-xs text-muted-foreground mb-0.5">Notas</p>
-                    <p className="text-sm">{investment.notes}</p>
-                  </div>
-                )}
+      {/* ──── PASSO 2: DEALS ──── */}
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <StepHeader
+            step={2}
+            title="Algum deal novo ou atualizado?"
+            desc="Cada pessoa que pode virar cliente é um deal. Mova para o estágio certo com 1 clique."
+          />
+
+          {loadingDeals ? (
+            <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+          ) : deals.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-3">Nenhum deal registrado ainda. Comece adicionando suas oportunidades de venda.</p>
+              <Button size="sm" onClick={() => { setDealForm({ stage: "lead" }); setDealOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Criar primeiro deal
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Mini pipeline */}
+              <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
+                {STAGES.filter(s => s.value !== "perdido").map((stage, i) => {
+                  const count = deals.filter(d => d.stage === stage.value).length;
+                  const StageIcon = stage.icon;
+                  return (
+                    <div key={stage.value} className="flex items-center">
+                      <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium whitespace-nowrap ${count > 0 ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted/30 border-border text-muted-foreground"}`}>
+                        <StageIcon className="h-3 w-3" />
+                        {count}
+                      </div>
+                      {i < STAGES.length - 2 && <ChevronRight className="h-3 w-3 text-muted-foreground/30 mx-0.5 shrink-0" />}
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              <EmptyState
-                icon={DollarSign}
-                title="Registre seu investimento"
-                desc="Informe o valor que você investiu no programa de mentoria para que possamos calcular seu ROI automaticamente."
-                action={<Button size="sm" onClick={initInvForm}>Registrar Investimento</Button>}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </section>
 
-      {/* ──── 2. PIPELINE / DEALS ──── */}
-      <section>
-        <SectionHeader
-          icon={Handshake}
-          title="Pipeline de Vendas (Deals)"
-          desc="Registre cada oportunidade de negócio — desde o primeiro contato até o fechamento ou perda."
-          badge="Atualize semanalmente"
-          action={
-            <Button size="sm" onClick={() => { setDealForm({ stage: "lead" }); setDealOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" />Novo Deal
-            </Button>
-          }
-        />
-
-        {/* Mini pipeline visual */}
-        {deals.length > 0 && (
-          <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-2">
-            {STAGES.filter(s => s.value !== "perdido").map((stage, i) => {
-              const count = deals.filter(d => d.stage === stage.value).length;
-              const StageIcon = stage.icon;
-              return (
-                <div key={stage.value} className="flex items-center">
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium whitespace-nowrap ${count > 0 ? "bg-primary/10 border-primary/30 text-primary" : "bg-muted/30 border-border text-muted-foreground"}`}>
-                    <StageIcon className="h-3 w-3" />
-                    {stage.label.replace(" ✅", "")}: {count}
-                  </div>
-                  {i < STAGES.length - 2 && <ChevronRight className="h-3 w-3 text-muted-foreground/40 mx-0.5 shrink-0" />}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <Card>
-          <CardContent className="pt-6">
-            {loadingDeals ? (
-              <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-            ) : deals.length === 0 ? (
-              <EmptyState
-                icon={Handshake}
-                title="Nenhum deal registrado"
-                desc="Adicione suas oportunidades de venda aqui. Cada contato que pode virar cliente é um 'deal'. Acompanhe o progresso de cada um."
-                action={<Button size="sm" onClick={() => { setDealForm({ stage: "lead" }); setDealOpen(true); }}>Criar Primeiro Deal</Button>}
-              />
-            ) : (
-              <div className="space-y-2">
-                {deals.map(d => {
+              {/* Recent deals with quick stage change */}
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {deals.filter(d => d.stage !== "perdido").slice(0, 10).map(d => {
                   const stageInfo = STAGES.find(s => s.value === d.stage);
-                  const StageIcon = stageInfo?.icon || Target;
+                  const stageIdx = STAGES.findIndex(s => s.value === d.stage);
+                  const nextStage = stageIdx < STAGES.length - 2 ? STAGES[stageIdx + 1] : null;
+
                   return (
-                    <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors group">
-                      <div className={`h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0`}>
-                        <StageIcon className={`h-4 w-4 ${stageInfo?.color || "text-muted-foreground"}`} />
-                      </div>
+                    <div key={d.id} className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-muted/20 transition-colors group">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{d.deal_name || "Deal sem nome"}</span>
-                          <Badge variant="outline" className="text-[10px] shrink-0">{stageInfo?.label || d.stage}</Badge>
+                          <span className="text-sm font-medium truncate">{d.deal_name || "Deal"}</span>
+                          <Badge variant="outline" className="text-[10px]">{stageInfo?.label}</Badge>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                          <span className="font-medium text-foreground">{formatCents(d.value_cents)}</span>
-                          {d.source && <span>via {d.source}</span>}
-                          <span>{format(new Date(d.created_at), "dd/MM/yy")}</span>
-                          {d.closed_at && <span className="text-emerald-400">Fechado {format(new Date(d.closed_at), "dd/MM/yy")}</span>}
-                        </div>
+                        <span className="text-xs text-muted-foreground">{formatCents(d.value_cents)}</span>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => mutations.deleteDeal.mutate(d.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ──── 3. ATIVIDADES COMERCIAIS ──── */}
-      <section>
-        <SectionHeader
-          icon={Activity}
-          title="Atividades Comerciais"
-          desc="Registre semanalmente quantas ações de vendas você fez. Isso mostra sua consistência."
-          badge="Atualize semanalmente"
-          action={
-            <Button size="sm" onClick={() => { setActForm({ type: "msg_enviada", count: 1, activity_date: format(new Date(), "yyyy-MM-dd") }); setActOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" />Registrar
-            </Button>
-          }
-        />
-
-        {/* Quick-action cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-4">
-          {ACTIVITY_TYPES.map(at => {
-            const Icon = at.icon;
-            const thisMonthCount = activities
-              .filter(a => a.type === at.value && isWithinInterval(new Date(a.activity_date), { start: monthStart, end: monthEnd }))
-              .reduce((s, a) => s + a.count, 0);
-            return (
-              <button
-                key={at.value}
-                onClick={() => { setActForm({ type: at.value, count: 1, activity_date: format(new Date(), "yyyy-MM-dd") }); setActOpen(true); }}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-center group"
-              >
-                <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground leading-tight">{at.label}</span>
-                <span className="text-lg font-bold text-foreground">{thisMonthCount}</span>
-                <span className="text-[9px] text-muted-foreground">este mês</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {activities.length > 0 && (
-          <Card>
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground mb-3">Últimos registros</p>
-              <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                {activities.slice(0, 15).map(a => {
-                  const typeInfo = ACTIVITY_TYPES.find(t => t.value === a.type);
-                  const Icon = typeInfo?.icon || Activity;
-                  return (
-                    <div key={a.id} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/30 group text-sm">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{typeInfo?.label || a.type}</span>
-                        <Badge variant="secondary" className="text-[10px]">×{a.count}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{format(new Date(a.activity_date + "T12:00:00"), "dd/MM")}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => mutations.deleteActivity.mutate(a.id)}>
-                          <Trash2 className="h-3 w-3" />
+                      {nextStage && d.stage !== "fechado" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[11px] gap-1 shrink-0 text-primary hover:text-primary"
+                          onClick={() => mutations.updateDeal.mutate({ id: d.id, stage: nextStage.value })}
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                          {nextStage.label.replace(" ✅", "")}
                         </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      {/* ──── 4. CAIXA (PAGAMENTOS) ──── */}
-      <section>
-        <SectionHeader
-          icon={CreditCard}
-          title="Fluxo de Caixa"
-          desc="Registre cada recebimento, pendência ou estorno. Isso calcula quanto você já recebeu de fato."
-          badge="Atualize quando receber"
-          action={
-            <Button size="sm" onClick={() => { setPayForm({ status: "pendente" }); setPayOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" />Novo Registro
-            </Button>
-          }
-        />
-
-        {/* Summary badges */}
-        {payments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {(["recebido", "pendente", "atrasado"] as const).map(status => {
-              const statusInfo = PAYMENT_STATUSES.find(s => s.value === status);
-              const total = payments.filter(p => p.status === status).reduce((s, p) => s + p.amount_cents, 0);
-              if (total === 0) return null;
-              return (
-                <Badge key={status} variant="outline" className={`${statusInfo?.color} text-xs py-1 px-2.5`}>
-                  {statusInfo?.label}: {formatCents(total)}
-                </Badge>
-              );
-            })}
-          </div>
-        )}
-
-        <Card>
-          <CardContent className="pt-6">
-            {loadingPay ? (
-              <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-            ) : payments.length === 0 ? (
-              <EmptyState
-                icon={CreditCard}
-                title="Nenhum pagamento registrado"
-                desc="Registre aqui cada valor que você recebeu, tem a receber ou que está atrasado. Assim seu mentor acompanha a saúde financeira do seu negócio."
-                action={<Button size="sm" onClick={() => { setPayForm({ status: "pendente" }); setPayOpen(true); }}>Registrar Primeiro Pagamento</Button>}
-              />
-            ) : (
-              <div className="space-y-2">
-                {payments.map(p => {
-                  const statusInfo = PAYMENT_STATUSES.find(s => s.value === p.status);
-                  return (
-                    <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors group">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${p.status === "recebido" ? "bg-emerald-500/10" : p.status === "atrasado" ? "bg-red-500/10" : "bg-muted"}`}>
-                        {p.status === "recebido" ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> :
-                         p.status === "atrasado" ? <AlertTriangle className="h-4 w-4 text-red-400" /> :
-                         <Clock className="h-4 w-4 text-muted-foreground" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{p.description || "Pagamento"}</span>
-                          <Badge variant="outline" className={`text-[10px] shrink-0 ${statusInfo?.color}`}>{statusInfo?.label}</Badge>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                          <span className="font-medium text-foreground">{formatCents(p.amount_cents)}</span>
-                          {p.due_date && <span>Venc: {format(new Date(p.due_date + "T12:00:00"), "dd/MM/yy")}</span>}
-                          {p.paid_at && <span className="text-emerald-400">Pago: {format(new Date(p.paid_at + "T12:00:00"), "dd/MM/yy")}</span>}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => mutations.deletePayment.mutate(p.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 shrink-0" onClick={() => mutations.deleteDeal.mutate(d.id)}>
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
 
-      {/* ──── CRM SYNC CALLOUT ──── */}
-      <Card className="border-dashed border-primary/30 bg-primary/5">
-        <CardContent className="flex items-center gap-4 py-5">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Zap className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">Sincronização automática com CRM</p>
-            <p className="text-xs text-muted-foreground">Em breve: conecte seu CRM e seus deals e atividades serão importados automaticamente. Por enquanto, preencha manualmente.</p>
-          </div>
-          <Badge variant="secondary" className="text-[10px] shrink-0">Em breve</Badge>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => { setDealForm({ stage: "lead" }); setDealOpen(true); }}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Novo deal
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={syncFromCRM} disabled={syncing}>
+                  {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Sincronizar do CRM
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* ──── MODALS ──── */}
+      {/* ──── PASSO 3: PAGAMENTOS ──── */}
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <StepHeader
+            step={3}
+            title="Recebeu algum pagamento?"
+            desc="Quando receber de um cliente, registre aqui. Assim calculamos seu ROI real."
+          />
 
-      {/* Investment edit */}
-      <Dialog open={invEditing} onOpenChange={setInvEditing}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{investment ? "Editar Investimento" : "Registrar Investimento"}</DialogTitle>
-            <DialogDescription>Informe o valor total que você investiu no programa de mentoria.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div>
-              <Label>Valor investido (R$) <InfoTip text="O valor total pago pelo programa de mentoria, em reais." /></Label>
-              <Input type="number" value={invAmount} onChange={e => setInvAmount(e.target.value)} placeholder="60000" className="mt-1" />
+          {payments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(["recebido", "pendente", "atrasado"] as const).map(status => {
+                const statusInfo = PAYMENT_STATUSES.find(s => s.value === status);
+                const total = payments.filter(p => p.status === status).reduce((s, p) => s + p.amount_cents, 0);
+                if (total === 0) return null;
+                return (
+                  <Badge key={status} variant="outline" className={`${statusInfo?.color} text-xs py-1 px-2.5`}>
+                    {statusInfo?.label}: {formatCents(total)}
+                  </Badge>
+                );
+              })}
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Data de Início <InfoTip text="Quando você começou oficialmente no programa." /></Label>
-                <Input type="date" value={invStart} onChange={e => setInvStart(e.target.value)} className="mt-1" />
+          )}
+
+          {payments.length > 0 && (
+            <div className="space-y-1.5 max-h-[200px] overflow-y-auto mb-3">
+              {payments.slice(0, 8).map(p => {
+                const statusInfo = PAYMENT_STATUSES.find(s => s.value === p.status);
+                return (
+                  <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted/20 group text-sm">
+                    <div className={`h-6 w-6 rounded flex items-center justify-center shrink-0 ${p.status === "recebido" ? "bg-emerald-500/10" : p.status === "atrasado" ? "bg-red-500/10" : "bg-muted"}`}>
+                      {p.status === "recebido" ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> :
+                       p.status === "atrasado" ? <AlertTriangle className="h-3.5 w-3.5 text-red-400" /> :
+                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="truncate">{p.description || "Pagamento"}</span>
+                      <span className="mx-2 font-medium">{formatCents(p.amount_cents)}</span>
+                    </div>
+                    <Badge variant="outline" className={`text-[10px] ${statusInfo?.color}`}>{statusInfo?.label}</Badge>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 shrink-0" onClick={() => mutations.deletePayment.mutate(p.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <Button size="sm" variant="outline" className="w-full" onClick={() => { setPayForm({ status: "recebido" }); setPayOpen(true); }}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Registrar recebimento
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ──── CUSTOS E INVESTIMENTO ──── */}
+      <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/20 transition-colors rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-accent" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm">Custos e Investimento</CardTitle>
+                    <CardDescription className="text-xs">
+                      Preencha seus custos mensais para calcular se o programa está se pagando.
+                    </CardDescription>
+                  </div>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${costsOpen ? "rotate-180" : ""}`} />
               </div>
-              <div>
-                <Label>Data de Onboarding <InfoTip text="Quando você finalizou o processo de entrada." /></Label>
-                <Input type="date" value={invOnboard} onChange={e => setInvOnboard(e.target.value)} className="mt-1" />
+            </CardHeader>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-4">
+              {/* Investimento do programa (somente leitura se veio do mentor) */}
+              <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground">Investimento no Programa</p>
+                  {investment && <Badge variant="outline" className="text-[10px]">Preenchido pelo mentor</Badge>}
+                </div>
+                <p className="text-xl font-bold text-foreground">
+                  {investment ? formatCents(investment.investment_amount_cents) : "Não informado"}
+                </p>
+                {investment?.start_date && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Início: {format(new Date(investment.start_date + "T12:00:00"), "dd/MM/yyyy")}
+                  </p>
+                )}
               </div>
-            </div>
-            <div>
-              <Label>Notas</Label>
-              <Textarea value={invNotes} onChange={e => setInvNotes(e.target.value)} placeholder="Ex: Parcelei em 12x..." className="mt-1" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setInvEditing(false)}>Cancelar</Button>
-            <Button onClick={saveInvestment} disabled={mutations.upsertInvestment.isPending}>
-              {mutations.upsertInvestment.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+              {/* Custos editáveis */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">
+                    Custo mensal de tráfego (R$)
+                    <InfoTip text="Quanto você gasta por mês com anúncios pagos (Meta Ads, Google Ads, etc)." />
+                  </Label>
+                  <Input
+                    type="number"
+                    value={adsCost}
+                    onChange={e => setAdsCost(e.target.value)}
+                    placeholder="0"
+                    className="mt-1 h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">
+                    Custo mensal de equipe (R$)
+                    <InfoTip text="Quanto você paga para colaboradores, freelancers ou equipe por mês." />
+                  </Label>
+                  <Input
+                    type="number"
+                    value={teamCost}
+                    onChange={e => setTeamCost(e.target.value)}
+                    placeholder="0"
+                    className="mt-1 h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">
+                    Outros custos mensais (R$)
+                    <InfoTip text="Ferramentas, softwares, escritório ou outros custos operacionais mensais." />
+                  </Label>
+                  <Input
+                    type="number"
+                    value={otherCost}
+                    onChange={e => setOtherCost(e.target.value)}
+                    placeholder="0"
+                    className="mt-1 h-9"
+                  />
+                </div>
+
+                {/* Resumo de custos */}
+                <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
+                  <p className="text-xs text-muted-foreground mb-1">Custo total mensal estimado</p>
+                  <p className="text-lg font-bold text-primary">{formatCents(totalMonthlyCost)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Programa ({formatCents(investmentMonthly)}) + Tráfego ({formatCents(adsCents)}) + Equipe ({formatCents(teamCents)}) + Outros ({formatCents(otherCents)})
+                  </p>
+                </div>
+
+                <Button size="sm" onClick={saveCosts} disabled={savingCosts} className="w-full">
+                  {savingCosts ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                  Salvar custos
+                </Button>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* ──── MODALS ──── */}
 
       {/* Deal modal */}
       <Dialog open={dealOpen} onOpenChange={setDealOpen}>
@@ -593,7 +612,7 @@ const Metricas = () => {
                 <Input value={dealForm.source || ""} onChange={e => setDealForm(p => ({ ...p, source: e.target.value }))} placeholder="linkedin, indicação..." className="mt-1" />
               </div>
               <div>
-                <Label>Data Fechamento <InfoTip text="Preencha quando o deal for fechado (ganho ou perdido)." /></Label>
+                <Label>Data Fechamento</Label>
                 <Input type="date" value={dealForm.closed_at?.split("T")[0] || ""} onChange={e => setDealForm(p => ({ ...p, closed_at: e.target.value || null }))} className="mt-1" />
               </div>
             </div>
@@ -608,58 +627,11 @@ const Metricas = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Activity modal */}
-      <Dialog open={actOpen} onOpenChange={setActOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar Atividade</DialogTitle>
-            <DialogDescription>Registre as ações de vendas que você realizou. A consistência é o que gera resultado!</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div>
-              <Label>Tipo de atividade</Label>
-              <Select value={actForm.type} onValueChange={v => setActForm(p => ({ ...p, type: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ACTIVITY_TYPES.map(t => (
-                    <SelectItem key={t.value} value={t.value}>
-                      <div className="flex flex-col">
-                        <span>{t.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {ACTIVITY_TYPES.find(t => t.value === actForm.type)?.desc}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Quantidade</Label>
-                <Input type="number" min={1} value={actForm.count} onChange={e => setActForm(p => ({ ...p, count: parseInt(e.target.value) || 1 }))} className="mt-1" />
-              </div>
-              <div>
-                <Label>Data</Label>
-                <Input type="date" value={actForm.activity_date} onChange={e => setActForm(p => ({ ...p, activity_date: e.target.value }))} className="mt-1" />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setActOpen(false)}>Cancelar</Button>
-            <Button onClick={() => mutations.createActivity.mutate(actForm, { onSuccess: () => setActOpen(false) })} disabled={mutations.createActivity.isPending}>
-              {mutations.createActivity.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Registrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Payment modal */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo Registro de Caixa</DialogTitle>
+            <DialogTitle>Registrar Recebimento</DialogTitle>
             <DialogDescription>Registre cada valor recebido, pendente ou atrasado dos seus clientes.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
@@ -673,8 +645,8 @@ const Metricas = () => {
                 <Input type="number" value={payForm.amount_cents ? payForm.amount_cents / 100 : ""} onChange={e => setPayForm(p => ({ ...p, amount_cents: Math.round(parseFloat(e.target.value || "0") * 100) }))} placeholder="3000" className="mt-1" />
               </div>
               <div>
-                <Label>Status <InfoTip text="Recebido = já caiu na conta. Pendente = ainda vai vencer. Atrasado = venceu sem pagar." /></Label>
-                <Select value={payForm.status || "pendente"} onValueChange={v => setPayForm(p => ({ ...p, status: v }))}>
+                <Label>Status</Label>
+                <Select value={payForm.status || "recebido"} onValueChange={v => setPayForm(p => ({ ...p, status: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{PAYMENT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
@@ -682,11 +654,11 @@ const Metricas = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Vencimento <InfoTip text="Data prevista para o pagamento." /></Label>
+                <Label>Vencimento</Label>
                 <Input type="date" value={payForm.due_date || ""} onChange={e => setPayForm(p => ({ ...p, due_date: e.target.value }))} className="mt-1" />
               </div>
               <div>
-                <Label>Pago em <InfoTip text="Data em que o pagamento foi efetivamente recebido." /></Label>
+                <Label>Pago em</Label>
                 <Input type="date" value={payForm.paid_at || ""} onChange={e => setPayForm(p => ({ ...p, paid_at: e.target.value }))} className="mt-1" />
               </div>
             </div>

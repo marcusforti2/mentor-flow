@@ -13,6 +13,10 @@ export interface ProgramInvestment {
   start_date: string | null;
   onboarding_date: string | null;
   notes: string | null;
+  monthly_ads_cost_cents: number;
+  monthly_team_cost_cents: number;
+  monthly_other_cost_cents: number;
+  annual_program_value_cents: number;
   created_at: string;
 }
 
@@ -162,23 +166,25 @@ export function useMetricsMutations(membershipId: string, tenantId: string) {
   };
 
   const upsertInvestment = useMutation({
-    mutationFn: async (input: { id?: string; investment_amount_cents: number; start_date?: string; onboarding_date?: string; notes?: string }) => {
+    mutationFn: async (input: { id?: string; investment_amount_cents: number; start_date?: string; onboarding_date?: string; notes?: string; monthly_ads_cost_cents?: number; monthly_team_cost_cents?: number; monthly_other_cost_cents?: number; annual_program_value_cents?: number }) => {
+      const payload = {
+        investment_amount_cents: input.investment_amount_cents,
+        start_date: input.start_date || null,
+        onboarding_date: input.onboarding_date || null,
+        notes: input.notes || null,
+        monthly_ads_cost_cents: input.monthly_ads_cost_cents ?? 0,
+        monthly_team_cost_cents: input.monthly_team_cost_cents ?? 0,
+        monthly_other_cost_cents: input.monthly_other_cost_cents ?? 0,
+        annual_program_value_cents: input.annual_program_value_cents ?? 0,
+      };
       if (input.id) {
-        const { error } = await supabase.from("program_investments").update({
-          investment_amount_cents: input.investment_amount_cents,
-          start_date: input.start_date || null,
-          onboarding_date: input.onboarding_date || null,
-          notes: input.notes || null,
-        }).eq("id", input.id);
+        const { error } = await supabase.from("program_investments").update(payload).eq("id", input.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("program_investments").insert({
           membership_id: membershipId,
           tenant_id: tenantId,
-          investment_amount_cents: input.investment_amount_cents,
-          start_date: input.start_date || null,
-          onboarding_date: input.onboarding_date || null,
-          notes: input.notes || null,
+          ...payload,
         });
         if (error) throw error;
       }
