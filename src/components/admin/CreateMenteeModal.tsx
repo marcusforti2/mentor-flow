@@ -62,6 +62,9 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
   const [website, setWebsite] = useState('');
   const [notes, setNotes] = useState('');
   const [investmentAmount, setInvestmentAmount] = useState('');
+  const [monthlyAmount, setMonthlyAmount] = useState('');
+  const [installments, setInstallments] = useState('');
+  const [negotiationNotes, setNegotiationNotes] = useState('');
   const [socialOpen, setSocialOpen] = useState(false);
   const [businessOpen, setBusinessOpen] = useState(false);
   const [showWhatsAppMessage, setShowWhatsAppMessage] = useState(false);
@@ -146,6 +149,9 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     setWebsite('');
     setNotes('');
     setInvestmentAmount('');
+    setMonthlyAmount('');
+    setInstallments('');
+    setNegotiationNotes('');
     setSocialOpen(false);
     setBusinessOpen(false);
     setShowWhatsAppMessage(false);
@@ -187,10 +193,15 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
 
       // Save investment if provided
       if (investmentAmount && parseFloat(investmentAmount) > 0 && result?.membership_id) {
+        const installmentsNum = installments ? parseInt(installments) : null;
+        const monthlyAmountCents = monthlyAmount ? Math.round(parseFloat(monthlyAmount) * 100) : null;
         await supabase.from('program_investments').insert({
           membership_id: result.membership_id,
           tenant_id: effectiveTenantId,
           investment_amount_cents: Math.round(parseFloat(investmentAmount) * 100),
+          installments: installmentsNum,
+          monthly_amount_cents: monthlyAmountCents,
+          negotiation_notes: negotiationNotes.trim() || null,
         });
       }
 
@@ -447,16 +458,50 @@ Estou aqui para ajudar! 🚀`;
             </Collapsible>
 
             {/* Investimento do Programa */}
-            <div className="space-y-2">
-              <Label className="text-slate-200">Valor do Programa (R$)</Label>
-              <Input
-                type="number"
-                value={investmentAmount}
-                onChange={(e) => setInvestmentAmount(e.target.value)}
-                placeholder="Ex: 60000"
-                className="bg-slate-800 border-slate-700 text-slate-100"
-              />
-              <p className="text-xs text-slate-500">Valor total investido pelo mentorado no programa. Usado para calcular ROI.</p>
+            <div className="space-y-3 rounded-xl border border-border/50 p-3 bg-muted/10">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">💰 Investimento</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-slate-200 text-xs">Valor Total (R$)</Label>
+                  <Input
+                    type="number"
+                    value={investmentAmount}
+                    onChange={(e) => setInvestmentAmount(e.target.value)}
+                    placeholder="Ex: 110000"
+                    className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-slate-200 text-xs">Valor Mensal (R$)</Label>
+                  <Input
+                    type="number"
+                    value={monthlyAmount}
+                    onChange={(e) => setMonthlyAmount(e.target.value)}
+                    placeholder="Ex: 11000"
+                    className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-slate-200 text-xs">Parcelas</Label>
+                <Input
+                  type="number"
+                  value={installments}
+                  onChange={(e) => setInstallments(e.target.value)}
+                  placeholder="Ex: 10"
+                  className="bg-slate-800 border-slate-700 text-slate-100 h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-slate-200 text-xs">Observações de Negociação</Label>
+                <Textarea
+                  value={negotiationNotes}
+                  onChange={(e) => setNegotiationNotes(e.target.value)}
+                  placeholder="Condições especiais, pactos, acordos..."
+                  className="bg-slate-800 border-slate-700 text-slate-100 min-h-[50px]"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500">Usado para calcular ROI e acompanhar pagamentos.</p>
             </div>
 
             <div className="flex gap-3 pt-4">
