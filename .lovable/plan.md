@@ -1,126 +1,197 @@
 
 
-# Plano: Central de Automacoes Visual (estilo n8n)
+# Plano: Aba "Metricas" no Perfil do Mentorado
 
 ## Resumo
 
-Transformar a Central de Automacoes em um hub visual interativo onde o mentor pode ver e editar as automacoes como um fluxo conectado -- similar ao n8n. O projeto ja usa `@xyflow/react` no modulo de Email Marketing, entao vamos reutilizar a mesma biblioteca.
+Criar um sistema completo de metricas de governanca do negocio do mentorado. O mentorado preenche dados em formato tabela no seu painel. O mentor visualiza tudo em dashboard no perfil do mentorado (nova aba "Metricas"). Inclui KPIs, ROI, Payback, graficos e alertas inteligentes.
 
 ---
 
-## O que muda
+## Arquitetura de Dados
 
-Hoje a pagina de Automacoes e uma grade de cards independentes. O plano e adicionar uma **segunda aba "Mapa Visual"** que mostra todas as automacoes como nos conectados em um canvas interativo, organizados por categoria e com conexoes visuais mostrando o fluxo de dados (ex: "Boas-vindas" --> "Digest Semanal" --> "Re-engajamento").
+### Adaptacao ao modelo existente
 
-A aba de cards continua existindo para quem prefere a visao lista.
+O sistema ja usa `membership_id` como chave de identidade (nao um `mentee_id` separado). Todas as tabelas novas usarao `membership_id` como FK para `memberships.id`, com `tenant_id` para isolamento multi-tenant via RLS.
 
----
+Nao sera criada a tabela `mentee_access` proposta no briefing -- o sistema ja possui `is_tenant_staff()` e `mentor_mentee_assignments` para controle de visibilidade. As RLS policies usarao essas funcoes existentes.
 
-## Interface Visual
+### Tabelas novas (5 tabelas)
 
 ```text
-+------------------------------------------------------+
-|  Automacoes          [Cards]  [Mapa Visual]          |
-+------------------------------------------------------+
-|                                                      |
-|  [Gatilho: Novo Mentorado]                           |
-|        |                                             |
-|        v                                             |
-|  [Boas-vindas Automatico] ----> [Digest Semanal]     |
-|        |                              |              |
-|        v                              v              |
-|  [Verificacao de Badges]    [Re-engajamento]         |
-|        |                              |              |
-|        v                              v              |
-|  [Celebracao Conquistas]   [Alertas Inteligentes]    |
-|                                                      |
-+------------------------------------------------------+
+program_investments
+  id (uuid, pk, default gen_random_uuid())
+  membership_id (uuid, fk -> memberships.id, NOT NULL)
+  tenant_id (uuid, fk -> tenants.id, NOT NULL)
+  investment_amount_cents (int, NOT NULL)  -- ex: 6000000 = R$60.000
+  start_date (date)
+  onboarding_date (date)
+  notes (text)
+  created_at (timestamptz, default now())
+
+mentee_deals
+  id (uuid, pk)
+  membership_id (uuid, fk -> memberships.id, NOT NULL)
+  tenant_id (uuid, fk -> tenants.id, NOT NULL)
+  stage (text, default 'lead')  -- lead, conversa, reuniao_marcada, reuniao_feita, proposta, fechado, perdido
+  value_cents (int, default 0)
+  source (text)  -- linkedin, indicacao, inbound, etc
+  deal_name (text)
+  created_at (timestamptz, default now())
+  closed_at (timestamptz)
+  lost_reason (text)
+
+mentee_activities
+  id (uuid, pk)
+  membership_id (uuid, fk -> memberships.id, NOT NULL)
+  tenant_id (uuid, fk -> tenants.id, NOT NULL)
+  type (text, NOT NULL)  -- msg_enviada, ligacao, followup, reuniao, proposta
+  count (int, default 1)
+  activity_date (date, NOT NULL)
+  created_at (timestamptz, default now())
+
+mentee_payments
+  id (uuid, pk)
+  membership_id (uuid, fk -> memberships.id, NOT NULL)
+  tenant_id (uuid, fk -> tenants.id, NOT NULL)
+  amount_cents (int, NOT NULL)
+  status (text, default 'pendente')  -- recebido, pendente, atrasado, estornado
+  description (text)
+  due_date (date)
+  paid_at (date)
+  created_at (timestamptz, default now())
+
+metrics_snapshots  (historico para performance)
+  id (uuid, pk)
+  membership_id (uuid, fk -> memberships.id, NOT NULL)
+  tenant_id (uuid, fk -> tenants.id, NOT NULL)
+  period_start (date)
+  period_end (date)
+  revenue_closed_cents (int)
+  revenue_received_cents (int)
+  deals_won_count (int)
+  meetings_held_count (int)
+  roi_ratio (numeric)
+  payback_months (numeric)
+  created_at (timestamptz, default now())
 ```
 
-Cada no (node) do fluxo:
-- Mostra icone, nome, status (ativo/inativo), ultima execucao
-- Clique abre um painel lateral (Sheet) com toggle, configuracoes e "Executar Agora"
-- Cor do no muda conforme categoria (Engajamento = azul, Inteligencia = roxo, etc.)
-- Nos inativos ficam com opacidade reduzida
-- Edges animados entre nos conectados
+### RLS Policies (todas as 5 tabelas)
+
+Mesmo padrao para todas:
+- **SELECT**: Proprio mentorado OU staff do mesmo tenant (`is_tenant_staff(auth.uid(), tenant_id)`)
+- **INSERT**: Proprio mentorado (via `membership_id` vinculado ao `auth.uid()`)
+- **UPDATE**: Proprio mentorado OU staff do mesmo tenant
+- **DELETE**: Proprio mentorado OU staff do mesmo tenant
 
 ---
 
-## Detalhes Tecnicos
+## Frontend -- Visao do Mentorado (preenche dados)
 
-### Arquivos novos
+### Nova pagina: `src/pages/member/Metricas.tsx`
 
-1. **`src/components/admin/AutomationFlowView.tsx`**
-   - Componente principal com ReactFlow canvas
-   - Gera nos automaticamente a partir das automacoes do banco
-   - Layout automatico organizado por categoria (colunas) ou por fluxo logico
-   - MiniMap + Controls + Background grid
-   - Clique em no abre Sheet de edicao
+Acessivel via `/mentorado/metricas`. Layout em Tabs com 4 sub-abas de preenchimento estilo tabela:
 
-2. **`src/components/admin/AutomationFlowNode.tsx`**
-   - Node customizado para ReactFlow
-   - Exibe: icone da categoria, nome, badge ativo/inativo, indicador de status (sucesso/erro)
-   - Handles de conexao (source/target) para edges visuais
+1. **Investimento** -- Form simples para registrar o valor investido no programa, data de inicio e onboarding
+2. **Deals (Pipeline)** -- Tabela editavel com colunas: Nome, Stage (select), Valor (R$), Fonte, Data Criacao, Data Fechamento, Motivo Perda. Botao "+ Novo Deal"
+3. **Atividades** -- Tabela: Tipo (select), Quantidade, Data. Botao "+ Registrar Atividade"
+4. **Caixa (Pagamentos)** -- Tabela: Descricao, Valor, Status (select), Vencimento, Data Pagamento. Botao "+ Novo Pagamento"
 
-3. **`src/components/admin/AutomationDetailSheet.tsx`**
-   - Painel lateral (Sheet) que abre ao clicar em um no
-   - Contém: toggle liga/desliga, configuracoes (dias de inatividade, frequencia, etc.), botao "Executar Agora", historico de ultima execucao
-   - Reutiliza a logica que ja existe no AutomationCard
+Cada tabela usa modais simples para adicionar/editar registros.
 
-### Arquivos modificados
+### Rota e menu
 
-4. **`src/pages/admin/Automacoes.tsx`**
-   - Adiciona sistema de abas (Tabs): "Cards" e "Mapa Visual"
-   - Na aba "Cards", mantem o grid atual
-   - Na aba "Mapa Visual", renderiza o novo AutomationFlowView
-
-### Logica de conexoes (edges)
-
-As conexoes entre automacoes serao definidas com base no fluxo logico real do sistema:
-
-| De | Para | Logica |
-|----|------|--------|
-| Gatilho: Novo Mentorado | Boas-vindas Automatico | Entrada no programa dispara boas-vindas |
-| Boas-vindas Automatico | Digest Semanal | Apos boas-vindas, entra no ciclo semanal |
-| Digest Semanal | Re-engajamento | Se nao abriu digest, verifica inatividade |
-| Re-engajamento | Alertas Inteligentes | Inatividade persistente gera alerta ao mentor |
-| Verificacao de Badges | Celebracao Conquistas | Badge concedida dispara celebracao |
-| Gatilho: Reuniao Agendada | Lembrete de Reuniao | Reuniao proxima dispara lembrete |
-| Gatilho: Fim do Mes | Relatorio Mensal | Ciclo mensal gera relatorio |
-| Gatilho: Lead Criado | Auto-qualificacao | Novo lead dispara qualificacao |
-
-Essas conexoes sao visuais e pre-definidas no frontend (nao precisam de tabela extra no banco). Elas ajudam o mentor a entender "o que aciona o que".
-
-### Posicionamento dos nos
-
-Layout automatico em colunas por categoria:
-- Coluna 1: Gatilhos (nos virtuais que representam eventos)
-- Coluna 2: Automacoes de Comunicacao
-- Coluna 3: Automacoes de Engajamento
-- Coluna 4: Automacoes de Inteligencia
-- Coluna 5: Automacoes de Crescimento
-
-O mentor pode arrastar nos para reorganizar como preferir.
+- Adicionar rota `/mentorado/metricas` no `App.tsx`
+- Adicionar item "Metricas" no menu do `MentoradoLayout.tsx` (icone `BarChart3`)
 
 ---
 
-## Interacoes do usuario
+## Frontend -- Visao do Mentor (dashboard)
 
-1. **Ver o mapa** -- Visualizar todas as automacoes e suas conexoes
-2. **Clicar em um no** -- Abre Sheet lateral com detalhes e configuracoes
-3. **Toggle direto** -- Liga/desliga automacao pelo Sheet
-4. **Executar agora** -- Botao no Sheet para testar manualmente
-5. **Arrastar nos** -- Reorganizar o layout visual livremente
-6. **Zoom/Pan** -- Navegar pelo canvas com scroll e drag
+### Nova aba no `MentoradoDetail.tsx`
+
+Adicionar sexta aba "Metricas" (icone `BarChart3`) ao lado das abas existentes (Perfil, Analise, Reunioes, Tarefas, Arquivos).
+
+### Componente: `src/components/admin/MentoradoMetricsDashboard.tsx`
+
+Recebe `membershipId` e `tenantId`. Layout:
+
+```text
++---------------------------------------------------+
+| [Filtro Periodo: 7d | 30d | 90d | MTD | YTD | Custom] |
++---------------------------------------------------+
+| [Receita Fechada] [Caixa Recebido] [Reunioes] [Conv%] |  <- 4 KPI cards
++---------------------------------------------------+
+| Retorno do Programa                                |
+| Investimento: R$60.000  Resultado: R$48.000        |
+| ROI: -20%              Payback: 15 meses           |
++---------------------------------------------------+
+| [Grafico Linha: Receita/semana] [Funil: Deals/stage] |
++---------------------------------------------------+
+| [Tabela: Deals do periodo]                         |
+| [Tabela: Pagamentos do periodo]                    |
++---------------------------------------------------+
+| [Alertas Inteligentes]                             |
++---------------------------------------------------+
+```
+
+### Sub-componentes
+
+- `MetricsKPICards.tsx` -- 4 cards com valores calculados
+- `MetricsROIBlock.tsx` -- Bloco de retorno do programa com toggle Receita/Caixa
+- `MetricsCharts.tsx` -- Grafico de linha (Recharts) + Funil visual
+- `MetricsDealsTable.tsx` -- Tabela de deals com filtro por periodo
+- `MetricsPaymentsTable.tsx` -- Tabela de pagamentos
+- `MetricsAlerts.tsx` -- Alertas condicionais baseados nos dados
+
+### Regras de calculo (frontend)
+
+**KPIs:**
+1. Receita Fechada = SUM(deals.value_cents) WHERE stage='fechado' AND closed_at dentro do periodo
+2. Caixa Recebido = SUM(payments.amount_cents) WHERE status='recebido' AND paid_at dentro do periodo
+3. Reunioes = COUNT(activities) WHERE type='reuniao' AND activity_date dentro do periodo
+4. Conversao = deals_fechados / reunioes (protecao divisao por zero)
+
+**ROI e Payback:**
+- investment = program_investments mais recente
+- resultado = Receita Fechada (com toggle para Caixa Recebido)
+- ROI = (resultado - investimento) / investimento * 100
+- media_mensal = resultado * (30 / dias_do_periodo)
+- Payback = investimento / media_mensal (em meses)
+
+**Alertas:**
+- Reunioes > 0 e deals fechados = 0 -> "Muita conversa, pouca decisao. Rever oferta e follow-up."
+- Receita fechada alta e caixa baixo -> "Caixa nao acompanha venda. Revisar cobranca."
+- ROI negativo -> "Ainda nao pagou o investimento. Prioridade: vendas e caixa."
+
+### Hook: `src/hooks/useMetrics.tsx`
+
+Centraliza todas as queries Supabase:
+- `fetchDeals(membershipId, dateRange)`
+- `fetchPayments(membershipId, dateRange)`
+- `fetchActivities(membershipId, dateRange)`
+- `fetchInvestment(membershipId)`
+- Funcoes de CRUD para o mentorado preencher dados
 
 ---
 
 ## Ordem de implementacao
 
-1. Criar `AutomationFlowNode.tsx` (node customizado)
-2. Criar `AutomationDetailSheet.tsx` (painel lateral)
-3. Criar `AutomationFlowView.tsx` (canvas principal)
-4. Modificar `Automacoes.tsx` para adicionar abas Cards/Mapa
+1. **Migration SQL** -- Criar as 5 tabelas + RLS policies
+2. **Hook `useMetrics.tsx`** -- Queries e mutations
+3. **Pagina do mentorado** -- `Metricas.tsx` (tabelas de preenchimento) + rota + menu
+4. **Componentes do mentor** -- `MentoradoMetricsDashboard.tsx` + sub-componentes
+5. **Aba no `MentoradoDetail.tsx`** -- Integrar a nova aba "Metricas"
 
-Nenhuma alteracao no banco de dados e necessaria -- tudo e frontend usando os dados ja existentes da tabela `tenant_automations`.
+Nenhuma Edge Function necessaria -- tudo e calculado no frontend com queries diretas ao banco.
+
+---
+
+## Detalhes tecnicos
+
+- Valores monetarios sempre em centavos (int) no banco, formatados com `Intl.NumberFormat('pt-BR')` no frontend
+- Graficos com Recharts (ja instalado)
+- Filtros de periodo com presets (7d, 30d, 90d, MTD, YTD) + datepicker custom
+- Grid responsivo: 4 colunas em desktop, 2 em tablet, 1 em mobile
+- TabsList do MentoradoDetail muda de `grid-cols-5` para `grid-cols-6`
 
