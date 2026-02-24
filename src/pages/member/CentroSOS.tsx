@@ -300,7 +300,7 @@ export default function CentroSOS() {
         // Don't fail the whole operation if email fails
       }
 
-      toast.success("🚨 Chamado SOS enviado! Jacob e Mari foram notificados por email.");
+      toast.success("🚨 Chamado SOS enviado! Seu mentor foi notificado por email.");
 
       // Reset form
       setProblemDescription("");
@@ -386,7 +386,7 @@ export default function CentroSOS() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
-                  placeholder="Conte o que está acontecendo... O Mentor Virtual vai entender sua situação e preparar o sinal de SOS para Jacob e Mari."
+                  placeholder="Conte o que está acontecendo... O Mentor Virtual vai entender sua situação e preparar o sinal de SOS para o seu mentor."
                   value={problemDescription}
                   onChange={(e) => setProblemDescription(e.target.value)}
                   rows={6}
