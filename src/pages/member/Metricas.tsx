@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTenant } from "@/contexts/TenantContext";
+import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,8 +167,28 @@ const Metricas = () => {
     const monthPays = payments.filter(p => p.paid_at && p.status === "recebido" && isWithinInterval(new Date(p.paid_at), { start: monthStart, end: monthEnd }));
     const caixaRecebido = monthPays.reduce((s, p) => s + p.amount_cents, 0);
 
-    return { totalWeekActs, activeDeals: activeDeals.length, closedRevenue, caixaRecebido, totalDeals: deals.length };
-  }, [activities, deals, payments, weekStart, weekEnd, monthStart, monthEnd]);
+    // ROI calculations
+    const totalCaixaRecebido = payments.filter(p => p.status === "recebido").reduce((s, p) => s + p.amount_cents, 0);
+    const pipelineAberto = activeDeals.reduce((s, d) => s + d.value_cents, 0);
+    const mrr = closedDeals.reduce((s, d) => s + (d.monthly_value_cents || 0), 0);
+
+    // Fallback: average of last 3 months of received payments
+    const threeMonthsAgo = subDays(today, 90);
+    const recentPayments = payments.filter(p => p.status === "recebido" && p.paid_at && new Date(p.paid_at) >= threeMonthsAgo);
+    const avgMonthlyReceived = recentPayments.length > 0 ? recentPayments.reduce((s, p) => s + p.amount_cents, 0) / 3 : 0;
+    const monthlyIncome = mrr > 0 ? mrr : avgMonthlyReceived;
+
+    const investmentTotal = investment?.investment_amount_cents || 0;
+    const faltaRecuperar = Math.max(0, investmentTotal - totalCaixaRecebido);
+    const percentRecuperado = investmentTotal > 0 ? Math.min(100, (totalCaixaRecebido / investmentTotal) * 100) : 0;
+    const roi = investmentTotal > 0 ? ((totalCaixaRecebido - investmentTotal) / investmentTotal) * 100 : 0;
+    const paybackMonths = monthlyIncome > 0 ? faltaRecuperar / monthlyIncome : null;
+
+    return {
+      totalWeekActs, activeDeals: activeDeals.length, closedRevenue, caixaRecebido, totalDeals: deals.length,
+      totalCaixaRecebido, pipelineAberto, mrr, faltaRecuperar, percentRecuperado, roi, paybackMonths, investmentTotal, closedRevenueTotal: closedRevenue,
+    };
+  }, [activities, deals, payments, weekStart, weekEnd, monthStart, monthEnd, investment, today]);
 
   // Load cost form when investment data arrives
   useMemo(() => {
@@ -279,6 +300,87 @@ const Metricas = () => {
           </Card>
         ))}
       </div>
+
+      {/* ──── PAINEL DE ROI ──── */}
+      {summary.investmentTotal > 0 && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="pt-6 pb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold text-foreground">Painel de ROI</h2>
+            </div>
+
+            {/* KPIs */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="text-center p-3 rounded-xl border border-border bg-card">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">ROI</p>
+                <p className={`text-xl font-bold ${summary.roi >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                  {summary.roi >= 0 ? "+" : ""}{summary.roi.toFixed(0)}%
+                </p>
+              </div>
+              <div className="text-center p-3 rounded-xl border border-border bg-card">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Payback</p>
+                <p className="text-xl font-bold text-foreground">
+                  {summary.paybackMonths !== null ? `${summary.paybackMonths.toFixed(1)} m` : "—"}
+                </p>
+              </div>
+              <div className="text-center p-3 rounded-xl border border-border bg-card">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Falta</p>
+                <p className="text-xl font-bold text-foreground">
+                  {summary.faltaRecuperar > 0 ? formatCents(summary.faltaRecuperar) : "✅"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-muted-foreground">Recuperação do investimento</span>
+                <span className="text-xs font-medium text-primary">{summary.percentRecuperado.toFixed(0)}%</span>
+              </div>
+              <Progress value={summary.percentRecuperado} className="h-3" />
+            </div>
+
+            {/* Breakdown */}
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Investimento</span>
+                <span className="font-medium text-foreground">{formatCents(summary.investmentTotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">├─ Caixa Recebido</span>
+                <span className="font-medium text-emerald-500">{formatCents(summary.totalCaixaRecebido)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">├─ Contratos Fechados</span>
+                <span className="font-medium text-foreground">{formatCents(summary.closedRevenueTotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">├─ Pipeline Aberto</span>
+                <span className="font-medium text-foreground">{formatCents(summary.pipelineAberto)}</span>
+              </div>
+              {totalMonthlyCost > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">├─ Custo Mensal</span>
+                  <span className="font-medium text-destructive">{formatCents(totalMonthlyCost)}</span>
+                </div>
+              )}
+              {summary.mrr > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">├─ MRR (Receita Recorrente)</span>
+                  <span className="font-medium text-emerald-500">{formatCents(summary.mrr)}</span>
+                </div>
+              )}
+              {summary.paybackMonths !== null && summary.faltaRecuperar > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">└─ Previsibilidade</span>
+                  <span className="font-medium text-primary">{summary.paybackMonths.toFixed(1)} meses p/ ROI</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ──── PASSO 1: ATIVIDADES ──── */}
       <Card>
@@ -602,8 +704,25 @@ const Metricas = () => {
                 </Select>
               </div>
               <div>
-                <Label>Valor (R$) <InfoTip text="Valor estimado ou real do contrato/venda." /></Label>
+                <Label>Valor Total (R$) <InfoTip text="Valor total do contrato/venda." /></Label>
                 <Input type="number" value={dealForm.value_cents ? dealForm.value_cents / 100 : ""} onChange={e => setDealForm(p => ({ ...p, value_cents: Math.round(parseFloat(e.target.value || "0") * 100) }))} placeholder="5000" className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Parcelas <InfoTip text="Em quantas vezes o cliente vai pagar." /></Label>
+                <Input type="number" value={dealForm.installments || ""} onChange={e => {
+                  const inst = parseInt(e.target.value) || null;
+                  setDealForm(p => {
+                    const total = p.value_cents || 0;
+                    const monthly = inst && inst > 0 ? Math.round(total / inst) : 0;
+                    return { ...p, installments: inst, monthly_value_cents: monthly };
+                  });
+                }} placeholder="12" className="mt-1" />
+              </div>
+              <div>
+                <Label>Valor Mensal (R$) <InfoTip text="Valor de cada parcela. Auto-calculado se parcelas preenchido." /></Label>
+                <Input type="number" value={dealForm.monthly_value_cents ? dealForm.monthly_value_cents / 100 : ""} onChange={e => setDealForm(p => ({ ...p, monthly_value_cents: Math.round(parseFloat(e.target.value || "0") * 100) }))} placeholder="Auto" className="mt-1" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -615,6 +734,10 @@ const Metricas = () => {
                 <Label>Data Fechamento</Label>
                 <Input type="date" value={dealForm.closed_at?.split("T")[0] || ""} onChange={e => setDealForm(p => ({ ...p, closed_at: e.target.value || null }))} className="mt-1" />
               </div>
+            </div>
+            <div>
+              <Label>Observações de negociação <InfoTip text="Condições especiais, acordos, descontos, etc." /></Label>
+              <Textarea value={dealForm.negotiation_notes || ""} onChange={e => setDealForm(p => ({ ...p, negotiation_notes: e.target.value }))} placeholder="Ex: Desconto de 10% se fechar até sexta..." className="mt-1" rows={2} />
             </div>
           </div>
           <DialogFooter>

@@ -31,6 +31,9 @@ export interface MenteeDeal {
   created_at: string;
   closed_at: string | null;
   lost_reason: string | null;
+  installments: number | null;
+  monthly_value_cents: number;
+  negotiation_notes: string | null;
 }
 
 export interface MenteeActivity {
@@ -204,6 +207,9 @@ export function useMetricsMutations(membershipId: string, tenantId: string) {
         source: input.source || null,
         closed_at: input.closed_at || null,
         lost_reason: input.lost_reason || null,
+        installments: input.installments || null,
+        monthly_value_cents: input.monthly_value_cents || 0,
+        negotiation_notes: input.negotiation_notes || null,
       });
       if (error) throw error;
     },

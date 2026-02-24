@@ -1958,8 +1958,11 @@ export type Database = {
           created_at: string
           deal_name: string | null
           id: string
+          installments: number | null
           lost_reason: string | null
           membership_id: string
+          monthly_value_cents: number | null
+          negotiation_notes: string | null
           source: string | null
           stage: string
           tenant_id: string
@@ -1970,8 +1973,11 @@ export type Database = {
           created_at?: string
           deal_name?: string | null
           id?: string
+          installments?: number | null
           lost_reason?: string | null
           membership_id: string
+          monthly_value_cents?: number | null
+          negotiation_notes?: string | null
           source?: string | null
           stage?: string
           tenant_id: string
@@ -1982,8 +1988,11 @@ export type Database = {
           created_at?: string
           deal_name?: string | null
           id?: string
+          installments?: number | null
           lost_reason?: string | null
           membership_id?: string
+          monthly_value_cents?: number | null
+          negotiation_notes?: string | null
           source?: string | null
           stage?: string
           tenant_id?: string
