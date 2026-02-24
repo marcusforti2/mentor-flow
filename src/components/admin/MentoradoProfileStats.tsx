@@ -24,7 +24,8 @@ export function MentoradoProfileStats({ membershipId, legacyMentoradoId }: Props
   useEffect(() => {
     const fetch = async () => {
       setLoading(true);
-      const [leadsRes, tasksRes, trailsRes, activityRes] = await Promise.all([
+      const [leadsRes, leadsLegacyRes, tasksRes, trailsRes, activityRes] = await Promise.all([
+        supabase.from('crm_prospections').select('id', { count: 'exact', head: true }).eq('membership_id', membershipId),
         supabase.from('crm_leads').select('id', { count: 'exact', head: true }).eq('owner_membership_id', membershipId),
         supabase.from('campan_tasks').select('id', { count: 'exact', head: true }).eq('mentorado_membership_id', membershipId).eq('status_column', 'done'),
         supabase.from('trail_progress').select('id', { count: 'exact', head: true }).eq('membership_id', membershipId).eq('completed', true),
@@ -32,7 +33,7 @@ export function MentoradoProfileStats({ membershipId, legacyMentoradoId }: Props
       ]);
 
       setStats({
-        leadsCount: leadsRes.count || 0,
+        leadsCount: (leadsRes.count || 0) + (leadsLegacyRes.count || 0),
         tasksDone: tasksRes.count || 0,
         trailsCompleted: trailsRes.count || 0,
         lastActivity: activityRes.data?.[0]?.created_at || null,
