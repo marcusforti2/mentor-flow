@@ -1,146 +1,95 @@
 
 
-# Plano: Central de Popups por Tenant + IA Geradora
+## Plan: Mini Dashboard de ROI + Deals com Parcelas e Previsibilidade
 
-## Problema atual
-O `WhatsAppGroupModal` esta hardcoded e aparece para **todos os tenants** -- e conteudo especifico do Learning Brand. Precisa ser removido e substituido por um sistema generico onde cada mentor cria seus proprios popups.
+### Contexto
+A page `Metricas.tsx` do mentorado já tem KPIs básicos (atividades, deals ativos, receita fechada, caixa recebido) mas falta um dashboard de ROI completo que cruze investimento no programa com receita gerada. Além disso, os deals (`mentee_deals`) não suportam parcelas, valor total ou notas de negociação.
 
 ---
 
-## O que sera criado
+### 1. Migração de banco de dados
 
-### 1. Nova tabela `tenant_popups`
+Adicionar colunas na tabela `mentee_deals`:
+- `total_value_cents` (integer, default 0) -- valor total do contrato
+- `installments` (integer, nullable) -- quantidade de parcelas
+- `monthly_value_cents` (integer, default 0) -- valor mensal recorrente
+- `negotiation_notes` (text, nullable) -- observações de negociação
 
-```sql
-CREATE TABLE public.tenant_popups (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  created_by uuid NOT NULL REFERENCES memberships(id),
-  title text NOT NULL,
-  body_html text NOT NULL,           -- conteudo rico do popup
-  image_url text,                     -- imagem horizontal (banner)
-  cta_label text,                     -- texto do botao (ex: "Entrar no Grupo")
-  cta_url text,                      -- link do botao
-  display_mode text NOT NULL DEFAULT 'first_access',  -- first_access | date_range | always
-  starts_at timestamptz,             -- inicio da exibicao (se date_range)
-  ends_at timestamptz,               -- fim da exibicao (se date_range)
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-```
+Atualmente `value_cents` já existe e será mantido como o valor total (renomear semanticamente no frontend).
 
-RLS: mentores do tenant podem CRUD; mentorados podem SELECT popups ativos do seu tenant.
+---
 
-### 2. Nova tabela `popup_dismissals`
+### 2. Hook `useMetrics.tsx`
 
-```sql
-CREATE TABLE public.popup_dismissals (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  popup_id uuid NOT NULL REFERENCES tenant_popups(id) ON DELETE CASCADE,
-  membership_id uuid NOT NULL REFERENCES memberships(id),
-  dismissed_at timestamptz DEFAULT now(),
-  UNIQUE(popup_id, membership_id)
-);
-```
+- Atualizar a interface `MenteeDeal` com os novos campos
+- Atualizar `createDeal` mutation para incluir `installments`, `monthly_value_cents`, `negotiation_notes`
 
-Controla quais popups cada mentorado ja viu/fechou. Para `first_access` mode, uma vez dismissed nunca mais aparece.
+---
 
-### 3. Componente `TenantPopupRenderer` (substitui WhatsAppGroupModal)
+### 3. Mini Dashboard de ROI (novo bloco na `Metricas.tsx`)
 
-- Colocado nos layouts `MentoradoLayout` e `MemberLayout` no lugar do `WhatsAppGroupModal`
-- Ao montar, busca popups ativos do tenant do usuario (filtra por `is_active`, `display_mode`, datas)
-- Cruza com `popup_dismissals` para nao mostrar os ja vistos
-- Exibe o primeiro popup pendente como Dialog bonito:
-  - Imagem banner no topo (se houver)
-  - Titulo + corpo HTML renderizado
-  - Botao CTA colorido (se houver link)
-  - Botao "Entendi" / fechar que cria o dismissal
-- Visual similar ao WhatsApp modal atual mas generico e com suporte a imagem
-
-### 4. Pagina de gestao de Popups (mentor)
-
-Nova rota `/mentor/popups` dentro do menu **Comunicacao**:
+Inserido logo após o resumo da semana (antes do Passo 1), um card visual com:
 
 ```text
-Comunicação
-  ├── Emails
-  ├── Popups        ← NOVO
-  ├── Centro SOS
-  └── Automações
+┌──────────────────────────────────────────────┐
+│  📊 Painel de ROI                            │
+│                                              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐     │
+│  │ ROI %    │ │ Payback  │ │ Falta p/ │     │
+│  │ +23%     │ │ 7.2 meses│ │ recuperar│     │
+│  │          │ │          │ │ R$ 42k   │     │
+│  └──────────┘ └──────────┘ └──────────┘     │
+│                                              │
+│  Investimento: R$ 110.000                    │
+│  ├─ Caixa Recebido (total): R$ 68.000       │
+│  ├─ Contratos Fechados: R$ 95.000            │
+│  ├─ Pipeline Aberto: R$ 32.000               │
+│  ├─ Custo Mensal: R$ 15.000                  │
+│  ├─ Receita Mensal Recorrente: R$ 18.000     │
+│  └─ Previsibilidade: 5.2 meses p/ ROI       │
+│                                              │
+│  [═══════════════════░░░░░] 62% recuperado   │
+└──────────────────────────────────────────────┘
 ```
 
-#### Listagem
-- Cards dos popups existentes com status (ativo/inativo/expirado)
-- Preview miniatura do popup
-- Metricas: quantos viram, quantos fecharam
-- Toggle ativo/inativo
-- Botao deletar
-
-#### Dialog de criacao/edicao
-- **Titulo** (texto)
-- **Corpo** (textarea rico ou markdown com preview)
-- **Imagem** (upload ou gerar com IA):
-  - Tamanho recomendado: 800x400px (2:1 horizontal)
-  - Upload via storage bucket `popup-images`
-  - Ou botao "Gerar com IA" que chama Lovable AI para criar imagem
-- **CTA**: label + URL (opcional)
-- **Modo de exibicao**:
-  - `first_access` -- mostra 1x por mentorado
-  - `date_range` -- mostra entre data inicio e fim
-  - `always` -- mostra toda vez ate fechar (mas nao repete se ja dismissed)
-- **Datas** (se date_range): seletor de periodo
-
-#### Gerador com IA
-Botao "Criar com IA" no topo do dialog:
-- Mentor digita a ideia em texto livre (ex: "quero um popup convidando pro grupo do WhatsApp com link tal")
-- Edge function chama Lovable AI (gemini-3-flash-preview) com prompt que retorna JSON estruturado:
-  - `title`, `body_html`, `cta_label`, `cta_url`
-- Preenche o formulario automaticamente para o mentor revisar/editar
-- Botao separado "Gerar Imagem" que usa gemini-2.5-flash-image para criar banner horizontal baseado no titulo/tema
-
-### 5. Edge Function `generate-popup`
-
-Nova edge function que:
-1. Recebe `{ prompt: string, generate_image?: boolean }`
-2. Chama Lovable AI para gerar conteudo estruturado do popup (tool calling)
-3. Se `generate_image`, chama modelo de imagem e faz upload ao bucket
-4. Retorna JSON com campos preenchidos
-
-### 6. Remocoes
-
-- Remover `WhatsAppGroupModal` de `MentoradoLayout` e `MemberLayout`
-- Remover arquivo `src/components/WhatsAppGroupModal.tsx`
+**Cálculos:**
+- **Caixa Recebido Total**: soma de todos `mentee_payments` com `status = 'recebido'`
+- **Contratos Fechados**: soma de `value_cents` de deals com `stage = 'fechado'`
+- **Pipeline Aberto**: soma de `value_cents` de deals ativos (não fechados/perdidos)
+- **% Recuperado**: `caixa_recebido / investimento * 100`
+- **Falta Recuperar**: `investimento - caixa_recebido` (se positivo)
+- **ROI**: `((caixa_recebido - investimento) / investimento) * 100`
+- **Receita Mensal Recorrente (MRR)**: soma de `monthly_value_cents` de deals fechados
+- **Previsibilidade (meses p/ ROI)**: `falta_recuperar / receita_mensal_media` usando MRR ou média dos últimos 3 meses de recebimentos
+- **Custo Mensal vs Entrada**: comparação visual custo mensal total vs MRR
 
 ---
 
-## Arquivos criados/editados
+### 4. Deal Modal atualizado
 
-| Arquivo | Acao |
-|---------|------|
-| Migration SQL | Criar `tenant_popups` + `popup_dismissals` + RLS + bucket |
-| `src/components/popups/TenantPopupRenderer.tsx` | Novo -- renderiza popups ativos para mentorados |
-| `src/components/popups/PopupManager.tsx` | Novo -- pagina de gestao para mentor |
-| `src/components/popups/PopupFormDialog.tsx` | Novo -- dialog de criacao/edicao com IA |
-| `src/components/popups/PopupPreviewCard.tsx` | Novo -- card de preview na listagem |
-| `src/hooks/usePopups.tsx` | Novo -- queries e mutations para popups |
-| `supabase/functions/generate-popup/index.ts` | Novo -- IA gera conteudo + imagem |
-| `src/pages/admin/Popups.tsx` | Nova pagina do mentor |
-| `src/App.tsx` | Adicionar rota `/mentor/popups` |
-| `src/components/layouts/MentorLayout.tsx` | Adicionar "Popups" no menu Comunicacao |
-| `src/components/layouts/MentoradoLayout.tsx` | Trocar WhatsAppGroupModal por TenantPopupRenderer |
-| `src/components/layouts/MemberLayout.tsx` | Trocar WhatsAppGroupModal por TenantPopupRenderer |
-| `src/components/WhatsAppGroupModal.tsx` | Deletar |
+Adicionar no modal de "Novo Deal":
+- **Valor Total do Contrato (R$)** -- campo existente `value_cents`
+- **Parcelas** -- novo campo inteiro
+- **Valor Mensal (R$)** -- novo campo, auto-calculado se parcelas preenchido
+- **Observações de negociação** -- textarea opcional
 
 ---
 
-## Ordem de implementacao
+### 5. Arquivos modificados
 
-1. Migration: tabelas + RLS + bucket
-2. Hook `usePopups`
-3. `TenantPopupRenderer` + substituir nos layouts
-4. Edge function `generate-popup`
-5. Pagina de gestao + formulario com IA
-6. Adicionar rota e menu
-7. Remover WhatsAppGroupModal
+| Arquivo | Mudança |
+|---------|---------|
+| Migração SQL | 4 colunas em `mentee_deals` |
+| `src/hooks/useMetrics.tsx` | Interface + mutation |
+| `src/pages/member/Metricas.tsx` | ROI dashboard + deal modal expandido |
+
+---
+
+### Detalhes Técnicos
+
+- O cálculo de previsibilidade usa o MRR dos deals fechados. Se MRR = 0, faz fallback para a média de recebimentos dos últimos 3 meses
+- O progress bar mostra `Math.min(100, percentRecuperado)` para não ultrapassar visualmente
+- ROI negativo mostra em vermelho, positivo em verde
+- Todos os novos campos de deals são opcionais (nullable / default 0)
+- RLS não precisa de alteração pois as policies existentes de `mentee_deals` já cobrem as novas colunas
 
