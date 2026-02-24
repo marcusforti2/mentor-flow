@@ -1,197 +1,207 @@
 
 
-# Plano: Aba "Metricas" no Perfil do Mentorado
+# Plano: Metricas Simplificadas + Email Semanal de Cobranca + Investimento pelo Mentor
 
-## Resumo
+## Problema atual
 
-Criar um sistema completo de metricas de governanca do negocio do mentorado. O mentorado preenche dados em formato tabela no seu painel. O mentor visualiza tudo em dashboard no perfil do mentorado (nova aba "Metricas"). Inclui KPIs, ROI, Payback, graficos e alertas inteligentes.
+A pagina de metricas do mentorado esta funcional mas complexa demais para preenchimento diario. O mentorado precisa de algo rapido, tipo "checkin diario" com poucos cliques. Alem disso, falta:
+1. Email automatico toda segunda cobrando preenchimento
+2. O investimento do programa deveria vir pre-preenchido pelo mentor (cadastro do mentorado)
+3. Campos extras de custo (trafego, equipe, mensal) para calculo de ROI real
 
 ---
 
-## Arquitetura de Dados
+## 1. Redesign da pagina do mentorado -- "Check-in Diario"
 
-### Adaptacao ao modelo existente
+### Conceito
 
-O sistema ja usa `membership_id` como chave de identidade (nao um `mentee_id` separado). Todas as tabelas novas usarao `membership_id` como FK para `memberships.id`, com `tenant_id` para isolamento multi-tenant via RLS.
-
-Nao sera criada a tabela `mentee_access` proposta no briefing -- o sistema ja possui `is_tenant_staff()` e `mentor_mentee_assignments` para controle de visibilidade. As RLS policies usarao essas funcoes existentes.
-
-### Tabelas novas (5 tabelas)
+Trocar a abordagem "painel completo" por um fluxo de **check-in rapido** com 3 passos simples que o mentorado faz todo dia (ou no minimo toda semana):
 
 ```text
-program_investments
-  id (uuid, pk, default gen_random_uuid())
-  membership_id (uuid, fk -> memberships.id, NOT NULL)
-  tenant_id (uuid, fk -> tenants.id, NOT NULL)
-  investment_amount_cents (int, NOT NULL)  -- ex: 6000000 = R$60.000
-  start_date (date)
-  onboarding_date (date)
-  notes (text)
-  created_at (timestamptz, default now())
-
-mentee_deals
-  id (uuid, pk)
-  membership_id (uuid, fk -> memberships.id, NOT NULL)
-  tenant_id (uuid, fk -> tenants.id, NOT NULL)
-  stage (text, default 'lead')  -- lead, conversa, reuniao_marcada, reuniao_feita, proposta, fechado, perdido
-  value_cents (int, default 0)
-  source (text)  -- linkedin, indicacao, inbound, etc
-  deal_name (text)
-  created_at (timestamptz, default now())
-  closed_at (timestamptz)
-  lost_reason (text)
-
-mentee_activities
-  id (uuid, pk)
-  membership_id (uuid, fk -> memberships.id, NOT NULL)
-  tenant_id (uuid, fk -> tenants.id, NOT NULL)
-  type (text, NOT NULL)  -- msg_enviada, ligacao, followup, reuniao, proposta
-  count (int, default 1)
-  activity_date (date, NOT NULL)
-  created_at (timestamptz, default now())
-
-mentee_payments
-  id (uuid, pk)
-  membership_id (uuid, fk -> memberships.id, NOT NULL)
-  tenant_id (uuid, fk -> tenants.id, NOT NULL)
-  amount_cents (int, NOT NULL)
-  status (text, default 'pendente')  -- recebido, pendente, atrasado, estornado
-  description (text)
-  due_date (date)
-  paid_at (date)
-  created_at (timestamptz, default now())
-
-metrics_snapshots  (historico para performance)
-  id (uuid, pk)
-  membership_id (uuid, fk -> memberships.id, NOT NULL)
-  tenant_id (uuid, fk -> tenants.id, NOT NULL)
-  period_start (date)
-  period_end (date)
-  revenue_closed_cents (int)
-  revenue_received_cents (int)
-  deals_won_count (int)
-  meetings_held_count (int)
-  roi_ratio (numeric)
-  payback_months (numeric)
-  created_at (timestamptz, default now())
++-----------------------------------------------+
+| Bom dia, [Nome]! Como foi seu dia?             |
+| Semana 12 de 2026 · Fev 24                     |
++-----------------------------------------------+
+|                                                 |
+| PASSO 1: Atividades do dia                     |
+| [Mensagens: +/-] [Ligacoes: +/-] [Reunioes: +/-]|
+| [Follow-ups: +/-] [Propostas: +/-]              |
+| Botao: Registrar atividades                     |
+|                                                 |
+| PASSO 2: Algum deal novo ou atualizado?         |
+| [+ Novo deal] ou lista de deals recentes pra    |
+| atualizar stage com 1 clique                    |
+|                                                 |
+| PASSO 3: Recebeu algum pagamento?               |
+| [+ Registrar recebimento] rapido                |
+|                                                 |
++-----------------------------------------------+
+| RESUMO DA SEMANA (auto-calculado)               |
+| [Atividades: 23] [Deals ativos: 4] [Caixa: R$X] |
++-----------------------------------------------+
+| CUSTOS E INVESTIMENTO (expandivel)              |
+| Investimento programa: R$60.000 (vem do mentor) |
+| + Custo mensal trafego: R$___                   |
+| + Custo mensal equipe: R$___                    |
+| + Outros custos mensais: R$___                  |
+| = Custo total mensal: R$___                     |
++-----------------------------------------------+
 ```
 
-### RLS Policies (todas as 5 tabelas)
+### Mudancas tecnicas no frontend
 
-Mesmo padrao para todas:
-- **SELECT**: Proprio mentorado OU staff do mesmo tenant (`is_tenant_staff(auth.uid(), tenant_id)`)
-- **INSERT**: Proprio mentorado (via `membership_id` vinculado ao `auth.uid()`)
-- **UPDATE**: Proprio mentorado OU staff do mesmo tenant
-- **DELETE**: Proprio mentorado OU staff do mesmo tenant
+- **Reescrever `src/pages/member/Metricas.tsx`** com layout de check-in:
+  - Contadores incrementais (stepper +/-) para atividades, nao formularios
+  - Botao unico "Salvar dia" que registra todas as atividades de uma vez
+  - Lista de deals recentes com botoes de stage (1 clique pra mover no funil)
+  - Botao rapido de "Recebi pagamento" com valor e de quem
+  - Secao colapsavel "Custos e Investimento" para editar custos mensais
+  - Cada secao com texto explicativo claro para o mentorado
 
----
+### Explicacoes contextuais
 
-## Frontend -- Visao do Mentorado (preenche dados)
-
-### Nova pagina: `src/pages/member/Metricas.tsx`
-
-Acessivel via `/mentorado/metricas`. Layout em Tabs com 4 sub-abas de preenchimento estilo tabela:
-
-1. **Investimento** -- Form simples para registrar o valor investido no programa, data de inicio e onboarding
-2. **Deals (Pipeline)** -- Tabela editavel com colunas: Nome, Stage (select), Valor (R$), Fonte, Data Criacao, Data Fechamento, Motivo Perda. Botao "+ Novo Deal"
-3. **Atividades** -- Tabela: Tipo (select), Quantidade, Data. Botao "+ Registrar Atividade"
-4. **Caixa (Pagamentos)** -- Tabela: Descricao, Valor, Status (select), Vencimento, Data Pagamento. Botao "+ Novo Pagamento"
-
-Cada tabela usa modais simples para adicionar/editar registros.
-
-### Rota e menu
-
-- Adicionar rota `/mentorado/metricas` no `App.tsx`
-- Adicionar item "Metricas" no menu do `MentoradoLayout.tsx` (icone `BarChart3`)
+Cada secao tera um bloco de texto curto explicando o por que:
+- **Atividades**: "Registre quantas acoes de vendas voce fez hoje. Seu mentor acompanha sua consistencia."
+- **Deals**: "Cada pessoa que pode virar cliente e um deal. Mova para o estagio certo."
+- **Pagamentos**: "Quando receber de um cliente, registre aqui. Assim calculamos seu ROI real."
+- **Custos**: "Preencha seus custos mensais para calcular se o programa esta se pagando."
 
 ---
 
-## Frontend -- Visao do Mentor (dashboard)
+## 2. Investimento vindo do cadastro do mentor
 
-### Nova aba no `MentoradoDetail.tsx`
+### Mudanca no `CreateMenteeModal.tsx` e `EditMenteeModal.tsx`
 
-Adicionar sexta aba "Metricas" (icone `BarChart3`) ao lado das abas existentes (Perfil, Analise, Reunioes, Tarefas, Arquivos).
+Adicionar campo "Valor do Programa (R$)" no formulario de criacao/edicao do mentorado. Quando o mentor salva, faz `INSERT/UPDATE` na tabela `program_investments` automaticamente.
 
-### Componente: `src/components/admin/MentoradoMetricsDashboard.tsx`
+### Sincronizacao
 
-Recebe `membershipId` e `tenantId`. Layout:
+- Na pagina do mentorado, o investimento aparece como **somente leitura** (preenchido pelo mentor)
+- O mentorado pode adicionar custos extras (trafego, equipe) que sao editaveis por ele
+- Se o mentor nao preencheu, o mentorado pode preencher manualmente tambem
+
+### Mudanca na tabela `program_investments`
+
+Adicionar colunas para custos operacionais:
 
 ```text
-+---------------------------------------------------+
-| [Filtro Periodo: 7d | 30d | 90d | MTD | YTD | Custom] |
-+---------------------------------------------------+
-| [Receita Fechada] [Caixa Recebido] [Reunioes] [Conv%] |  <- 4 KPI cards
-+---------------------------------------------------+
-| Retorno do Programa                                |
-| Investimento: R$60.000  Resultado: R$48.000        |
-| ROI: -20%              Payback: 15 meses           |
-+---------------------------------------------------+
-| [Grafico Linha: Receita/semana] [Funil: Deals/stage] |
-+---------------------------------------------------+
-| [Tabela: Deals do periodo]                         |
-| [Tabela: Pagamentos do periodo]                    |
-+---------------------------------------------------+
-| [Alertas Inteligentes]                             |
-+---------------------------------------------------+
+ALTER TABLE program_investments ADD COLUMN
+  monthly_ads_cost_cents int DEFAULT 0,        -- custo mensal de trafego
+  monthly_team_cost_cents int DEFAULT 0,        -- custo mensal de equipe
+  monthly_other_cost_cents int DEFAULT 0,       -- outros custos mensais
+  annual_program_value_cents int DEFAULT 0;     -- valor anual do programa (opcional)
 ```
 
-### Sub-componentes
+### Calculo de ROI atualizado
 
-- `MetricsKPICards.tsx` -- 4 cards com valores calculados
-- `MetricsROIBlock.tsx` -- Bloco de retorno do programa com toggle Receita/Caixa
-- `MetricsCharts.tsx` -- Grafico de linha (Recharts) + Funil visual
-- `MetricsDealsTable.tsx` -- Tabela de deals com filtro por periodo
-- `MetricsPaymentsTable.tsx` -- Tabela de pagamentos
-- `MetricsAlerts.tsx` -- Alertas condicionais baseados nos dados
+```text
+custo_total_mensal = (investment / meses_programa) + trafego + equipe + outros
+roi = (receita_mensal - custo_total_mensal) / custo_total_mensal * 100
+```
 
-### Regras de calculo (frontend)
+---
 
-**KPIs:**
-1. Receita Fechada = SUM(deals.value_cents) WHERE stage='fechado' AND closed_at dentro do periodo
-2. Caixa Recebido = SUM(payments.amount_cents) WHERE status='recebido' AND paid_at dentro do periodo
-3. Reunioes = COUNT(activities) WHERE type='reuniao' AND activity_date dentro do periodo
-4. Conversao = deals_fechados / reunioes (protecao divisao por zero)
+## 3. Automacao: Email semanal de cobranca de metricas
 
-**ROI e Payback:**
-- investment = program_investments mais recente
-- resultado = Receita Fechada (com toggle para Caixa Recebido)
-- ROI = (resultado - investimento) / investimento * 100
-- media_mensal = resultado * (30 / dias_do_periodo)
-- Payback = investimento / media_mensal (em meses)
+### Nova Edge Function: `metrics-reminder`
 
-**Alertas:**
-- Reunioes > 0 e deals fechados = 0 -> "Muita conversa, pouca decisao. Rever oferta e follow-up."
-- Receita fechada alta e caixa baixo -> "Caixa nao acompanha venda. Revisar cobranca."
-- ROI negativo -> "Ainda nao pagou o investimento. Prioridade: vendas e caixa."
+Dispara toda segunda-feira as 8h. Para cada mentorado ativo:
 
-### Hook: `src/hooks/useMetrics.tsx`
+1. Verifica se preencheu atividades na semana anterior (ultimos 7 dias em `mentee_activities`)
+2. Se **nao preencheu**: envia email de cobranca com tom motivacional
+3. Se **preencheu**: envia email de parabens com resumo rapido
+4. Se preencheu parcialmente: envia lembrete gentil
 
-Centraliza todas as queries Supabase:
-- `fetchDeals(membershipId, dateRange)`
-- `fetchPayments(membershipId, dateRange)`
-- `fetchActivities(membershipId, dateRange)`
-- `fetchInvestment(membershipId)`
-- Funcoes de CRUD para o mentorado preencher dados
+### Template do email
+
+```text
+Assunto (nao preencheu): "[Nome], suas metricas da semana passada estao pendentes!"
+Assunto (preencheu): "[Nome], otimo trabalho! Confira seu resumo semanal."
+
+Corpo (nao preencheu):
+- Destaque que o mentor esta esperando os numeros
+- Link direto para /mentorado/metricas
+- "Sem dados preenchidos, nao conseguimos calcular seu ROI"
+- "Leva menos de 2 minutos"
+
+Corpo (preencheu):
+- Mini resumo: X atividades, Y deals ativos, R$Z recebido
+- Motivacao para manter a consistencia
+```
+
+### Registro na tabela `tenant_automations`
+
+Adicionar `metrics_reminder` como nova automacao seedada automaticamente:
+- `automation_key: 'metrics_reminder'`
+- `schedule: '0 8 * * 1'` (segunda 8h)
+- `is_enabled: false` (mentor ativa manualmente)
+
+### Atualizar o trigger `seed_tenant_automations`
+
+Adicionar a 11a automacao no trigger e fazer retroactive insert para tenants existentes.
+
+### Card na Central de Automacoes
+
+Adicionar o card "Lembrete de Metricas" na lista de automacoes com:
+- Categoria: Engajamento
+- Audiencia: Mentorado
+- Descricao: "Envia email toda segunda cobrando o preenchimento das metricas semanais"
+
+---
+
+## 4. Integracao CRM (puxar deals automaticamente)
+
+### Logica
+
+Criar funcao que sincroniza deals do CRM interno (`crm_prospections`) para `mentee_deals`:
+- Mapear stages do CRM para stages de metricas
+- Sincronizar valor, nome, fonte
+- Marcar deals sincronizados com `source = 'crm_sync'`
+
+Isso sera feito como botao "Sincronizar do meu CRM" na pagina de metricas, nao automatico (para o mentorado ter controle).
+
+### Mapeamento de stages
+
+```text
+CRM prospections.column_id -> mentee_deals.stage:
+  'lead' / 'new'         -> 'lead'
+  'contacted'             -> 'conversa'
+  'meeting_scheduled'     -> 'reuniao_marcada'
+  'meeting_done'          -> 'reuniao_feita'
+  'proposal'              -> 'proposta'
+  'won'                   -> 'fechado'
+  'lost'                  -> 'perdido'
+```
+
+---
+
+## 5. Dashboard do mentor -- ajustes
+
+Atualizar o `MentoradoMetricsDashboard.tsx` para considerar os novos campos de custo no calculo de ROI. Adicionar:
+- Bloco "Custos operacionais" mostrando trafego + equipe + outros
+- ROI calculado com custo total (programa + operacional)
+- Indicador visual se mentorado preencheu ou nao na ultima semana
 
 ---
 
 ## Ordem de implementacao
 
-1. **Migration SQL** -- Criar as 5 tabelas + RLS policies
-2. **Hook `useMetrics.tsx`** -- Queries e mutations
-3. **Pagina do mentorado** -- `Metricas.tsx` (tabelas de preenchimento) + rota + menu
-4. **Componentes do mentor** -- `MentoradoMetricsDashboard.tsx` + sub-componentes
-5. **Aba no `MentoradoDetail.tsx`** -- Integrar a nova aba "Metricas"
-
-Nenhuma Edge Function necessaria -- tudo e calculado no frontend com queries diretas ao banco.
+1. **Migration SQL** -- Novas colunas em `program_investments` + nova automacao `metrics_reminder`
+2. **Redesign `Metricas.tsx`** -- Check-in diario simplificado
+3. **`CreateMenteeModal` e `EditMenteeModal`** -- Campo de investimento do programa
+4. **Edge Function `metrics-reminder`** -- Email semanal
+5. **Sincronizacao CRM** -- Botao de sync na pagina de metricas
+6. **Dashboard mentor** -- Atualizar calculo de ROI com custos
 
 ---
 
-## Detalhes tecnicos
+## Arquivos criados/editados
 
-- Valores monetarios sempre em centavos (int) no banco, formatados com `Intl.NumberFormat('pt-BR')` no frontend
-- Graficos com Recharts (ja instalado)
-- Filtros de periodo com presets (7d, 30d, 90d, MTD, YTD) + datepicker custom
-- Grid responsivo: 4 colunas em desktop, 2 em tablet, 1 em mobile
-- TabsList do MentoradoDetail muda de `grid-cols-5` para `grid-cols-6`
+- `supabase/migrations/...` -- Colunas + automacao
+- `src/pages/member/Metricas.tsx` -- Redesign completo
+- `src/components/admin/CreateMenteeModal.tsx` -- Campo investimento
+- `src/components/admin/EditMenteeModal.tsx` -- Campo investimento
+- `supabase/functions/metrics-reminder/index.ts` -- Nova Edge Function
+- `src/components/admin/MentoradoMetricsDashboard.tsx` -- ROI com custos
+- `src/hooks/useMetrics.tsx` -- Novas queries para custos
 
