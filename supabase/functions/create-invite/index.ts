@@ -372,7 +372,7 @@ serve(async (req) => {
     let emailSent = false;
     
     if (tenant_id !== SANDBOX_TENANT_ID) {
-      const siteUrl = Deno.env.get("SITE_URL") || "https://client-flourish-ai.lovable.app";
+      const siteUrl = Deno.env.get("SITE_URL") || "https://lbvtech.aceleracaoforti.online";
       const loginUrl = `${siteUrl}/auth`;
 
       const branding = await getTenantBranding(supabaseAdmin, tenant_id);
