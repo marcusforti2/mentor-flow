@@ -61,6 +61,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
   const [linkedin, setLinkedin] = useState('');
   const [website, setWebsite] = useState('');
   const [notes, setNotes] = useState('');
+  const [investmentAmount, setInvestmentAmount] = useState('');
   const [socialOpen, setSocialOpen] = useState(false);
   const [businessOpen, setBusinessOpen] = useState(false);
   const [showWhatsAppMessage, setShowWhatsAppMessage] = useState(false);
@@ -144,6 +145,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     setLinkedin('');
     setWebsite('');
     setNotes('');
+    setInvestmentAmount('');
     setSocialOpen(false);
     setBusinessOpen(false);
     setShowWhatsAppMessage(false);
@@ -168,7 +170,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     const tenantName = selectedTenant?.name || 'MentorFlow.io';
 
     try {
-      await createMembership.mutateAsync({
+      const result = await createMembership.mutateAsync({
         tenant_id: effectiveTenantId,
         email: email.trim(),
         full_name: fullName.trim(),
@@ -182,6 +184,15 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
         website: website.trim() || undefined,
         notes: notes.trim() || undefined,
       });
+
+      // Save investment if provided
+      if (investmentAmount && parseFloat(investmentAmount) > 0 && result?.membership_id) {
+        await supabase.from('program_investments').insert({
+          membership_id: result.membership_id,
+          tenant_id: effectiveTenantId,
+          investment_amount_cents: Math.round(parseFloat(investmentAmount) * 100),
+        });
+      }
 
       setCreatedInvite({
         full_name: fullName.trim(),
@@ -432,8 +443,21 @@ Estou aqui para ajudar! 🚀`;
                     className="bg-slate-800 border-slate-700 text-slate-100 min-h-[60px]"
                   />
                 </div>
-              </CollapsibleContent>
+            </CollapsibleContent>
             </Collapsible>
+
+            {/* Investimento do Programa */}
+            <div className="space-y-2">
+              <Label className="text-slate-200">Valor do Programa (R$)</Label>
+              <Input
+                type="number"
+                value={investmentAmount}
+                onChange={(e) => setInvestmentAmount(e.target.value)}
+                placeholder="Ex: 60000"
+                className="bg-slate-800 border-slate-700 text-slate-100"
+              />
+              <p className="text-xs text-slate-500">Valor total investido pelo mentorado no programa. Usado para calcular ROI.</p>
+            </div>
 
             <div className="flex gap-3 pt-4">
               <Button

@@ -62,13 +62,18 @@ export function MentoradoMetricsDashboard({ membershipId, tenantId }: Props) {
   const meetingsCount = activities.filter(a => a.type === "reuniao").reduce((s, a) => s + a.count, 0);
   const conversionRate = meetingsCount > 0 ? (closedDeals.length / meetingsCount) * 100 : 0;
 
-  // ROI
-  const investmentCents = investment?.investment_amount_cents || 0;
-  const resultCents = useCashForROI ? cashReceived : revenueClosed;
-  const roi = investmentCents > 0 ? ((resultCents - investmentCents) / investmentCents) * 100 : 0;
   const periodDays = Math.max(1, differenceInDays(range.to, range.from));
+
+  // ROI with operational costs
+  const investmentCents = investment?.investment_amount_cents || 0;
+  const adsCost = investment?.monthly_ads_cost_cents || 0;
+  const teamCost = investment?.monthly_team_cost_cents || 0;
+  const otherCost = investment?.monthly_other_cost_cents || 0;
+  const resultCents = useCashForROI ? cashReceived : revenueClosed;
+  const totalInvestment = investmentCents + (adsCost + teamCost + otherCost) * Math.max(1, Math.ceil(periodDays / 30));
+  const roi = totalInvestment > 0 ? ((resultCents - totalInvestment) / totalInvestment) * 100 : 0;
   const monthlyAvg = resultCents * (30 / periodDays);
-  const paybackMonths = monthlyAvg > 0 ? investmentCents / monthlyAvg : Infinity;
+  const paybackMonths = monthlyAvg > 0 ? totalInvestment / monthlyAvg : Infinity;
 
   // Charts data
   const revenueByWeek = useMemo(() => {
