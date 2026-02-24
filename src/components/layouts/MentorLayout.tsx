@@ -81,6 +81,19 @@ const menuItems: DockItem[] = [
       }
     };
   
+    // Show loading skeleton while tenant data is being fetched
+    if (!tenant) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animated-gradient-bg" />
+          <div className="flex flex-col items-center gap-4 relative z-10">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <p className="text-sm text-muted-foreground">Carregando ambiente...</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen">
         {/* Animated gradient background */}
