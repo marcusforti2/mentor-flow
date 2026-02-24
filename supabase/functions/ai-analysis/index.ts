@@ -72,14 +72,16 @@ REGRAS:
 - RETORNE APENAS O JSON, sem texto adicional`;
 
       if (analysis_type === "transcricao") {
-        userPrompt = `Analise esta transcrição de chamada/reunião de vendas:\n\n${transcription || ""}`;
-        
         if (pdf_base64) {
+          // Document uploaded as base64 (PDF/Word/TXT)
+          // For PDFs, send as image_url for vision processing
+          // For text-based docs, the base64 data URL is sent for the model to interpret
           messageContent = [
-            { type: "text", text: systemPrompt + "\n\n" + "Analise este documento PDF de transcrição:" },
+            { type: "text", text: systemPrompt + "\n\nAnalise este documento de transcrição/reunião de vendas. Extraia todo o texto e analise a qualidade da abordagem de vendas:" },
             { type: "image_url", image_url: { url: pdf_base64 } }
           ];
         } else {
+          userPrompt = `Analise esta transcrição de chamada/reunião de vendas:\n\n${transcription || ""}`;
           messageContent = [{ type: "text", text: systemPrompt + "\n\n" + userPrompt }];
         }
       } else if (analysis_type === "prints") {

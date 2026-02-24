@@ -24,7 +24,9 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
   // Call analysis state
   const [transcription, setTranscription] = useState('');
   const [images, setImages] = useState<string[]>([]);
-  const [analysisType, setAnalysisType] = useState<'transcricao' | 'prints'>('transcricao');
+  const [analysisType, setAnalysisType] = useState<'transcricao' | 'prints' | 'documento'>('transcricao');
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docBase64, setDocBase64] = useState<string | null>(null);
 
   const { history, loading: loadingHistory, saveToHistory } = useAIToolHistory(mentoradoId, 'conversion_analyzer');
 
@@ -47,6 +49,29 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Formato não suportado. Use PDF, Word (.docx) ou texto (.txt)');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 10MB');
+      return;
+    }
+    setDocFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        setDocBase64(ev.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   // Call/Conversation Analysis
   const handleCallAnalysis = async () => {
     if (analysisType === 'transcricao' && !transcription.trim()) {
@@ -57,6 +82,10 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
       toast.error('Envie ao menos um print da conversa');
       return;
     }
+    if (analysisType === 'documento' && !docBase64) {
+      toast.error('Envie um arquivo PDF ou Word');
+      return;
+    }
 
     setIsLoading(true);
     setResult('');
@@ -65,9 +94,10 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
       const { data, error } = await supabase.functions.invoke('ai-analysis', {
         body: {
           type: 'training_analysis',
-          analysis_type: analysisType,
+          analysis_type: analysisType === 'documento' ? 'transcricao' : analysisType,
           transcription: analysisType === 'transcricao' ? transcription : undefined,
           images: analysisType === 'prints' ? images : undefined,
+          pdf_base64: analysisType === 'documento' ? docBase64 : undefined,
         },
       });
 
@@ -88,11 +118,14 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
       toast.success('Análise de call concluída!');
 
       if (resultText) {
+        const typeLabels = { transcricao: 'Transcrição', prints: 'Prints', documento: 'Documento' };
         await saveToHistory({
-          title: `Análise de Call (${analysisType === 'transcricao' ? 'Transcrição' : 'Prints'}) - ${new Date().toLocaleDateString('pt-BR')}`,
+          title: `Análise de Call (${typeLabels[analysisType]}) - ${new Date().toLocaleDateString('pt-BR')}`,
           inputData: {
             analysis_type: analysisType,
-            ...(analysisType === 'transcricao' ? { transcription_preview: transcription.slice(0, 200) } : { images_count: images.length }),
+            ...(analysisType === 'transcricao' ? { transcription_preview: transcription.slice(0, 200) } : {}),
+            ...(analysisType === 'prints' ? { images_count: images.length } : {}),
+            ...(analysisType === 'documento' ? { file_name: docFile?.name } : {}),
           },
           outputText: resultText,
         });
@@ -289,7 +322,15 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
                   onClick={() => setAnalysisType('prints')}
                 >
                   <ImagePlus className="h-4 w-4 mr-1" />
-                  Prints de Conversa
+                  Prints
+                </Button>
+                <Button
+                  variant={analysisType === 'documento' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('documento')}
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  PDF / Word
                 </Button>
               </div>
 
@@ -304,7 +345,7 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
                     className="resize-y"
                   />
                 </div>
-              ) : (
+              ) : analysisType === 'prints' ? (
                 <div className="space-y-3">
                   <Label>Prints da conversa</Label>
                   <div className="flex flex-wrap gap-3">
@@ -325,6 +366,29 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
                     </label>
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  <Label>Arquivo PDF ou Word</Label>
+                  {docFile ? (
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                      <FileText className="h-8 w-8 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{docFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(docFile.size / 1024).toFixed(0)} KB</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => { setDocFile(null); setDocBase64(null); }}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center h-32 rounded-lg border-2 border-dashed border-border cursor-pointer hover:border-primary/50 transition-colors">
+                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Clique para enviar PDF, Word ou TXT</p>
+                      <p className="text-xs text-muted-foreground mt-1">Máximo 10MB</p>
+                      <Input type="file" accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" className="hidden" onChange={handleDocUpload} />
+                    </label>
+                  )}
+                </div>
               )}
 
               <Button onClick={handleCallAnalysis} disabled={isLoading} className="w-full">
@@ -336,7 +400,7 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
-                    Analisar {analysisType === 'transcricao' ? 'Transcrição' : 'Prints'}
+                    Analisar {analysisType === 'transcricao' ? 'Transcrição' : analysisType === 'prints' ? 'Prints' : 'Documento'}
                   </>
                 )}
               </Button>
