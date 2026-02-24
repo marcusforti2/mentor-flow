@@ -103,3 +103,6 @@ verify_jwt = false
 
 [functions.metrics-reminder]
 verify_jwt = false
+
+[functions.seed-tenant-data]
+verify_jwt = false
