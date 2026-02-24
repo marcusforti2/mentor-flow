@@ -21,10 +21,11 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Sparkles, Upload, ImageIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Sparkles, Upload, ImageIcon, Loader2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 interface PopupFormDialogProps {
   open: boolean;
@@ -37,8 +38,10 @@ interface PopupFormDialogProps {
 export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitting }: PopupFormDialogProps) {
   const { tenant, activeMembership } = useTenant();
   const [title, setTitle] = useState('');
+  const [bodyText, setBodyText] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
   const [ctaLabel, setCtaLabel] = useState('');
   const [ctaUrl, setCtaUrl] = useState('');
   const [displayMode, setDisplayMode] = useState('first_access');
@@ -53,6 +56,7 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
     if (popup) {
       setTitle(popup.title);
       setBodyHtml(popup.body_html);
+      setBodyText(htmlToPlainText(popup.body_html));
       setImageUrl(popup.image_url || '');
       setCtaLabel(popup.cta_label || '');
       setCtaUrl(popup.cta_url || '');
@@ -61,6 +65,7 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
       setEndsAt(popup.ends_at ? new Date(popup.ends_at) : undefined);
     } else {
       setTitle('');
+      setBodyText('');
       setBodyHtml('');
       setImageUrl('');
       setCtaLabel('');
@@ -70,7 +75,27 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
       setEndsAt(undefined);
     }
     setAiPrompt('');
+    setShowPreview(false);
   }, [popup, open]);
+
+  function htmlToPlainText(html: string): string {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  function plainTextToHtml(text: string): string {
+    if (!text.trim()) return '';
+    return text
+      .split('\n\n')
+      .map(p => `<p>${p.split('\n').join('<br/>')}</p>`)
+      .join('');
+  }
+
+  const handleBodyTextChange = (text: string) => {
+    setBodyText(text);
+    setBodyHtml(plainTextToHtml(text));
+  };
 
   const handleGenerateContent = async () => {
     if (!aiPrompt.trim()) return;
@@ -81,7 +106,10 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
       });
       if (error) throw error;
       if (data?.title) setTitle(data.title);
-      if (data?.body_html) setBodyHtml(data.body_html);
+      if (data?.body_html) {
+        setBodyHtml(data.body_html);
+        setBodyText(htmlToPlainText(data.body_html));
+      }
       if (data?.cta_label) setCtaLabel(data.cta_label);
       if (data?.cta_url) setCtaUrl(data.cta_url);
       toast.success('Conteúdo gerado pela IA!');
@@ -145,7 +173,7 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
   };
 
   const handleSubmit = () => {
-    if (!title.trim() || !bodyHtml.trim()) {
+    if (!title.trim() || !bodyText.trim()) {
       toast.error('Preencha título e conteúdo');
       return;
     }
@@ -204,13 +232,14 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
 
           {/* Body */}
           <div className="space-y-2">
-            <Label>Conteúdo (HTML) *</Label>
+            <Label>Conteúdo *</Label>
             <Textarea
-              value={bodyHtml}
-              onChange={(e) => setBodyHtml(e.target.value)}
-              placeholder="<p>Escreva o conteúdo do popup aqui...</p>"
+              value={bodyText}
+              onChange={(e) => handleBodyTextChange(e.target.value)}
+              placeholder="Escreva o conteúdo do popup aqui...&#10;&#10;Use linhas em branco para separar parágrafos."
               rows={5}
             />
+            <p className="text-xs text-muted-foreground">Separe parágrafos com uma linha em branco.</p>
           </div>
 
           {/* Image */}
@@ -310,9 +339,41 @@ export function PopupFormDialog({ open, onOpenChange, popup, onSubmit, isSubmitt
             </div>
           )}
 
+          {/* Preview */}
+          {showPreview && (
+            <div className="rounded-xl border border-border bg-card p-0 overflow-hidden">
+              <p className="text-xs font-medium text-muted-foreground px-4 pt-3 pb-1">Pré-visualização</p>
+              {imageUrl && (
+                <div className="aspect-[2/1] bg-muted">
+                  <img src={imageUrl} alt="Banner" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="p-4 space-y-3">
+                <h3 className="text-lg font-bold text-foreground">{title || 'Título do Popup'}</h3>
+                <div
+                  className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bodyHtml || '<p>Conteúdo aparecerá aqui...</p>') }}
+                />
+                {ctaLabel && (
+                  <Button size="sm" className="w-full mt-2">
+                    {ctaLabel}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Submit */}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowPreview(!showPreview)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              {showPreview ? 'Ocultar Preview' : 'Visualizar'}
+            </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {popup ? 'Salvar' : 'Criar Popup'}
