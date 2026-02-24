@@ -325,6 +325,7 @@ export type Database = {
           event_date: string
           event_time: string | null
           event_type: string | null
+          facilitator_name: string | null
           id: string
           is_recurring: boolean | null
           meeting_url: string | null
@@ -341,6 +342,7 @@ export type Database = {
           event_date: string
           event_time?: string | null
           event_type?: string | null
+          facilitator_name?: string | null
           id?: string
           is_recurring?: boolean | null
           meeting_url?: string | null
@@ -357,6 +359,7 @@ export type Database = {
           event_date?: string
           event_time?: string | null
           event_type?: string | null
+          facilitator_name?: string | null
           id?: string
           is_recurring?: boolean | null
           meeting_url?: string | null

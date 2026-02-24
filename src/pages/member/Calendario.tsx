@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, CalendarIcon, Clock, Video, ChevronLeft, ChevronRight,
-  CalendarClock, CalendarDays, Sparkles, ExternalLink, LayoutGrid, List
+  CalendarClock, CalendarDays, Sparkles, ExternalLink, LayoutGrid, List, ListChecks
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -29,16 +29,19 @@ interface CalendarEvent {
   event_time: string | null;
   event_type: string;
   meeting_url: string | null;
+  facilitator_name: string | null;
 }
 
 type ViewMode = "month" | "week";
 
 const eventTypes = [
-  { value: "geral", label: "Geral", color: "bg-blue-500", dotColor: "bg-blue-400", emoji: "📌", gradient: "from-blue-500/20 to-blue-600/5" },
-  { value: "mentoria", label: "Mentoria", color: "bg-purple-500", dotColor: "bg-purple-400", emoji: "🎯", gradient: "from-purple-500/20 to-purple-600/5" },
-  { value: "live", label: "Live", color: "bg-red-500", dotColor: "bg-red-400", emoji: "🔴", gradient: "from-red-500/20 to-red-600/5" },
-  { value: "prazo", label: "Prazo", color: "bg-amber-500", dotColor: "bg-amber-400", emoji: "⏰", gradient: "from-amber-500/20 to-amber-600/5" },
-  { value: "reuniao", label: "Reunião", color: "bg-emerald-500", dotColor: "bg-emerald-400", emoji: "👥", gradient: "from-emerald-500/20 to-emerald-600/5" },
+  { value: "geral", label: "Geral", color: "bg-blue-500", dotColor: "bg-blue-400", emoji: "📌", gradient: "from-blue-500/20 to-blue-600/5", border: "border-blue-500/40" },
+  { value: "mentoria", label: "Mentoria", color: "bg-purple-500", dotColor: "bg-purple-400", emoji: "🎯", gradient: "from-purple-500/20 to-purple-600/5", border: "border-purple-500/40" },
+  { value: "live", label: "Live", color: "bg-red-500", dotColor: "bg-red-400", emoji: "🔴", gradient: "from-red-500/20 to-red-600/5", border: "border-red-500/40" },
+  { value: "prazo", label: "Prazo", color: "bg-amber-500", dotColor: "bg-amber-400", emoji: "⏰", gradient: "from-amber-500/20 to-amber-600/5", border: "border-amber-500/40" },
+  { value: "reuniao", label: "Reunião", color: "bg-emerald-500", dotColor: "bg-emerald-400", emoji: "👥", gradient: "from-emerald-500/20 to-emerald-600/5", border: "border-emerald-500/40" },
+  { value: "treinamento", label: "Treinamento", color: "bg-cyan-500", dotColor: "bg-cyan-400", emoji: "🏋️", gradient: "from-cyan-500/20 to-cyan-600/5", border: "border-cyan-500/40" },
+  { value: "hotseat", label: "Hot Seat", color: "bg-orange-500", dotColor: "bg-orange-400", emoji: "🔥", gradient: "from-orange-500/20 to-orange-600/5", border: "border-orange-500/40" },
 ];
 
 const getEventConfig = (type: string) => eventTypes.find(t => t.value === type) || eventTypes[0];
@@ -51,6 +54,7 @@ export default function CalendarioMembro() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [weekOffset, setWeekOffset] = useState(0);
   const { user } = useAuth();
   const { activeMembership } = useTenant();
   const { toast } = useToast();
@@ -61,7 +65,7 @@ export default function CalendarioMembro() {
     try {
       const { data: tenantEvents, error } = await supabase
         .from('calendar_events')
-        .select('id, title, description, event_date, event_time, event_type, meeting_url, audience_type, audience_membership_ids')
+        .select('id, title, description, event_date, event_time, event_type, meeting_url, audience_type, audience_membership_ids, facilitator_name')
         .eq('tenant_id', activeMembership.tenant_id)
         .order('event_date', { ascending: true });
 
@@ -85,6 +89,36 @@ export default function CalendarioMembro() {
   };
 
   useEffect(() => { fetchEvents(); }, [user, activeMembership]);
+
+  // Week navigation for Programação tab
+  const programWeekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
+  const programWeekEnd = endOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
+  const programWeekDays = eachDayOfInterval({ start: programWeekStart, end: programWeekEnd });
+
+  const weekEvents = useMemo(() => {
+    return events.filter(e => {
+      const d = parseISO(e.event_date);
+      return d >= programWeekStart && d <= programWeekEnd;
+    });
+  }, [events, weekOffset]);
+
+  const eventsByDay = useMemo(() => {
+    const grouped: Record<string, CalendarEvent[]> = {};
+    weekEvents.forEach(e => {
+      const key = e.event_date;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(e);
+    });
+    // Sort events within each day by time
+    Object.keys(grouped).forEach(k => {
+      grouped[k].sort((a, b) => (a.event_time || '').localeCompare(b.event_time || ''));
+    });
+    return grouped;
+  }, [weekEvents]);
+
+  const sortedDays = useMemo(() => {
+    return Object.keys(eventsByDay).sort();
+  }, [eventsByDay]);
 
   // Calendar computations
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
@@ -112,16 +146,6 @@ export default function CalendarioMembro() {
     }
   };
 
-  const stats = useMemo(() => {
-    const now = new Date();
-    const upcoming = events.filter(e => !isBefore(parseISO(e.event_date), now));
-    const thisMonth = events.filter(e => {
-      const d = parseISO(e.event_date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    return { upcoming: upcoming.length, thisMonth: thisMonth.length };
-  }, [events]);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
@@ -144,32 +168,170 @@ export default function CalendarioMembro() {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Eventos e sessões de mentoria</p>
         </div>
-        <div className="hidden md:flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary">{stats.upcoming}</span>
-            <span className="text-xs text-muted-foreground">próximos</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50">
-            <span className="text-xs font-semibold text-foreground">{stats.thisMonth}</span>
-            <span className="text-xs text-muted-foreground">este mês</span>
-          </div>
-        </div>
       </div>
 
-      <Tabs defaultValue="events" className="flex-1 flex flex-col min-h-0 gap-3">
+      <Tabs defaultValue="programacao" className="flex-1 flex flex-col min-h-0 gap-3">
         <TabsList className="w-fit">
-          <TabsTrigger value="events" className="gap-2">
-            <CalendarIcon className="h-4 w-4" /> Eventos
+          <TabsTrigger value="programacao" className="gap-2">
+            <ListChecks className="h-4 w-4" /> Programação
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-2">
+            <CalendarIcon className="h-4 w-4" /> Calendário
           </TabsTrigger>
           <TabsTrigger value="booking" className="gap-2">
             <CalendarClock className="h-4 w-4" /> Agendar Sessão
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="events" className="flex-1 min-h-0 mt-0">
+        {/* ── Programação Tab ── */}
+        <TabsContent value="programacao" className="flex-1 min-h-0 mt-0">
+          <div className="flex flex-col h-full gap-4">
+            {/* Week navigator */}
+            <Card className="glass-card p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Sua semana
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {format(programWeekStart, "dd MMM", { locale: ptBR })} – {format(programWeekEnd, "dd MMM yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">{weekEvents.length}</span>
+                    <span className="text-xs text-muted-foreground">evento{weekEvents.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekOffset(o => o - 1)}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setWeekOffset(0)}>
+                      Hoje
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekOffset(o => o + 1)}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Events grouped by day */}
+            <ScrollArea className="flex-1">
+              {sortedDays.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-4">
+                    <CalendarIcon className="w-8 h-8 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-lg font-medium text-muted-foreground mb-1">Semana livre!</p>
+                  <p className="text-sm text-muted-foreground/60">Nenhum evento programado nesta semana</p>
+                </div>
+              ) : (
+                <div className="space-y-6 pb-4">
+                  {sortedDays.map(dateKey => {
+                    const dayDate = parseISO(dateKey);
+                    const dayIsToday = isToday(dayDate);
+                    const dayEvents = eventsByDay[dateKey];
+
+                    return (
+                      <div key={dateKey}>
+                        {/* Day header */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={cn(
+                            "text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full",
+                            dayIsToday 
+                              ? "bg-primary text-primary-foreground" 
+                              : "bg-secondary text-muted-foreground"
+                          )}>
+                            {format(dayDate, "EEEE", { locale: ptBR })} · {format(dayDate, "dd MMM", { locale: ptBR })}
+                          </div>
+                          {dayIsToday && (
+                            <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] animate-pulse">
+                              HOJE
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Event cards */}
+                        <div className="space-y-3">
+                          {dayEvents.map(event => {
+                            const config = getEventConfig(event.event_type);
+                            return (
+                              <Card
+                                key={event.id}
+                                className={cn(
+                                  "relative overflow-hidden transition-all duration-300",
+                                  "border hover:shadow-lg",
+                                  dayIsToday && "ring-1 ring-primary/20 shadow-md shadow-primary/5",
+                                  config.border
+                                )}
+                              >
+                                {/* Left color bar */}
+                                <div className={cn("absolute left-0 top-0 bottom-0 w-1.5", config.color)} />
+
+                                <div className={cn("p-4 pl-5 bg-gradient-to-r", config.gradient)}>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-lg">{config.emoji}</span>
+                                        <span className="text-sm font-bold text-foreground/70 tabular-nums">
+                                          {event.event_time?.slice(0, 5) || "Dia todo"}
+                                        </span>
+                                        <Badge variant="secondary" className="text-[10px] h-5 px-2">
+                                          {config.label}
+                                        </Badge>
+                                      </div>
+                                      <h3 className="text-base font-bold text-foreground leading-tight">
+                                        {event.title}
+                                      </h3>
+                                      {event.facilitator_name && (
+                                        <p className="text-sm text-muted-foreground mt-0.5">
+                                          com <span className="font-medium text-foreground/80">{event.facilitator_name}</span>
+                                        </p>
+                                      )}
+                                      {event.description && (
+                                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
+                                          {event.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {event.meeting_url && (
+                                    <a
+                                      href={event.meeting_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(
+                                        "inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg text-sm font-semibold",
+                                        "bg-primary text-primary-foreground hover:bg-primary/90 transition-colors",
+                                        "shadow-sm hover:shadow-md"
+                                      )}
+                                    >
+                                      <Video className="w-4 h-4" />
+                                      Entrar na reunião
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </TabsContent>
+
+        {/* ── Calendar Tab ── */}
+        <TabsContent value="calendar" className="flex-1 min-h-0 mt-0">
           <div className="h-full grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
-            {/* Calendar */}
             <Card className="glass-card overflow-hidden flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-secondary/20">
                 <div className="flex items-center gap-2">
@@ -240,7 +402,6 @@ export default function CalendarioMembro() {
                 </div>
               </Card>
 
-              {/* Legend */}
               <Card className="glass-card px-4 py-3">
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                   {eventTypes.map(type => (
@@ -252,7 +413,6 @@ export default function CalendarioMembro() {
                 </div>
               </Card>
 
-              {/* Events list */}
               <Card className="glass-card flex-1 min-h-0 flex flex-col overflow-hidden">
                 <ScrollArea className="flex-1 p-3">
                   {selectedDayEvents.length === 0 ? (
@@ -291,6 +451,9 @@ export default function CalendarioMembro() {
                                     {config.emoji} {config.label}
                                   </Badge>
                                 </div>
+                                {event.facilitator_name && (
+                                  <p className="text-xs text-muted-foreground mt-1">com {event.facilitator_name}</p>
+                                )}
                                 {event.description && (
                                   <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{event.description}</p>
                                 )}
