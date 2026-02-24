@@ -2,7 +2,7 @@ import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock, type DockItem } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
  import { useTenant } from '@/contexts/TenantContext';
-import { WhatsAppGroupModal } from '@/components/WhatsAppGroupModal';
+import { TenantPopupRenderer } from '@/components/popups/TenantPopupRenderer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -214,7 +214,7 @@ const menuItems: DockItem[] = [
          <Outlet />
        </main>
  
-       {!isImpersonating && <WhatsAppGroupModal />}
+       {!isImpersonating && <TenantPopupRenderer />}
      </div>
    );
  }

@@ -2911,6 +2911,42 @@ export type Database = {
           },
         ]
       }
+      popup_dismissals: {
+        Row: {
+          dismissed_at: string | null
+          id: string
+          membership_id: string
+          popup_id: string
+        }
+        Insert: {
+          dismissed_at?: string | null
+          id?: string
+          membership_id: string
+          popup_id: string
+        }
+        Update: {
+          dismissed_at?: string | null
+          id?: string
+          membership_id?: string
+          popup_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "popup_dismissals_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "popup_dismissals_popup_id_fkey"
+            columns: ["popup_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_popups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3555,6 +3591,72 @@ export type Database = {
             foreignKeyName: "tenant_branding_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_popups: {
+        Row: {
+          body_html: string
+          created_at: string | null
+          created_by: string
+          cta_label: string | null
+          cta_url: string | null
+          display_mode: string
+          ends_at: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          starts_at: string | null
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          body_html: string
+          created_at?: string | null
+          created_by: string
+          cta_label?: string | null
+          cta_url?: string | null
+          display_mode?: string
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          starts_at?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          body_html?: string
+          created_at?: string | null
+          created_by?: string
+          cta_label?: string | null
+          cta_url?: string | null
+          display_mode?: string
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          starts_at?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_popups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_popups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },

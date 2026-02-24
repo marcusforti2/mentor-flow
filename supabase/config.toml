@@ -106,3 +106,6 @@ verify_jwt = false
 
 [functions.seed-tenant-data]
 verify_jwt = false
+
+[functions.generate-popup]
+verify_jwt = false

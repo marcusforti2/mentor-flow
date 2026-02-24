@@ -1,7 +1,7 @@
  import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
  import { FloatingDock } from '@/components/FloatingDock';
  import { useAuth } from '@/hooks/useAuth';
- import { WhatsAppGroupModal } from '@/components/WhatsAppGroupModal';
+ import { TenantPopupRenderer } from '@/components/popups/TenantPopupRenderer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
@@ -145,7 +145,7 @@ export function MemberLayout() {
       </main>
 
       {/* WhatsApp Group Modal - First Login */}
-      <WhatsAppGroupModal />
+      <TenantPopupRenderer />
     </div>
   );
 }
