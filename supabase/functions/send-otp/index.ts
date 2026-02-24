@@ -28,17 +28,41 @@ const DEFAULT_BRANDING: TenantBranding = {
   fromEmail: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
 };
 
+function hslToHex(hslStr: string): string {
+  // Parse "330 80% 64%" or "260 80% 60%" format
+  const parts = hslStr.trim().split(/\s+/);
+  if (parts.length < 3) return "#d4af37";
+  const h = parseFloat(parts[0]);
+  const s = parseFloat(parts[1]) / 100;
+  const l = parseFloat(parts[2]) / 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function resolveColor(raw: string | null | undefined): string {
+  if (!raw) return "#d4af37";
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('#')) return trimmed;
+  // Assume HSL space-separated
+  return hslToHex(trimmed);
+}
+
 async function getTenantBranding(supabase: any, tenantId: string | null): Promise<TenantBranding> {
   if (!tenantId) return DEFAULT_BRANDING;
   try {
     const { data: tenant } = await supabase
       .from("tenants")
-      .select("name, logo_url, brand_attributes")
+      .select("name, logo_url, primary_color, brand_attributes")
       .eq("id", tenantId)
       .maybeSingle();
     if (!tenant) return DEFAULT_BRANDING;
-    const attrs = tenant.brand_attributes || {};
-    const primaryColor = attrs.primary_color || "#d4af37";
+    // Priority: tenant.primary_color > brand_attributes.primary_color > default
+    const primaryColor = resolveColor(tenant.primary_color || tenant.brand_attributes?.primary_color);
     const brandName = tenant.name || DEFAULT_BRANDING.name;
     return {
       name: brandName,
