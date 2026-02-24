@@ -945,15 +945,20 @@ export type Database = {
           contact_phone: string | null
           created_at: string | null
           id: string
+          instagram_url: string | null
+          linkedin_url: string | null
           membership_id: string | null
           notes: string | null
           points: number | null
+          position: string | null
           profile_url: string | null
           screenshot_urls: string[] | null
           status: string | null
           temperature: string | null
           tenant_id: string | null
           updated_at: string | null
+          website_url: string | null
+          whatsapp: string | null
         }
         Insert: {
           ai_insights?: Json | null
@@ -963,15 +968,20 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: string
+          instagram_url?: string | null
+          linkedin_url?: string | null
           membership_id?: string | null
           notes?: string | null
           points?: number | null
+          position?: string | null
           profile_url?: string | null
           screenshot_urls?: string[] | null
           status?: string | null
           temperature?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          website_url?: string | null
+          whatsapp?: string | null
         }
         Update: {
           ai_insights?: Json | null
@@ -981,15 +991,20 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           id?: string
+          instagram_url?: string | null
+          linkedin_url?: string | null
           membership_id?: string | null
           notes?: string | null
           points?: number | null
+          position?: string | null
           profile_url?: string | null
           screenshot_urls?: string[] | null
           status?: string | null
           temperature?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          website_url?: string | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
