@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Brain, Video, ClipboardList, FolderOpen, Instagram, Linkedin, Globe } from "lucide-react";
+import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Brain, Video, ClipboardList, FolderOpen, Instagram, Linkedin, Globe, BarChart3 } from "lucide-react";
 import { DangerZoneDelete } from "@/components/admin/DangerZoneDelete";
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager";
+import { MentoradoMetricsDashboard } from "@/components/admin/MentoradoMetricsDashboard";
 import { MeetingRegistrar } from "@/components/campan/MeetingRegistrar";
 import { TaskListView } from "@/components/campan/TaskListView";
 import { TranscriptionTaskExtractor } from "@/components/campan/TranscriptionTaskExtractor";
@@ -227,7 +228,7 @@ const MentoradoDetail = () => {
 
       {/* Tabs - Full Width */}
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-11">
+        <TabsList className="w-full grid grid-cols-6 h-11">
           <TabsTrigger value="info" className="text-sm">Perfil</TabsTrigger>
           <TabsTrigger value="analysis" className="text-sm">
             <Brain className="h-4 w-4 mr-1.5" />
@@ -244,6 +245,10 @@ const MentoradoDetail = () => {
           <TabsTrigger value="files" className="text-sm">
             <FolderOpen className="h-4 w-4 mr-1.5" />
             Arquivos
+          </TabsTrigger>
+          <TabsTrigger value="metrics" className="text-sm">
+            <BarChart3 className="h-4 w-4 mr-1.5" />
+            Métricas
           </TabsTrigger>
         </TabsList>
 
@@ -370,6 +375,14 @@ const MentoradoDetail = () => {
             mentoradoName={mentorado.profile?.full_name || "Mentorado"}
             tenantId={activeMembership.tenant_id}
             ownerMembershipId={mentorado.membership_id}
+          />
+        </TabsContent>
+
+        {/* === TAB: Métricas === */}
+        <TabsContent value="metrics" className="mt-6">
+          <MentoradoMetricsDashboard
+            membershipId={mentorado.membership_id}
+            tenantId={activeMembership.tenant_id}
           />
         </TabsContent>
       </Tabs>

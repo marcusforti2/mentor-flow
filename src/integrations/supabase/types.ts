@@ -1807,6 +1807,51 @@ export type Database = {
           },
         ]
       }
+      mentee_activities: {
+        Row: {
+          activity_date: string
+          count: number
+          created_at: string
+          id: string
+          membership_id: string
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          activity_date: string
+          count?: number
+          created_at?: string
+          id?: string
+          membership_id: string
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          activity_date?: string
+          count?: number
+          created_at?: string
+          id?: string
+          membership_id?: string
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentee_activities_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_activities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentee_behavioral_analyses: {
         Row: {
           alert_signals: Json | null
@@ -1889,6 +1934,60 @@ export type Database = {
           },
         ]
       }
+      mentee_deals: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          deal_name: string | null
+          id: string
+          lost_reason: string | null
+          membership_id: string
+          source: string | null
+          stage: string
+          tenant_id: string
+          value_cents: number
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          deal_name?: string | null
+          id?: string
+          lost_reason?: string | null
+          membership_id: string
+          source?: string | null
+          stage?: string
+          tenant_id: string
+          value_cents?: number
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          deal_name?: string | null
+          id?: string
+          lost_reason?: string | null
+          membership_id?: string
+          source?: string | null
+          stage?: string
+          tenant_id?: string
+          value_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentee_deals_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_deals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentee_journey_assignments: {
         Row: {
           created_at: string
@@ -1931,6 +2030,57 @@ export type Database = {
           },
           {
             foreignKeyName: "mentee_journey_assignments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentee_payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          membership_id: string
+          paid_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          membership_id: string
+          paid_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          membership_id?: string
+          paid_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentee_payments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentee_payments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -2403,6 +2553,66 @@ export type Database = {
         }
         Relationships: []
       }
+      metrics_snapshots: {
+        Row: {
+          created_at: string
+          deals_won_count: number | null
+          id: string
+          meetings_held_count: number | null
+          membership_id: string
+          payback_months: number | null
+          period_end: string | null
+          period_start: string | null
+          revenue_closed_cents: number | null
+          revenue_received_cents: number | null
+          roi_ratio: number | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          deals_won_count?: number | null
+          id?: string
+          meetings_held_count?: number | null
+          membership_id: string
+          payback_months?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          revenue_closed_cents?: number | null
+          revenue_received_cents?: number | null
+          roi_ratio?: number | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          deals_won_count?: number | null
+          id?: string
+          meetings_held_count?: number | null
+          membership_id?: string
+          payback_months?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          revenue_closed_cents?: number | null
+          revenue_received_cents?: number | null
+          roi_ratio?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metrics_snapshots_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "metrics_snapshots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       otp_codes: {
         Row: {
           code: string
@@ -2745,6 +2955,54 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      program_investments: {
+        Row: {
+          created_at: string
+          id: string
+          investment_amount_cents: number
+          membership_id: string
+          notes: string | null
+          onboarding_date: string | null
+          start_date: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          investment_amount_cents: number
+          membership_id: string
+          notes?: string | null
+          onboarding_date?: string | null
+          start_date?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          investment_amount_cents?: number
+          membership_id?: string
+          notes?: string | null
+          onboarding_date?: string | null
+          start_date?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_investments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_investments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ranking_entries: {
         Row: {

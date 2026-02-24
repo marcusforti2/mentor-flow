@@ -69,6 +69,7 @@ const MeusArquivos = lazy(() => import("./pages/member/MeusArquivos"));
 const MinhasTarefas = lazy(() => import("./pages/member/MinhasTarefas"));
 // AgendamentoMembro removed — merged into CalendarioMembro
 const MentoradoPlaybooks = lazy(() => import("./pages/member/Playbooks"));
+const MentoradoMetricas = lazy(() => import("./pages/member/Metricas"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -185,6 +186,7 @@ const App = () => (
                     <Route path="tarefas" element={<MinhasTarefas />} />
                     {/* Agendamento merged into calendario */}
                     <Route path="playbooks" element={<MentoradoPlaybooks />} />
+                    <Route path="metricas" element={<MentoradoMetricas />} />
                   </Route>
 
                   {/* Legacy route redirect */}
