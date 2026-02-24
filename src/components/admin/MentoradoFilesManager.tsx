@@ -332,9 +332,18 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const filteredFiles = selectedTab === 'all' 
-    ? files 
-    : files.filter(f => f.file_type === selectedTab);
+  const [originFilter, setOriginFilter] = useState<'all' | 'mentor' | 'mentee'>('all');
+
+  const filteredFiles = files
+    .filter(f => selectedTab === 'all' || f.file_type === selectedTab)
+    .filter(f => {
+      if (originFilter === 'mentee') return f.uploaded_by_membership_id === ownerMembershipId;
+      if (originFilter === 'mentor') return f.uploaded_by_membership_id !== ownerMembershipId;
+      return true;
+    });
+
+  const mentorCount = files.filter(f => f.uploaded_by_membership_id !== ownerMembershipId).length;
+  const menteeCount = files.filter(f => f.uploaded_by_membership_id === ownerMembershipId).length;
 
   return (
     <div className="space-y-4">
@@ -505,6 +514,34 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
             )}
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Origin filter pills */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant={originFilter === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className="h-7 text-xs gap-1.5 rounded-full"
+          onClick={() => setOriginFilter('all')}
+        >
+          Todos ({files.length})
+        </Button>
+        <Button
+          variant={originFilter === 'mentor' ? 'default' : 'outline'}
+          size="sm"
+          className="h-7 text-xs gap-1.5 rounded-full"
+          onClick={() => setOriginFilter('mentor')}
+        >
+          📥 Eu enviei ({mentorCount})
+        </Button>
+        <Button
+          variant={originFilter === 'mentee' ? 'default' : 'outline'}
+          size="sm"
+          className="h-7 text-xs gap-1.5 rounded-full"
+          onClick={() => setOriginFilter('mentee')}
+        >
+          📤 Mentorado enviou ({menteeCount})
+        </Button>
       </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
