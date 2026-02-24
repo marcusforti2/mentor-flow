@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
 
     // ========== 2. METRICS DATA ==========
     const activityTypes = ["msg_enviada", "ligacao", "followup", "reuniao", "proposta"];
-    const dealStages = ["prospeccao", "qualificacao", "proposta", "negociacao", "fechado_ganho", "fechado_perdido"];
+    const dealStages = ["lead", "conversa", "reuniao_marcada", "reuniao_feita", "proposta", "fechado", "perdido"];
     const dealSources = ["indicacao", "instagram", "linkedin", "cold_call", "evento"];
     const dealNames = [
       "Consultoria Empresarial", "Pacote Premium", "Treinamento Equipe", "Projeto Digital",
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       const deals = [];
       for (let i = 0; i < 6; i++) {
         const stage = dealStages[Math.floor(Math.random() * dealStages.length)];
-        const closed = stage.startsWith("fechado_") ? new Date(Date.now() - Math.random() * 20 * 86400000).toISOString() : null;
+        const closed = (stage === "fechado" || stage === "perdido") ? new Date(Date.now() - Math.random() * 20 * 86400000).toISOString() : null;
         deals.push({
           membership_id: mid,
           tenant_id: TENANT_ID,
@@ -136,13 +136,13 @@ Deno.serve(async (req) => {
           stage,
           source: dealSources[Math.floor(Math.random() * dealSources.length)],
           closed_at: closed,
-          lost_reason: stage === "fechado_perdido" ? "Preço fora do orçamento" : null,
+          lost_reason: stage === "perdido" ? "Preço fora do orçamento" : null,
         });
       }
       await supabaseAdmin.from("mentee_deals").insert(deals);
 
       // Payments (4 per mentee)
-      const paymentStatuses = ["paid", "paid", "paid", "pending"];
+      const paymentStatuses = ["recebido", "recebido", "recebido", "pendente"];
       const payments = [];
       for (let i = 0; i < 4; i++) {
         const monthsAgo = i;
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
           amount_cents: 150000, // R$1.500
           status,
           due_date: dueDate.toISOString().split("T")[0],
-          paid_at: status === "paid" ? dueDate.toISOString() : null,
+          paid_at: status === "recebido" ? dueDate.toISOString() : null,
           description: `Mensalidade ${dueDate.toLocaleString("pt-BR", { month: "long", year: "numeric" })}`,
         });
       }
