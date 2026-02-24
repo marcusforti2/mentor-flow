@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useAutomations, CATEGORY_LABELS, getAutomationMeta } from '@/hooks/useAutomations';
 import { AutomationCard } from '@/components/admin/AutomationCard';
-import { Loader2, Zap, CheckCircle2, XCircle, Pause } from 'lucide-react';
+import { AutomationFlowView } from '@/components/admin/AutomationFlowView';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Loader2, Zap, CheckCircle2, XCircle, Pause, LayoutGrid, Workflow } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type CategoryFilter = 'all' | 'engagement' | 'intelligence' | 'communication' | 'growth';
@@ -38,16 +40,18 @@ export default function Automacoes() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-xl bg-primary/20 text-primary">
-            <Zap className="h-5 w-5" />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-xl bg-primary/20 text-primary">
+              <Zap className="h-5 w-5" />
+            </div>
+            <h1 className="text-2xl font-display font-bold text-foreground">Automações</h1>
           </div>
-          <h1 className="text-2xl font-display font-bold text-foreground">Automações</h1>
+          <p className="text-sm text-muted-foreground ml-12">
+            Configure rotinas inteligentes que trabalham no piloto automático para você e seus mentorados.
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground ml-12">
-          Configure rotinas inteligentes que trabalham no piloto automático para você e seus mentorados.
-        </p>
       </div>
 
       {/* Stats summary */}
@@ -68,59 +72,87 @@ export default function Automacoes() {
         )}
       </div>
 
-      {/* Category filters */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setFilter('all')}
-          className={cn(
-            "text-xs px-3 py-1.5 rounded-full border transition-colors",
-            filter === 'all'
-              ? "bg-primary/20 text-primary border-primary/30"
-              : "bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50"
-          )}
-        >
-          Todas ({automations.length})
-        </button>
-        {Object.entries(CATEGORY_LABELS).map(([key, cat]) => {
-          const count = automations.filter(a => getAutomationMeta(a.automation_key).category === key).length;
-          if (count === 0) return null;
-          return (
+      {/* Tabs: Cards vs Mapa Visual */}
+      <Tabs defaultValue="cards" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="cards" className="gap-1.5">
+            <LayoutGrid className="h-4 w-4" />
+            Cards
+          </TabsTrigger>
+          <TabsTrigger value="map" className="gap-1.5">
+            <Workflow className="h-4 w-4" />
+            Mapa Visual
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Cards tab */}
+        <TabsContent value="cards" className="space-y-4">
+          {/* Category filters */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              key={key}
-              onClick={() => setFilter(key as CategoryFilter)}
+              onClick={() => setFilter('all')}
               className={cn(
                 "text-xs px-3 py-1.5 rounded-full border transition-colors",
-                filter === key
-                  ? cn(cat.color)
+                filter === 'all'
+                  ? "bg-primary/20 text-primary border-primary/30"
                   : "bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50"
               )}
             >
-              {cat.label} ({count})
+              Todas ({automations.length})
             </button>
-          );
-        })}
-      </div>
+            {Object.entries(CATEGORY_LABELS).map(([key, cat]) => {
+              const count = automations.filter(a => getAutomationMeta(a.automation_key).category === key).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key as CategoryFilter)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full border transition-colors",
+                    filter === key
+                      ? cn(cat.color)
+                      : "bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50"
+                  )}
+                >
+                  {cat.label} ({count})
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((automation) => (
-          <AutomationCard
-            key={automation.id}
-            automation={automation}
+          {/* Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((automation) => (
+              <AutomationCard
+                key={automation.id}
+                automation={automation}
+                onToggle={toggleAutomation}
+                onUpdateConfig={updateConfig}
+                onRunNow={handleRunNow}
+                running={runningKey === automation.automation_key}
+              />
+            ))}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>Nenhuma automação encontrada nesta categoria.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Map tab */}
+        <TabsContent value="map">
+          <AutomationFlowView
+            automations={automations}
             onToggle={toggleAutomation}
             onUpdateConfig={updateConfig}
             onRunNow={handleRunNow}
-            running={runningKey === automation.automation_key}
+            runningKey={runningKey}
           />
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>Nenhuma automação encontrada nesta categoria.</p>
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
