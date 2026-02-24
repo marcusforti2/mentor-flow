@@ -62,6 +62,57 @@ export type Database = {
           },
         ]
       }
+      ai_tool_history: {
+        Row: {
+          created_at: string
+          id: string
+          input_data: Json | null
+          membership_id: string
+          output_data: Json | null
+          output_text: string | null
+          tenant_id: string
+          title: string | null
+          tool_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          input_data?: Json | null
+          membership_id: string
+          output_data?: Json | null
+          output_text?: string | null
+          tenant_id: string
+          title?: string | null
+          tool_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          input_data?: Json | null
+          membership_id?: string
+          output_data?: Json | null
+          output_text?: string | null
+          tenant_id?: string
+          title?: string | null
+          tool_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tool_history_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_tool_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_tool_usage: {
         Row: {
           created_at: string | null

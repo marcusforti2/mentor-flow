@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { TrendingUp, Sparkles, RefreshCw, BarChart3, Target, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useAIToolHistory } from '@/hooks/useAIToolHistory';
+import { AIToolHistoryPanel } from './AIToolHistoryPanel';
 
 interface ConversionAnalyzerProps {
   mentoradoId: string | null;
@@ -13,6 +15,7 @@ interface ConversionAnalyzerProps {
 export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
   const [result, setResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { history, loading: loadingHistory, saveToHistory } = useAIToolHistory(mentoradoId, 'conversion_analyzer');
 
   const handleAnalyze = async () => {
     setIsLoading(true);
@@ -33,8 +36,16 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
         return;
       }
 
-      setResult(data?.result || '');
+      const resultText = data?.result || '';
+      setResult(resultText);
       toast.success('Análise concluída!');
+
+      if (resultText) {
+        await saveToHistory({
+          title: `Análise de Conversão - ${new Date().toLocaleDateString('pt-BR')}`,
+          outputText: resultText,
+        });
+      }
     } catch (error) {
       console.error('Error analyzing:', error);
       toast.error('Erro ao analisar pipeline');
@@ -137,6 +148,16 @@ export function ConversionAnalyzer({ mentoradoId }: ConversionAnalyzerProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* History */}
+      <AIToolHistoryPanel
+        history={history}
+        loading={loadingHistory}
+        onSelect={(entry) => {
+          setResult(entry.output_text || '');
+          toast.success('Análise carregada do histórico');
+        }}
+      />
     </div>
   );
 }

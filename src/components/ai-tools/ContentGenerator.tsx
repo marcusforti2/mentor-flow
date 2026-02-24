@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Pen, Sparkles, Copy, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useAIToolHistory } from '@/hooks/useAIToolHistory';
+import { AIToolHistoryPanel } from './AIToolHistoryPanel';
 
 interface ContentGeneratorProps {
   mentoradoId: string | null;
@@ -26,6 +28,7 @@ export function ContentGenerator({ mentoradoId }: ContentGeneratorProps) {
   const [topic, setTopic] = useState('');
   const [result, setResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { history, loading: loadingHistory, saveToHistory } = useAIToolHistory(mentoradoId, 'content_generator');
 
   const handleGenerate = async () => {
     if (!contentType || !topic.trim()) {
@@ -54,8 +57,18 @@ export function ContentGenerator({ mentoradoId }: ContentGeneratorProps) {
         return;
       }
 
-      setResult(data?.result || '');
+      const resultText = data?.result || '';
+      setResult(resultText);
       toast.success('Conteúdo gerado com sucesso!');
+
+      if (resultText) {
+        const typeLabel = contentTypes.find(t => t.value === contentType)?.label || contentType;
+        await saveToHistory({
+          title: `${typeLabel}: ${topic.slice(0, 50)}`,
+          inputData: { content_type: contentType, topic },
+          outputText: resultText,
+        });
+      }
     } catch (error) {
       console.error('Error generating content:', error);
       toast.error('Erro ao gerar conteúdo');
@@ -70,94 +83,111 @@ export function ContentGenerator({ mentoradoId }: ContentGeneratorProps) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      {/* Input Card */}
-      <Card className="glass-card">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Pen className="h-5 w-5 text-primary" />
-            <CardTitle>Gerador de Conteúdo</CardTitle>
-          </div>
-          <CardDescription>
-            Crie conteúdo para construir autoridade e atrair clientes
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tipo de Conteúdo</Label>
-            <Select value={contentType} onValueChange={setContentType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o formato..." />
-              </SelectTrigger>
-              <SelectContent>
-                {contentTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Input Card */}
+        <Card className="glass-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Pen className="h-5 w-5 text-primary" />
+              <CardTitle>Gerador de Conteúdo</CardTitle>
+            </div>
+            <CardDescription>
+              Crie conteúdo para construir autoridade e atrair clientes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tipo de Conteúdo</Label>
+              <Select value={contentType} onValueChange={setContentType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o formato..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {contentTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label>Tema / Assunto</Label>
-            <Input
-              placeholder="Ex: Como aumentar o ticket médio, Os 3 erros que afastam clientes..."
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Seja específico para um resultado mais personalizado
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label>Tema / Assunto</Label>
+              <Input
+                placeholder="Ex: Como aumentar o ticket médio, Os 3 erros que afastam clientes..."
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Seja específico para um resultado mais personalizado
+              </p>
+            </div>
 
-          <Button 
-            onClick={handleGenerate} 
-            disabled={isLoading || !contentType || !topic.trim()}
-            className="w-full"
-          >
-            {isLoading ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Gerando...
-              </>
+            <Button 
+              onClick={handleGenerate} 
+              disabled={isLoading || !contentType || !topic.trim()}
+              className="w-full"
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Gerar Conteúdo
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Result Card */}
+        <Card className="glass-card">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Resultado</CardTitle>
+              {result && (
+                <Button variant="ghost" size="sm" onClick={handleCopy}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {result ? (
+              <div className="prose-ai-content max-h-[500px] overflow-y-auto pr-2">
+                <ReactMarkdown>{result}</ReactMarkdown>
+              </div>
             ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Gerar Conteúdo
-              </>
+              <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
+                <Pen className="h-12 w-12 mb-4 opacity-50" />
+                <p>Seu conteúdo aparecerá aqui</p>
+                <p className="text-sm">Selecione o tipo e tema, depois clique em gerar</p>
+              </div>
             )}
-          </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Result Card */}
-      <Card className="glass-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Resultado</CardTitle>
-            {result && (
-              <Button variant="ghost" size="sm" onClick={handleCopy}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copiar
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {result ? (
-            <div className="prose-ai-content max-h-[500px] overflow-y-auto pr-2">
-              <ReactMarkdown>{result}</ReactMarkdown>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
-              <Pen className="h-12 w-12 mb-4 opacity-50" />
-              <p>Seu conteúdo aparecerá aqui</p>
-              <p className="text-sm">Selecione o tipo e tema, depois clique em gerar</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* History */}
+      <AIToolHistoryPanel
+        history={history}
+        loading={loadingHistory}
+        onSelect={(entry) => {
+          setResult(entry.output_text || '');
+          if (entry.input_data) {
+            const input = entry.input_data as any;
+            if (input.content_type) setContentType(input.content_type);
+            if (input.topic) setTopic(input.topic);
+          }
+          toast.success('Conteúdo carregado do histórico');
+        }}
+      />
     </div>
   );
 }
