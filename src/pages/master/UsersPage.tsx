@@ -40,7 +40,7 @@ const statusConfig = {
   convidado: { label: 'Convidado', variant: 'outline' as const },
 };
 
-const LOGIN_URL = 'https://client-flourish-ai.lovable.app/auth';
+const LOGIN_URL = 'https://lbvtech.aceleracaoforti.online/auth';
 
 const canInviteMentor = (membership: MembershipWithDetails): boolean => {
   return (

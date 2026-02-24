@@ -14,7 +14,7 @@ interface InviteMentorModalProps {
   membership: MembershipWithDetails | null;
 }
 
-const LOGIN_URL = 'https://client-flourish-ai.lovable.app/auth';
+const LOGIN_URL = 'https://lbvtech.aceleracaoforti.online/auth';
 
 const generateMessage = (
   name: string,
