@@ -1,164 +1,146 @@
 
 
-# Plano: Calendario de Eventos -- Cards Visuais + Novos Tipos + Seed Learning Brand
+# Plano: Central de Popups por Tenant + IA Geradora
 
-## Contexto
-
-Atualmente o calendario tanto do mentor quanto do mentorado abre direto na visao de calendario (mes/semana). O usuario quer:
-1. A aba principal ser **cards visuais** agrupados por dia da semana mostrando eventos recorrentes (treinamentos, hotseats, mentorias)
-2. Calendario fica como aba secundaria
-3. Mentorado ve os cards com links diretos de acesso
-4. Mentor tem UI melhorada para cadastrar e gerenciar eventos com links
-5. Novos tipos de evento: `treinamento`, `hotseat` (alem dos existentes)
-6. Seed dos eventos fixos da Learning Brand
+## Problema atual
+O `WhatsAppGroupModal` esta hardcoded e aparece para **todos os tenants** -- e conteudo especifico do Learning Brand. Precisa ser removido e substituido por um sistema generico onde cada mentor cria seus proprios popups.
 
 ---
 
-## 1. Novos tipos de evento
+## O que sera criado
 
-Adicionar ao array `eventTypes` em ambos os arquivos:
-
-| value | label | emoji | cor |
-|-------|-------|-------|-----|
-| `treinamento` | Treinamento | 🏋️ | cyan-500 |
-| `hotseat` | Hot Seat | 🔥 | orange-500 |
-
-Nao precisa de migration pois `event_type` e `text` livre (sem CHECK constraint).
-
----
-
-## 2. Mentorado: Redesign com aba "Programacao" como principal
-
-### Nova estrutura de abas
-
-```text
-Tabs: [📋 Programação] [📅 Calendário] [🕐 Agendar Sessão]
-```
-
-### Aba "Programacao" (nova, default)
-
-Mostra a **semana atual** com cards visuais agrupados por dia:
-
-```text
-+--------------------------------------------------+
-| Sua semana · 24 Fev - 02 Mar 2026                |
-| [< Anterior]                     [Próxima >]     |
-+--------------------------------------------------+
-|                                                    |
-| TERÇA-FEIRA · 25 Fev                              |
-| +----------------------------------------------+  |
-| | 🏋️ 19:00 · Pré-vendas                       |  |
-| | Jonathan Pamplona avalia suas abordagens...  |  |
-| | [🔗 Entrar na reunião →]                     |  |
-| +----------------------------------------------+  |
-| | 🎯 20:00 · Vendas                            |  |
-| | Jacob analisa calls ao vivo...               |  |
-| | [🔗 Entrar na reunião →]                     |  |
-| +----------------------------------------------+  |
-|                                                    |
-| QUARTA-FEIRA · 26 Fev                             |
-| +----------------------------------------------+  |
-| | 🎯 10:30 · Mentoria em Grupo                 |  |
-| | Aulas estratégicas com convidados...         |  |
-| | [🔗 Entrar na reunião →]                     |  |
-| +----------------------------------------------+  |
-|                                                    |
-| QUINTA-FEIRA · 27 Fev                             |
-| +----------------------------------------------+  |
-| | 🔥 10:30 · Hot Seat em Grupo                 |  |
-| | Traga sua dúvida para solucionarmos...       |  |
-| | [🔗 Entrar na reunião →]                     |  |
-| +----------------------------------------------+  |
-|                                                    |
-| (dias sem eventos nao aparecem)                    |
-+--------------------------------------------------+
-```
-
-### Cards visuais
-
-Cada card tera:
-- Barra lateral colorida por tipo
-- Gradiente de fundo sutil
-- Horario em destaque
-- Titulo grande
-- Descricao (2-3 linhas)
-- Botao "Entrar na reuniao" com icone Video + ExternalLink (se tiver `meeting_url`)
-- Badge do tipo (Mentoria, Treinamento, Hot Seat)
-- Se o evento e hoje: badge "HOJE" com destaque especial (borda glow)
-
-### Logica
-
-- Agrupa eventos da semana atual por dia da semana
-- Ordena por horario dentro de cada dia
-- Dias sem eventos sao omitidos
-- Navegacao por semana (anterior/proxima)
-- No topo: contador de "X eventos esta semana"
-
----
-
-## 3. Mentor: UI melhorada para cadastro
-
-### Mesma estrutura de abas
-
-```text
-Tabs: [📋 Programação] [📅 Calendário]
-```
-
-### Aba "Programacao" (nova, default)
-
-Mesmos cards visuais da visao do mentorado, porem:
-- Botao "Editar" aparece no hover de cada card
-- Botao "+ Novo Evento" no topo
-- Ao clicar em um card, abre o dialog de edicao
-
-### Dialog de criacao melhorado
-
-Adicionar ao formulario existente:
-- Secao "Responsavel/Facilitador" (campo texto opcional) para mostrar no card quem conduz
-- Nao precisa de coluna nova: vai na `description` ou podemos adicionar ao schema
-
-### Novo campo no schema (migration)
+### 1. Nova tabela `tenant_popups`
 
 ```sql
-ALTER TABLE public.calendar_events
-  ADD COLUMN IF NOT EXISTS facilitator_name text;
+CREATE TABLE public.tenant_popups (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  created_by uuid NOT NULL REFERENCES memberships(id),
+  title text NOT NULL,
+  body_html text NOT NULL,           -- conteudo rico do popup
+  image_url text,                     -- imagem horizontal (banner)
+  cta_label text,                     -- texto do botao (ex: "Entrar no Grupo")
+  cta_url text,                      -- link do botao
+  display_mode text NOT NULL DEFAULT 'first_access',  -- first_access | date_range | always
+  starts_at timestamptz,             -- inicio da exibicao (se date_range)
+  ends_at timestamptz,               -- fim da exibicao (se date_range)
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
 ```
 
-Isso permite mostrar "Jonathan Pamplona" ou "Jacob" nos cards sem depender da description.
+RLS: mentores do tenant podem CRUD; mentorados podem SELECT popups ativos do seu tenant.
+
+### 2. Nova tabela `popup_dismissals`
+
+```sql
+CREATE TABLE public.popup_dismissals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  popup_id uuid NOT NULL REFERENCES tenant_popups(id) ON DELETE CASCADE,
+  membership_id uuid NOT NULL REFERENCES memberships(id),
+  dismissed_at timestamptz DEFAULT now(),
+  UNIQUE(popup_id, membership_id)
+);
+```
+
+Controla quais popups cada mentorado ja viu/fechou. Para `first_access` mode, uma vez dismissed nunca mais aparece.
+
+### 3. Componente `TenantPopupRenderer` (substitui WhatsAppGroupModal)
+
+- Colocado nos layouts `MentoradoLayout` e `MemberLayout` no lugar do `WhatsAppGroupModal`
+- Ao montar, busca popups ativos do tenant do usuario (filtra por `is_active`, `display_mode`, datas)
+- Cruza com `popup_dismissals` para nao mostrar os ja vistos
+- Exibe o primeiro popup pendente como Dialog bonito:
+  - Imagem banner no topo (se houver)
+  - Titulo + corpo HTML renderizado
+  - Botao CTA colorido (se houver link)
+  - Botao "Entendi" / fechar que cria o dismissal
+- Visual similar ao WhatsApp modal atual mas generico e com suporte a imagem
+
+### 4. Pagina de gestao de Popups (mentor)
+
+Nova rota `/mentor/popups` dentro do menu **Comunicacao**:
+
+```text
+Comunicação
+  ├── Emails
+  ├── Popups        ← NOVO
+  ├── Centro SOS
+  └── Automações
+```
+
+#### Listagem
+- Cards dos popups existentes com status (ativo/inativo/expirado)
+- Preview miniatura do popup
+- Metricas: quantos viram, quantos fecharam
+- Toggle ativo/inativo
+- Botao deletar
+
+#### Dialog de criacao/edicao
+- **Titulo** (texto)
+- **Corpo** (textarea rico ou markdown com preview)
+- **Imagem** (upload ou gerar com IA):
+  - Tamanho recomendado: 800x400px (2:1 horizontal)
+  - Upload via storage bucket `popup-images`
+  - Ou botao "Gerar com IA" que chama Lovable AI para criar imagem
+- **CTA**: label + URL (opcional)
+- **Modo de exibicao**:
+  - `first_access` -- mostra 1x por mentorado
+  - `date_range` -- mostra entre data inicio e fim
+  - `always` -- mostra toda vez ate fechar (mas nao repete se ja dismissed)
+- **Datas** (se date_range): seletor de periodo
+
+#### Gerador com IA
+Botao "Criar com IA" no topo do dialog:
+- Mentor digita a ideia em texto livre (ex: "quero um popup convidando pro grupo do WhatsApp com link tal")
+- Edge function chama Lovable AI (gemini-3-flash-preview) com prompt que retorna JSON estruturado:
+  - `title`, `body_html`, `cta_label`, `cta_url`
+- Preenche o formulario automaticamente para o mentor revisar/editar
+- Botao separado "Gerar Imagem" que usa gemini-2.5-flash-image para criar banner horizontal baseado no titulo/tema
+
+### 5. Edge Function `generate-popup`
+
+Nova edge function que:
+1. Recebe `{ prompt: string, generate_image?: boolean }`
+2. Chama Lovable AI para gerar conteudo estruturado do popup (tool calling)
+3. Se `generate_image`, chama modelo de imagem e faz upload ao bucket
+4. Retorna JSON com campos preenchidos
+
+### 6. Remocoes
+
+- Remover `WhatsAppGroupModal` de `MentoradoLayout` e `MemberLayout`
+- Remover arquivo `src/components/WhatsAppGroupModal.tsx`
 
 ---
 
-## 4. Seed: Eventos da Learning Brand
-
-Inserir 4 eventos recorrentes (12 semanas cada) no tenant `683e41ac-240d-47f3-9327-c07f5cfb74e7`:
-
-| Dia | Hora | Titulo | Tipo | Facilitador | Descricao |
-|-----|------|--------|------|-------------|-----------|
-| Terca | 19:00 | Pre-vendas | treinamento | Jonathan Pamplona | Nosso especialista em prospeccao avalia abordagens com direcionamentos praticos de melhoria |
-| Terca | 20:00 | Vendas | treinamento | Jacob | Analises ao vivo das calls de vendas com feedback estrategico para aumentar a conversao |
-| Quarta | 10:30 | Mentoria em Grupo | mentoria | — | Aulas conduzidas pela equipe e convidados do ecossistema com conteudos estrategicos e aplicaveis |
-| Quinta | 10:30 | Hot Seat em Grupo | hotseat | — | O momento para trazer sua duvida de qualquer tema e trabalhar junto para encontrar solucoes praticas |
-
-Serao inseridos via Edge Function `seed-tenant-data` ou SQL direto, criando 12 ocorrencias semanais de cada a partir da proxima terca (25 Fev 2026).
-
----
-
-## 5. Arquivos editados/criados
+## Arquivos criados/editados
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/migrations/...` | Adicionar coluna `facilitator_name` |
-| `src/pages/member/Calendario.tsx` | Redesign: aba Programacao como default com cards visuais |
-| `src/pages/admin/Calendario.tsx` | Adicionar aba Programacao + novos eventTypes + facilitator |
-| `supabase/functions/seed-tenant-data/index.ts` | Seed dos eventos da Learning Brand |
+| Migration SQL | Criar `tenant_popups` + `popup_dismissals` + RLS + bucket |
+| `src/components/popups/TenantPopupRenderer.tsx` | Novo -- renderiza popups ativos para mentorados |
+| `src/components/popups/PopupManager.tsx` | Novo -- pagina de gestao para mentor |
+| `src/components/popups/PopupFormDialog.tsx` | Novo -- dialog de criacao/edicao com IA |
+| `src/components/popups/PopupPreviewCard.tsx` | Novo -- card de preview na listagem |
+| `src/hooks/usePopups.tsx` | Novo -- queries e mutations para popups |
+| `supabase/functions/generate-popup/index.ts` | Novo -- IA gera conteudo + imagem |
+| `src/pages/admin/Popups.tsx` | Nova pagina do mentor |
+| `src/App.tsx` | Adicionar rota `/mentor/popups` |
+| `src/components/layouts/MentorLayout.tsx` | Adicionar "Popups" no menu Comunicacao |
+| `src/components/layouts/MentoradoLayout.tsx` | Trocar WhatsAppGroupModal por TenantPopupRenderer |
+| `src/components/layouts/MemberLayout.tsx` | Trocar WhatsAppGroupModal por TenantPopupRenderer |
+| `src/components/WhatsAppGroupModal.tsx` | Deletar |
 
 ---
 
 ## Ordem de implementacao
 
-1. Migration: coluna `facilitator_name`
-2. Frontend mentorado: redesign com aba Programacao
-3. Frontend mentor: aba Programacao + campo facilitator no dialog
-4. Seed: inserir eventos da Learning Brand
-5. Deploy da edge function e executar seed
+1. Migration: tabelas + RLS + bucket
+2. Hook `usePopups`
+3. `TenantPopupRenderer` + substituir nos layouts
+4. Edge function `generate-popup`
+5. Pagina de gestao + formulario com IA
+6. Adicionar rota e menu
+7. Remover WhatsAppGroupModal
 
