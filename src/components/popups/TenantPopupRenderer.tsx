@@ -59,7 +59,8 @@ export function TenantPopupRenderer() {
           <h2 className="text-xl font-bold text-foreground">{currentPopup.title}</h2>
 
           <div
-            className="text-sm text-muted-foreground prose prose-sm max-w-none dark:prose-invert"
+            className="text-sm max-w-none popup-body-content"
+            style={{ color: 'hsl(var(--foreground))' }}
             dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
           />
 

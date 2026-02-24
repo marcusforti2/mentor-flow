@@ -960,3 +960,33 @@
 .email-preview-content li {
   margin-bottom: 0.25rem;
 }
+
+/* Popup body: force text contrast in any theme */
+.popup-body-content,
+.popup-body-content * {
+  color: hsl(var(--foreground)) !important;
+}
+.popup-body-content strong,
+.popup-body-content b {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 700;
+}
+.popup-body-content em,
+.popup-body-content i {
+  color: hsl(var(--foreground) / 0.85) !important;
+}
+.popup-body-content a {
+  color: hsl(var(--primary)) !important;
+  text-decoration: underline;
+}
+.popup-body-content ul,
+.popup-body-content ol {
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.popup-body-content li {
+  margin-bottom: 0.25rem;
+}
+.popup-body-content p {
+  margin-bottom: 0.5rem;
+}
