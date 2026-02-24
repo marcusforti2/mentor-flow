@@ -55,7 +55,7 @@ export function MentoradoAIScore({ legacyMentoradoId, membershipId }: Props) {
       setLoading(false);
     };
     fetch();
-  }, [legacyMentoradoId]);
+  }, [membershipId]);
 
   if (loading) return <Card><CardContent className="pt-4 h-24 animate-pulse bg-muted/50" /></Card>;
 

@@ -265,7 +265,7 @@ const MentoradoDetail = () => {
                 legacyMentoradoId={null}
                 membershipId={mentorado.membership_id}
               />
-              <MentoradoBusinessSummary legacyMentoradoId={mentorado.membership_id} />
+              <MentoradoBusinessSummary legacyMentoradoId={null} membershipId={mentorado.membership_id} />
             </div>
 
             {/* Right Column */}

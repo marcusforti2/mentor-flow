@@ -7,6 +7,7 @@ import { Building2 } from "lucide-react";
 
 interface Props {
   legacyMentoradoId?: string | null;
+  membershipId?: string;
 }
 
 const PROFILE_FIELDS = [
@@ -15,24 +16,26 @@ const PROFILE_FIELDS = [
   'main_chaos_points', 'main_offer', 'target_audience',
 ];
 
-export function MentoradoBusinessSummary({ legacyMentoradoId }: Props) {
+export function MentoradoBusinessSummary({ legacyMentoradoId, membershipId }: Props) {
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const effectiveId = membershipId || legacyMentoradoId;
+
   useEffect(() => {
     const fetch = async () => {
-      if (!legacyMentoradoId) { setLoading(false); return; }
+      if (!effectiveId) { setLoading(false); return; }
       setLoading(true);
       const { data } = await supabase
         .from('mentorado_business_profiles')
         .select('*')
-        .eq('membership_id', legacyMentoradoId)
+        .eq('membership_id', effectiveId)
         .maybeSingle();
       setProfile(data);
       setLoading(false);
     };
     fetch();
-  }, [legacyMentoradoId]);
+  }, [effectiveId]);
 
   if (loading) return <Card><CardContent className="pt-4 h-24 animate-pulse bg-muted/50" /></Card>;
 
