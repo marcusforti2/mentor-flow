@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   BookMarked,
   AlertCircle,
+  BarChart3,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -43,6 +44,7 @@ const menuItems: DockItem[] = [
       { icon: Target, label: 'Meu CRM', path: '/mentorado/meu-crm' },
       { icon: Sparkles, label: 'Arsenal de Vendas', path: '/mentorado/ferramentas' },
       { icon: ClipboardCheck, label: 'Minhas Tarefas', path: '/mentorado/tarefas' },
+      { icon: BarChart3, label: 'Métricas', path: '/mentorado/metricas' },
     ],
   },
   { icon: Calendar, label: 'Calendário', path: '/mentorado/calendario' },
