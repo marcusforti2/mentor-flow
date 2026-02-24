@@ -104,6 +104,52 @@ export default function MeusArquivos() {
     }
   };
 
+  const notifyUpload = async (fileName: string, fileType: string) => {
+    try {
+      if (!activeMembership) return;
+      // Find assigned mentors/admins to notify
+      const { data: staffMembers } = await supabase
+        .from('memberships')
+        .select('id, user_id')
+        .eq('tenant_id', activeMembership.tenant_id)
+        .in('role', ['admin', 'mentor', 'ops'])
+        .eq('status', 'active');
+
+      if (!staffMembers?.length) return;
+
+      // Get mentee name
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      // Get staff emails
+      const staffUserIds = staffMembers.map(s => s.user_id);
+      const { data: staffProfiles } = await supabase
+        .from('profiles')
+        .select('email, full_name, user_id')
+        .in('user_id', staffUserIds);
+
+      for (const staff of (staffProfiles || [])) {
+        if (!staff.email) continue;
+        supabase.functions.invoke('notify-file-upload', {
+          body: {
+            uploaderName: myProfile?.full_name || 'Mentorado',
+            uploaderRole: 'mentee',
+            recipientEmail: staff.email,
+            recipientName: staff.full_name || 'Mentor',
+            fileName,
+            fileType,
+            tenantId: activeMembership.tenant_id,
+          },
+        }).catch(err => console.error('Notification error:', err));
+      }
+    } catch (err) {
+      console.error('Error sending notification:', err);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = e.target.files?.[0];
     if (!file || !activeMembership) return;
@@ -137,6 +183,7 @@ export default function MeusArquivos() {
         file: 'Arquivo', image: 'Imagem', video: 'Vídeo', audio: 'Áudio',
       };
       toast.success(`${labels[type] || 'Arquivo'} enviado com sucesso!`);
+      notifyUpload(file.name, type);
       setIsAddDialogOpen(false);
       setAddType(null);
       fetchFiles();
@@ -169,6 +216,7 @@ export default function MeusArquivos() {
         } as any);
       if (error) throw error;
       toast.success('Link adicionado!');
+      notifyUpload(linkForm.title || linkForm.url, 'link');
       setIsAddDialogOpen(false);
       setAddType(null);
       setLinkForm({ url: '', title: '', description: '' });
@@ -199,6 +247,7 @@ export default function MeusArquivos() {
         } as any);
       if (error) throw error;
       toast.success('Nota adicionada!');
+      notifyUpload(noteForm.title, 'note');
       setIsAddDialogOpen(false);
       setAddType(null);
       setNoteForm({ title: '', content: '' });

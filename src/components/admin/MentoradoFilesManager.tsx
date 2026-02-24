@@ -103,6 +103,48 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
     fetchFiles();
   }, [mentoradoId, ownerMembershipId]);
 
+  const notifyMenteeUpload = async (fileName: string, fileType: string) => {
+    try {
+      if (!ownerMembershipId) return;
+      // Get mentee's user info
+      const { data: menteeM } = await supabase
+        .from('memberships')
+        .select('user_id')
+        .eq('id', ownerMembershipId)
+        .maybeSingle();
+      if (!menteeM) return;
+
+      const { data: menteeProfile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('user_id', menteeM.user_id)
+        .maybeSingle();
+      if (!menteeProfile?.email) return;
+
+      // Get uploader (mentor) name
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      supabase.functions.invoke('notify-file-upload', {
+        body: {
+          uploaderName: myProfile?.full_name || 'Mentor',
+          uploaderRole: 'mentor',
+          recipientEmail: menteeProfile.email,
+          recipientName: menteeProfile.full_name || mentoradoName,
+          fileName,
+          fileType,
+          tenantId: tenantId || undefined,
+        },
+      }).catch(err => console.error('Notification error:', err));
+    } catch (err) {
+      console.error('Error sending notification:', err);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -121,7 +163,7 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
 
       if (uploadError) throw uploadError;
 
-      // Save metadata — legacy IDs are optional (nullable)
+      // Save metadata
       const insertData: Record<string, unknown> = {
         tenant_id: tenantId || null,
         owner_membership_id: ownerMembershipId || null,
@@ -131,7 +173,6 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
         file_size: file.size,
         mime_type: file.type,
       };
-      // mentorado_id and mentor_id columns removed — owner_membership_id is already set above
 
       const { error: dbError } = await supabase
         .from('mentorado_files')
@@ -140,6 +181,7 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
       if (dbError) throw dbError;
 
       toast.success(`${type === 'image' ? 'Imagem' : 'Arquivo'} enviado com sucesso!`);
+      notifyMenteeUpload(file.name, type);
       setIsAddDialogOpen(false);
       setAddType(null);
       fetchFiles();
@@ -177,6 +219,7 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
       if (error) throw error;
 
       toast.success('Link adicionado com sucesso!');
+      notifyMenteeUpload(linkForm.title || linkForm.url, 'link');
       setIsAddDialogOpen(false);
       setAddType(null);
       setLinkForm({ url: '', title: '', description: '' });
@@ -214,6 +257,7 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
       if (error) throw error;
 
       toast.success('Nota adicionada com sucesso!');
+      notifyMenteeUpload(noteForm.title, 'note');
       setIsAddDialogOpen(false);
       setAddType(null);
       setNoteForm({ title: '', content: '', description: '' });
