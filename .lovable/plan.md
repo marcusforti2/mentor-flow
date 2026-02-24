@@ -1,126 +1,126 @@
 
-# Plano: Central de Automacoes + Agendamento Cron
+
+# Plano: Central de Automacoes Visual (estilo n8n)
 
 ## Resumo
 
-Criar uma nova pagina **Automacoes** no painel do mentor onde ele pode visualizar, ligar/desligar e configurar todas as automacoes do sistema. Alem disso, configurar o `pg_cron` para executar as automacoes agendadas automaticamente.
+Transformar a Central de Automacoes em um hub visual interativo onde o mentor pode ver e editar as automacoes como um fluxo conectado -- similar ao n8n. O projeto ja usa `@xyflow/react` no modulo de Email Marketing, entao vamos reutilizar a mesma biblioteca.
 
 ---
 
-## O que sera criado
+## O que muda
 
-### 1. Tabela `tenant_automations` no banco de dados
+Hoje a pagina de Automacoes e uma grade de cards independentes. O plano e adicionar uma **segunda aba "Mapa Visual"** que mostra todas as automacoes como nos conectados em um canvas interativo, organizados por categoria e com conexoes visuais mostrando o fluxo de dados (ex: "Boas-vindas" --> "Digest Semanal" --> "Re-engajamento").
 
-Uma tabela para armazenar as configuracoes de automacao por tenant:
+A aba de cards continua existindo para quem prefere a visao lista.
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid | PK |
-| tenant_id | uuid | FK para tenants |
-| automation_key | text | Identificador unico (ex: `weekly_digest`, `re_engage_inactive`, `auto_qualify_lead`, `check_badges`, `check_alerts`, `send_prospection_tips`) |
-| is_enabled | boolean | Ligado/Desligado |
-| schedule | text | Expressao cron (ex: `0 9 * * 1` para segunda 9h) |
-| config | jsonb | Configuracoes extras (ex: dias de inatividade, horario preferido) |
-| last_run_at | timestamptz | Ultima execucao |
-| last_run_status | text | Sucesso/erro da ultima execucao |
-| created_at / updated_at | timestamptz | Timestamps |
+---
 
-Politicas RLS: apenas admins do tenant podem ler/editar.
+## Interface Visual
 
-### 2. Nova pagina: `/mentor/automacoes`
+```text
++------------------------------------------------------+
+|  Automacoes          [Cards]  [Mapa Visual]          |
++------------------------------------------------------+
+|                                                      |
+|  [Gatilho: Novo Mentorado]                           |
+|        |                                             |
+|        v                                             |
+|  [Boas-vindas Automatico] ----> [Digest Semanal]     |
+|        |                              |              |
+|        v                              v              |
+|  [Verificacao de Badges]    [Re-engajamento]         |
+|        |                              |              |
+|        v                              v              |
+|  [Celebracao Conquistas]   [Alertas Inteligentes]    |
+|                                                      |
++------------------------------------------------------+
+```
 
-Interface visual com cards para cada automacao:
-
-- **Digest Semanal** - Envia resumo semanal por email aos mentorados
-  - Toggle liga/desliga
-  - Seletor de dia da semana e horario
-  
-- **Re-engajamento Inteligente** - Notifica mentorados inativos
-  - Toggle liga/desliga
-  - Campo: dias de inatividade (padrao: 5)
-  - Horario de envio
-  
-- **Auto-qualificacao de Leads** - Qualifica leads automaticamente ao criar
-  - Toggle liga/desliga
-  
-- **Verificacao de Badges** - Verifica e concede medalhas automaticamente
-  - Toggle liga/desliga
-  - Frequencia (diario/semanal)
-  
-- **Alertas Inteligentes** - Monitora metricas e gera alertas
-  - Toggle liga/desliga
-  - Frequencia
-  
-- **Dicas de Prospecao** - Envia dicas de prospecao por email
-  - Toggle liga/desliga
-  - Frequencia
-
-Cada card mostra: status (ativo/inativo), ultima execucao, proximo agendamento, e um botao "Executar Agora" para teste manual.
-
-### 3. Agendamento via pg_cron
-
-Habilitar as extensoes `pg_cron` e `pg_net` e criar os jobs:
-
-- `weekly-digest`: Segundas as 9h (configuravel)
-- `re-engage-inactive`: Diario as 10h (configuravel)
-- `check-badges`: Diario as 8h
-- `check-alerts`: A cada 6 horas
-
-Cada Edge Function consultara a tabela `tenant_automations` antes de executar, respeitando o toggle do mentor.
-
-### 4. Integracao no menu do mentor
-
-Adicionar "Automacoes" ao menu de navegacao do mentor (dentro do grupo "Comunicacao" ou como item proprio com icone de engrenagem/zap).
-
-### 5. Hook `useAutomations`
-
-Hook React para gerenciar o CRUD das automacoes:
-- `fetchAutomations(tenantId)` - lista automacoes do tenant
-- `toggleAutomation(id, enabled)` - liga/desliga
-- `updateConfig(id, config)` - atualiza configuracao
-- `runNow(automationKey)` - executa manualmente via fetch para a Edge Function
+Cada no (node) do fluxo:
+- Mostra icone, nome, status (ativo/inativo), ultima execucao
+- Clique abre um painel lateral (Sheet) com toggle, configuracoes e "Executar Agora"
+- Cor do no muda conforme categoria (Engajamento = azul, Inteligencia = roxo, etc.)
+- Nos inativos ficam com opacidade reduzida
+- Edges animados entre nos conectados
 
 ---
 
 ## Detalhes Tecnicos
 
 ### Arquivos novos
-- `src/pages/admin/Automacoes.tsx` - Pagina principal
-- `src/hooks/useAutomations.tsx` - Hook de dados
-- `src/components/admin/AutomationCard.tsx` - Card individual de automacao
+
+1. **`src/components/admin/AutomationFlowView.tsx`**
+   - Componente principal com ReactFlow canvas
+   - Gera nos automaticamente a partir das automacoes do banco
+   - Layout automatico organizado por categoria (colunas) ou por fluxo logico
+   - MiniMap + Controls + Background grid
+   - Clique em no abre Sheet de edicao
+
+2. **`src/components/admin/AutomationFlowNode.tsx`**
+   - Node customizado para ReactFlow
+   - Exibe: icone da categoria, nome, badge ativo/inativo, indicador de status (sucesso/erro)
+   - Handles de conexao (source/target) para edges visuais
+
+3. **`src/components/admin/AutomationDetailSheet.tsx`**
+   - Painel lateral (Sheet) que abre ao clicar em um no
+   - Contém: toggle liga/desliga, configuracoes (dias de inatividade, frequencia, etc.), botao "Executar Agora", historico de ultima execucao
+   - Reutiliza a logica que ja existe no AutomationCard
 
 ### Arquivos modificados
-- `src/App.tsx` - Nova rota `/mentor/automacoes`
-- `src/components/layouts/MentorLayout.tsx` - Novo item no menu
-- `supabase/functions/weekly-digest/index.ts` - Verificar toggle antes de executar
-- `supabase/functions/re-engage-inactive/index.ts` - Verificar toggle antes de executar
-- `supabase/functions/check-badges/index.ts` - Verificar toggle antes de executar
-- `supabase/functions/check-alerts/index.ts` - Verificar toggle antes de executar
 
-### Migracao SQL
-- Criar tabela `tenant_automations` com RLS
-- Habilitar `pg_cron` e `pg_net`
-- Inserir registros padrao para cada tenant existente
-- Criar jobs cron para cada automacao
+4. **`src/pages/admin/Automacoes.tsx`**
+   - Adiciona sistema de abas (Tabs): "Cards" e "Mapa Visual"
+   - Na aba "Cards", mantem o grid atual
+   - Na aba "Mapa Visual", renderiza o novo AutomationFlowView
 
-### Fluxo de execucao cron
+### Logica de conexoes (edges)
 
-```text
-pg_cron (horario agendado)
-  --> pg_net.http_post() chama Edge Function
-    --> Edge Function consulta tenant_automations
-      --> Se is_enabled = true: executa logica
-      --> Atualiza last_run_at e last_run_status
-```
+As conexoes entre automacoes serao definidas com base no fluxo logico real do sistema:
+
+| De | Para | Logica |
+|----|------|--------|
+| Gatilho: Novo Mentorado | Boas-vindas Automatico | Entrada no programa dispara boas-vindas |
+| Boas-vindas Automatico | Digest Semanal | Apos boas-vindas, entra no ciclo semanal |
+| Digest Semanal | Re-engajamento | Se nao abriu digest, verifica inatividade |
+| Re-engajamento | Alertas Inteligentes | Inatividade persistente gera alerta ao mentor |
+| Verificacao de Badges | Celebracao Conquistas | Badge concedida dispara celebracao |
+| Gatilho: Reuniao Agendada | Lembrete de Reuniao | Reuniao proxima dispara lembrete |
+| Gatilho: Fim do Mes | Relatorio Mensal | Ciclo mensal gera relatorio |
+| Gatilho: Lead Criado | Auto-qualificacao | Novo lead dispara qualificacao |
+
+Essas conexoes sao visuais e pre-definidas no frontend (nao precisam de tabela extra no banco). Elas ajudam o mentor a entender "o que aciona o que".
+
+### Posicionamento dos nos
+
+Layout automatico em colunas por categoria:
+- Coluna 1: Gatilhos (nos virtuais que representam eventos)
+- Coluna 2: Automacoes de Comunicacao
+- Coluna 3: Automacoes de Engajamento
+- Coluna 4: Automacoes de Inteligencia
+- Coluna 5: Automacoes de Crescimento
+
+O mentor pode arrastar nos para reorganizar como preferir.
+
+---
+
+## Interacoes do usuario
+
+1. **Ver o mapa** -- Visualizar todas as automacoes e suas conexoes
+2. **Clicar em um no** -- Abre Sheet lateral com detalhes e configuracoes
+3. **Toggle direto** -- Liga/desliga automacao pelo Sheet
+4. **Executar agora** -- Botao no Sheet para testar manualmente
+5. **Arrastar nos** -- Reorganizar o layout visual livremente
+6. **Zoom/Pan** -- Navegar pelo canvas com scroll e drag
 
 ---
 
 ## Ordem de implementacao
 
-1. Criar tabela `tenant_automations` + RLS + seed de dados padrao
-2. Criar hook `useAutomations`
-3. Criar componente `AutomationCard`
-4. Criar pagina `Automacoes.tsx`
-5. Adicionar rota e menu
-6. Atualizar Edge Functions para respeitar o toggle
-7. Configurar pg_cron + pg_net
+1. Criar `AutomationFlowNode.tsx` (node customizado)
+2. Criar `AutomationDetailSheet.tsx` (painel lateral)
+3. Criar `AutomationFlowView.tsx` (canvas principal)
+4. Modificar `Automacoes.tsx` para adicionar abas Cards/Mapa
+
+Nenhuma alteracao no banco de dados e necessaria -- tudo e frontend usando os dados ja existentes da tabela `tenant_automations`.
+
