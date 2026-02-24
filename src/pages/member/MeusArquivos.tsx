@@ -305,9 +305,15 @@ export default function MeusArquivos() {
     }
   };
 
-  const filteredFiles = selectedTab === 'all'
-    ? files
-    : files.filter(f => f.file_type === selectedTab);
+  const [originFilter, setOriginFilter] = useState<'all' | 'mine' | 'mentor'>('all');
+
+  const filteredFiles = files
+    .filter(f => selectedTab === 'all' || f.file_type === selectedTab)
+    .filter(f => {
+      if (originFilter === 'mine') return f.uploaded_by_membership_id === activeMembership?.id;
+      if (originFilter === 'mentor') return f.uploaded_by_membership_id !== activeMembership?.id;
+      return true;
+    });
 
   const myUploads = files.filter(f => f.uploaded_by_membership_id === activeMembership?.id);
   const mentorUploads = files.filter(f => f.uploaded_by_membership_id !== activeMembership?.id);
@@ -346,24 +352,27 @@ export default function MeusArquivos() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="glass-card">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total</p>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-500">{stats.mine}</p>
-            <p className="text-xs text-muted-foreground">Enviados por mim</p>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-500">{stats.fromMentor}</p>
-            <p className="text-xs text-muted-foreground">Do mentor</p>
-          </CardContent>
-        </Card>
+        <button
+          onClick={() => setOriginFilter('all')}
+          className={`rounded-lg border p-4 text-center transition-all ${originFilter === 'all' ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-border bg-card hover:bg-secondary/30'}`}
+        >
+          <p className="text-2xl font-bold text-primary">{stats.total}</p>
+          <p className="text-xs text-muted-foreground">Total</p>
+        </button>
+        <button
+          onClick={() => setOriginFilter('mine')}
+          className={`rounded-lg border p-4 text-center transition-all ${originFilter === 'mine' ? 'border-green-500 ring-2 ring-green-500/30 bg-green-500/5' : 'border-border bg-card hover:bg-secondary/30'}`}
+        >
+          <p className="text-2xl font-bold text-green-500">{stats.mine}</p>
+          <p className="text-xs text-muted-foreground">📤 Eu enviei</p>
+        </button>
+        <button
+          onClick={() => setOriginFilter('mentor')}
+          className={`rounded-lg border p-4 text-center transition-all ${originFilter === 'mentor' ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/5' : 'border-border bg-card hover:bg-secondary/30'}`}
+        >
+          <p className="text-2xl font-bold text-blue-500">{stats.fromMentor}</p>
+          <p className="text-xs text-muted-foreground">📥 Do mentor</p>
+        </button>
       </div>
 
       {/* File list */}
