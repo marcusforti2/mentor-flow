@@ -62,6 +62,96 @@ const IMPERSONATION_LOG_KEY = 'impersonation_log_id';
 // Role priority order (highest privilege first)
 const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'];
 
+// ---------- Branding injection helpers (module-level, no React dependency) ----------
+const _brandingInjectedProps: string[] = [];
+
+const _hexToHsl = (hex: string): string | null => {
+  try {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return null;
+    let r = parseInt(result[1], 16) / 255;
+    let g = parseInt(result[2], 16) / 255;
+    let b = parseInt(result[3], 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  } catch { return null; }
+};
+
+const _isHslValue = (val: string): boolean => /^\d+\s+\d+%\s+\d+%$/.test(val.trim());
+
+const _injectCssVar = (prop: string, value: string | null | undefined) => {
+  if (!value) return;
+  let cleaned = value;
+  const hslMatch = value.match(/^hsl\(([^)]+)\)$/i);
+  if (hslMatch) cleaned = hslMatch[1].trim();
+  let hsl: string | null;
+  if (_isHslValue(cleaned)) {
+    hsl = cleaned;
+  } else {
+    hsl = _hexToHsl(cleaned);
+  }
+  if (hsl) {
+    document.body.style.setProperty(prop, hsl);
+    _brandingInjectedProps.push(prop);
+  }
+};
+
+function cleanupBranding() {
+  _brandingInjectedProps.forEach(prop => document.body.style.removeProperty(prop));
+  _brandingInjectedProps.length = 0;
+  const existing = document.getElementById('tenant-branding-override');
+  if (existing) existing.remove();
+  document.body.classList.remove('theme-light');
+}
+
+/** Synchronously inject CSS variables for the given tenant. Can be called outside React render. */
+function applyTenantBranding(t: Tenant | null, isMasterView: boolean) {
+  cleanupBranding();
+  if (!t || isMasterView) return;
+
+  if (t.theme_mode === 'light') {
+    document.body.classList.add('theme-light');
+  }
+
+  _injectCssVar('--primary', t.primary_color);
+  _injectCssVar('--primary-foreground', '0 0% 98%');
+  _injectCssVar('--secondary', t.secondary_color);
+  _injectCssVar('--accent', t.accent_color);
+  _injectCssVar('--ring', t.primary_color);
+
+  const attrs = t.brand_attributes as Record<string, string> | null;
+  if (attrs) {
+    _injectCssVar('--background', attrs.background);
+    _injectCssVar('--foreground', attrs.foreground);
+    _injectCssVar('--card', attrs.card);
+    _injectCssVar('--card-foreground', attrs.card_foreground);
+    _injectCssVar('--muted', attrs.muted);
+    _injectCssVar('--muted-foreground', attrs.muted_foreground);
+    _injectCssVar('--border', attrs.border);
+    _injectCssVar('--input', attrs.border);
+    _injectCssVar('--popover', attrs.card);
+    _injectCssVar('--popover-foreground', attrs.card_foreground);
+  }
+
+  if (t.font_family) {
+    document.body.style.setProperty('--font-display', `'${t.font_family}', sans-serif`);
+    document.body.style.setProperty('--font-body', `'${t.font_family}', sans-serif`);
+    _brandingInjectedProps.push('--font-display', '--font-body');
+  }
+
+  console.log('[Branding] Injected for', t.name, ':', _brandingInjectedProps.length, 'vars, theme:', t.theme_mode || 'dark');
+}
+
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -176,8 +266,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           .eq('id', active.tenant_id)
           .single();
         
-        setTenant(tenantData);
-      }
+         setTenant(tenantData);
+        // Apply branding CSS SYNCHRONOUSLY before React re-renders the tree
+        if (tenantData) {
+          const isMasterView = real?.role === 'master_admin' && !localStorage.getItem(ACTIVE_MEMBERSHIP_KEY);
+          applyTenantBranding(tenantData, isMasterView);
+        }
+       }
      
      return fullMemberships;
     } catch (error) {
@@ -192,116 +287,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     fetchMemberships();
   }, [fetchMemberships]);
 
-  // Dynamic branding injection: set CSS variables on document.body to override :root/@layer base
+  // Dynamic branding injection — also runs on tenant/role changes (e.g. impersonation switch)
   useEffect(() => {
-    const STYLE_ID = 'tenant-branding-override';
-    const body = document.body;
-    const injectedProps: string[] = [];
-
-    const cleanup = () => {
-      // Remove inline style properties from body
-      injectedProps.forEach(prop => body.style.removeProperty(prop));
-      injectedProps.length = 0;
-      // Also remove any leftover style tag
-      const existing = document.getElementById(STYLE_ID);
-      if (existing) existing.remove();
-    };
-
-    if (!tenant) {
-      cleanup();
-      return;
-    }
-
     const isMasterView = realMembership?.role === 'master_admin' && !isImpersonating;
-    if (isMasterView) {
-      cleanup();
-      return;
-    }
-
-    const hexToHsl = (hex: string): string | null => {
-      try {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        if (!result) return null;
-        let r = parseInt(result[1], 16) / 255;
-        let g = parseInt(result[2], 16) / 255;
-        let b = parseInt(result[3], 16) / 255;
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h = 0, s = 0, l = (max + min) / 2;
-        if (max !== min) {
-          const d = max - min;
-          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-          switch (max) {
-            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-            case g: h = ((b - r) / d + 2) / 6; break;
-            case b: h = ((r - g) / d + 4) / 6; break;
-          }
-        }
-        return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-      } catch { return null; }
-    };
-
-    const isHslValue = (val: string): boolean => /^\d+\s+\d+%\s+\d+%$/.test(val.trim());
-
-    const inject = (prop: string, value: string | null | undefined) => {
-      if (!value) return;
-      // Strip accidental hsl() wrapper: "hsl(220 15% 10%)" -> "220 15% 10%"
-      let cleaned = value;
-      const hslMatch = value.match(/^hsl\(([^)]+)\)$/i);
-      if (hslMatch) cleaned = hslMatch[1].trim();
-      
-      let hsl: string | null;
-      if (isHslValue(cleaned)) {
-        hsl = cleaned;
-      } else {
-        hsl = hexToHsl(cleaned);
-      }
-      if (hsl) {
-        body.style.setProperty(prop, hsl);
-        injectedProps.push(prop);
-      }
-    };
-
-    // Apply theme mode class (light tenants get theme-light on body)
-    const isLightTenant = tenant.theme_mode === 'light';
-    if (isLightTenant) {
-      body.classList.add('theme-light');
-    }
-
-    // Core colors
-    inject('--primary', tenant.primary_color);
-    inject('--primary-foreground', '0 0% 98%');
-    inject('--secondary', tenant.secondary_color);
-    inject('--accent', tenant.accent_color);
-    inject('--ring', tenant.primary_color);
-
-    // Advanced brand_attributes
-    const attrs = tenant.brand_attributes as Record<string, string> | null;
-    if (attrs) {
-      inject('--background', attrs.background);
-      inject('--foreground', attrs.foreground);
-      inject('--card', attrs.card);
-      inject('--card-foreground', attrs.card_foreground);
-      inject('--muted', attrs.muted);
-      inject('--muted-foreground', attrs.muted_foreground);
-      inject('--border', attrs.border);
-      inject('--input', attrs.border);
-      inject('--popover', attrs.card);
-      inject('--popover-foreground', attrs.card_foreground);
-    }
-
-    // Font overrides
-    if (tenant.font_family) {
-      body.style.setProperty('--font-display', `'${tenant.font_family}', sans-serif`);
-      body.style.setProperty('--font-body', `'${tenant.font_family}', sans-serif`);
-      injectedProps.push('--font-display', '--font-body');
-    }
-
-    console.log('[Branding] Body vars injected for', tenant.name, ':', injectedProps.length, 'vars, theme:', tenant.theme_mode || 'dark');
-
-    return () => {
-      cleanup();
-      body.classList.remove('theme-light');
-    };
+    applyTenantBranding(tenant, isMasterView);
+    return () => cleanupBranding();
   }, [tenant, realMembership?.role, isImpersonating]);
 
   // Helper to fetch a single membership by ID from DB (for master_admin cross-tenant access)
