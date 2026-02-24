@@ -3015,11 +3015,14 @@ export type Database = {
           annual_program_value_cents: number
           created_at: string
           id: string
+          installments: number | null
           investment_amount_cents: number
           membership_id: string
           monthly_ads_cost_cents: number
+          monthly_amount_cents: number | null
           monthly_other_cost_cents: number
           monthly_team_cost_cents: number
+          negotiation_notes: string | null
           notes: string | null
           onboarding_date: string | null
           start_date: string | null
@@ -3029,11 +3032,14 @@ export type Database = {
           annual_program_value_cents?: number
           created_at?: string
           id?: string
+          installments?: number | null
           investment_amount_cents: number
           membership_id: string
           monthly_ads_cost_cents?: number
+          monthly_amount_cents?: number | null
           monthly_other_cost_cents?: number
           monthly_team_cost_cents?: number
+          negotiation_notes?: string | null
           notes?: string | null
           onboarding_date?: string | null
           start_date?: string | null
@@ -3043,11 +3049,14 @@ export type Database = {
           annual_program_value_cents?: number
           created_at?: string
           id?: string
+          installments?: number | null
           investment_amount_cents?: number
           membership_id?: string
           monthly_ads_cost_cents?: number
+          monthly_amount_cents?: number | null
           monthly_other_cost_cents?: number
           monthly_team_cost_cents?: number
+          negotiation_notes?: string | null
           notes?: string | null
           onboarding_date?: string | null
           start_date?: string | null
