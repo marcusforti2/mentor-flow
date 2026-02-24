@@ -239,7 +239,7 @@ const Auth = () => {
   const handleVerifyCode = async (e?: React.FormEvent, codeToVerify?: string) => {
     e?.preventDefault();
     
-    const finalCode = codeToVerify || code;
+    const finalCode = (codeToVerify || code).trim();
     
     if (finalCode.length !== 6) {
       setErrors({ code: "Digite os 6 dígitos do código" });
