@@ -1,11 +1,8 @@
 import { useState } from 'react';
-import { Bot, Target, MessageSquare, FileText, FileSignature, TrendingUp, User, Pen, Sparkles, Rocket, Lock, ShieldCheck, KeyRound } from 'lucide-react';
+import { Bot, Target, MessageSquare, FileText, FileSignature, TrendingUp, User, Pen, Sparkles, Rocket, ShieldCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
 
 // AI Tool components
@@ -17,8 +14,6 @@ import { CommunicationHub } from '@/components/ai-tools/CommunicationHub';
 import { ObjectionSimulator } from '@/components/ai-tools/ObjectionSimulator';
 import { ProposalCreator } from '@/components/ai-tools/ProposalCreator';
 import { ConversionAnalyzer } from '@/components/ai-tools/ConversionAnalyzer';
-
-const PASSWORD = 'LB2026';
 
 const tools = [
   { id: 'mentor', label: 'Mentor Virtual 24/7', icon: Bot, description: 'Seu mentor pessoal disponível a qualquer hora para tirar dúvidas', color: 'from-sky-500 to-blue-500' },
@@ -32,42 +27,10 @@ const tools = [
 ];
 
 export default function FerramentasIA() {
-  const [isUnlocked, setIsUnlocked] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [pendingToolId, setPendingToolId] = useState<string | null>(null);
-  const [passwordInput, setPasswordInput] = useState('');
   const { activeMembership } = useTenant();
 
   const mentoradoId = activeMembership?.id || null;
-
-  const handleToolClick = (toolId: string) => {
-    if (isUnlocked) {
-      setActiveTool(toolId);
-    } else {
-      setPendingToolId(toolId);
-      setPasswordInput('');
-      setShowPasswordDialog(true);
-    }
-  };
-
-  const handlePasswordSubmit = () => {
-    if (passwordInput === PASSWORD) {
-      setIsUnlocked(true);
-      setShowPasswordDialog(false);
-      setActiveTool(pendingToolId);
-      setPendingToolId(null);
-      setPasswordInput('');
-      toast.success('Arsenal desbloqueado! 🚀');
-    } else {
-      toast.error('Senha incorreta');
-      setPasswordInput('');
-    }
-  };
-
-  const handlePasswordKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handlePasswordSubmit();
-  };
 
   const renderActiveTool = () => {
     if (!activeTool) return null;
@@ -112,23 +75,21 @@ export default function FerramentasIA() {
         </div>
 
         <div className="space-y-3">
-          <Badge variant="outline" className={`gap-1.5 px-3 py-1 ${isUnlocked ? 'border-emerald-500/50 text-emerald-400' : 'border-primary/50 text-primary'}`}>
-            {isUnlocked ? <ShieldCheck className="h-3.5 w-3.5" /> : <Rocket className="h-3.5 w-3.5" />}
-            {isUnlocked ? 'Arsenal Ativo' : 'Arsenal de Vendas IA'}
+          <Badge variant="outline" className="gap-1.5 px-3 py-1 border-emerald-500/50 text-emerald-400">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Arsenal Ativo
           </Badge>
           <h1 className="text-3xl md:text-4xl font-display font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             Arsenal de Vendas IA
           </h1>
           <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-            {isUnlocked 
-              ? 'Selecione uma ferramenta abaixo para começar. Seu arsenal está pronto!'
-              : '8 armas de inteligência artificial para transformar sua prospecção e fechar mais negócios.'}
+            Selecione uma ferramenta abaixo para começar. Seu arsenal está pronto!
           </p>
         </div>
       </div>
 
       {/* Active Tool View */}
-      {activeTool && isUnlocked && (
+      {activeTool && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -148,27 +109,18 @@ export default function FerramentasIA() {
       )}
 
       {/* Tools Grid - show when no active tool */}
-      {(!activeTool || !isUnlocked) && (
+      {!activeTool && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {tools.map((tool, index) => (
             <Card 
               key={tool.id} 
-              className={`group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer ${
-                isUnlocked 
-                  ? 'hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02]' 
-                  : 'hover:border-primary/30 opacity-80 hover:opacity-100'
-              }`}
+              className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 cursor-pointer hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02]"
               style={{ animationDelay: `${index * 100}ms` }}
-              onClick={() => handleToolClick(tool.id)}
+              onClick={() => setActiveTool(tool.id)}
             >
               <CardContent className="p-5 flex items-start gap-4">
                 <div className={`shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg relative`}>
                   <tool.icon className="h-5 w-5 text-white" />
-                  {!isUnlocked && (
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-background border-2 border-border flex items-center justify-center">
-                      <Lock className="h-2.5 w-2.5 text-muted-foreground" />
-                    </div>
-                  )}
                 </div>
                 <div className="min-w-0 space-y-1">
                   <h3 className="font-semibold text-foreground text-sm">{tool.label}</h3>
@@ -179,48 +131,6 @@ export default function FerramentasIA() {
           ))}
         </div>
       )}
-
-      {/* Bottom message */}
-      {!isUnlocked && !activeTool && (
-        <div className="text-center pb-8">
-          <div className="inline-flex items-center gap-2 bg-muted/50 backdrop-blur-sm rounded-full px-6 py-3 border border-border/50">
-            <KeyRound className="h-4 w-4 text-primary" />
-            <span className="text-sm text-muted-foreground">
-              Clique em uma ferramenta e insira a senha para desbloquear
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Password Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4 shadow-xl shadow-primary/30">
-              <Lock className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <DialogTitle className="text-center text-xl font-display">Desbloquear Arsenal IA</DialogTitle>
-            <DialogDescription className="text-center">
-              Digite a senha de acesso para liberar todas as ferramentas de IA
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <Input
-              type="password"
-              placeholder="Senha de acesso"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyDown={handlePasswordKeyPress}
-              autoFocus
-              className="text-center text-lg tracking-widest"
-            />
-            <Button onClick={handlePasswordSubmit} className="w-full gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Desbloquear Arsenal
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Shimmer keyframe style */}
       <style>{`
