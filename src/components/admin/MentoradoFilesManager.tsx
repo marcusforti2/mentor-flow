@@ -48,6 +48,7 @@ interface MentoradoFile {
   description: string | null;
   tags: string[] | null;
   created_at: string;
+  uploaded_by_membership_id: string | null;
 }
 
 interface MentoradoFilesManagerProps {
@@ -493,13 +494,22 @@ export function MentoradoFilesManager({ mentoradoId, mentoradoName, tenantId, ow
                       {getIcon(file.file_type, file.mime_type)}
                     </div>
                     
-                    <div className="flex-1 min-w-0">
+                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
                         {file.file_name || file.link_title || file.note_title}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                         <span>{format(new Date(file.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                         {file.file_size && <span>• {formatSize(file.file_size)}</span>}
+                        {file.uploaded_by_membership_id === ownerMembershipId ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500/50 text-green-400">
+                            📤 Enviado pelo mentorado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/50 text-primary">
+                            📥 Enviado pelo mentor
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     

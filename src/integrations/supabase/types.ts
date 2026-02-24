@@ -2304,6 +2304,7 @@ export type Database = {
           tags: string[] | null
           tenant_id: string | null
           updated_at: string
+          uploaded_by_membership_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2322,6 +2323,7 @@ export type Database = {
           tags?: string[] | null
           tenant_id?: string | null
           updated_at?: string
+          uploaded_by_membership_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2340,6 +2342,7 @@ export type Database = {
           tags?: string[] | null
           tenant_id?: string | null
           updated_at?: string
+          uploaded_by_membership_id?: string | null
         }
         Relationships: [
           {
@@ -2347,6 +2350,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorado_files_uploaded_by_membership_id_fkey"
+            columns: ["uploaded_by_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
             referencedColumns: ["id"]
           },
         ]
