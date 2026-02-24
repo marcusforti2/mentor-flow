@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FileSignature, Sparkles, Copy, RefreshCw, Users } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useAIToolHistory } from '@/hooks/useAIToolHistory';
+import { AIToolHistoryPanel } from './AIToolHistoryPanel';
 
 interface ProposalCreatorProps {
   mentoradoId: string | null;
@@ -37,6 +39,7 @@ export function ProposalCreator({ mentoradoId }: ProposalCreatorProps) {
   const [proposalType, setProposalType] = useState('completa');
   const [result, setResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { history, loading: loadingHistory, saveToHistory } = useAIToolHistory(mentoradoId, 'proposal_creator');
 
   useEffect(() => {
     const fetchLeads = async () => {
@@ -129,8 +132,17 @@ export function ProposalCreator({ mentoradoId }: ProposalCreatorProps) {
         return;
       }
 
-      setResult(data?.result || '');
+      const resultText = data?.result || '';
+      setResult(resultText);
       toast.success('Proposta gerada com sucesso!');
+
+      if (resultText) {
+        await saveToHistory({
+          title: `Proposta: ${clientName.slice(0, 40)}`,
+          inputData: { client_name: clientName, company, main_pain: mainPain, proposal_type: proposalType },
+          outputText: resultText,
+        });
+      }
     } catch (error) {
       console.error('Error generating proposal:', error);
       toast.error('Erro ao gerar proposta');
@@ -155,6 +167,7 @@ export function ProposalCreator({ mentoradoId }: ProposalCreatorProps) {
   const selectedLead = leads.find(l => l.id === selectedLeadId);
 
   return (
+    <div className="space-y-6">
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Input Card */}
       <Card className="glass-card">
@@ -300,6 +313,23 @@ export function ProposalCreator({ mentoradoId }: ProposalCreatorProps) {
           )}
         </CardContent>
       </Card>
+    </div>
+
+    {/* History */}
+    <AIToolHistoryPanel
+      history={history}
+      loading={loadingHistory}
+      onSelect={(entry) => {
+        setResult(entry.output_text || '');
+        if (entry.input_data) {
+          const input = entry.input_data as any;
+          if (input.client_name) setClientName(input.client_name);
+          if (input.company) setCompany(input.company);
+          if (input.main_pain) setMainPain(input.main_pain);
+        }
+        toast.success('Proposta carregada do histórico');
+      }}
+    />
     </div>
   );
 }

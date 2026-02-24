@@ -32,6 +32,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { BusinessProfile } from '@/lib/api/firecrawl';
 import ReactMarkdown from 'react-markdown';
+import { useAIToolHistory } from '@/hooks/useAIToolHistory';
+import { AIToolHistoryPanel } from './AIToolHistoryPanel';
 
 interface CommunicationHubProps {
   mentoradoId: string | null;
@@ -98,6 +100,7 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GeneratedContent>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const { history, loading: loadingHistory, saveToHistory } = useAIToolHistory(mentoradoId, 'communication_hub');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -298,6 +301,14 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
       await Promise.all(promises);
       setGeneratedContent(results);
       toast.success('Conteúdos gerados com sucesso! 🎉');
+
+      // Save to history
+      const selectedLead2 = leads.find(l => l.id === selectedLeadId);
+      await saveToHistory({
+        title: `Comunicação: ${selectedLead2?.contact_name || 'Manual'}`,
+        inputData: { leadContext, selectedScripts, selectedColdMessages, tone },
+        outputData: results as any,
+      });
     } catch (error) {
       console.error('Generation error:', error);
       toast.error('Erro ao gerar conteúdos');
@@ -705,6 +716,18 @@ export function CommunicationHub({ mentoradoId }: CommunicationHubProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* History */}
+      <AIToolHistoryPanel
+        history={history}
+        loading={loadingHistory}
+        onSelect={(entry) => {
+          if (entry.output_data && typeof entry.output_data === 'object') {
+            setGeneratedContent(entry.output_data as any);
+          }
+          toast.success('Conteúdo carregado do histórico');
+        }}
+      />
     </div>
   );
 }

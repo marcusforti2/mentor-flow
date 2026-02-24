@@ -23,6 +23,8 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { BusinessProfile } from '@/lib/api/firecrawl';
+import { useAIToolHistory } from '@/hooks/useAIToolHistory';
+import { AIToolHistoryPanel } from './AIToolHistoryPanel';
 
 interface BioGeneratorProps {
   mentoradoId: string | null;
@@ -58,6 +60,7 @@ export function BioGenerator({ mentoradoId }: BioGeneratorProps) {
   const [result, setResult] = useState<BioResult | null>(null);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const { history, loading: loadingHistory, saveToHistory } = useAIToolHistory(mentoradoId, 'bio_generator');
 
   useEffect(() => {
     const fetchBusinessProfile = async () => {
@@ -112,6 +115,11 @@ export function BioGenerator({ mentoradoId }: BioGeneratorProps) {
       if (data.success && data.result) {
         setResult(data.result);
         toast.success('Bios geradas com sucesso!');
+        await saveToHistory({
+          title: `Bio ${platform} - ${style}`,
+          inputData: { platform, style, niche, targetAudience },
+          outputData: data.result,
+        });
       } else {
         toast.error(data.error || 'Erro ao gerar bios');
       }
@@ -383,6 +391,24 @@ export function BioGenerator({ mentoradoId }: BioGeneratorProps) {
           </Button>
         </div>
       )}
+
+      {/* History */}
+      <AIToolHistoryPanel
+        history={history}
+        loading={loadingHistory}
+        onSelect={(entry) => {
+          if (entry.output_data && typeof entry.output_data === 'object') {
+            setResult(entry.output_data as any);
+          }
+          if (entry.input_data) {
+            const input = entry.input_data as any;
+            if (input.platform) setPlatform(input.platform);
+            if (input.style) setStyle(input.style);
+            if (input.niche) setNiche(input.niche);
+          }
+          toast.success('Bio carregada do histórico');
+        }}
+      />
     </div>
   );
 }
