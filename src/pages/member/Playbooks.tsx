@@ -60,6 +60,12 @@ export default function MentoradoPlaybooks() {
       .sort((a, b) => (a.is_pinned === b.is_pinned ? 0 : a.is_pinned ? -1 : 1));
   }, [folders, playbooks]);
 
+  // Playbooks without folder (shown at root level)
+  const unfolderedPlaybooks = useMemo(() => {
+    return playbooks.filter(p => !p.folder_id)
+      .sort((a, b) => (a.is_pinned === b.is_pinned ? 0 : a.is_pinned ? -1 : 1));
+  }, [playbooks]);
+
   // Filter logic
   const filteredItems = useMemo(() => {
     const s = searchTerm.toLowerCase();
@@ -73,12 +79,12 @@ export default function MentoradoPlaybooks() {
     const filteredFolders = foldersWithCounts.filter(f =>
       !s || f.name.toLowerCase().includes(s) || f.description?.toLowerCase().includes(s)
     );
-    // Also search playbooks globally if searching
-    const matchingPlaybooks = s
+    // Unfoldered playbooks + search results
+    const rootPlaybooks = s
       ? playbooks.filter(p => p.title.toLowerCase().includes(s) || p.description?.toLowerCase().includes(s))
-      : [];
-    return { folders: filteredFolders, playbooks: matchingPlaybooks };
-  }, [selectedFolder, playbooks, foldersWithCounts, searchTerm]);
+      : unfolderedPlaybooks;
+    return { folders: filteredFolders, playbooks: rootPlaybooks };
+  }, [selectedFolder, playbooks, foldersWithCounts, searchTerm, unfolderedPlaybooks]);
 
   // === Reading a playbook ===
   if (selectedPlaybook) {
@@ -330,12 +336,14 @@ export default function MentoradoPlaybooks() {
                 )
               )}
 
-              {/* Search results - show matching playbooks */}
-              {searchTerm && rootData.playbooks.length > 0 && (
+              {/* Playbooks (unfoldered or search results) */}
+              {rootData.playbooks.length > 0 && (
                 <div>
-                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                    Playbooks encontrados
-                  </h2>
+                  {(searchTerm || rootData.folders.length > 0) && (
+                    <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                      {searchTerm ? 'Playbooks encontrados' : 'Playbooks'}
+                    </h2>
+                  )}
                   <PlaybookGrid
                     playbooks={rootData.playbooks}
                     viewMode={viewMode}
