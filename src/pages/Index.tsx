@@ -5,7 +5,9 @@ import {
   Brain, Trophy, Users, AlertTriangle, BookOpen, Calendar,
   Mail, Video, Settings, Eye, Bot, Crosshair, Send, Swords,
   FileSignature, LineChart, UserCircle, PenTool, Activity,
-  ChevronDown, Flame, Lock, MessageSquare, Star
+  ChevronDown, Flame, Lock, MessageSquare, Star,
+  FileText, ClipboardList, Mic, Upload, HelpCircle, Phone,
+  Layers, Play, Award, TrendingUp, Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -69,6 +71,38 @@ function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: strin
     <span ref={wrapRef as any}>
       <span ref={ref}>{displayed}</span>{suffix}
     </span>
+  );
+}
+
+/* ── FAQ Accordion ── */
+function FAQAccordion() {
+  const faqs = [
+    { q: 'O que é o MentorFlow.io?', a: 'É um sistema operacional completo para mentores high ticket. Não é plataforma de curso, não é CRM isolado. É infraestrutura de governo que une gestão do mentor, execução do mentorado e inteligência artificial — tudo integrado.' },
+    { q: 'Funciona para qual tipo de mentoria?', a: 'Para mentorias e consultorias high ticket (R$3k+) que exigem acompanhamento individual, execução monitorada e resultados previsíveis. Se você vende conteúdo gravado, não é para você.' },
+    { q: 'O mentorado vê a marca do MentorFlow?', a: 'Não. O sistema é 100% white-label. Seu mentorado vê sua marca, suas cores, seu logo e sua landing page. A tecnologia é invisível.' },
+    { q: 'Quanto tempo leva para implementar?', a: 'De 7 a 15 dias úteis, dependendo da complexidade. Inclui diagnóstico, configuração, migração de dados e treinamento.' },
+    { q: 'Posso usar se já tenho alunos em outra plataforma?', a: 'Sim. Fazemos a migração de dados e o onboarding dos mentorados existentes. O processo é assistido e incluso na implementação.' },
+    { q: 'As IAs precisam de API key ou configuração?', a: 'Não. Todas as 8 IAs já vêm integradas e prontas para uso. O mentorado só precisa preencher o perfil do negócio para calibrar as respostas.' },
+    { q: 'Tem contrato de fidelidade?', a: 'Não. A mensalidade é mês a mês. Sem fidelidade, sem multa. Você fica porque funciona, não porque está preso.' },
+    { q: 'Qual a diferença para Hotmart, Kajabi ou Teachable?', a: 'Essas plataformas foram feitas para cursos gravados. O MentorFlow.io foi construído para mentoria ativa — com governo de execução, CRM individual, IA contextual e acompanhamento comportamental. São categorias diferentes.' },
+  ];
+
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+
+  return (
+    <div className="space-y-3">
+      {faqs.map(({ q, a }, i) => (
+        <div key={i} className="rounded-xl border border-border/40 bg-card/40 overflow-hidden transition-all duration-300 hover:border-primary/20">
+          <button onClick={() => setOpenIdx(openIdx === i ? null : i)} className="w-full flex items-center justify-between p-5 text-left">
+            <span className="font-display font-semibold text-foreground text-sm pr-4">{q}</span>
+            <ChevronDown className={cn("w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-300", openIdx === i && "rotate-180")} />
+          </button>
+          <div className={cn("overflow-hidden transition-all duration-300", openIdx === i ? "max-h-48 pb-5 px-5" : "max-h-0")}>
+            <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -197,9 +231,10 @@ const Index = () => {
           </Link>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#problema" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">O Problema</a>
-            <a href="#governance" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Governance Engine</a>
-            <a href="#bmi" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">BMI</a>
+            <a href="#governance" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Governance</a>
             <a href="#arsenal" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Arsenal IA</a>
+            <a href="#como-funciona" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Como Funciona</a>
+            <a href="#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Investimento</a>
             <Link to="/showcase" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">Demo</Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -671,6 +706,157 @@ const Index = () => {
       </Section>
 
       {/* ═══════════════════════════════════════
+         7.5. FUNCIONALIDADES EXCLUSIVAS
+         ═══════════════════════════════════════ */}
+      <Section id="exclusivo">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent/20 bg-accent/5 mb-6">
+              <Zap className="w-4 h-4 text-accent" />
+              <span className="text-xs font-medium text-accent tracking-wider uppercase">Funcionalidades Exclusivas</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+              O que <span className="text-gradient-gold">mais ninguém</span> tem
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Módulos que existem no {PLATFORM.name} e em nenhuma outra plataforma de mentoria.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: FileSignature, title: 'Playbooks (Propriedade Intelectual)', desc: 'Editor estilo Notion com blocos, tabelas, mídias, checklists e compartilhamento público via link. Proteja e distribua seu conhecimento.', tag: 'Exclusivo' },
+              { icon: Video, title: 'CAMPAN — Reuniões com IA', desc: 'Importe reuniões do tl;dv, transcreva e extraia tarefas com IA. Cada reunião vira plano de ação.', tag: 'IA + Automação' },
+              { icon: LineChart, title: 'Análise de Call com Documentos', desc: 'Suba transcrições em texto, PDF ou Word. A IA analisa tom, objeções perdidas e dá nota de performance.', tag: 'IA Avançada' },
+              { icon: Settings, title: 'Pipeline Customizável por Mentorado', desc: 'Estágios do CRM configuráveis por tenant ou individualmente. Cada aluno pode ter seu pipeline.', tag: 'Personalização' },
+              { icon: Activity, title: 'Jornada CS com Múltiplos Fluxos', desc: 'Jornadas simultâneas com etapas, prazos e progresso visual. Atribuição automática por data de entrada.', tag: 'Customer Success' },
+              { icon: Trophy, title: 'Certificados Automáticos', desc: 'Ao concluir uma trilha, o mentorado recebe certificado automático. Compartilhável no LinkedIn.', tag: 'Gamificação' },
+              { icon: Eye, title: 'Impersonation Mode', desc: 'O mentor vê exatamente o que o mentorado vê — sem pedir print. Auditoria completa.', tag: 'Admin Avançado' },
+              { icon: Target, title: 'Análise de Pipeline CRM', desc: 'A IA identifica padrões de sucesso e falha no pipeline do mentorado. Insights automáticos.', tag: 'IA + CRM' },
+              { icon: MessageSquare, title: 'Comunidade + Chat Real-Time', desc: 'Feed social com posts, comentários e likes. Chat em tempo real entre mentorados.', tag: 'Engajamento' },
+            ].map(({ icon: Icon, title, desc, tag }, i) => (
+              <div key={i} className="glass-card-glow p-6 rounded-2xl group hover:border-primary/30 transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-accent/10 text-accent font-bold uppercase tracking-wider">{tag}</span>
+                </div>
+                <h4 className="font-display font-semibold text-foreground text-sm mb-2">{title}</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════
+         7.6. SOCIAL PROOF — Números
+         ═══════════════════════════════════════ */}
+      <Section id="numeros">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+              Infraestrutura que <span className="text-gradient-gold">entrega resultado</span>
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+            {[
+              { value: 15, suffix: '+', label: 'Módulos Integrados' },
+              { value: 8, suffix: '', label: 'IAs Contextuais' },
+              { value: 100, suffix: '%', label: 'White-Label' },
+              { value: 24, suffix: '/7', label: 'Mentor Virtual IA' },
+            ].map(({ value, suffix, label }, i) => (
+              <div key={i} className="glass-card-glow p-6 rounded-2xl text-center">
+                <div className="text-3xl md:text-4xl font-display font-bold text-primary mb-2">
+                  <AnimatedCounter value={value} suffix={suffix} />
+                </div>
+                <p className="text-xs text-muted-foreground font-medium">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: BarChart3, stat: '3x', desc: 'Mais visibilidade sobre a execução dos mentorados vs. planilhas.' },
+              { icon: Zap, stat: '80%', desc: 'Redução no tempo operacional do mentor com automações e IA.' },
+              { icon: Target, stat: '100%', desc: 'Das ferramentas que um mentor precisa — em uma única plataforma.' },
+            ].map(({ icon: Icon, stat, desc }, i) => (
+              <div key={i} className="flex items-start gap-4 p-5 rounded-xl border border-border/30 bg-card/40">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <span className="text-2xl font-display font-bold text-foreground">{stat}</span>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════
+         7.7. COMO FUNCIONA — 3 passos
+         ═══════════════════════════════════════ */}
+      <Section id="como-funciona">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 mb-6">
+              <Shield className="w-4 h-4 text-primary" />
+              <span className="text-xs font-medium text-primary tracking-wider uppercase">Implementação</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+              Como funciona na <span className="text-gradient-gold">prática</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Da decisão ao sistema rodando — em até 15 dias.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Diagnóstico & Arquitetura', desc: 'Mapeamos sua operação, gargalos e objetivos. Desenhamos a arquitetura ideal para o seu modelo.', items: ['Entrevista estratégica', 'Mapeamento de processos', 'Definição de jornadas'] },
+              { step: '02', title: 'Implementação & Migração', desc: 'Configuramos CRM, trilhas, automações e branding white-label. Migramos seus dados existentes.', items: ['Setup completo', 'Migração de dados', 'Configuração de IA'] },
+              { step: '03', title: 'Treinamento & Go-Live', desc: 'Treinamos você e sua equipe. Mentorados entram já operando com governo desde o primeiro dia.', items: ['Treinamento hands-on', 'Onboarding mentorados', 'Suporte contínuo'] },
+            ].map(({ step, title, desc, items }, i) => (
+              <div key={i} className="relative">
+                {i < 2 && (
+                  <div className="hidden md:block absolute top-12 -right-4 w-8">
+                    <div className="h-px w-full bg-gradient-to-r from-primary/40 to-transparent" />
+                  </div>
+                )}
+                <div className="glass-card-glow p-8 rounded-2xl h-full">
+                  <div className="text-5xl font-display font-bold text-primary/15 mb-4">{step}</div>
+                  <h3 className="font-display text-lg font-bold text-foreground mb-3">{title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-5">{desc}</p>
+                  <ul className="space-y-2">
+                    {items.map((item, j) => (
+                      <li key={j} className="flex items-center gap-2 text-xs text-foreground">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════
+         7.8. FAQ
+         ═══════════════════════════════════════ */}
+      <Section id="faq">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+              Perguntas <span className="text-gradient-gold">frequentes</span>
+            </h2>
+          </div>
+          <FAQAccordion />
+        </div>
+      </Section>
+
+      {/* ═══════════════════════════════════════
          8. PRICING — Infraestrutura, não mensalidade
          ═══════════════════════════════════════ */}
       <Section id="pricing">
@@ -770,12 +956,20 @@ const Index = () => {
                   </div>
 
                   {/* CTA */}
-                  <Link to="/showcase">
+                  <a href="https://wa.me/5511999999999?text=Olá!%20Quero%20saber%20mais%20sobre%20o%20plano%20" target="_blank" rel="noopener noreferrer">
                     <Button
                       className={cn('w-full h-11', plan.highlighted ? 'btn-premium' : '')}
                       variant={plan.highlighted ? 'default' : 'outline'}
                     >
-                      <span>Ver Demonstração</span>
+                      <span className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        Falar com a Equipe
+                      </span>
+                    </Button>
+                  </a>
+                  <Link to="/showcase" className="block mt-2">
+                    <Button variant="ghost" className="w-full h-9 text-xs text-muted-foreground hover:text-foreground">
+                      Ver Demonstração
                     </Button>
                   </Link>
 
@@ -818,13 +1012,23 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-10 max-w-xl mx-auto">
                 Se você já vende, já tem alunos e já sente o peso da operação — esse sistema foi construído para você.
               </p>
-              <Link to="/showcase">
-                <Button size="lg" className="btn-premium text-lg px-10 h-14">
-                  <span className="flex items-center gap-2">
-                    Ver Demonstração <ArrowRight className="w-5 h-5" />
-                  </span>
-                </Button>
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="https://wa.me/5511999999999?text=Olá!%20Quero%20saber%20mais%20sobre%20o%20MentorFlow.io" target="_blank" rel="noopener noreferrer">
+                  <Button size="lg" className="btn-premium text-lg px-10 h-14">
+                    <span className="flex items-center gap-2">
+                      <Phone className="w-5 h-5" />
+                      Falar com a Equipe
+                    </span>
+                  </Button>
+                </a>
+                <Link to="/showcase">
+                  <Button size="lg" variant="outline" className="text-lg px-8 h-14 border-primary/30 text-foreground hover:bg-primary/5">
+                    <span className="flex items-center gap-2">
+                      Ver Demonstração <ArrowRight className="w-5 h-5" />
+                    </span>
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
