@@ -164,6 +164,29 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [impersonationLogId, setImpersonationLogId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Detect tenant by custom domain
+  const detectTenantByDomain = useCallback(async (): Promise<string | null> => {
+    const hostname = window.location.hostname;
+    // Skip for lovable preview/staging domains and localhost
+    if (hostname.includes('lovable.app') || hostname === 'localhost' || hostname === '127.0.0.1') {
+      return null;
+    }
+    try {
+      const { data } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('custom_domain', hostname)
+        .single();
+      if (data) {
+        console.log('[TenantContext] Tenant detected by domain:', hostname, '->', data.id);
+        return data.id;
+      }
+    } catch {
+      // No tenant found for this domain
+    }
+    return null;
+  }, []);
+
   // Fetch memberships when user changes
   const fetchMemberships = useCallback(async () => {
      if (!user?.id) {
@@ -225,12 +248,23 @@ export function TenantProvider({ children }: { children: ReactNode }) {
        roles: fullMemberships.map(m => m.role),
      });
 
+      // Domain-based tenant detection: auto-select membership matching the custom domain
+      const domainTenantId = await detectTenantByDomain();
+      
       // Check for stored active membership (for impersonation persistence)
       const storedMembershipId = localStorage.getItem(ACTIVE_MEMBERSHIP_KEY);
       const storedLogId = localStorage.getItem(IMPERSONATION_LOG_KEY);
       
       let active = real;
-      if (storedMembershipId && storedMembershipId !== real?.id) {
+
+      // Priority: 1) domain match, 2) stored impersonation, 3) highest privilege
+      if (domainTenantId) {
+        const domainMembership = fullMemberships.find(m => m.tenant_id === domainTenantId);
+        if (domainMembership) {
+          active = domainMembership;
+          console.log('[TenantContext] Auto-selected tenant by domain:', domainMembership.tenant_name);
+        }
+      } else if (storedMembershipId && storedMembershipId !== real?.id) {
         // First check own memberships
         let storedMembership = fullMemberships.find(m => m.id === storedMembershipId);
         

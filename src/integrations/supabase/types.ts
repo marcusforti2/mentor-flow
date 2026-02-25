@@ -3751,6 +3751,7 @@ export type Database = {
           accent_color: string | null
           brand_attributes: Json | null
           created_at: string | null
+          custom_domain: string | null
           favicon_url: string | null
           font_family: string | null
           id: string
@@ -3769,6 +3770,7 @@ export type Database = {
           accent_color?: string | null
           brand_attributes?: Json | null
           created_at?: string | null
+          custom_domain?: string | null
           favicon_url?: string | null
           font_family?: string | null
           id?: string
@@ -3787,6 +3789,7 @@ export type Database = {
           accent_color?: string | null
           brand_attributes?: Json | null
           created_at?: string | null
+          custom_domain?: string | null
           favicon_url?: string | null
           font_family?: string | null
           id?: string

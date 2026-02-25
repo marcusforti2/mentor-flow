@@ -13,6 +13,7 @@ export interface Tenant {
   accent_color: string | null;
   font_family: string | null;
   favicon_url: string | null;
+  custom_domain: string | null;
   brand_attributes: Record<string, string> | null;
   status: string;
   created_at: string;
@@ -28,6 +29,7 @@ export interface TenantFormData {
   accent_color?: string | null;
   font_family?: string | null;
   favicon_url?: string | null;
+  custom_domain?: string | null;
   brand_attributes?: Record<string, string>;
   status?: string;
 }
@@ -78,6 +80,7 @@ export function useTenants() {
           accent_color: data.accent_color || null,
           font_family: data.font_family || null,
           favicon_url: data.favicon_url || null,
+          custom_domain: data.custom_domain || null,
           brand_attributes: (data.brand_attributes || {}) as unknown as Json,
           status: data.status || 'active',
         })

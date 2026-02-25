@@ -25,6 +25,7 @@ export function TenantFormSheet({ open, onOpenChange, tenant, onSubmit, isSubmit
     slug: '',
     logo_url: '',
     favicon_url: '',
+    custom_domain: '',
     status: 'active',
   });
 
@@ -35,6 +36,7 @@ export function TenantFormSheet({ open, onOpenChange, tenant, onSubmit, isSubmit
         slug: tenant.slug,
         logo_url: tenant.logo_url || '',
         favicon_url: (tenant as any).favicon_url || '',
+        custom_domain: (tenant as any).custom_domain || '',
         status: tenant.status,
       });
     } else {
@@ -43,6 +45,7 @@ export function TenantFormSheet({ open, onOpenChange, tenant, onSubmit, isSubmit
         slug: '',
         logo_url: '',
         favicon_url: '',
+        custom_domain: '',
         status: 'active',
       });
     }
@@ -150,6 +153,19 @@ export function TenantFormSheet({ open, onOpenChange, tenant, onSubmit, isSubmit
                   onChange={(e) => setFormData((prev) => ({ ...prev, favicon_url: e.target.value }))}
                   placeholder="https://..."
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="custom_domain">Domínio Customizado</Label>
+                <Input
+                  id="custom_domain"
+                  value={formData.custom_domain || ''}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, custom_domain: e.target.value }))}
+                  placeholder="Ex: sistema.learningbrand.com.br"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Domínio próprio do tenant. Configure o DNS apontando para o IP do Lovable (185.158.133.1).
+                </p>
               </div>
             </div>
 
