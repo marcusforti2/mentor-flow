@@ -109,3 +109,6 @@ verify_jwt = false
 
 [functions.generate-popup]
 verify_jwt = false
+
+[functions.generate-showcase]
+verify_jwt = false
