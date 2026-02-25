@@ -140,11 +140,17 @@ export default function UsersPage() {
     }
 
     if (!realMembership) {
-      toast.error('Erro: Membership do admin não encontrado');
+      // Context may be reloading — retry after a brief wait
+      toast.info('Carregando contexto, tente novamente em instantes...');
       return;
     }
 
-    await switchMembership(membership.id);
+    try {
+      await switchMembership(membership.id);
+    } catch (err) {
+      console.error('Impersonation error:', err);
+      toast.error('Erro ao iniciar inspeção. Tente novamente.');
+    }
   };
 
   const handleInviteMentor = (membership: MembershipWithDetails) => {
