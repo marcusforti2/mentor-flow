@@ -309,8 +309,8 @@ export default function JornadaCS() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        <Card className="glass-card shrink-0 min-w-[180px]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-primary/10">
@@ -324,13 +324,13 @@ export default function JornadaCS() {
           </CardContent>
         </Card>
         
-        {stages.slice(0, 3).map((stage) => {
+        {stages.map((stage) => {
           const count = mentorados.filter(m => {
             const days = getJourneyDay(m.joined_at);
             return days >= stage.day_start && days <= stage.day_end;
           }).length;
           return (
-            <Card key={stage.stage_key} className="glass-card">
+            <Card key={stage.stage_key} className="glass-card shrink-0 min-w-[180px]">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   <div className={cn("p-3 rounded-xl", stage.color.replace("bg-", "bg-") + "/10")}>
@@ -338,7 +338,7 @@ export default function JornadaCS() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{count}</p>
-                    <p className="text-xs text-muted-foreground">{stage.name}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[100px]">{stage.name}</p>
                   </div>
                 </div>
               </CardContent>
@@ -379,9 +379,9 @@ export default function JornadaCS() {
 
       {viewMode === "kanban" ? (
         /* Kanban Board */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
           {columns.map((column: any) => (
-            <Card key={column.id} className="glass-card">
+            <Card key={column.id} className="glass-card shrink-0 w-[300px] min-w-[280px]">
               <div className="flex items-center gap-3 p-4 border-b border-border/50">
                 <div className={cn("w-3 h-3 rounded-full", column.color)} />
                 <h3 className="font-semibold">{column.title}</h3>

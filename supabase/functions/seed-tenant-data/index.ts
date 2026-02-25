@@ -527,6 +527,63 @@ Deno.serve(async (req) => {
       results.push(`✅ Trilha criada: ${trail.title}`);
     }
 
+    // ========== 6. ACTIVITY LOGS ==========
+    const activityLogTypes = [
+      { type: "lead_created", desc: "Novo lead cadastrado" },
+      { type: "lead_status_changed", desc: "Lead movido no pipeline" },
+      { type: "lesson_completed", desc: "Aula concluída" },
+      { type: "trail_started", desc: "Trilha iniciada" },
+      { type: "ai_tool_used", desc: "Ferramenta IA utilizada" },
+      { type: "profile_updated", desc: "Perfil atualizado" },
+      { type: "login", desc: "Login realizado" },
+      { type: "file_uploaded", desc: "Arquivo enviado" },
+    ];
+
+    for (const mid of allMenteeIds) {
+      const logs = [];
+      for (let i = 0; i < 15; i++) {
+        const daysAgo = Math.floor(Math.random() * 30);
+        const actType = activityLogTypes[Math.floor(Math.random() * activityLogTypes.length)];
+        logs.push({
+          membership_id: mid,
+          tenant_id: TENANT_ID,
+          action_type: actType.type,
+          action_description: actType.desc,
+          points_earned: Math.floor(Math.random() * 10) + 1,
+          created_at: new Date(Date.now() - daysAgo * 86400000).toISOString(),
+        });
+      }
+      await supabaseAdmin.from("activity_logs").insert(logs);
+    }
+    results.push("✅ Activity logs populados para todos os mentorados");
+
+    // ========== 7. CRM LEADS ==========
+    const leadNames = [
+      "Carlos Silva", "Ana Pereira", "Bruno Santos", "Fernanda Lima",
+      "Gustavo Ribeiro", "Patricia Alves", "Diego Martins", "Juliana Souza",
+    ];
+    const leadStages = ["lead", "conversa", "reuniao_marcada", "reuniao_feita", "proposta", "fechado", "perdido"];
+    const leadSources = ["instagram", "linkedin", "indicacao", "cold_call", "evento"];
+
+    for (const mid of allMenteeIds) {
+      const leads = [];
+      for (let i = 0; i < 5; i++) {
+        leads.push({
+          name: leadNames[Math.floor(Math.random() * leadNames.length)],
+          company: `Empresa ${String.fromCharCode(65 + i)}`,
+          email: `lead${i}@exemplo.com`,
+          phone: `+5511${Math.floor(900000000 + Math.random() * 99999999)}`,
+          stage: leadStages[Math.floor(Math.random() * leadStages.length)],
+          source: leadSources[Math.floor(Math.random() * leadSources.length)],
+          value: Math.floor(Math.random() * 50000) + 5000,
+          owner_membership_id: mid,
+          tenant_id: TENANT_ID,
+        });
+      }
+      await supabaseAdmin.from("crm_leads").insert(leads);
+    }
+    results.push("✅ CRM leads populados para todos os mentorados");
+
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
