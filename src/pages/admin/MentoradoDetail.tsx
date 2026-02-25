@@ -38,6 +38,7 @@ import { MentoradoBusinessSummary } from "@/components/admin/MentoradoBusinessSu
 import { MentoradoActivityTimeline } from "@/components/admin/MentoradoActivityTimeline";
 import { MentoradoBehavioralAnalysis } from "@/components/admin/MentoradoBehavioralAnalysis";
 import { EditMenteeModal } from "@/components/admin/EditMenteeModal";
+import { MenteeShowcaseEditor } from "@/components/admin/MenteeShowcaseEditor";
 
 interface MentoradoData {
   id: string;
@@ -57,6 +58,8 @@ interface MentoradoData {
     bio?: string | null;
   } | null;
   business_profile_full: Record<string, unknown> | null;
+  showcase_photo_url?: string | null;
+  showcase_bio?: string | null;
 }
 
 const MentoradoDetail = () => {
@@ -95,7 +98,7 @@ const MentoradoDetail = () => {
 
       const [profileRes, menteeRes] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email, avatar_url, phone, instagram, linkedin, website, bio").eq("user_id", membership.user_id).maybeSingle(),
-        supabase.from("mentee_profiles").select("membership_id, onboarding_completed, joined_at, business_profile").eq("membership_id", membership.id).maybeSingle(),
+        supabase.from("mentee_profiles").select("membership_id, onboarding_completed, joined_at, business_profile, showcase_photo_url, showcase_bio").eq("membership_id", membership.id).maybeSingle(),
       ]);
 
       const bp = menteeRes.data?.business_profile as Record<string, unknown> | null;
@@ -109,6 +112,8 @@ const MentoradoDetail = () => {
         onboarding_completed: menteeRes.data?.onboarding_completed || false,
         profile: profileRes.data || null,
         business_profile_full: bp || null,
+        showcase_photo_url: (menteeRes.data as any)?.showcase_photo_url || null,
+        showcase_bio: (menteeRes.data as any)?.showcase_bio || null,
       });
     } catch (err) {
       console.error("Error fetching mentorado:", err);
@@ -266,6 +271,20 @@ const MentoradoDetail = () => {
                 membershipId={mentorado.membership_id}
               />
               <MentoradoBusinessSummary legacyMentoradoId={null} membershipId={mentorado.membership_id} />
+              
+              {/* Showcase Editor */}
+              <MenteeShowcaseEditor
+                membershipId={mentorado.membership_id}
+                menteeName={mentorado.profile?.full_name || 'Mentorado'}
+                businessInfo={
+                  mentorado.business_profile_full
+                    ? `${(mentorado.business_profile_full.business_name as string) || ''} - ${(mentorado.business_profile_full.segment as string) || ''}`
+                    : undefined
+                }
+                currentPhotoUrl={mentorado.showcase_photo_url}
+                currentBio={mentorado.showcase_bio}
+                onSaved={fetchMentorado}
+              />
             </div>
 
             {/* Right Column */}

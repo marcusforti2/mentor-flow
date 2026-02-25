@@ -2176,6 +2176,8 @@ export type Database = {
           membership_id: string
           onboarding_completed: boolean | null
           onboarding_step: number | null
+          showcase_bio: string | null
+          showcase_photo_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2187,6 +2189,8 @@ export type Database = {
           membership_id: string
           onboarding_completed?: boolean | null
           onboarding_step?: number | null
+          showcase_bio?: string | null
+          showcase_photo_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2198,6 +2202,8 @@ export type Database = {
           membership_id?: string
           onboarding_completed?: boolean | null
           onboarding_step?: number | null
+          showcase_bio?: string | null
+          showcase_photo_url?: string | null
           updated_at?: string | null
         }
         Relationships: [
