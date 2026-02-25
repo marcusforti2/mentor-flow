@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LucideIcon, MoreHorizontal, X, ChevronRight } from 'lucide-react';
+import { LucideIcon, MoreHorizontal, X } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -21,7 +21,7 @@ interface FloatingDockProps {
   position?: 'left' | 'bottom';
 }
 
-const MOBILE_VISIBLE_COUNT = 5;
+const MOBILE_VISIBLE_COUNT = 4;
 
 export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
   const location = useLocation();
@@ -61,8 +61,16 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
   const visibleItems = isMobile ? flatItems.slice(0, MOBILE_VISIBLE_COUNT) : flatItems;
   const overflowItems = isMobile ? flatItems.slice(MOBILE_VISIBLE_COUNT) : [];
   const hasOverflow = overflowItems.length > 0;
-
   const activeInOverflow = overflowItems.some(item => isItemActive(item));
+
+  const renderMobileLabel = (label: string, isActive: boolean) => (
+    <span className={cn(
+      "text-[9px] leading-none font-medium truncate max-w-[52px] transition-colors",
+      isActive ? "text-primary-foreground" : "text-muted-foreground"
+    )}>
+      {label.split(' ')[0]}
+    </span>
+  );
 
   const renderDockItem = (item: DockItem, inOverflow = false) => {
     const isActive = isItemActive(item);
@@ -79,11 +87,7 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
                 className={cn('dock-item', isActive && 'active')}
               >
                 <item.icon className="h-5 w-5" />
-                {isMobile && (
-                  <span className="text-[10px] leading-none mt-0.5 text-muted-foreground group-[.active]:text-primary truncate max-w-[56px]">
-                    {item.label.split(' ')[0]}
-                  </span>
-                )}
+                {isMobile && renderMobileLabel(item.label, isActive)}
               </button>
             </TooltipTrigger>
             {!isMobile && (
@@ -120,18 +124,21 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
             </div>
           )}
 
-          {/* Mobile sub-menu as overlay */}
+          {/* Mobile sub-menu as bottom sheet */}
           {isExpanded && isMobile && (
             <>
               <div
-                className="fixed inset-0 z-[59] bg-black/20 backdrop-blur-sm"
+                className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-sm"
                 onClick={() => setExpandedGroup(null)}
               />
-              <div className="fixed bottom-20 left-2 right-2 z-[60] bg-card/95 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-2xl shadow-black/40 animate-in slide-in-from-bottom-4 fade-in-0 duration-200">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground px-2 py-1.5 font-semibold">
-                  {item.label}
+              <div className="fixed bottom-0 left-0 right-0 z-[60] bg-card/98 backdrop-blur-2xl border-t border-border rounded-t-3xl shadow-2xl shadow-black/60 animate-in slide-in-from-bottom-6 fade-in-0 duration-300">
+                <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
+                <div className="px-4 pt-3 pb-2">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    {item.label}
+                  </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 mt-1">
+                <div className="grid grid-cols-3 gap-1.5 px-3 pb-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
                   {item.children!.map(child => {
                     const childActive = child.path && (location.pathname === child.path || location.pathname.startsWith(child.path + '/'));
                     return (
@@ -139,14 +146,14 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
                         key={child.path}
                         to={child.path!}
                         className={cn(
-                          "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors",
+                          "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95",
                           childActive
                             ? "bg-primary/20 text-primary"
-                            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                            : "text-muted-foreground active:bg-muted/50"
                         )}
                       >
                         <child.icon className="h-5 w-5" />
-                        <span className="text-[10px] leading-tight text-center line-clamp-2">
+                        <span className="text-[10px] leading-tight text-center line-clamp-2 font-medium">
                           {child.label}
                         </span>
                       </Link>
@@ -168,14 +175,14 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
           to={item.path!}
           onClick={() => setMoreOpen(false)}
           className={cn(
-            "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors",
+            "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95",
             isActive
               ? "bg-primary/20 text-primary"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              : "text-muted-foreground active:bg-muted/50"
           )}
         >
           <item.icon className="h-5 w-5" />
-          <span className="text-[10px] leading-tight text-center line-clamp-2">
+          <span className="text-[10px] leading-tight text-center line-clamp-2 font-medium">
             {item.label}
           </span>
         </Link>
@@ -191,19 +198,17 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
             onClick={() => { setMoreOpen(false); setExpandedGroup(null); }}
           >
             <item.icon className="h-5 w-5" />
-            {isMobile && (
-              <span className="text-[10px] leading-none mt-0.5 text-muted-foreground group-[.active]:text-primary truncate max-w-[56px]">
-                {item.label.split(' ')[0]}
-              </span>
-            )}
+            {isMobile && renderMobileLabel(item.label, isActive)}
           </Link>
         </TooltipTrigger>
-        <TooltipContent
-          side={position === 'left' ? 'right' : 'top'}
-          className="bg-card border-border"
-        >
-          <p className="font-medium">{item.label}</p>
-        </TooltipContent>
+        {!isMobile && (
+          <TooltipContent
+            side={position === 'left' ? 'right' : 'top'}
+            className="bg-card border-border"
+          >
+            <p className="font-medium">{item.label}</p>
+          </TooltipContent>
+        )}
       </Tooltip>
     );
   };
@@ -221,40 +226,39 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
         {/* More button for mobile overflow */}
         {hasOverflow && (
           <button
-            onClick={() => setMoreOpen(!moreOpen)}
+            onClick={() => { setMoreOpen(!moreOpen); setExpandedGroup(null); }}
             className={cn('dock-item', (moreOpen || activeInOverflow) && 'active')}
           >
             {moreOpen ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
-            {isMobile && (
-              <span className="text-[10px] leading-none mt-0.5 text-muted-foreground truncate">
-                Mais
-              </span>
-            )}
+            {isMobile && renderMobileLabel('Mais', moreOpen || activeInOverflow)}
           </button>
         )}
       </nav>
 
-      {/* Mobile overflow panel */}
+      {/* Mobile overflow bottom sheet */}
       {moreOpen && hasOverflow && (
-        <div className="fixed bottom-20 left-2 right-2 z-[60] bg-card/95 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-2xl shadow-black/40 animate-in slide-in-from-bottom-4 fade-in-0 duration-200">
-          <div className="grid grid-cols-4 gap-2">
-            {overflowItems.map(item => {
-              if (item.children) {
-                // Render group in overflow as individual children
-                return item.children.map(child => renderDockItem(child, true));
-              }
-              return renderDockItem(item, true);
-            })}
+        <>
+          <div
+            className="fixed inset-0 z-[59] bg-black/40 backdrop-blur-sm"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-[60] bg-card/98 backdrop-blur-2xl border-t border-border rounded-t-3xl shadow-2xl shadow-black/60 animate-in slide-in-from-bottom-6 fade-in-0 duration-300">
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3" />
+            <div className="px-4 pt-3 pb-2">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Mais opções
+              </p>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 px-3 pb-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
+              {overflowItems.map(item => {
+                if (item.children) {
+                  return item.children.map(child => renderDockItem(child, true));
+                }
+                return renderDockItem(item, true);
+              })}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Backdrop to close more panel */}
-      {moreOpen && hasOverflow && (
-        <div
-          className="fixed inset-0 z-[59] bg-black/20 backdrop-blur-sm"
-          onClick={() => setMoreOpen(false)}
-        />
+        </>
       )}
     </>
   );
