@@ -20,39 +20,43 @@ export function ImpersonationBanner() {
   const tenantName = tenant?.name || activeMembership.tenant_name || '';
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white shadow-lg">
-      <div className="container mx-auto px-4 py-2">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-black/20 rounded-full px-3 py-1">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm font-medium">Impersonation Ativo</span>
-            </div>
-            
-            <div className="hidden sm:flex items-center gap-3">
-              <Badge variant="outline" className="border-white/30 text-white bg-white/10 text-xs">
-                {roleLabel}
-              </Badge>
-
-              {tenantName && (
+    <>
+      {/* Spacer to push page content below the banner */}
+      <div className="h-12 w-full" />
+      <div className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white shadow-lg" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-black/20 rounded-full px-2.5 py-1">
+                <Eye className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">Impersonation Ativo</span>
+              </div>
+              
+              <div className="hidden sm:flex items-center gap-2">
                 <Badge variant="outline" className="border-white/30 text-white bg-white/10 text-xs">
-                  {tenantName}
+                  {roleLabel}
                 </Badge>
-              )}
-            </div>
-          </div>
 
-          <Button
-            onClick={endImpersonation}
-            size="sm"
-            className="bg-white/20 hover:bg-white/30 text-white border-0 gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Voltar ao meu contexto</span>
-            <span className="sm:hidden">Voltar</span>
-          </Button>
+                {tenantName && (
+                  <Badge variant="outline" className="border-white/30 text-white bg-white/10 text-xs">
+                    {tenantName}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <Button
+              onClick={endImpersonation}
+              size="sm"
+              className="bg-white/20 hover:bg-white/30 text-white border-0 gap-1.5 h-8 px-3 text-xs"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Voltar ao meu contexto</span>
+              <span className="sm:hidden">Voltar</span>
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
