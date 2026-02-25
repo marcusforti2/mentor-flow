@@ -54,13 +54,13 @@ interface TenantMember {
 type ViewMode = "month" | "week";
 
 const eventTypes = [
-  { value: "geral", label: "Geral", color: "bg-blue-500", dotColor: "bg-blue-400", emoji: "📌", gradient: "from-blue-500/20 to-blue-600/5", border: "border-blue-500/40" },
-  { value: "mentoria", label: "Mentoria", color: "bg-purple-500", dotColor: "bg-purple-400", emoji: "🎯", gradient: "from-purple-500/20 to-purple-600/5", border: "border-purple-500/40" },
-  { value: "live", label: "Live", color: "bg-red-500", dotColor: "bg-red-400", emoji: "🔴", gradient: "from-red-500/20 to-red-600/5", border: "border-red-500/40" },
-  { value: "prazo", label: "Prazo", color: "bg-amber-500", dotColor: "bg-amber-400", emoji: "⏰", gradient: "from-amber-500/20 to-amber-600/5", border: "border-amber-500/40" },
-  { value: "reuniao", label: "Reunião", color: "bg-emerald-500", dotColor: "bg-emerald-400", emoji: "👥", gradient: "from-emerald-500/20 to-emerald-600/5", border: "border-emerald-500/40" },
-  { value: "treinamento", label: "Treinamento", color: "bg-cyan-500", dotColor: "bg-cyan-400", emoji: "🏋️", gradient: "from-cyan-500/20 to-cyan-600/5", border: "border-cyan-500/40" },
-  { value: "hotseat", label: "Hot Seat", color: "bg-orange-500", dotColor: "bg-orange-400", emoji: "🔥", gradient: "from-orange-500/20 to-orange-600/5", border: "border-orange-500/40" },
+  { value: "geral", label: "Geral", color: "bg-blue-500", dotColor: "bg-blue-400", emoji: "📌", gradient: "from-blue-500/15 to-blue-900/10", border: "border-blue-500/30" },
+  { value: "mentoria", label: "Mentoria", color: "bg-purple-500", dotColor: "bg-purple-400", emoji: "🎯", gradient: "from-purple-500/15 to-purple-900/10", border: "border-purple-500/30" },
+  { value: "live", label: "Live", color: "bg-red-500", dotColor: "bg-red-400", emoji: "🔴", gradient: "from-red-500/15 to-red-900/10", border: "border-red-500/30" },
+  { value: "prazo", label: "Prazo", color: "bg-amber-500", dotColor: "bg-amber-400", emoji: "⏰", gradient: "from-amber-500/15 to-amber-900/10", border: "border-amber-500/30" },
+  { value: "reuniao", label: "Reunião", color: "bg-emerald-500", dotColor: "bg-emerald-400", emoji: "👥", gradient: "from-emerald-500/15 to-emerald-900/10", border: "border-emerald-500/30" },
+  { value: "treinamento", label: "Treinamento", color: "bg-cyan-500", dotColor: "bg-cyan-400", emoji: "🏋️", gradient: "from-cyan-500/15 to-cyan-900/10", border: "border-cyan-500/30" },
+  { value: "hotseat", label: "Hot Seat", color: "bg-orange-500", dotColor: "bg-orange-400", emoji: "🔥", gradient: "from-orange-500/15 to-orange-900/10", border: "border-orange-500/30" },
 ];
 
 const getEventConfig = (type: string) => eventTypes.find(t => t.value === type) || eventTypes[0];
@@ -454,7 +454,7 @@ export default function Calendario() {
                             "text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full",
                             dayIsToday
                               ? "bg-primary text-primary-foreground"
-                              : "bg-secondary text-muted-foreground"
+                              : "bg-foreground/10 text-foreground/80"
                           )}>
                             {format(dayDate, "EEEE", { locale: ptBR })} · {format(dayDate, "dd MMM", { locale: ptBR })}
                           </div>
@@ -486,10 +486,10 @@ export default function Calendario() {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="text-lg">{config.emoji}</span>
-                                        <span className="text-sm font-bold text-foreground/70 tabular-nums">
+                                        <span className="text-sm font-bold text-foreground tabular-nums">
                                           {event.event_time?.slice(0, 5) || "Dia todo"}
                                         </span>
-                                        <Badge variant="secondary" className="text-[10px] h-5 px-2">
+                                        <Badge variant="outline" className="text-[10px] h-5 px-2 border-foreground/20 text-foreground/80">
                                           {config.label}
                                         </Badge>
                                         {event.is_recurring && <Repeat className="w-3 h-3 text-muted-foreground" />}
@@ -503,12 +503,12 @@ export default function Calendario() {
                                         {event.title}
                                       </h3>
                                       {event.facilitator_name && (
-                                        <p className="text-sm text-muted-foreground mt-0.5">
-                                          com <span className="font-medium text-foreground/80">{event.facilitator_name}</span>
+                                        <p className="text-sm text-foreground/70 mt-0.5">
+                                          com <span className="font-medium text-foreground">{event.facilitator_name}</span>
                                         </p>
                                       )}
                                       {event.description && (
-                                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
+                                        <p className="text-sm text-foreground/60 mt-2 line-clamp-2 leading-relaxed">
                                           {event.description}
                                         </p>
                                       )}
@@ -517,7 +517,7 @@ export default function Calendario() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-foreground/70 hover:text-foreground"
                                       onClick={(e) => { e.stopPropagation(); openEventDialog(event); }}
                                     >
                                       <Edit2 className="w-4 h-4" />
@@ -684,7 +684,7 @@ export default function Calendario() {
                                         <Clock className="w-3 h-3" />
                                         {event.event_time?.slice(0, 5) || "Dia todo"}
                                       </span>
-                                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                      <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-foreground/20 text-foreground/80">
                                         {config.emoji} {config.label}
                                       </Badge>
                                       {event.is_recurring && <Repeat className="w-3 h-3 text-muted-foreground" />}
@@ -697,10 +697,10 @@ export default function Calendario() {
                                   </Button>
                                 </div>
                                 {event.facilitator_name && (
-                                  <p className="text-xs text-muted-foreground mt-1">com {event.facilitator_name}</p>
+                                  <p className="text-xs text-foreground/60 mt-1">com {event.facilitator_name}</p>
                                 )}
                                 {event.description && (
-                                  <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{event.description}</p>
+                                  <p className="text-xs text-foreground/50 mt-1.5 line-clamp-2">{event.description}</p>
                                 )}
                                 {event.meeting_url && (
                                   <a href={event.meeting_url} target="_blank" rel="noopener noreferrer"
