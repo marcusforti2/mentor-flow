@@ -50,7 +50,7 @@ O JSON deve ter esta estrutura:
 {
   "flowName": "Nome da campanha",
   "flowDescription": "Descrição curta",
-  "triggerType": "onboarding|inactivity|trail_completion|date|manual",
+  "triggerType": "onboarding|jornada|inactivity|trail_completion|date|manual",
   "triggerConfig": {},
   "nodes": [
     {
@@ -65,6 +65,21 @@ O JSON deve ter esta estrutura:
     }
   ]
 }
+
+REGRAS PARA triggerConfig BASEADAS NO triggerType:
+- "onboarding": triggerConfig = {} (sem configuração adicional)
+- "jornada": triggerConfig = { "periodType": "day" ou "week", "periodValue": número }
+  - periodType "day": periodValue de 1 a 365
+  - periodType "week": periodValue de 1 a 52
+  - Escolha o dia/semana mais adequado ao contexto da campanha
+- "inactivity": triggerConfig = { "days": número } (ex: 7, 14, 30)
+- "trail_completion": triggerConfig = { "trailOption": "any" }
+- "date": triggerConfig = { "specificDate": "YYYY-MM-DD" } (data futura relevante)
+- "manual": triggerConfig = {} (sem configuração adicional)
+
+SEMPRE preencha triggerConfig corretamente com base no tipo escolhido!
+Se o prompt menciona "jornada", "dias na jornada", "semana X", use triggerType "jornada".
+Se menciona "inativos" ou "sem acessar", use "inactivity" com dias adequados.
 
 Variáveis dinâmicas disponíveis para uso nos emails:
 - {{nome}} - Nome completo do mentorado
