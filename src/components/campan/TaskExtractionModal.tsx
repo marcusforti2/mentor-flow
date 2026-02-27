@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import {
   Sparkles, Loader2, Save, RefreshCw, Trash2, CheckCircle2, AlertCircle
 } from 'lucide-react';
+import { notifyMenteeAction } from '@/lib/notifyMenteeAction';
 
 interface ExtractedTask {
   title: string;
@@ -146,6 +147,18 @@ export function TaskExtractionModal({
       } else {
         toast.success(`${selected.length} tarefa(s) salva(s) no Campan!`);
       }
+
+      // Notify mentee via branded email
+      notifyMenteeAction({
+        mentorado_membership_id: mentoradoMembershipId,
+        mentor_membership_id: mentorMembershipId,
+        tenant_id: tenantId,
+        action_type: 'tasks_created',
+        action_details: {
+          count: selected.length,
+          titles: selected.map(t => t.title).slice(0, 5),
+        },
+      });
 
       // Update draft status
       await supabase
