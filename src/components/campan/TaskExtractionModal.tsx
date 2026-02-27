@@ -277,15 +277,15 @@ export function TaskExtractionModal({
                         <Input
                           value={task.title}
                           onChange={(e) => updateTask(idx, { title: e.target.value })}
-                          className="font-medium bg-transparent border-none p-0 h-auto text-sm focus-visible:ring-0"
+                          className="font-medium text-sm h-8 bg-background/50 border-border/50 hover:border-primary/40 focus:border-primary transition-colors"
                           placeholder="Título da tarefa"
                         />
                         <Textarea
                           value={task.description}
                           onChange={(e) => updateTask(idx, { description: e.target.value })}
-                          className="bg-transparent border-none p-0 min-h-0 h-auto text-xs text-muted-foreground resize-none focus-visible:ring-0"
+                          className="text-xs text-muted-foreground bg-background/50 border-border/50 hover:border-primary/40 focus:border-primary transition-colors min-h-[2.5rem] resize-y"
                           placeholder="Descrição (opcional)"
-                          rows={1}
+                          rows={2}
                         />
                         <div className="flex items-center gap-2 flex-wrap">
                           <Select
