@@ -716,7 +716,7 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                         })}
                       />
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {[3, 7, 14, 30].map(day => (
+                        {[3, 7, 14, 30, 60, 90].map(day => (
                           <Badge 
                             key={day}
                             variant={(selectedNode.data.config as any)?.days === day ? "default" : "outline"}
@@ -859,15 +859,15 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                           </SelectTrigger>
                           <SelectContent className="max-h-[200px]">
                             {(selectedNode.data.config as any)?.periodType === 'week' ? (
-                              // Weeks 1-12
-                              Array.from({ length: 12 }, (_, i) => i + 1).map(week => (
+                              // Weeks 1-52
+                              Array.from({ length: 52 }, (_, i) => i + 1).map(week => (
                                 <SelectItem key={week} value={String(week)}>
                                   Semana {week}
                                 </SelectItem>
                               ))
                             ) : (
-                              // Days 1-90
-                              Array.from({ length: 90 }, (_, i) => i + 1).map(day => (
+                              // Days 1-365
+                              Array.from({ length: 365 }, (_, i) => i + 1).map(day => (
                                 <SelectItem key={day} value={String(day)}>
                                   Dia {day}
                                 </SelectItem>
@@ -892,7 +892,7 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                         <Label className="text-xs text-muted-foreground">Seleção rápida:</Label>
                         <div className="flex flex-wrap gap-2">
                           {(selectedNode.data.config as any)?.periodType === 'week' ? (
-                            [1, 2, 4, 8, 12].map(week => (
+                            [1, 2, 4, 8, 12, 24, 36, 52].map(week => (
                               <Badge 
                                 key={week}
                                 variant={(selectedNode.data.config as any)?.periodValue === week ? "default" : "outline"}
@@ -905,7 +905,7 @@ export default function FlowEditor({ flow, templates, tenantId, onSave, onClose 
                               </Badge>
                             ))
                           ) : (
-                            [1, 3, 7, 14, 30, 60, 90].map(day => (
+                            [1, 7, 14, 30, 60, 90, 120, 180, 270, 365].map(day => (
                               <Badge 
                                 key={day}
                                 variant={(selectedNode.data.config as any)?.periodValue === day ? "default" : "outline"}
