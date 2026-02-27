@@ -112,3 +112,6 @@ verify_jwt = false
 
 [functions.generate-showcase]
 verify_jwt = false
+
+[functions.notify-mentee-action]
+verify_jwt = false

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Loader2, Calendar, CheckCircle2, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { notifyMenteeAction } from '@/lib/notifyMenteeAction';
 
 interface CampanTask {
   id: string;
@@ -155,6 +156,18 @@ export function CampanKanban({ mentoradoMembershipId, mentorMembershipId, tenant
       if (error) throw error;
 
       toast.success('Tarefa criada com sucesso!');
+
+      // Notify mentee via email (only when mentor creates for mentee)
+      if (mentorMembershipId && mentorMembershipId !== mentoradoMembershipId && effectiveTenantId) {
+        notifyMenteeAction({
+          mentorado_membership_id: mentoradoMembershipId,
+          mentor_membership_id: mentorMembershipId,
+          tenant_id: effectiveTenantId,
+          action_type: 'task_created',
+          action_details: { titles: [manualForm.title.trim()] },
+        });
+      }
+
       setShowManualModal(false);
       setManualForm({ title: '', description: '', priority: 'medium', due_date: '', status_column: 'a_fazer' });
       fetchTasks();
