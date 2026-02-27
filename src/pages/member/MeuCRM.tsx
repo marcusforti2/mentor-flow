@@ -7,6 +7,8 @@ import { LeadUploadModal } from "@/components/crm/LeadUploadModal";
 import { LeadDetailSheet } from "@/components/crm/LeadDetailSheet";
 import { BusinessProfileForm } from "@/components/crm/BusinessProfileForm";
 import { ManualLeadModal } from "@/components/crm/ManualLeadModal";
+import { PipelineStageEditor } from "@/components/crm/PipelineStageEditor";
+import { StageAutomationEditor } from "@/components/crm/StageAutomationEditor";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -174,6 +176,8 @@ export default function MeuCRM() {
       <Tabs defaultValue="pipeline" className="space-y-4">
         <TabsList>
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="stages">Etapas</TabsTrigger>
+          <TabsTrigger value="automations">Automações</TabsTrigger>
           <TabsTrigger value="config">Meu Negócio</TabsTrigger>
         </TabsList>
 
@@ -203,6 +207,22 @@ export default function MeuCRM() {
               />
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="stages">
+          {tenantId && membershipId && (
+            <PipelineStageEditor tenantId={tenantId} fixedMembershipId={membershipId} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="automations">
+          {membershipId && tenantId && (
+            <StageAutomationEditor
+              membershipId={membershipId}
+              tenantId={tenantId}
+              stages={stages}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="config">

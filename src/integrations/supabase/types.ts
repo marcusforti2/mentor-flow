@@ -1067,6 +1067,57 @@ export type Database = {
           },
         ]
       }
+      crm_stage_automations: {
+        Row: {
+          created_at: string
+          delay_days: number
+          from_stage_key: string
+          id: string
+          is_active: boolean
+          membership_id: string
+          tenant_id: string
+          to_stage_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delay_days?: number
+          from_stage_key: string
+          id?: string
+          is_active?: boolean
+          membership_id: string
+          tenant_id: string
+          to_stage_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delay_days?: number
+          from_stage_key?: string
+          id?: string
+          is_active?: boolean
+          membership_id?: string
+          tenant_id?: string
+          to_stage_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_stage_automations_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_stage_automations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cs_journey_stages: {
         Row: {
           color: string
