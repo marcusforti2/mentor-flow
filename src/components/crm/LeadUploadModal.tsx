@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,8 +20,11 @@ import {
   Loader2,
   Sparkles,
   Check,
-  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
   Image as ImageIcon,
+  Users,
+  Trash2,
 } from "lucide-react";
 
 interface LeadUploadModalProps {
@@ -31,7 +35,7 @@ interface LeadUploadModalProps {
   tenantId?: string;
 }
 
-interface ExtractedData {
+interface ExtractedLead {
   name: string;
   phone?: string;
   email?: string;
@@ -43,6 +47,7 @@ interface ExtractedData {
   suggested_approach?: string;
   conversation_summary?: string;
   source_type?: string;
+  image_indices?: number[];
 }
 
 const temperatureOptions = [
@@ -61,8 +66,8 @@ export function LeadUploadModal({
   const { toast } = useToast();
   const [step, setStep] = useState<"upload" | "analyzing" | "review">("upload");
   const [images, setImages] = useState<string[]>([]);
-  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
-  const [editedData, setEditedData] = useState<ExtractedData | null>(null);
+  const [leads, setLeads] = useState<ExtractedLead[]>([]);
+  const [currentLeadIndex, setCurrentLeadIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,9 +137,14 @@ export function LeadUploadModal({
         throw new Error(response.error.message);
       }
 
-      const data = response.data.data as ExtractedData;
-      setExtractedData(data);
-      setEditedData(data);
+      const extractedLeads = (response.data.leads || []) as ExtractedLead[];
+      
+      if (extractedLeads.length === 0) {
+        throw new Error("Nenhum lead identificado nas imagens");
+      }
+
+      setLeads(extractedLeads);
+      setCurrentLeadIndex(0);
       setStep("review");
     } catch (error) {
       console.error("Error analyzing images:", error);
@@ -147,13 +157,24 @@ export function LeadUploadModal({
     }
   };
 
-  const saveLead = async () => {
-    if (!editedData) return;
+  const updateLead = (index: number, updates: Partial<ExtractedLead>) => {
+    setLeads((prev) => prev.map((l, i) => (i === index ? { ...l, ...updates } : l)));
+  };
+
+  const removeLead = (index: number) => {
+    setLeads((prev) => prev.filter((_, i) => i !== index));
+    if (currentLeadIndex >= leads.length - 1) {
+      setCurrentLeadIndex(Math.max(0, leads.length - 2));
+    }
+  };
+
+  const saveAllLeads = async () => {
+    if (leads.length === 0) return;
 
     setIsSubmitting(true);
 
     try {
-      // Upload images to storage
+      // Upload all images to storage first
       const uploadedUrls: string[] = [];
       for (let i = 0; i < images.length; i++) {
         const base64Data = images[i].split(",")[1];
@@ -171,41 +192,51 @@ export function LeadUploadModal({
         }
       }
 
-      // Create the lead using membership_id
-      const { error: insertError } = await supabase.from("crm_prospections").insert({
-        membership_id: membershipId,
-        tenant_id: tenantId,
-        contact_name: editedData.name,
-        contact_email: editedData.email || null,
-        contact_phone: editedData.phone || null,
-        company: editedData.company || null,
-        temperature: editedData.temperature,
-        status: "new",
-        ai_insights: {
-          interests: editedData.interests,
-          objections: editedData.objections,
-          insights: editedData.insights,
-          suggested_approach: editedData.suggested_approach,
-          conversation_summary: editedData.conversation_summary,
-          source_type: editedData.source_type,
-        },
-        screenshot_urls: uploadedUrls,
+      // Insert all leads
+      const insertData = leads.map((lead) => {
+        const leadImageUrls = (lead.image_indices || [])
+          .filter((idx) => idx < uploadedUrls.length)
+          .map((idx) => uploadedUrls[idx]);
+
+        return {
+          membership_id: membershipId,
+          tenant_id: tenantId,
+          contact_name: lead.name,
+          contact_email: lead.email || null,
+          contact_phone: lead.phone || null,
+          company: lead.company || null,
+          temperature: lead.temperature,
+          status: "new",
+          ai_insights: {
+            interests: lead.interests,
+            objections: lead.objections,
+            insights: lead.insights,
+            suggested_approach: lead.suggested_approach,
+            conversation_summary: lead.conversation_summary,
+            source_type: lead.source_type,
+          },
+          screenshot_urls: leadImageUrls.length > 0 ? leadImageUrls : uploadedUrls,
+        };
       });
+
+      const { error: insertError } = await supabase
+        .from("crm_prospections")
+        .insert(insertData);
 
       if (insertError) throw insertError;
 
       toast({
-        title: "Lead criado!",
-        description: `${editedData.name} foi adicionado ao seu CRM.`,
+        title: `${leads.length} lead${leads.length > 1 ? "s" : ""} criado${leads.length > 1 ? "s" : ""}!`,
+        description: leads.map((l) => l.name).join(", "),
       });
 
       onLeadCreated();
       handleClose();
     } catch (error) {
-      console.error("Error saving lead:", error);
+      console.error("Error saving leads:", error);
       toast({
         title: "Erro ao salvar",
-        description: error instanceof Error ? error.message : "Erro ao criar lead",
+        description: error instanceof Error ? error.message : "Erro ao criar leads",
         variant: "destructive",
       });
     } finally {
@@ -216,10 +247,12 @@ export function LeadUploadModal({
   const handleClose = () => {
     setStep("upload");
     setImages([]);
-    setExtractedData(null);
-    setEditedData(null);
+    setLeads([]);
+    setCurrentLeadIndex(0);
     onOpenChange(false);
   };
+
+  const currentLead = leads[currentLeadIndex];
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -233,7 +266,6 @@ export function LeadUploadModal({
 
         {step === "upload" && (
           <div className="space-y-4">
-            {/* Dropzone */}
             <div
               className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
               onDragOver={(e) => e.preventDefault()}
@@ -253,11 +285,10 @@ export function LeadUploadModal({
                 Arraste prints de conversas ou clique para selecionar
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Até 10 imagens (WhatsApp, Instagram, LinkedIn, etc.)
+                Até 10 imagens — a IA detecta automaticamente cada lead diferente
               </p>
             </div>
 
-            {/* Image previews */}
             {images.length > 0 && (
               <div className="grid grid-cols-5 gap-2">
                 {images.map((img, idx) => (
@@ -277,7 +308,6 @@ export function LeadUploadModal({
               </div>
             )}
 
-            {/* Counter */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
                 {images.length}/10 imagens
@@ -295,18 +325,75 @@ export function LeadUploadModal({
             <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
             <p className="text-muted-foreground">Analisando {images.length} imagens...</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Identificando informações do lead
+              Detectando leads e extraindo informações
             </p>
           </div>
         )}
 
-        {step === "review" && editedData && (
+        {step === "review" && currentLead && (
           <div className="space-y-4">
-            {/* Success indicator */}
-            <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-              <Check className="w-4 h-4 text-green-500" />
-              <span className="text-sm text-green-500">Análise concluída!</span>
+            {/* Lead counter & navigation */}
+            <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">
+                  {leads.length} lead{leads.length > 1 ? "s" : ""} detectado{leads.length > 1 ? "s" : ""}
+                </span>
+              </div>
+              {leads.length > 1 && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={currentLeadIndex === 0}
+                    onClick={() => setCurrentLeadIndex((p) => p - 1)}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm tabular-nums min-w-[3ch] text-center">
+                    {currentLeadIndex + 1}/{leads.length}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    disabled={currentLeadIndex === leads.length - 1}
+                    onClick={() => setCurrentLeadIndex((p) => p + 1)}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => removeLead(currentLeadIndex)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
             </div>
+
+            {/* Lead pills */}
+            {leads.length > 1 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {leads.map((l, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentLeadIndex(i)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-xs border transition-all",
+                      i === currentLeadIndex
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"
+                    )}
+                  >
+                    {l.name || `Lead ${i + 1}`}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Editable form */}
             <div className="grid gap-4">
@@ -314,15 +401,15 @@ export function LeadUploadModal({
                 <div>
                   <Label>Nome *</Label>
                   <Input
-                    value={editedData.name}
-                    onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
+                    value={currentLead.name}
+                    onChange={(e) => updateLead(currentLeadIndex, { name: e.target.value })}
                   />
                 </div>
                 <div>
                   <Label>Empresa</Label>
                   <Input
-                    value={editedData.company || ""}
-                    onChange={(e) => setEditedData({ ...editedData, company: e.target.value })}
+                    value={currentLead.company || ""}
+                    onChange={(e) => updateLead(currentLeadIndex, { company: e.target.value })}
                   />
                 </div>
               </div>
@@ -331,15 +418,15 @@ export function LeadUploadModal({
                 <div>
                   <Label>Telefone</Label>
                   <Input
-                    value={editedData.phone || ""}
-                    onChange={(e) => setEditedData({ ...editedData, phone: e.target.value })}
+                    value={currentLead.phone || ""}
+                    onChange={(e) => updateLead(currentLeadIndex, { phone: e.target.value })}
                   />
                 </div>
                 <div>
                   <Label>Email</Label>
                   <Input
-                    value={editedData.email || ""}
-                    onChange={(e) => setEditedData({ ...editedData, email: e.target.value })}
+                    value={currentLead.email || ""}
+                    onChange={(e) => updateLead(currentLeadIndex, { email: e.target.value })}
                   />
                 </div>
               </div>
@@ -353,11 +440,13 @@ export function LeadUploadModal({
                       key={opt.value}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm border transition-all",
-                        editedData.temperature === opt.value
+                        currentLead.temperature === opt.value
                           ? opt.color + " border-current"
                           : "border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground"
                       )}
-                      onClick={() => setEditedData({ ...editedData, temperature: opt.value as any })}
+                      onClick={() =>
+                        updateLead(currentLeadIndex, { temperature: opt.value as any })
+                      }
                     >
                       {opt.label}
                     </button>
@@ -366,11 +455,11 @@ export function LeadUploadModal({
               </div>
 
               {/* Insights */}
-              {editedData.insights && editedData.insights.length > 0 && (
+              {currentLead.insights && currentLead.insights.length > 0 && (
                 <div>
                   <Label>Insights da IA</Label>
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {editedData.insights.map((insight, idx) => (
+                    {currentLead.insights.map((insight, idx) => (
                       <Badge key={idx} variant="secondary" className="text-xs">
                         {insight}
                       </Badge>
@@ -380,13 +469,13 @@ export function LeadUploadModal({
               )}
 
               {/* Suggested approach */}
-              {editedData.suggested_approach && (
+              {currentLead.suggested_approach && (
                 <div>
                   <Label>Sugestão de Abordagem</Label>
                   <Textarea
-                    value={editedData.suggested_approach}
+                    value={currentLead.suggested_approach}
                     onChange={(e) =>
-                      setEditedData({ ...editedData, suggested_approach: e.target.value })
+                      updateLead(currentLeadIndex, { suggested_approach: e.target.value })
                     }
                     rows={3}
                     className="mt-1"
@@ -394,37 +483,41 @@ export function LeadUploadModal({
                 </div>
               )}
 
-              {/* Images preview */}
-              <div>
-                <Label className="flex items-center gap-1">
-                  <ImageIcon className="w-3 h-3" />
-                  Screenshots anexados ({images.length})
-                </Label>
-                <div className="flex gap-2 mt-1 overflow-x-auto py-1">
-                  {images.map((img, idx) => (
-                    <img
-                      key={idx}
-                      src={img}
-                      alt=""
-                      className="h-16 w-auto rounded border"
-                    />
-                  ))}
+              {/* Images preview for this lead */}
+              {currentLead.image_indices && currentLead.image_indices.length > 0 && (
+                <div>
+                  <Label className="flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" />
+                    Screenshots deste lead ({currentLead.image_indices.length})
+                  </Label>
+                  <div className="flex gap-2 mt-1 overflow-x-auto py-1">
+                    {currentLead.image_indices
+                      .filter((idx) => idx < images.length)
+                      .map((imgIdx) => (
+                        <img
+                          key={imgIdx}
+                          src={images[imgIdx]}
+                          alt=""
+                          className="h-16 w-auto rounded border"
+                        />
+                      ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="flex gap-2 justify-between pt-2">
               <Button variant="outline" onClick={() => setStep("upload")}>
                 Voltar
               </Button>
-              <Button onClick={saveLead} disabled={isSubmitting || !editedData.name}>
+              <Button onClick={saveAllLeads} disabled={isSubmitting || leads.some((l) => !l.name)}>
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : (
                   <Check className="w-4 h-4 mr-2" />
                 )}
-                Salvar Lead
+                Salvar {leads.length} Lead{leads.length > 1 ? "s" : ""}
               </Button>
             </div>
           </div>

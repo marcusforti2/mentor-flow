@@ -35,7 +35,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user from token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
@@ -64,7 +63,6 @@ serve(async (req) => {
 
     console.log(`Processing ${images.length} images for user ${user.id}`);
 
-    // Get membership record
     const { data: membership } = await supabase
       .from("memberships")
       .select("id, tenant_id")
@@ -103,7 +101,6 @@ serve(async (req) => {
       };
     }
     
-    // Fallback: try mentorado_business_profiles with membership_id
     if (!businessProfile) {
       const { data: mbp } = await supabase
         .from("mentorado_business_profiles")
@@ -113,18 +110,16 @@ serve(async (req) => {
       businessProfile = mbp;
     }
 
-    // Build context from business profile
     const businessContext = businessProfile ? buildBusinessContext(businessProfile) : "Nenhum perfil de negócio cadastrado.";
 
     // Build multimodal content
     const content: any[] = [
       {
         type: "text",
-        text: buildPrompt(businessContext),
+        text: buildPrompt(businessContext, images.length),
       },
     ];
 
-    // Add images
     for (const image of images) {
       content.push({
         type: "image_url",
@@ -152,67 +147,83 @@ serve(async (req) => {
           {
             type: "function",
             function: {
-              name: "extract_lead_data",
-              description: "Extrair dados estruturados do lead a partir das imagens analisadas",
+              name: "extract_leads_data",
+              description: "Extrair dados estruturados de múltiplos leads a partir das imagens analisadas. Cada pessoa/conversa diferente deve gerar um lead separado.",
               parameters: {
                 type: "object",
                 properties: {
-                  name: {
-                    type: "string",
-                    description: "Nome completo do lead detectado nas imagens",
-                  },
-                  phone: {
-                    type: "string",
-                    description: "Telefone do lead se visível",
-                  },
-                  email: {
-                    type: "string",
-                    description: "Email do lead se visível",
-                  },
-                  company: {
-                    type: "string",
-                    description: "Empresa ou ocupação do lead",
-                  },
-                  temperature: {
-                    type: "string",
-                    enum: ["cold", "warm", "hot"],
-                    description: "Nível de interesse: cold (frio), warm (morno), hot (quente)",
-                  },
-                  interests: {
+                  leads: {
                     type: "array",
-                    items: { type: "string" },
-                    description: "Lista de interesses identificados do lead",
-                  },
-                  objections: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Objeções ou resistências detectadas",
-                  },
-                  insights: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Insights úteis para vender para este lead",
-                  },
-                  suggested_approach: {
-                    type: "string",
-                    description: "Sugestão de abordagem personalizada para este lead",
-                  },
-                  conversation_summary: {
-                    type: "string",
-                    description: "Resumo da conversa ou conteúdo das imagens",
-                  },
-                  source_type: {
-                    type: "string",
-                    enum: ["whatsapp", "instagram", "linkedin", "facebook", "twitter", "other"],
-                    description: "Origem do print (rede social identificada)",
+                    description: "Lista de leads detectados nas imagens. Cada conversa ou pessoa diferente gera um lead.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: {
+                          type: "string",
+                          description: "Nome completo do lead detectado nas imagens",
+                        },
+                        phone: {
+                          type: "string",
+                          description: "Telefone do lead se visível",
+                        },
+                        email: {
+                          type: "string",
+                          description: "Email do lead se visível",
+                        },
+                        company: {
+                          type: "string",
+                          description: "Empresa ou ocupação do lead",
+                        },
+                        temperature: {
+                          type: "string",
+                          enum: ["cold", "warm", "hot"],
+                          description: "Nível de interesse: cold (frio), warm (morno), hot (quente)",
+                        },
+                        interests: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Lista de interesses identificados do lead",
+                        },
+                        objections: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Objeções ou resistências detectadas",
+                        },
+                        insights: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Insights úteis para vender para este lead",
+                        },
+                        suggested_approach: {
+                          type: "string",
+                          description: "Sugestão de abordagem personalizada para este lead",
+                        },
+                        conversation_summary: {
+                          type: "string",
+                          description: "Resumo da conversa ou conteúdo das imagens",
+                        },
+                        source_type: {
+                          type: "string",
+                          enum: ["whatsapp", "instagram", "linkedin", "facebook", "twitter", "other"],
+                          description: "Origem do print (rede social identificada)",
+                        },
+                        image_indices: {
+                          type: "array",
+                          items: { type: "integer" },
+                          description: "Índices (0-based) das imagens que pertencem a este lead",
+                        },
+                      },
+                      required: ["name", "temperature", "insights", "suggested_approach", "image_indices"],
+                    },
                   },
                 },
-                required: ["name", "temperature", "insights", "suggested_approach"],
+                required: ["leads"],
+                additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "extract_lead_data" } },
+        tool_choice: { type: "function", function: { name: "extract_leads_data" } },
       }),
     });
 
@@ -237,16 +248,15 @@ serve(async (req) => {
     const aiResponse = await response.json();
     console.log("AI Response received");
 
-    // Extract the tool call result
     const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "extract_lead_data") {
+    if (!toolCall || toolCall.function.name !== "extract_leads_data") {
       throw new Error("Invalid AI response format");
     }
 
-    const leadData = JSON.parse(toolCall.function.arguments);
-    console.log("Lead data extracted:", leadData);
+    const result = JSON.parse(toolCall.function.arguments);
+    console.log(`Extracted ${result.leads?.length || 0} leads`);
 
-    return new Response(JSON.stringify({ success: true, data: leadData }), {
+    return new Response(JSON.stringify({ success: true, leads: result.leads || [] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -276,21 +286,28 @@ function buildBusinessContext(profile: BusinessProfile): string {
   return parts.length > 0 ? parts.join("\n") : "Nenhum perfil de negócio cadastrado.";
 }
 
-function buildPrompt(businessContext: string): string {
+function buildPrompt(businessContext: string, imageCount: number): string {
   return `Você é um assistente de vendas especializado em analisar screenshots de conversas e redes sociais para extrair informações de leads.
 
 ## CONTEXTO DO NEGÓCIO DO VENDEDOR
 ${businessContext}
 
 ## SUA TAREFA
-Analise cuidadosamente todas as imagens fornecidas. Elas podem ser:
+Analise cuidadosamente todas as ${imageCount} imagens fornecidas. Elas podem ser:
 - Prints de conversas do WhatsApp
 - Screenshots de perfis ou conversas do Instagram
 - Prints de conversas ou perfis do LinkedIn
 - Screenshots de outras redes sociais
 - Qualquer combinação das anteriores
 
-## O QUE VOCÊ DEVE EXTRAIR
+## REGRA CRÍTICA: MÚLTIPLOS LEADS
+- Cada PESSOA DIFERENTE identificada nas imagens deve gerar um LEAD SEPARADO.
+- Se as imagens mostram conversas com 3 pessoas diferentes, gere 3 leads.
+- Se todas as imagens são da MESMA conversa com a MESMA pessoa, gere apenas 1 lead.
+- Use o campo "image_indices" para indicar quais imagens (pelo índice 0-based) pertencem a cada lead.
+- Você pode gerar até ${imageCount} leads (um por imagem no máximo).
+
+## O QUE VOCÊ DEVE EXTRAIR POR LEAD
 1. **Nome do lead**: Identifique o nome da pessoa nas conversas ou perfis
 2. **Contato**: Se houver telefone ou email visível
 3. **Empresa/Ocupação**: Profissão ou empresa do lead
@@ -308,5 +325,6 @@ Analise cuidadosamente todas as imagens fornecidas. Elas podem ser:
 - Se não conseguir identificar alguma informação, deixe em branco ou use valores padrão
 - Seja específico nos insights - use informações das conversas
 - A sugestão de abordagem deve ser prática e acionável
-- Considere o contexto do negócio do vendedor para personalizar as sugestões`;
+- Considere o contexto do negócio do vendedor para personalizar as sugestões
+- SEMPRE gere pelo menos 1 lead, mesmo que precise usar "Lead Desconhecido" como nome`;
 }
