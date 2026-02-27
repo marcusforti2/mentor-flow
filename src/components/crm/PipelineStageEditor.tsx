@@ -48,12 +48,14 @@ interface MenteeOption {
 interface PipelineStageEditorProps {
   tenantId: string;
   mentorados?: MenteeOption[];
+  /** If set, hides scope selector and locks to this membership */
+  fixedMembershipId?: string;
 }
 
-export function PipelineStageEditor({ tenantId, mentorados = [] }: PipelineStageEditorProps) {
+export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembershipId }: PipelineStageEditorProps) {
   const { toast } = useToast();
-  const [selectedScope, setSelectedScope] = useState<string>("tenant"); // "tenant" or membership_id
-  const membershipId = selectedScope === "tenant" ? undefined : selectedScope;
+  const [selectedScope, setSelectedScope] = useState<string>(fixedMembershipId || "tenant");
+  const membershipId = fixedMembershipId || (selectedScope === "tenant" ? undefined : selectedScope);
   const { stages: currentStages, isLoading, reload, DEFAULT_STAGES } = usePipelineStages(tenantId, membershipId);
   const [editStages, setEditStages] = useState<PipelineStage[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -163,40 +165,42 @@ export function PipelineStageEditor({ tenantId, mentorados = [] }: PipelineStage
 
   return (
     <div className="space-y-4">
-      {/* Scope selector */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium whitespace-nowrap">Configurar pipeline para:</label>
-            <Select value={selectedScope} onValueChange={setSelectedScope}>
-              <SelectTrigger className="max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tenant">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    Todos os mentorados (padrão)
-                  </div>
-                </SelectItem>
-                {mentorados.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
+      {/* Scope selector - only for admin/mentor view */}
+      {!fixedMembershipId && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium whitespace-nowrap">Configurar pipeline para:</label>
+              <Select value={selectedScope} onValueChange={setSelectedScope}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tenant">
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      {m.name}
+                      <Globe className="w-4 h-4" />
+                      Todos os mentorados (padrão)
                     </div>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {membershipId && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Este pipeline será exclusivo para este mentorado. Se removido, ele volta ao pipeline padrão do tenant.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                  {mentorados.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        {m.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {membershipId && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Este pipeline será exclusivo para este mentorado. Se removido, ele volta ao pipeline padrão do tenant.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stage editor */}
       <Card>
