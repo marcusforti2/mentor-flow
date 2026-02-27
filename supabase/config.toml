@@ -115,3 +115,6 @@ verify_jwt = false
 
 [functions.notify-mentee-action]
 verify_jwt = false
+
+[functions.send-mentee-email]
+verify_jwt = false
