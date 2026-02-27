@@ -39,6 +39,7 @@ import { MentoradoActivityTimeline } from "@/components/admin/MentoradoActivityT
 import { MentoradoBehavioralAnalysis } from "@/components/admin/MentoradoBehavioralAnalysis";
 import { EditMenteeModal } from "@/components/admin/EditMenteeModal";
 import { MenteeShowcaseEditor } from "@/components/admin/MenteeShowcaseEditor";
+import { MenteeEmailComposer } from "@/components/admin/MenteeEmailComposer";
 
 interface MentoradoData {
   id: string;
@@ -65,7 +66,7 @@ interface MentoradoData {
 const MentoradoDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { activeMembership } = useTenant();
   const { toast } = useToast();
   const tenantId = activeMembership?.tenant_id;
@@ -75,6 +76,7 @@ const MentoradoDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false);
   const [campanRefreshKey, setCampanRefreshKey] = useState(0);
   const [meetingRefreshKey, setMeetingRefreshKey] = useState(0);
 
@@ -212,7 +214,7 @@ const MentoradoDetail = () => {
             </Button>
           )}
           {mentorado.profile?.email && (
-            <Button size="sm" variant="outline" onClick={() => window.open(`mailto:${mentorado.profile?.email}`, "_blank")}>
+            <Button size="sm" variant="outline" onClick={() => setIsEmailComposerOpen(true)}>
               <Mail className="h-4 w-4 mr-1.5" />
               <span className="hidden sm:inline">Email</span>
             </Button>
@@ -419,6 +421,18 @@ const MentoradoDetail = () => {
         }}
         onSuccess={fetchMentorado}
       />
+
+      {/* Email Composer */}
+      {mentorado.profile?.email && (
+        <MenteeEmailComposer
+          open={isEmailComposerOpen}
+          onOpenChange={setIsEmailComposerOpen}
+          menteeEmail={mentorado.profile.email}
+          menteeName={mentorado.profile?.full_name || "Mentorado"}
+          mentorName={profile?.full_name || "Mentor"}
+          tenantId={activeMembership.tenant_id}
+        />
+      )}
     </div>
   );
 };
