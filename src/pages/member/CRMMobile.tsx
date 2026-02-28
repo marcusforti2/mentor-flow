@@ -450,7 +450,6 @@ export default function CRMMobile() {
                   type="file"
                   accept="image/*"
                   multiple
-                  capture="environment"
                   className="hidden"
                   onChange={handleFileSelect}
                 />
