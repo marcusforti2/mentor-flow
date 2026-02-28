@@ -146,25 +146,36 @@ export default function CRMMobile() {
         if (data) uploadedUrls.push(data.path);
       }
 
-      const insertData = extractedLeads.map((lead: any) => ({
-        membership_id: membershipId,
-        tenant_id: tenantId,
-        contact_name: lead.name,
-        contact_email: lead.email || null,
-        contact_phone: lead.phone || null,
-        company: lead.company || null,
-        temperature: lead.temperature || "cold",
-        status: "new",
-        ai_insights: {
-          interests: lead.interests,
-          objections: lead.objections,
-          insights: lead.insights,
-          suggested_approach: lead.suggested_approach,
-          conversation_summary: lead.conversation_summary,
-          source_type: lead.source_type,
-        },
-        screenshot_urls: uploadedUrls,
-      }));
+      const insertData = extractedLeads.map((lead: any) => {
+        const sourceType = lead.source_type || "other";
+        const noteParts: string[] = [];
+        if (lead.conversation_summary) noteParts.push(`📝 ${lead.conversation_summary}`);
+        if (lead.suggested_approach) noteParts.push(`💡 ${lead.suggested_approach}`);
+        if (lead.insights?.length) noteParts.push(`🔎 Insights: ${lead.insights.join("; ")}`);
+        if (lead.objections?.length) noteParts.push(`⚠️ Objeções: ${lead.objections.join("; ")}`);
+
+        return {
+          membership_id: membershipId,
+          tenant_id: tenantId,
+          contact_name: lead.name || "Lead Desconhecido",
+          contact_email: lead.email || null,
+          contact_phone: lead.phone || null,
+          whatsapp: sourceType === "whatsapp" ? (lead.phone || null) : null,
+          company: lead.company || null,
+          temperature: lead.temperature || "cold",
+          status: "new",
+          notes: noteParts.length > 0 ? noteParts.join("\n\n") : null,
+          ai_insights: {
+            interests: lead.interests,
+            objections: lead.objections,
+            insights: lead.insights,
+            suggested_approach: lead.suggested_approach,
+            conversation_summary: lead.conversation_summary,
+            source_type: sourceType,
+          },
+          screenshot_urls: uploadedUrls,
+        };
+      });
 
       const { error } = await supabase.from("crm_prospections").insert(insertData);
       if (error) throw error;
@@ -508,56 +519,130 @@ export default function CRMMobile() {
                 </p>
               </div>
 
-              {extractedLeads.map((lead, idx) => (
-                <div key={idx} className="p-4 rounded-xl border bg-card space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{lead.name || `Lead ${idx + 1}`}</span>
-                    <button
-                      onClick={() => setExtractedLeads((prev) => prev.filter((_, i) => i !== idx))}
-                      className="text-destructive"
+              {extractedLeads.map((lead, idx) => {
+                const sourceEmoji: Record<string, string> = {
+                  whatsapp: "📱 WhatsApp",
+                  instagram: "📸 Instagram",
+                  linkedin: "💼 LinkedIn",
+                  facebook: "👤 Facebook",
+                  twitter: "🐦 Twitter",
+                  other: "🌐 Outro",
+                };
+                const tempConfig = temperatureConfig[lead.temperature || "cold"] || temperatureConfig.cold;
+                const updateLead = (field: string, value: string) => {
+                  const updated = [...extractedLeads];
+                  updated[idx] = { ...updated[idx], [field]: value };
+                  setExtractedLeads(updated);
+                };
+
+                return (
+                  <div key={idx} className="p-4 rounded-xl border bg-card space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{lead.name || `Lead ${idx + 1}`}</span>
+                        {lead.source_type && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {sourceEmoji[lead.source_type] || lead.source_type}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", tempConfig.color)}>
+                          {tempConfig.emoji} {tempConfig.label}
+                        </Badge>
+                      </div>
+                      <button
+                        onClick={() => setExtractedLeads((prev) => prev.filter((_, i) => i !== idx))}
+                        className="text-destructive"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Nome */}
+                    <Input
+                      value={lead.name || ""}
+                      onChange={(e) => updateLead("name", e.target.value)}
+                      placeholder="Nome"
+                      className="h-9"
+                    />
+
+                    {/* Telefone + Empresa */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        value={lead.phone || ""}
+                        onChange={(e) => updateLead("phone", e.target.value)}
+                        placeholder="Telefone / WhatsApp"
+                        className="h-9"
+                      />
+                      <Input
+                        value={lead.company || ""}
+                        onChange={(e) => updateLead("company", e.target.value)}
+                        placeholder="Empresa / Cargo"
+                        className="h-9"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <Input
+                      value={lead.email || ""}
+                      onChange={(e) => updateLead("email", e.target.value)}
+                      placeholder="Email"
+                      className="h-9"
+                      type="email"
+                    />
+
+                    {/* Temperatura */}
+                    <Select
+                      value={lead.temperature || "cold"}
+                      onValueChange={(v) => updateLead("temperature", v)}
                     >
-                      <X className="w-4 h-4" />
-                    </button>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hot">🔥 Quente</SelectItem>
+                        <SelectItem value="warm">🌤️ Morno</SelectItem>
+                        <SelectItem value="cold">❄️ Frio</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Resumo da conversa */}
+                    {lead.conversation_summary && (
+                      <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
+                        📝 {lead.conversation_summary}
+                      </p>
+                    )}
+
+                    {/* Sugestão de abordagem */}
+                    {lead.suggested_approach && (
+                      <p className="text-xs text-muted-foreground bg-primary/5 border border-primary/10 p-2 rounded-lg">
+                        💡 {lead.suggested_approach}
+                      </p>
+                    )}
+
+                    {/* Interesses */}
+                    {lead.interests?.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {lead.interests.map((interest: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-[10px]">
+                            {interest}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Objeções */}
+                    {lead.objections?.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {lead.objections.map((obj: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">
+                            ⚠️ {obj}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <Input
-                    value={lead.name || ""}
-                    onChange={(e) => {
-                      const updated = [...extractedLeads];
-                      updated[idx] = { ...updated[idx], name: e.target.value };
-                      setExtractedLeads(updated);
-                    }}
-                    placeholder="Nome"
-                    className="h-9"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      value={lead.phone || ""}
-                      onChange={(e) => {
-                        const updated = [...extractedLeads];
-                        updated[idx] = { ...updated[idx], phone: e.target.value };
-                        setExtractedLeads(updated);
-                      }}
-                      placeholder="Telefone"
-                      className="h-9"
-                    />
-                    <Input
-                      value={lead.company || ""}
-                      onChange={(e) => {
-                        const updated = [...extractedLeads];
-                        updated[idx] = { ...updated[idx], company: e.target.value };
-                        setExtractedLeads(updated);
-                      }}
-                      placeholder="Empresa"
-                      className="h-9"
-                    />
-                  </div>
-                  {lead.suggested_approach && (
-                    <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
-                      💡 {lead.suggested_approach}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
               <Button
                 onClick={saveAILeads}
