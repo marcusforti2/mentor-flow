@@ -20,15 +20,12 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { GuidedTour } from '@/components/onboarding/GuidedTour';
-import { useGuidedTour, mentoradoDashboardSteps } from '@/hooks/useGuidedTour';
-import { HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function MemberDashboard() {
   const { profile, user } = useAuth();
   const { activeMembership, isImpersonating } = useTenant();
-  const { isOpen: isTourOpen, startTour, completeTour, skipTour } = useGuidedTour(user?.id);
+  
 
   const { data: impersonatedProfile } = useQuery({
     queryKey: ['impersonated-dashboard-profile', activeMembership?.user_id],
@@ -94,17 +91,12 @@ export default function MemberDashboard() {
             {displayName?.split(' ')[0] || 'Mentorado'} <span className="text-gradient-gold">🚀</span>
           </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Link to="/mentorado/trilhas">
-            <Button className="btn-premium px-6 py-5 text-base">
-              <Play className="mr-2 h-5 w-5" />
-              <span>{hasTrailProgress ? 'Continuar Trilha' : 'Iniciar Trilha'}</span>
-            </Button>
-          </Link>
-          <Button variant="outline" size="icon" onClick={startTour} title="Tour guiado" className="h-12 w-12">
-            <HelpCircle className="h-5 w-5" />
+        <Link to="/mentorado/trilhas">
+          <Button className="btn-premium px-6 py-5 text-base">
+            <Play className="mr-2 h-5 w-5" />
+            <span>{hasTrailProgress ? 'Continuar Trilha' : 'Iniciar Trilha'}</span>
           </Button>
-        </div>
+        </Link>
       </div>
 
       {/* Daily Goal Counter */}
@@ -257,12 +249,6 @@ export default function MemberDashboard() {
         </BentoCard>
       </BentoGrid>
 
-      <GuidedTour
-        steps={mentoradoDashboardSteps}
-        isOpen={isTourOpen}
-        onComplete={completeTour}
-        onSkip={skipTour}
-      />
     </div>
   );
 }
