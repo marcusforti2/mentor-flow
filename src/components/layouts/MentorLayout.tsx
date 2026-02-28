@@ -61,7 +61,7 @@ const menuItems: DockItem[] = [
  
   export function MentorLayout() {
     const { profile, signOut } = useAuth();
-    const { tenant, activeMembership, realMembership, isImpersonating, endImpersonation } = useTenant();
+    const { tenant, activeMembership, realMembership, isImpersonating, endImpersonation, isLoading: tenantContextLoading } = useTenant();
     const [alertsOpen, setAlertsOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
@@ -82,8 +82,8 @@ const menuItems: DockItem[] = [
       }
     };
   
-    // Show loading skeleton while tenant data is being fetched
-    if (!tenant) {
+    // Show loading only during initial load, not when tenant is null after load
+    if (tenantContextLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="animated-gradient-bg" />
