@@ -14,7 +14,7 @@ interface InviteMentorModalProps {
   membership: MembershipWithDetails | null;
 }
 
-const LOGIN_URL = 'https://lbvtech.aceleracaoforti.online/auth';
+const LOGIN_URL = 'https://mentorflow.aceleracaoforti.online/auth';
 
 const generateMessage = (
   name: string,

@@ -161,7 +161,7 @@ REGRAS:
     const subject = subjectMap[action_type] || `🔔 Novidade de ${mentorName} na ${tenantName}`;
 
     // 6. Build full branded email HTML
-    const loginUrl = "https://lbvtech.aceleracaoforti.online";
+    const loginUrl = "https://mentorflow.aceleracaoforti.online";
     const fullHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"/></head>

@@ -196,7 +196,7 @@ REGRAS:
         });
       }
 
-      const loginUrl = "https://lbvtech.aceleracaoforti.online";
+      const loginUrl = "https://mentorflow.aceleracaoforti.online";
       const results: any[] = [];
 
       for (const email of emails) {

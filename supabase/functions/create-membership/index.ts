@@ -574,7 +574,7 @@ serve(async (req) => {
     });
 
     // ========== SEND WELCOME EMAIL (async, non-blocking) ==========
-    const siteUrl = Deno.env.get("SITE_URL") || "https://lbvtech.aceleracaoforti.online";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://mentorflow.aceleracaoforti.online";
     const loginUrl = `${siteUrl}/auth`;
 
     // Fetch branding for white-label email
