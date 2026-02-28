@@ -329,8 +329,7 @@ export default function CRMMobile() {
               className="pl-9 h-10 rounded-xl"
             />
           </div>
-          <ScrollArea className="w-full">
-            <div className="flex gap-1.5 pb-2">
+          <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => setFilterStage("all")}
                 className={cn(
@@ -360,7 +359,6 @@ export default function CRMMobile() {
                 );
               })}
             </div>
-          </ScrollArea>
         </div>
 
         {/* Lead List */}
