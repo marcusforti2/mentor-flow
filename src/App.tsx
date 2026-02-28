@@ -71,6 +71,7 @@ const MinhasTarefas = lazy(() => import("./pages/member/MinhasTarefas"));
 // AgendamentoMembro removed — merged into CalendarioMembro
 const MentoradoPlaybooks = lazy(() => import("./pages/member/Playbooks"));
 const MentoradoMetricas = lazy(() => import("./pages/member/Metricas"));
+const CRMMobile = lazy(() => import("./pages/member/CRMMobile"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +121,11 @@ const App = () => (
                   <Route path="/showcase" element={<ShowcasePage />} />
                   <Route path="/t/:slug" element={<TenantLandingPage />} />
                   <Route path="/p/:slug" element={<PublicPlaybookPage />} />
+                  <Route path="/crm-mobile" element={
+                    <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor', 'mentee']}>
+                      <CRMMobile />
+                    </ProtectedRoute>
+                  } />
 
                   {/* Master Admin Routes */}
                   <Route
