@@ -59,7 +59,9 @@ const eventTypes = [
   { value: "live", label: "Live", color: "bg-red-500", dotColor: "bg-red-400", emoji: "🔴", gradient: "from-red-500/15 to-red-900/10", border: "border-red-500/30" },
   { value: "prazo", label: "Prazo", color: "bg-amber-500", dotColor: "bg-amber-400", emoji: "⏰", gradient: "from-amber-500/15 to-amber-900/10", border: "border-amber-500/30" },
   { value: "reuniao", label: "Reunião", color: "bg-emerald-500", dotColor: "bg-emerald-400", emoji: "👥", gradient: "from-emerald-500/15 to-emerald-900/10", border: "border-emerald-500/30" },
+  { value: "meeting", label: "Reunião", color: "bg-emerald-500", dotColor: "bg-emerald-400", emoji: "👥", gradient: "from-emerald-500/15 to-emerald-900/10", border: "border-emerald-500/30" },
   { value: "treinamento", label: "Treinamento", color: "bg-cyan-500", dotColor: "bg-cyan-400", emoji: "🏋️", gradient: "from-cyan-500/15 to-cyan-900/10", border: "border-cyan-500/30" },
+  { value: "training", label: "Treinamento", color: "bg-cyan-500", dotColor: "bg-cyan-400", emoji: "🏋️", gradient: "from-cyan-500/15 to-cyan-900/10", border: "border-cyan-500/30" },
   { value: "hotseat", label: "Hot Seat", color: "bg-orange-500", dotColor: "bg-orange-400", emoji: "🔥", gradient: "from-orange-500/15 to-orange-900/10", border: "border-orange-500/30" },
 ];
 
@@ -261,18 +263,25 @@ export default function Calendario() {
 
       const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
       if (error) {
-        console.error('Delete error:', error);
+        console.error('Delete error details:', JSON.stringify(error));
         throw error;
       }
+      console.log('Delete succeeded for event:', eventId);
       toast({ title: "Excluído", description: "Evento removido." });
       // Re-fetch to ensure consistency
       await fetchData();
     } catch (error: any) {
-      console.error('Delete event failed:', error);
+      console.error('Delete event failed:', JSON.stringify(error));
       toast({ title: "Erro ao excluir", description: error?.message || "Não foi possível excluir o evento.", variant: "destructive" });
       // Re-fetch to restore correct state
       await fetchData();
     }
+  };
+
+  const handleDeleteEventDirect = async (e: React.MouseEvent, eventId: string) => {
+    e.stopPropagation();
+    if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+    await handleDeleteEvent(eventId);
   };
 
   const openEventDialog = (event?: CalendarEvent, date?: Date, time?: string) => {
@@ -524,14 +533,24 @@ export default function Calendario() {
                                       )}
                                     </div>
 
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-foreground/70 hover:text-foreground"
-                                      onClick={(e) => { e.stopPropagation(); openEventDialog(event); }}
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-foreground/70 hover:text-foreground"
+                                        onClick={(e) => { e.stopPropagation(); openEventDialog(event); }}
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                        onClick={(e) => handleDeleteEventDirect(e, event.id)}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
                                   </div>
 
                                   {event.meeting_url && (
