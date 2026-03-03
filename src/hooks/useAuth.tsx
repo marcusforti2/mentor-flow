@@ -175,10 +175,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const fallbackAuth: AuthContextType = {
+  user: null,
+  session: null,
+  profile: null,
+  role: null,
+  isLoading: true,
+  signIn: async () => ({ error: new Error('AuthProvider not mounted') }),
+  signUp: async () => ({ error: new Error('AuthProvider not mounted') }),
+  signOut: async () => {},
+  isMentor: false,
+  isMentorado: false,
+  isAdminMaster: false,
+};
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // During HMR transitions the provider tree may briefly unmount;
+    // return a safe loading fallback instead of crashing the app.
+    console.warn('[useAuth] Context undefined – returning fallback (HMR transition)');
+    return fallbackAuth;
   }
   return context;
 }
