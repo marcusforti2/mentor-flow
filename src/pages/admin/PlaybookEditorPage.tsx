@@ -5,12 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePlaybookMutations, usePlaybookPages, type Playbook, type PlaybookPage } from '@/hooks/usePlaybooks';
 import { PlaybookTipTapEditor } from '@/components/playbooks/PlaybookTipTapEditor';
 import { PlaybookAccessPanel } from '@/components/playbooks/PlaybookAccessPanel';
+import { AIPlaybookWriter } from '@/components/playbooks/AIPlaybookWriter';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield, GripVertical, Share2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, Plus, FileText, Trash2, Shield, GripVertical, Share2, Sparkles, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PlaybookEditorPage() {
@@ -18,6 +19,7 @@ export default function PlaybookEditorPage() {
   const navigate = useNavigate();
   const { updatePlaybook } = usePlaybookMutations();
   const queryClient = useQueryClient();
+  const editorRef = useRef<any>(null);
   
   const { data: playbook, isLoading } = useQuery({
     queryKey: ['playbook-detail', playbookId],
@@ -40,6 +42,7 @@ export default function PlaybookEditorPage() {
   const [saved, setSaved] = useState(true);
   const [activePage, setActivePage] = useState<string | null>(null);
   const [activePageContent, setActivePageContent] = useState<any>(null);
+  const [aiWriterOpen, setAiWriterOpen] = useState(false);
 
   useEffect(() => {
     if (playbook) {
@@ -139,6 +142,42 @@ export default function PlaybookEditorPage() {
     queryClient.invalidateQueries({ queryKey: ['playbook-detail', playbookId] });
   };
 
+  // Handle AI content insertion (convert markdown to TipTap-compatible HTML)
+  const handleAIInsert = (markdown: string) => {
+    // Convert basic markdown to HTML for TipTap
+    let html = markdown
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>')
+      .replace(/^---$/gm, '<hr>')
+      .replace(/^- \[ \] (.+)$/gm, '<li data-type="taskItem" data-checked="false"><p>$1</p></li>')
+      .replace(/^- \[x\] (.+)$/gm, '<li data-type="taskItem" data-checked="true"><p>$1</p></li>')
+      .replace(/^- (.+)$/gm, '<li><p>$1</p></li>')
+      .replace(/^(\d+)\. (.+)$/gm, '<li><p>$2</p></li>');
+
+    // Wrap consecutive list items
+    html = html.replace(/((?:<li><p>.+?<\/p><\/li>\n?)+)/g, '<ul>$1</ul>');
+    
+    // Convert remaining plain text lines to paragraphs
+    html = html.replace(/^(?!<[hluobp]|<hr|<li|<block)(.+)$/gm, '<p>$1</p>');
+    
+    // Remove empty lines
+    html = html.replace(/^\s*$/gm, '');
+
+    // Update the current content
+    if (activePage) {
+      handlePageContentUpdate(html);
+    } else {
+      handleContentUpdate(html);
+    }
+    
+    // Force editor to reload with new content by changing key
+    window.location.reload();
+  };
+
   // Drag-drop reorder pages
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -188,16 +227,19 @@ export default function PlaybookEditorPage() {
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/mentor/playbooks')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/mentor/playbooks')} className="shrink-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            onBlur={handleTitleBlur}
-            className="text-xl font-bold border-none bg-transparent shadow-none focus-visible:ring-0 px-0 h-auto"
-            placeholder="Título do playbook"
-          />
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <BookOpen className="h-5 w-5 text-primary shrink-0" />
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              onBlur={handleTitleBlur}
+              className="text-xl font-bold border-none bg-transparent shadow-none focus-visible:ring-0 px-0 h-auto"
+              placeholder="Título do playbook"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {/* Share Sheet */}
@@ -227,11 +269,11 @@ export default function PlaybookEditorPage() {
           </Sheet>
 
           {saved ? (
-            <Badge variant="outline" className="gap-1 text-green-600 border-green-200">
+            <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50/10">
               <Check className="h-3 w-3" /> Salvo
             </Badge>
           ) : (
-            <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200">
+            <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200 bg-amber-50/10 animate-pulse">
               <Save className="h-3 w-3" /> Salvando...
             </Badge>
           )}
@@ -241,13 +283,13 @@ export default function PlaybookEditorPage() {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <button onClick={() => navigate('/mentor/playbooks')} className="hover:text-foreground transition-colors">Playbooks</button>
-        <span>/</span>
+        <span className="text-border">/</span>
         <button onClick={() => { setActivePage(null); setActivePageContent(null); }} className={`hover:text-foreground transition-colors ${!activePage ? 'text-foreground font-medium' : ''}`}>
           {playbook.title}
         </button>
         {activePage && (
           <>
-            <span>/</span>
+            <span className="text-border">/</span>
             <span className="text-foreground font-medium">
               {pages.find(p => p.id === activePage)?.title || 'Página'}
             </span>
@@ -255,60 +297,87 @@ export default function PlaybookEditorPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5">
         {/* Sidebar - pages */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Páginas</span>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleAddPage} title="Nova página">
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          {/* Main page */}
-          <button
-            onClick={() => { setActivePage(null); setActivePageContent(null); }}
-            className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-              !activePage ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted'
-            }`}
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Página principal</span>
-          </button>
-
-          {/* Subpages with drag-drop */}
-          {pages.map((page, index) => (
-            <div
-              key={page.id}
-              className="group flex items-center gap-1"
-              draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragEnter={() => handleDragEnter(index)}
-              onDragEnd={handleDragEnd}
-              onDragOver={e => e.preventDefault()}
-            >
-              <span className="cursor-grab opacity-0 group-hover:opacity-50 shrink-0">
-                <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-              </span>
-              <button
-                onClick={() => { setActivePage(page.id); setActivePageContent(page.content); }}
-                className={`flex-1 text-left text-sm px-2 py-2 rounded-lg transition-colors flex items-center gap-2 min-w-0 ${
-                  activePage === page.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{page.title}</span>
-              </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0 text-destructive"
-                onClick={() => handleDeletePage(page.id)}
-              >
-                <Trash2 className="h-3 w-3" />
+        <div className="space-y-3">
+          <div className="p-3 rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Páginas</span>
+              <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-primary/10 hover:text-primary" onClick={handleAddPage} title="Nova página">
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
-          ))}
+
+            {/* Main page */}
+            <button
+              onClick={() => { setActivePage(null); setActivePageContent(null); }}
+              className={`w-full text-left text-sm px-3 py-2.5 rounded-lg transition-all flex items-center gap-2.5 ${
+                !activePage ? 'bg-primary/10 text-primary font-medium shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="truncate">Página principal</span>
+            </button>
+
+            {/* Subpages with drag-drop */}
+            {pages.length > 0 && <Separator className="my-2" />}
+            
+            <div className="space-y-1">
+              {pages.map((page, index) => (
+                <div
+                  key={page.id}
+                  className="group flex items-center gap-1"
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragEnter={() => handleDragEnter(index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={e => e.preventDefault()}
+                >
+                  <span className="cursor-grab opacity-0 group-hover:opacity-50 shrink-0 transition-opacity">
+                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                  </span>
+                  <button
+                    onClick={() => { setActivePage(page.id); setActivePageContent(page.content); }}
+                    className={`flex-1 text-left text-sm px-2.5 py-2 rounded-lg transition-all flex items-center gap-2 min-w-0 ${
+                      activePage === page.id ? 'bg-primary/10 text-primary font-medium shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{page.title}</span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
+                    onClick={() => handleDeletePage(page.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add page button */}
+            <button
+              onClick={handleAddPage}
+              className="w-full mt-2 text-left text-xs px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-muted-foreground hover:bg-muted hover:text-foreground border border-dashed border-border/50"
+            >
+              <Plus className="h-3 w-3" />
+              <span>Adicionar página</span>
+            </button>
+          </div>
+
+          {/* Tips card */}
+          <div className="p-3 rounded-xl border border-primary/20 bg-primary/5">
+            <p className="text-xs font-semibold text-primary mb-1.5">💡 Dicas do editor</p>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>📄 Suba PDFs, Word, Excel</li>
+              <li>🎵 Insira áudios e podcasts</li>
+              <li>🎬 Embede YouTube, Vimeo, Loom</li>
+              <li>✨ Use IA para gerar conteúdo</li>
+              <li>📸 Arraste imagens para o editor</li>
+            </ul>
+          </div>
         </div>
 
         {/* Editor */}
@@ -325,9 +394,18 @@ export default function PlaybookEditorPage() {
             key={activePage || 'main'}
             content={currentContent}
             onUpdate={activePage ? handlePageContentUpdate : handleContentUpdate}
+            onAIWrite={() => setAiWriterOpen(true)}
           />
         </div>
       </div>
+
+      {/* AI Writer Dialog */}
+      <AIPlaybookWriter
+        open={aiWriterOpen}
+        onOpenChange={setAiWriterOpen}
+        onInsert={handleAIInsert}
+        currentContent={typeof currentContent === 'string' ? currentContent : undefined}
+      />
     </div>
   );
 }
