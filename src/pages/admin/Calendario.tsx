@@ -243,10 +243,10 @@ export default function Calendario() {
       }
       resetForm();
       setIsDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error creating event:', error);
-      toast({ title: "Erro", description: "Não foi possível salvar o evento.", variant: "destructive" });
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error creating/updating event:', error);
+      toast({ title: "Erro", description: error?.message || "Não foi possível salvar o evento.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -254,14 +254,24 @@ export default function Calendario() {
 
   const handleDeleteEvent = async (eventId: string) => {
     try {
-      const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
-      if (error) throw error;
-      toast({ title: "Excluído", description: "Evento removido." });
+      // Optimistically remove from UI
+      setEvents(prev => prev.filter(e => e.id !== eventId));
       setIsDialogOpen(false);
       resetForm();
-      fetchData();
-    } catch (error) {
-      toast({ title: "Erro", description: "Não foi possível excluir.", variant: "destructive" });
+
+      const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
+      toast({ title: "Excluído", description: "Evento removido." });
+      // Re-fetch to ensure consistency
+      await fetchData();
+    } catch (error: any) {
+      console.error('Delete event failed:', error);
+      toast({ title: "Erro ao excluir", description: error?.message || "Não foi possível excluir o evento.", variant: "destructive" });
+      // Re-fetch to restore correct state
+      await fetchData();
     }
   };
 
