@@ -178,9 +178,6 @@ export default function CalendarioMembro() {
           <TabsTrigger value="calendar" className="gap-2">
             <CalendarIcon className="h-4 w-4" /> Calendário
           </TabsTrigger>
-          <TabsTrigger value="booking" className="gap-2">
-            <CalendarClock className="h-4 w-4" /> Agendar Sessão
-          </TabsTrigger>
         </TabsList>
 
         {/* ── Programação Tab ── */}
@@ -479,10 +476,6 @@ export default function CalendarioMembro() {
               </Card>
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="booking" className="flex-1 min-h-0 mt-0">
-          <BookingCalendar />
         </TabsContent>
       </Tabs>
     </div>
