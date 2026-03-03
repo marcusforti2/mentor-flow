@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, Sparkles, Loader2, X, Image as ImageIcon, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { Upload, Sparkles, Loader2, X, Image as ImageIcon, ArrowUp, ArrowDown, Minus, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type CoverPosition = 'top' | 'center' | 'bottom';
@@ -15,6 +15,8 @@ interface CoverImageUploadProps {
   coverPosition?: CoverPosition;
   folder?: string;
   aspectRatio?: string;
+  tenantName?: string;
+  tenantNiche?: string;
 }
 
 export function CoverImageUpload({
@@ -25,6 +27,8 @@ export function CoverImageUpload({
   coverPosition = 'center',
   folder = 'general',
   aspectRatio = '16/9',
+  tenantName,
+  tenantNiche,
 }: CoverImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -83,16 +87,26 @@ export function CoverImageUpload({
     }
   };
 
-  const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) {
-      toast.error('Digite uma descrição para a imagem');
+  const quickPrompts = [
+    '🚀 Crescimento & Estratégia',
+    '💰 Vendas & Conversão',
+    '🧠 Mindset & Liderança',
+    '📊 Métricas & Resultados',
+    '🎯 Prospecção & Funil',
+    '🤝 Relacionamento & Networking',
+  ];
+
+  const handleAiGenerate = async (customPrompt?: string) => {
+    const finalPrompt = customPrompt || aiPrompt.trim();
+    if (!finalPrompt) {
+      toast.error('Digite ou selecione um tema para a imagem');
       return;
     }
 
     setGenerating(true);
     try {
       const response = await supabase.functions.invoke('generate-cover', {
-        body: { prompt: aiPrompt },
+        body: { prompt: finalPrompt, tenantName, tenantNiche },
       });
 
       if (response.error) throw response.error;
@@ -228,23 +242,42 @@ export function CoverImageUpload({
 
       {/* AI Generation Input */}
       {showAiInput && (
-        <div className="flex gap-2">
-          <Input
-            placeholder="Descreva a imagem... Ex: visual moderno sobre vendas B2B"
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
-            disabled={generating}
-          />
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleAiGenerate}
-            disabled={generating || !aiPrompt.trim()}
-            className="shrink-0"
-          >
-            {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          </Button>
+        <div className="space-y-2">
+          {/* Quick prompts */}
+          <div className="flex flex-wrap gap-1.5">
+            {quickPrompts.map((qp) => (
+              <Button
+                key={qp}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 px-2"
+                disabled={generating}
+                onClick={() => handleAiGenerate(qp)}
+              >
+                {generating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                {qp}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Ou descreva o tema... Ex: funil de vendas high-ticket"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
+              disabled={generating}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => handleAiGenerate()}
+              disabled={generating || !aiPrompt.trim()}
+              className="shrink-0"
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       )}
 

@@ -12,11 +12,9 @@ serve(async (req) => {
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { prompt } = await req.json();
+    const { prompt, tenantName, tenantNiche } = await req.json();
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
         status: 400,
@@ -24,14 +22,28 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Generate Cover - Prompt: ${prompt}`);
+    const businessContext = tenantNiche
+      ? `The business operates in the "${tenantNiche}" niche${tenantName ? ` (brand: "${tenantName}")` : ''}.`
+      : tenantName
+        ? `The brand is "${tenantName}".`
+        : '';
 
-    const enhancedPrompt = `Create a professional, modern cover image for a business playbook/guide about: ${prompt}. 
-Style: Dark, sophisticated, premium feel with subtle geometric patterns or abstract shapes. 
-Use deep blacks, dark grays, and subtle gold/amber accent lighting. 
-The image MUST be wide format, landscape orientation, 16:9 aspect ratio (wider than tall).
-No text, no letters, no words - purely visual/abstract design.
-Ultra high resolution, cinematic wide shot.`;
+    const enhancedPrompt = `Generate a stunning, high-end cover image for a professional playbook/guide.
+
+Topic: "${prompt}"
+${businessContext}
+
+STYLE REQUIREMENTS:
+- Cinematic, editorial-quality composition with dramatic lighting
+- Rich color palette: deep gradients, bold accent colors, moody atmosphere
+- Abstract or semi-abstract imagery — NO text, NO letters, NO words, NO logos
+- Incorporate subtle visual metaphors related to the topic (e.g. growth = upward lines, strategy = chess-like patterns, sales = dynamic motion)
+- Premium textures: brushed metal, glass refraction, silk, matte surfaces
+- Wide landscape format, 16:9 aspect ratio
+- Ultra-sharp, 4K quality feel
+- Think: Apple keynote slide meets magazine editorial cover`;
+
+    console.log(`Generate Cover - Prompt: ${prompt}, Tenant: ${tenantName || 'N/A'}, Niche: ${tenantNiche || 'N/A'}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -40,13 +52,8 @@ Ultra high resolution, cinematic wide shot.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-pro-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: enhancedPrompt,
-          },
-        ],
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: enhancedPrompt }],
         modalities: ["image", "text"],
       }),
     });
@@ -56,27 +63,22 @@ Ultra high resolution, cinematic wide shot.`;
       console.error("AI Gateway error:", response.status, errorText);
       
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded, tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "Rate limit atingido, tente novamente em alguns segundos." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Créditos insuficientes para geração de imagem." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
     const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
-    if (!imageData) {
-      throw new Error("No image generated");
-    }
+    if (!imageData) throw new Error("No image generated");
 
     console.log("Generate Cover - Success");
 
@@ -86,14 +88,8 @@ Ultra high resolution, cinematic wide shot.`;
   } catch (error) {
     console.error("Generate Cover error:", error);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
