@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
 import { EmojiPicker } from '@/components/playbooks/EmojiPicker';
 import { useNavigate } from 'react-router-dom';
+import { useTenant } from '@/contexts/TenantContext';
 import { usePlaybookFolders, usePlaybooks, usePlaybookMutations, useRecentPlaybooks, usePlaybookAnalytics, type PlaybookFolder, type Playbook } from '@/hooks/usePlaybooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,6 +100,9 @@ const PLAYBOOK_TEMPLATES = [
 
 export default function PlaybooksHub() {
   const navigate = useNavigate();
+  const { tenant } = useTenant();
+  const tenantName = tenant?.name || '';
+  const tenantNiche = (tenant?.settings as any)?.niche || (tenant?.settings as any)?.business_type || '';
   const { data: folders = [], isLoading: foldersLoading } = usePlaybookFolders();
   const { data: playbooks = [], isLoading: playbooksLoading } = usePlaybooks();
   const { createFolder, updateFolder, deleteFolder, createPlaybook, updatePlaybook, deletePlaybook, togglePinFolder, togglePinPlaybook, duplicatePlaybook, trackPlaybookView, reorderFolders, reorderPlaybooks } = usePlaybookMutations();
@@ -654,6 +658,8 @@ export default function PlaybooksHub() {
                 onUploaded={(url) => setFolderForm({ ...folderForm, cover_image_url: url })}
                 onRemoved={() => setFolderForm({ ...folderForm, cover_image_url: '' })}
                 onPositionChange={(pos) => setFolderForm({ ...folderForm, cover_position: pos })}
+                tenantName={tenantName}
+                tenantNiche={tenantNiche}
               />
             </div>
             <div>
@@ -694,6 +700,8 @@ export default function PlaybooksHub() {
                 coverPosition={playbookForm.cover_position as 'top' | 'center' | 'bottom'}
                 folder="playbooks"
                 aspectRatio="16/7"
+                tenantName={tenantName}
+                tenantNiche={tenantNiche}
               />
             </div>
             <div>
