@@ -167,7 +167,7 @@ const menuItems: DockItem[] = [
  
        {/* Top bar with logo and user - only on dashboard */}
        {isDashboard && (
-          <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0">
+          <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0 bg-background/80 backdrop-blur-md border-b border-border/50">
              <Link to="/mentor" className="md:ml-28">
                <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
              </Link>
