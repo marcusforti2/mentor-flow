@@ -118,7 +118,7 @@ export default function PlaybooksHub() {
 
   // Form states
   const [folderForm, setFolderForm] = useState({ name: '', description: '', cover_image_url: '', cover_position: 'center' as string, icon: '📁' });
-  const [playbookForm, setPlaybookForm] = useState({ title: '', description: '', folder_id: '', visibility: 'mentor_only' });
+  const [playbookForm, setPlaybookForm] = useState({ title: '', description: '', folder_id: '', visibility: 'mentor_only', cover_image_url: '', cover_position: 'center' as string });
 
   // Selected folder view
   const [selectedFolder, setSelectedFolder] = useState<PlaybookFolder | null>(null);
@@ -206,6 +206,8 @@ export default function PlaybooksHub() {
         description: playbook.description || '',
         folder_id: playbook.folder_id || '',
         visibility: playbook.visibility,
+        cover_image_url: playbook.cover_image_url || '',
+        cover_position: playbook.cover_position || 'center',
       });
     } else {
       setEditingPlaybook(null);
@@ -214,6 +216,8 @@ export default function PlaybooksHub() {
         description: '',
         folder_id: selectedFolder?.id || '',
         visibility: 'mentor_only',
+        cover_image_url: '',
+        cover_position: 'center',
       });
     }
     setPlaybookDialogOpen(true);
@@ -228,6 +232,8 @@ export default function PlaybooksHub() {
         description: playbookForm.description,
         folder_id: playbookForm.folder_id || null,
         visibility: playbookForm.visibility,
+        cover_image_url: playbookForm.cover_image_url || null,
+        cover_position: playbookForm.cover_position,
       });
     } else {
       await createPlaybook.mutateAsync({
@@ -235,6 +241,8 @@ export default function PlaybooksHub() {
         description: playbookForm.description,
         folder_id: playbookForm.folder_id || null,
         visibility: playbookForm.visibility,
+        cover_image_url: playbookForm.cover_image_url || null,
+        cover_position: playbookForm.cover_position,
       });
     }
     setPlaybookDialogOpen(false);
@@ -644,12 +652,25 @@ export default function PlaybooksHub() {
 
       {/* Playbook Dialog */}
       <Dialog open={playbookDialogOpen} onOpenChange={setPlaybookDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPlaybook ? 'Editar Playbook' : 'Novo Playbook'}</DialogTitle>
             <DialogDescription>Configure título, pasta e visibilidade.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Cover Image */}
+            <div>
+              <Label className="mb-2 block">Imagem de capa</Label>
+              <CoverImageUpload
+                currentUrl={playbookForm.cover_image_url || null}
+                onUploaded={(url) => setPlaybookForm({ ...playbookForm, cover_image_url: url })}
+                onRemoved={() => setPlaybookForm({ ...playbookForm, cover_image_url: '' })}
+                onPositionChange={(pos) => setPlaybookForm({ ...playbookForm, cover_position: pos })}
+                coverPosition={playbookForm.cover_position as 'top' | 'center' | 'bottom'}
+                folder="playbooks"
+                aspectRatio="16/7"
+              />
+            </div>
             <div>
               <Label>Título *</Label>
               <Input value={playbookForm.title} onChange={e => setPlaybookForm({ ...playbookForm, title: e.target.value })} placeholder="Ex: Playbook de Prospecção" />
