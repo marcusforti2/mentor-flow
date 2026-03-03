@@ -140,7 +140,6 @@ export function useMentorDashboardStats() {
       const activeMentoradosCount = menteeMemberships.filter(m => m.status === 'active').length;
       const trailsCount = trailsRes.error ? 0 : (trailsRes.data?.length || 0);
       const meetingsThisWeek = meetingsRes.data?.length || 0;
-      const engagementRate = mentoradosCount > 0 ? Math.round((activeMentoradosCount / mentoradosCount) * 100) : 0;
 
       // Map activity type helper
       const mapActivityType = (actionType: string): ActivityItem['type'] => {
@@ -251,6 +250,15 @@ export function useMentorDashboardStats() {
           lastActivityMap.set(a.membership_id, a.created_at);
         }
       });
+      // Calculate real engagement: mentorados with activity in last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const engagedCount = activeMembershipIds.filter(id => {
+        const last = lastActivityMap.get(id);
+        return last && new Date(last) >= sevenDaysAgo;
+      }).length;
+      const engagementRate = activeMentoradosCount > 0 ? Math.round((engagedCount / activeMentoradosCount) * 100) : 0;
+
       const atRiskMembershipIds = activeMembershipIds.filter(id => {
         const last = lastActivityMap.get(id);
         return !last || new Date(last) < threeDaysAgo;
