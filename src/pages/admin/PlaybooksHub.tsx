@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CoverImageUpload } from '@/components/playbooks/CoverImageUpload';
 import { EmojiPicker } from '@/components/playbooks/EmojiPicker';
@@ -123,8 +123,22 @@ export default function PlaybooksHub() {
   // Selected folder view
   const [selectedFolder, setSelectedFolder] = useState<PlaybookFolder | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const isDragging = useRef(false);
 
-  const handleFolderDrop = (targetId: string) => {
+  const handleDragStart = (id: string, e: React.DragEvent) => {
+    isDragging.current = true;
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragEnd = () => {
+    setTimeout(() => { isDragging.current = false; }, 100);
+    setDragId(null);
+  };
+
+  const handleFolderDrop = (targetId: string, e: React.DragEvent) => {
+    e.preventDefault();
     if (!dragId || dragId === targetId) return;
     const ordered = [...filteredFolders];
     const fromIdx = ordered.findIndex(f => f.id === dragId);
@@ -136,7 +150,8 @@ export default function PlaybooksHub() {
     setDragId(null);
   };
 
-  const handlePlaybookDrop = (targetId: string, list: Playbook[]) => {
+  const handlePlaybookDrop = (targetId: string, list: Playbook[], e: React.DragEvent) => {
+    e.preventDefault();
     if (!dragId || dragId === targetId) return;
     const ordered = [...list];
     const fromIdx = ordered.findIndex(p => p.id === dragId);
@@ -146,6 +161,11 @@ export default function PlaybooksHub() {
     ordered.splice(toIdx, 0, moved);
     reorderPlaybooks.mutate(ordered.map((p, i) => ({ id: p.id, position: i })));
     setDragId(null);
+  };
+
+  const guardedClick = (fn: () => void) => () => {
+    if (isDragging.current) return;
+    fn();
   };
 
   const isLoading = foldersLoading || playbooksLoading;
@@ -481,13 +501,14 @@ export default function PlaybooksHub() {
                         key={folder.id}
                         folder={folder}
                         playbookCount={count}
-                        onClick={() => setSelectedFolder(folder)}
+                        onClick={guardedClick(() => setSelectedFolder(folder))}
                         onEdit={() => handleOpenFolderDialog(folder)}
                         onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
                         onTogglePin={() => togglePinFolder.mutate({ id: folder.id, is_pinned: !folder.is_pinned })}
-                        onDragStart={() => setDragId(folder.id)}
+                        onDragStart={(e) => handleDragStart(folder.id, e)}
                         onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleFolderDrop(folder.id)}
+                        onDrop={(e) => handleFolderDrop(folder.id, e)}
+                        onDragEnd={handleDragEnd}
                       />
                     );
                   })}
@@ -501,13 +522,14 @@ export default function PlaybooksHub() {
                         key={folder.id}
                         folder={folder}
                         playbookCount={count}
-                        onClick={() => setSelectedFolder(folder)}
-                        onEdit={() => handleOpenFolderDialog(folder)}
-                        onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
-                        onTogglePin={() => togglePinFolder.mutate({ id: folder.id, is_pinned: !folder.is_pinned })}
-                        onDragStart={() => setDragId(folder.id)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleFolderDrop(folder.id)}
+                        onClick={guardedClick(() => setSelectedFolder(folder))}
+                         onEdit={() => handleOpenFolderDialog(folder)}
+                         onDelete={() => setDeleteTarget({ type: 'folder', id: folder.id, name: folder.name })}
+                         onTogglePin={() => togglePinFolder.mutate({ id: folder.id, is_pinned: !folder.is_pinned })}
+                         onDragStart={(e) => handleDragStart(folder.id, e)}
+                         onDragOver={(e) => e.preventDefault()}
+                         onDrop={(e) => handleFolderDrop(folder.id, e)}
+                         onDragEnd={handleDragEnd}
                       />
                     );
                   })}
@@ -529,16 +551,17 @@ export default function PlaybooksHub() {
                       <PlaybookCard
                         key={pb.id}
                         playbook={pb}
-                        onClick={() => handleOpenPlaybook(pb)}
+                        onClick={guardedClick(() => handleOpenPlaybook(pb))}
                         onEdit={() => handleOpenPlaybookDialog(pb)}
                         onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                         onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                         onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
                         onMove={(folderId) => updatePlaybook.mutate({ id: pb.id, folder_id: folderId })}
                         folders={folders}
-                        onDragStart={() => setDragId(pb.id)}
+                        onDragStart={(e) => handleDragStart(pb.id, e)}
                         onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handlePlaybookDrop(pb.id, orphanPlaybooks)}
+                        onDrop={(e) => handlePlaybookDrop(pb.id, orphanPlaybooks, e)}
+                        onDragEnd={handleDragEnd}
                       />
                     ))}
                   </div>
@@ -576,16 +599,17 @@ export default function PlaybooksHub() {
                 <PlaybookCard
                   key={pb.id}
                   playbook={pb}
-                  onClick={() => handleOpenPlaybook(pb)}
+                  onClick={guardedClick(() => handleOpenPlaybook(pb))}
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                   onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
                   onMove={(folderId) => updatePlaybook.mutate({ id: pb.id, folder_id: folderId })}
                   folders={folders}
-                  onDragStart={() => setDragId(pb.id)}
+                  onDragStart={(e) => handleDragStart(pb.id, e)}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handlePlaybookDrop(pb.id, filteredPlaybooks)}
+                  onDrop={(e) => handlePlaybookDrop(pb.id, filteredPlaybooks, e)}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </div>
@@ -595,16 +619,17 @@ export default function PlaybooksHub() {
                 <PlaybookCardList
                   key={pb.id}
                   playbook={pb}
-                  onClick={() => handleOpenPlaybook(pb)}
+                  onClick={guardedClick(() => handleOpenPlaybook(pb))}
                   onEdit={() => handleOpenPlaybookDialog(pb)}
                   onDelete={() => setDeleteTarget({ type: 'playbook', id: pb.id, name: pb.title })}
                   onTogglePin={() => togglePinPlaybook.mutate({ id: pb.id, is_pinned: !pb.is_pinned })}
                   onDuplicate={() => duplicatePlaybook.mutate(pb.id)}
                   onMove={(folderId) => updatePlaybook.mutate({ id: pb.id, folder_id: folderId })}
                   folders={folders}
-                  onDragStart={() => setDragId(pb.id)}
+                  onDragStart={(e) => handleDragStart(pb.id, e)}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handlePlaybookDrop(pb.id, filteredPlaybooks)}
+                  onDrop={(e) => handlePlaybookDrop(pb.id, filteredPlaybooks, e)}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </div>
@@ -785,7 +810,7 @@ const coverPositionClass = (pos?: string) => {
 /* ========== Sub-components ========== */
 
 function FolderCardGallery({
-  folder, playbookCount, onClick, onEdit, onDelete, onTogglePin, onDragStart, onDragOver, onDrop,
+  folder, playbookCount, onClick, onEdit, onDelete, onTogglePin, onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
   folder: PlaybookFolder;
   playbookCount: number;
@@ -793,9 +818,10 @@ function FolderCardGallery({
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   return (
     <Card
@@ -805,6 +831,7 @@ function FolderCardGallery({
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       {/* Cover image - Notion-style */}
       <div className="relative h-44 overflow-hidden">
@@ -872,7 +899,7 @@ function FolderCardGallery({
 }
 
 function FolderCardList({
-  folder, playbookCount, onClick, onEdit, onDelete, onTogglePin, onDragStart, onDragOver, onDrop,
+  folder, playbookCount, onClick, onEdit, onDelete, onTogglePin, onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
   folder: PlaybookFolder;
   playbookCount: number;
@@ -880,9 +907,10 @@ function FolderCardList({
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   return (
     <Card
@@ -892,6 +920,7 @@ function FolderCardList({
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       <CardContent className="py-3 px-4 flex items-center gap-4">
         {/* Thumbnail */}
@@ -942,7 +971,7 @@ function FolderCardList({
 }
 
 function PlaybookCard({
-  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate, onMove, folders, onDragStart, onDragOver, onDrop,
+  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate, onMove, folders, onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
   playbook: Playbook;
   onClick: () => void;
@@ -952,9 +981,10 @@ function PlaybookCard({
   onDuplicate: () => void;
   onMove: (folderId: string | null) => void;
   folders: PlaybookFolder[];
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -967,6 +997,7 @@ function PlaybookCard({
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       <div className="relative h-44 overflow-hidden">
         {playbook.cover_image_url ? (
@@ -1053,7 +1084,7 @@ function PlaybookCard({
 }
 
 function PlaybookCardList({
-  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate, onMove, folders, onDragStart, onDragOver, onDrop,
+  playbook, onClick, onEdit, onDelete, onTogglePin, onDuplicate, onMove, folders, onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
   playbook: Playbook;
   onClick: () => void;
@@ -1063,9 +1094,10 @@ function PlaybookCardList({
   onDuplicate: () => void;
   onMove: (folderId: string | null) => void;
   folders: PlaybookFolder[];
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   const vis = visibilityConfig[playbook.visibility] || visibilityConfig.mentor_only;
   const VisIcon = vis.icon;
@@ -1078,6 +1110,7 @@ function PlaybookCardList({
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       <CardContent className="py-3 px-4 flex items-center gap-4">
         <div className="h-12 w-16 rounded-lg overflow-hidden shrink-0 bg-muted">
