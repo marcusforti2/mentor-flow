@@ -12,9 +12,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { Loader2 } from "lucide-react";
 
-// Public Pages (keep static - entry points)
+// Public Pages
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
+const Auth = lazy(() => import("./pages/Auth"));
 
 // Lazy-loaded pages
 // Setup page removed — legacy initial configuration no longer needed
