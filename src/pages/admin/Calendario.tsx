@@ -663,7 +663,7 @@ export default function Calendario() {
 
               <Card className="glass-card px-4 py-3">
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                  {eventTypes.map(type => (
+                  {eventTypes.filter((type, idx, arr) => arr.findIndex(t => t.label === type.label) === idx).map(type => (
                     <div key={type.value} className="flex items-center gap-1.5">
                       <div className={cn("w-2 h-2 rounded-full", type.dotColor)} />
                       <span className="text-[11px] text-muted-foreground">{type.emoji} {type.label}</span>
@@ -842,7 +842,7 @@ export default function Calendario() {
                 <Select value={newEvent.event_type} onValueChange={(v) => setNewEvent({ ...newEvent, event_type: v })}>
                   <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent className="z-50">
-                    {eventTypes.map(type => (
+                    {eventTypes.filter((type, idx, arr) => arr.findIndex(t => t.label === type.label) === idx).map(type => (
                       <SelectItem key={type.value} value={type.value}>
                         <span className="flex items-center gap-2"><span>{type.emoji}</span><span>{type.label}</span></span>
                       </SelectItem>
