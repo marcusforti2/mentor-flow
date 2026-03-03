@@ -211,7 +211,7 @@ export function usePlaybookMutations() {
   });
 
   const createPlaybook = useMutation({
-    mutationFn: async (data: { title: string; description?: string; folder_id?: string | null; visibility?: string }) => {
+    mutationFn: async (data: { title: string; description?: string; folder_id?: string | null; visibility?: string; cover_image_url?: string | null; cover_position?: string }) => {
       if (!tenantId || !membershipId) throw new Error('Sem tenant/membership');
       const { data: result, error } = await supabase
         .from('playbooks')
@@ -221,6 +221,8 @@ export function usePlaybookMutations() {
           description: data.description || null,
           folder_id: data.folder_id || null,
           visibility: data.visibility || 'mentor_only',
+          cover_image_url: data.cover_image_url || null,
+          cover_position: data.cover_position || 'center',
           created_by_membership_id: membershipId,
         })
         .select()
