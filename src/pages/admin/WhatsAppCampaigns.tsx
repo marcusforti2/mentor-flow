@@ -191,7 +191,7 @@ export default function WhatsAppCampaigns() {
     try {
       const tenantId = activeMembership.tenant_id;
       if (config?.id) {
-        await supabase
+        const { error } = await supabase
           .from("tenant_whatsapp_config" as any)
           .update({
             ultramsg_instance_id: configForm.ultramsg_instance_id || null,
@@ -200,14 +200,16 @@ export default function WhatsAppCampaigns() {
             sender_name: configForm.sender_name || null,
           } as any)
           .eq("id", config.id);
+        if (error) throw error;
       } else {
-        await supabase.from("tenant_whatsapp_config" as any).insert({
+        const { error } = await supabase.from("tenant_whatsapp_config" as any).insert({
           tenant_id: tenantId,
           ultramsg_instance_id: configForm.ultramsg_instance_id || null,
           ultramsg_token: configForm.ultramsg_token || null,
           is_active: configForm.is_active,
           sender_name: configForm.sender_name || null,
         } as any);
+        if (error) throw error;
       }
       toast({ title: "Configuração salva! ✓" });
       fetchAll();
