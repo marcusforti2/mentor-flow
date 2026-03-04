@@ -29,7 +29,9 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [dockRevealed, setDockRevealed] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Close expanded group on outside click
   useEffect(() => {
@@ -214,28 +216,54 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
     );
   };
 
+  const handleWrapperEnter = () => {
+    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    setDockRevealed(true);
+  };
+
+  const handleWrapperLeave = () => {
+    hideTimeoutRef.current = setTimeout(() => setDockRevealed(false), 300);
+  };
+
+  const dockNav = (
+    <nav
+      className={cn(
+        'floating-dock',
+        position === 'left' && 'floating-dock-vertical',
+        collapsed && !isMobile && 'floating-dock-collapsed',
+        collapsed && !isMobile && dockRevealed && 'dock-visible'
+      )}
+      onMouseEnter={collapsed ? handleWrapperEnter : undefined}
+      onMouseLeave={collapsed ? handleWrapperLeave : undefined}
+    >
+      {visibleItems.map(item => renderDockItem(item))}
+
+      {/* More button for mobile overflow */}
+      {hasOverflow && (
+        <button
+          onClick={() => { setMoreOpen(!moreOpen); setExpandedGroup(null); }}
+          className={cn('dock-item', (moreOpen || activeInOverflow) && 'active')}
+        >
+          {moreOpen ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
+          {isMobile && renderMobileLabel('Mais', moreOpen || activeInOverflow)}
+        </button>
+      )}
+    </nav>
+  );
+
   return (
     <>
-      <nav
-        className={cn(
-          'floating-dock',
-          position === 'left' && 'floating-dock-vertical',
-          collapsed && !isMobile && 'floating-dock-collapsed'
-        )}
-      >
-        {visibleItems.map(item => renderDockItem(item))}
-
-        {/* More button for mobile overflow */}
-        {hasOverflow && (
-          <button
-            onClick={() => { setMoreOpen(!moreOpen); setExpandedGroup(null); }}
-            className={cn('dock-item', (moreOpen || activeInOverflow) && 'active')}
-          >
-            {moreOpen ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
-            {isMobile && renderMobileLabel('Mais', moreOpen || activeInOverflow)}
-          </button>
-        )}
-      </nav>
+      {collapsed && !isMobile ? (
+        <div
+          className={cn('dock-hover-wrapper', dockRevealed && 'dock-revealed')}
+          onMouseEnter={handleWrapperEnter}
+          onMouseLeave={handleWrapperLeave}
+        >
+          {dockNav}
+        </div>
+      ) : (
+        dockNav
+      )}
 
       {/* Mobile overflow bottom sheet */}
       {moreOpen && hasOverflow && (

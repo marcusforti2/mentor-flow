@@ -123,7 +123,7 @@ const menuItems: DockItem[] = [
        {/* Content area - everything scrolls */}
        <div className={cn(
          "min-h-screen px-4 md:px-6 pb-24 md:pb-6 pt-4",
-         isDashboard ? "md:ml-28" : "md:ml-6"
+         isDashboard ? "md:ml-28" : ""
        )}>
          {/* Top bar - scrolls with content */}
          <header className="flex items-center justify-between py-3 mb-4">
