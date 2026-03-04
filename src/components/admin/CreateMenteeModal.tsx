@@ -36,14 +36,21 @@ interface MentorOption {
   email: string;
 }
 
+export interface CreateMenteeInitialData {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface CreateMenteeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   tenantId?: string;
+  initialData?: CreateMenteeInitialData;
 }
 
-export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: propTenantId }: CreateMenteeModalProps) {
+export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: propTenantId, initialData }: CreateMenteeModalProps) {
   const { activeMembership, isMasterAdmin } = useTenant();
   const { tenants, isLoading: tenantsLoading } = useTenants();
   const createMembership = useCreateMembership();
@@ -132,6 +139,15 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     
     fetchMentors();
   }, [effectiveTenantForMentors, open]);
+
+  // Hydrate from initialData when modal opens
+  useEffect(() => {
+    if (open && initialData) {
+      if (initialData.fullName) setFullName(initialData.fullName);
+      if (initialData.email) setEmail(initialData.email);
+      if (initialData.phone) setPhone(initialData.phone);
+    }
+  }, [open, initialData]);
 
   const showTenantSelector = isMasterAdmin && !propTenantId;
   const effectiveTenantId = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);

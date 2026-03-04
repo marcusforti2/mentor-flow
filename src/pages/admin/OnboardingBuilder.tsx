@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { CreateMenteeModal, type CreateMenteeInitialData } from '@/components/admin/CreateMenteeModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import {
   Loader2, Save, Trash2, Plus, X, Copy, ExternalLink, Eye,
-  ListChecks, MessageSquare, ClipboardList, User, ChevronDown,
+  ListChecks, MessageSquare, ClipboardList, User, UserPlus, ChevronDown,
   ChevronRight, Sparkles, Upload, FileText, ArrowLeft, MoreVertical,
   Link as LinkIcon, Globe,
 } from 'lucide-react';
@@ -148,6 +149,8 @@ export default function OnboardingBuilder() {
   const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
   const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
   const [pendingDeleteSubmissionId, setPendingDeleteSubmissionId] = useState<string | null>(null);
+  const [createMenteeOpen, setCreateMenteeOpen] = useState(false);
+  const [createMenteeData, setCreateMenteeData] = useState<CreateMenteeInitialData | undefined>(undefined);
 
   useEffect(() => {
     if (!tenant?.id) {
@@ -1010,6 +1013,22 @@ export default function OnboardingBuilder() {
                   </button>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCreateMenteeData({
+                          fullName: sub.respondent_name || undefined,
+                          email: sub.respondent_email || undefined,
+                        });
+                        setCreateMenteeOpen(true);
+                      }}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Criar Mentorado
+                    </Button>
+                    <Button
                       variant={pendingDeleteSubmissionId === sub.id ? 'destructive' : 'ghost'}
                       size={pendingDeleteSubmissionId === sub.id ? 'sm' : 'icon'}
                       className={pendingDeleteSubmissionId === sub.id ? 'h-8 text-xs' : 'h-8 w-8 text-destructive'}
@@ -1047,6 +1066,17 @@ export default function OnboardingBuilder() {
 
         </TabsContent>
       </Tabs>
+
+      <CreateMenteeModal
+        open={createMenteeOpen}
+        onOpenChange={setCreateMenteeOpen}
+        tenantId={tenant?.id}
+        initialData={createMenteeData}
+        onSuccess={() => {
+          setCreateMenteeOpen(false);
+          loadSubmissions();
+        }}
+      />
     </div>
   );
 }
