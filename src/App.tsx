@@ -59,6 +59,7 @@ const MentoradoDetail = lazy(() => import("./pages/admin/MentoradoDetail"));
 const Automacoes = lazy(() => import("./pages/admin/Automacoes"));
 const Popups = lazy(() => import("./pages/admin/Popups"));
 const WhatsAppCampaigns = lazy(() => import("./pages/admin/WhatsAppCampaigns"));
+const OnboardingBuilder = lazy(() => import("./pages/admin/OnboardingBuilder"));
 
 // Member Pages
 const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
@@ -178,6 +179,7 @@ function AppRoutes() {
           <Route path="automacoes" element={<Automacoes />} />
           <Route path="popups" element={<Popups />} />
           <Route path="whatsapp" element={<WhatsAppCampaigns />} />
+          <Route path="onboarding-builder" element={<OnboardingBuilder />} />
         </Route>
 
         {/* Mentorado Routes */}
