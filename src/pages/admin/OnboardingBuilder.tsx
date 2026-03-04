@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
@@ -11,29 +11,25 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Loader2, Upload, Sparkles, Save, Trash2, GripVertical, Plus,
-  FileText, X, Copy, ExternalLink, Eye, ListChecks, MessageSquare,
-  ClipboardList, User, Calendar, ChevronDown, ChevronRight,
+  Loader2, Save, Trash2, Plus, X, Copy, ExternalLink, Eye,
+  ListChecks, MessageSquare, ClipboardList, User, ChevronDown,
+  ChevronRight, Sparkles, Upload, FileText, ArrowLeft, MoreVertical,
+  Link as LinkIcon, Globe,
 } from 'lucide-react';
 
 /* ── types ── */
 const QUESTION_TYPE_LABELS: Record<string, string> = {
   text: 'Texto curto',
   textarea: 'Texto longo',
-  select: 'Múltipla escolha',
+  select: 'Lista de opções',
   multiple_choice: 'Múltipla escolha',
   yes_no: 'Sim / Não',
   scale: 'Escala (1-10)',
   link: 'Link / URL',
   image: 'Upload de Imagem',
-  system_field: 'Campo do sistema',
 };
 
 interface FormQuestion {
@@ -47,10 +43,25 @@ interface FormQuestion {
   section: string;
 }
 
-interface GeneratedForm {
-  form_title: string;
-  form_description: string;
-  questions: FormQuestion[];
+interface FormRecord {
+  id: string;
+  title: string;
+  description: string | null;
+  form_type: string;
+  slug: string;
+  is_active: boolean;
+  created_at: string;
+  settings: any;
+  journey_stage_id: string | null;
+}
+
+interface FormSubmission {
+  id: string;
+  respondent_name: string | null;
+  respondent_email: string | null;
+  answers: Record<string, any>;
+  created_at: string;
+  membership_id: string | null;
 }
 
 interface UploadedFile {
@@ -59,174 +70,134 @@ interface UploadedFile {
   size: number;
 }
 
-interface OnboardingResponse {
-  id: string;
-  membership_id: string;
-  created_at: string;
-  profile?: { full_name: string | null; email: string | null; avatar_url: string | null } | null;
-  responses: Record<string, any>;
-}
+type View = 'list' | 'editor';
 
 export default function OnboardingBuilder() {
   const { activeMembership, tenant } = useTenant();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /* ── state ── */
-  const [activeTab, setActiveTab] = useState<string>('editor');
-  const [freeText, setFreeText] = useState('');
+  // View state
+  const [view, setView] = useState<View>('list');
+  const [forms, setForms] = useState<FormRecord[]>([]);
+  const [isLoadingForms, setIsLoadingForms] = useState(true);
+
+  // Editor state
+  const [activeForm, setActiveForm] = useState<FormRecord | null>(null);
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [formTitle, setFormTitle] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('editor');
+
+  // AI state
   const [aiSuggestText, setAiSuggestText] = useState('');
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<FormQuestion[]>([]);
+  const [freeText, setFreeText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [questions, setQuestions] = useState<FormQuestion[]>([]);
-  const [formTitle, setFormTitle] = useState('Formulário de Onboarding');
-  const [formDescription, setFormDescription] = useState('');
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const [suggestions, setSuggestions] = useState<FormQuestion[]>([]);
 
-  // Responses tab
-  const [responses, setResponses] = useState<OnboardingResponse[]>([]);
-  const [isLoadingResponses, setIsLoadingResponses] = useState(false);
-  const [expandedResponse, setExpandedResponse] = useState<string | null>(null);
+  // Responses state
+  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
 
-  /* ── load existing questions ── */
+  /* ── load forms list ── */
   useEffect(() => {
-    if (!tenant?.id || hasLoaded) return;
-    loadExistingQuestions();
+    if (tenant?.id) loadForms();
   }, [tenant?.id]);
 
-  const loadExistingQuestions = async () => {
+  const loadForms = async () => {
     if (!tenant) return;
+    setIsLoadingForms(true);
     const { data } = await supabase
-      .from('behavioral_questions')
-      .select('id, question_text, question_type, options, order_index, is_required, is_active')
+      .from('tenant_forms')
+      .select('*')
       .eq('tenant_id', tenant.id)
-      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    setForms((data || []) as FormRecord[]);
+    setIsLoadingForms(false);
+  };
+
+  /* ── open form editor ── */
+  const openForm = async (form: FormRecord) => {
+    setActiveForm(form);
+    setFormTitle(form.title);
+    setFormDescription(form.description || '');
+    setIsActive(form.is_active);
+    setActiveTab('editor');
+    setSuggestions([]);
+
+    const { data } = await supabase
+      .from('form_questions')
+      .select('*')
+      .eq('form_id', form.id)
       .order('order_index', { ascending: true });
 
-    if (data && data.length > 0) {
-      setQuestions(data.map(q => ({
-        id: q.id,
-        question_text: q.question_text,
-        question_type: q.question_type || 'text',
-        options: (q.options as any[]) || [],
-        is_required: q.is_required ?? false,
-        order_index: q.order_index ?? 0,
-        section: 'custom',
-      })));
-    }
-    setHasLoaded(true);
+    setQuestions((data || []).map((q: any) => ({
+      id: q.id,
+      question_text: q.question_text,
+      question_type: q.question_type,
+      system_field_key: q.system_field_key,
+      options: q.options || [],
+      is_required: q.is_required,
+      order_index: q.order_index,
+      section: q.section || 'custom',
+    })));
+    setView('editor');
   };
 
-  /* ── file handling ── */
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    const newFiles: UploadedFile[] = [];
-    for (const file of Array.from(files)) {
-      try {
-        const text = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsText(file);
-        });
-        newFiles.push({ name: file.name, content: text, size: file.size });
-      } catch {
-        toast.error(`Erro ao ler ${file.name}`);
+  /* ── create new form ── */
+  const createForm = async (formType: 'onboarding' | 'custom') => {
+    if (!activeMembership || !tenant) return;
+
+    // Check if onboarding form already exists
+    if (formType === 'onboarding') {
+      const existing = forms.find(f => f.form_type === 'onboarding');
+      if (existing) {
+        openForm(existing);
+        return;
       }
     }
-    setUploadedFiles(prev => [...prev, ...newFiles]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
-  /* ── AI: full generation ── */
-  const generateForm = async () => {
-    if (!freeText.trim() && uploadedFiles.length === 0) {
-      toast.error('Envie pelo menos um documento ou cole um texto');
+    const slug = formType === 'onboarding'
+      ? `onboarding-${tenant.slug || tenant.id.slice(0, 8)}`
+      : `form-${Date.now().toString(36)}`;
+
+    const { data, error } = await supabase.from('tenant_forms').insert({
+      tenant_id: tenant.id,
+      owner_membership_id: activeMembership.id,
+      title: formType === 'onboarding' ? 'Formulário de Onboarding' : 'Novo Formulário',
+      form_type: formType,
+      slug,
+      is_active: true,
+    }).select().single();
+
+    if (error) {
+      toast.error('Erro ao criar formulário');
+      console.error(error);
       return;
     }
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-onboarding-form', {
-        body: {
-          freeText,
-          documents: uploadedFiles.map(f => ({ name: f.name, content: f.content })),
-          mentorContext: tenant?.name || '',
-          mode: 'full',
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.form) {
-        const customQs = (data.form.questions || [])
-          .filter((q: any) => q.section === 'custom')
-          .map((q: any, i: number) => ({
-            ...q,
-            id: `gen-${i}-${Date.now()}`,
-            order_index: questions.length + i,
-            section: 'custom',
-          }));
-        setQuestions(prev => [...prev, ...customQs]);
-        setFormTitle(data.form.form_title || formTitle);
-        setFormDescription(data.form.form_description || formDescription);
-        toast.success(`${customQs.length} perguntas geradas e adicionadas!`);
-        setFreeText('');
-        setUploadedFiles([]);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao gerar formulário');
-    } finally {
-      setIsGenerating(false);
+
+    if (data) {
+      await loadForms();
+      openForm(data as FormRecord);
+      toast.success('Formulário criado!');
     }
   };
 
-  /* ── AI: suggest fields ── */
-  const suggestFields = async () => {
-    if (!aiSuggestText.trim()) {
-      toast.error('Descreva o que quer perguntar');
-      return;
-    }
-    setIsSuggesting(true);
-    setSuggestions([]);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-onboarding-form', {
-        body: {
-          freeText: aiSuggestText,
-          mentorContext: tenant?.name || '',
-          mode: 'suggest',
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.suggestions) {
-        setSuggestions(data.suggestions.map((s: any, i: number) => ({
-          ...s,
-          id: `sug-${i}-${Date.now()}`,
-          order_index: i,
-          section: 'custom',
-          options: s.options || [],
-        })));
-        toast.success(`${data.suggestions.length} sugestões geradas!`);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao gerar sugestões');
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
-
-  const addSuggestion = (s: FormQuestion) => {
-    setQuestions(prev => [...prev, { ...s, id: `added-${Date.now()}-${Math.random()}`, order_index: prev.length }]);
-    setSuggestions(prev => prev.filter(x => x.id !== s.id));
-    toast.success('Pergunta adicionada!');
+  const deleteForm = async (formId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este formulário? Todas as perguntas e respostas serão perdidas.')) return;
+    await supabase.from('tenant_forms').delete().eq('id', formId);
+    setForms(prev => prev.filter(f => f.id !== formId));
+    toast.success('Formulário excluído');
   };
 
   /* ── question CRUD ── */
   const addManualQuestion = () => {
     setQuestions(prev => [...prev, {
-      id: `manual-${Date.now()}`,
+      id: `new-${Date.now()}`,
       question_text: '',
       question_type: 'text',
       options: [],
@@ -244,7 +215,7 @@ export default function OnboardingBuilder() {
     setQuestions(prev => prev.map(q => {
       if (q.id !== questionId) return q;
       const opts = [...q.options];
-      opts[optIndex] = { ...opts[optIndex], text };
+      opts[optIndex] = { text, value: text };
       return { ...q, options: opts };
     }));
   };
@@ -279,110 +250,167 @@ export default function OnboardingBuilder() {
     });
   };
 
-  /* ── save ── */
-  const saveFormToDatabase = async () => {
-    if (!activeMembership || !tenant) return;
+  /* ── save form ── */
+  const saveForm = async () => {
+    if (!activeForm || !activeMembership || !tenant) return;
     setIsSaving(true);
     try {
-      await supabase.from('behavioral_questions').delete().eq('tenant_id', tenant.id);
+      // Update form metadata
+      const { error: formError } = await supabase.from('tenant_forms')
+        .update({ title: formTitle, description: formDescription, is_active: isActive })
+        .eq('id', activeForm.id);
+      if (formError) throw formError;
 
-      for (const q of questions) {
-        if (!q.question_text.trim()) continue;
-        await supabase.from('behavioral_questions').insert({
-          owner_membership_id: activeMembership.id,
-          tenant_id: tenant.id,
+      // Delete existing questions
+      await supabase.from('form_questions').delete().eq('form_id', activeForm.id);
+
+      // Insert new questions
+      const validQuestions = questions.filter(q => q.question_text.trim());
+      if (validQuestions.length > 0) {
+        const { error: qError } = await supabase.from('form_questions').insert(
+          validQuestions.map((q, i) => ({
+            form_id: activeForm.id,
+            question_text: q.question_text,
+            question_type: q.question_type,
+            system_field_key: q.system_field_key || null,
+            options: q.options || [],
+            is_required: q.is_required,
+            order_index: i,
+            section: q.section || 'custom',
+          }))
+        );
+        if (qError) throw qError;
+      }
+
+      // Reload questions to get real IDs
+      const { data: savedQs } = await supabase
+        .from('form_questions')
+        .select('*')
+        .eq('form_id', activeForm.id)
+        .order('order_index');
+
+      if (savedQs) {
+        setQuestions(savedQs.map((q: any) => ({
+          id: q.id,
           question_text: q.question_text,
           question_type: q.question_type,
+          system_field_key: q.system_field_key,
           options: q.options || [],
-          order_index: q.order_index,
-          is_active: true,
           is_required: q.is_required,
-        });
+          order_index: q.order_index,
+          section: q.section || 'custom',
+        })));
       }
+
       toast.success('Formulário salvo com sucesso!');
     } catch (err: any) {
-      toast.error('Erro ao salvar: ' + err.message);
+      console.error('Save error:', err);
+      toast.error('Erro ao salvar: ' + (err.message || 'Erro desconhecido'));
     } finally {
       setIsSaving(false);
     }
   };
 
-  /* ── load responses ── */
-  const loadResponses = async () => {
-    if (!tenant) return;
-    setIsLoadingResponses(true);
+  /* ── AI suggest ── */
+  const suggestFields = async () => {
+    if (!aiSuggestText.trim()) return;
+    setIsSuggesting(true);
+    setSuggestions([]);
     try {
-      const { data } = await supabase
-        .from('behavioral_responses')
-        .select('id, membership_id, created_at, question_id, selected_option')
-        .eq('tenant_id', tenant.id)
-        .order('created_at', { ascending: false });
-
-      if (!data || data.length === 0) {
-        setResponses([]);
-        setIsLoadingResponses(false);
-        return;
+      const { data, error } = await supabase.functions.invoke('generate-onboarding-form', {
+        body: { freeText: aiSuggestText, mentorContext: tenant?.name || '', mode: 'suggest' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.suggestions) {
+        setSuggestions(data.suggestions.map((s: any, i: number) => ({
+          ...s, id: `sug-${i}-${Date.now()}`, order_index: i, section: 'custom', options: s.options || [],
+        })));
+        toast.success(`${data.suggestions.length} sugestões geradas!`);
       }
-
-      // Group by membership_id
-      const grouped: Record<string, { id: string; membership_id: string; created_at: string; responses: Record<string, any> }> = {};
-      for (const r of data) {
-        const mId = r.membership_id || 'unknown';
-        if (!grouped[mId]) {
-          grouped[mId] = { id: r.id, membership_id: mId, created_at: r.created_at || '', responses: {} };
-        }
-        grouped[mId].responses[r.question_id] = r.selected_option;
-        // Use latest created_at
-        if (r.created_at && r.created_at > grouped[mId].created_at) {
-          grouped[mId].created_at = r.created_at;
-        }
-      }
-
-      // Fetch profiles for these memberships
-      const membershipIds = Object.keys(grouped);
-      const { data: memberships } = await supabase
-        .from('memberships')
-        .select('id, user_id')
-        .in('id', membershipIds);
-
-      const userIds = (memberships || []).map(m => m.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, email, avatar_url')
-        .in('user_id', userIds);
-
-      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-      const membershipUserMap = new Map((memberships || []).map(m => [m.id, m.user_id]));
-
-      const result: OnboardingResponse[] = Object.values(grouped).map(g => ({
-        ...g,
-        profile: (() => {
-          const userId = membershipUserMap.get(g.membership_id);
-          return userId ? profileMap.get(userId) || null : null;
-        })(),
-      }));
-
-      setResponses(result);
-    } catch (err) {
-      console.error('Error loading responses:', err);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro');
     } finally {
-      setIsLoadingResponses(false);
+      setIsSuggesting(false);
     }
   };
 
-  useEffect(() => {
-    if (activeTab === 'responses' && tenant) {
-      loadResponses();
+  const addSuggestion = (s: FormQuestion) => {
+    setQuestions(prev => [...prev, { ...s, id: `added-${Date.now()}-${Math.random()}`, order_index: prev.length }]);
+    setSuggestions(prev => prev.filter(x => x.id !== s.id));
+    toast.success('Pergunta adicionada!');
+  };
+
+  /* ── AI full generation ── */
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      try {
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        setUploadedFiles(prev => [...prev, { name: file.name, content: text, size: file.size }]);
+      } catch { toast.error(`Erro ao ler ${file.name}`); }
     }
-  }, [activeTab, tenant?.id]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const generateForm = async () => {
+    if (!freeText.trim() && uploadedFiles.length === 0) return;
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-onboarding-form', {
+        body: {
+          freeText, documents: uploadedFiles.map(f => ({ name: f.name, content: f.content })),
+          mentorContext: tenant?.name || '', mode: 'full',
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.form) {
+        const customQs = (data.form.questions || [])
+          .filter((q: any) => q.section === 'custom')
+          .map((q: any, i: number) => ({
+            ...q, id: `gen-${i}-${Date.now()}`, order_index: questions.length + i, section: 'custom',
+          }));
+        setQuestions(prev => [...prev, ...customQs]);
+        toast.success(`${customQs.length} perguntas geradas!`);
+        setFreeText('');
+        setUploadedFiles([]);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  /* ── load submissions ── */
+  const loadSubmissions = async () => {
+    if (!activeForm) return;
+    setIsLoadingSubmissions(true);
+    const { data } = await supabase
+      .from('form_submissions')
+      .select('*')
+      .eq('form_id', activeForm.id)
+      .order('created_at', { ascending: false });
+    setSubmissions((data || []) as FormSubmission[]);
+    setIsLoadingSubmissions(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'responses' && activeForm) loadSubmissions();
+  }, [activeTab, activeForm?.id]);
 
   /* ── helpers ── */
-  const onboardingLink = activeMembership
-    ? `${window.location.origin}/onboarding?mentor=${activeMembership.id}`
-    : '';
+  const getFormLink = (form: FormRecord) => `${window.location.origin}/f/${form.slug}`;
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(onboardingLink);
+  const copyLink = (form: FormRecord) => {
+    navigator.clipboard.writeText(getFormLink(form));
     toast.success('Link copiado!');
   };
 
@@ -391,37 +419,169 @@ export default function OnboardingBuilder() {
     return q?.question_text || qId;
   };
 
-  /* ── render ── */
+  const hasOnboarding = forms.some(f => f.form_type === 'onboarding');
+
+  /* ════════════ RENDER ════════════ */
+
+  // ── LIST VIEW ──
+  if (view === 'list') {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 className="text-2xl font-display font-bold text-foreground">Formulários</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Crie formulários estilo Typeform para onboarding e pesquisas
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {!hasOnboarding && (
+              <Button onClick={() => createForm('onboarding')} variant="outline" size="sm">
+                <ClipboardList className="h-4 w-4 mr-1.5" /> Criar Onboarding
+              </Button>
+            )}
+            <Button onClick={() => createForm('custom')} size="sm">
+              <Plus className="h-4 w-4 mr-1.5" /> Novo Formulário
+            </Button>
+          </div>
+        </div>
+
+        {isLoadingForms && (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
+
+        {!isLoadingForms && forms.length === 0 && (
+          <Card className="glass-card">
+            <CardContent className="p-12 text-center space-y-4">
+              <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/30" />
+              <div>
+                <p className="text-lg font-medium text-foreground">Nenhum formulário ainda</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Crie seu primeiro formulário de onboarding ou pesquisa personalizada
+                </p>
+              </div>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={() => createForm('onboarding')} variant="outline">
+                  <ClipboardList className="h-4 w-4 mr-2" /> Formulário de Onboarding
+                </Button>
+                <Button onClick={() => createForm('custom')}>
+                  <Plus className="h-4 w-4 mr-2" /> Formulário Customizado
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid gap-3">
+          {forms.map(form => (
+            <Card
+              key={form.id}
+              className="glass-card hover:border-primary/30 transition-colors cursor-pointer"
+              onClick={() => openForm(form)}
+            >
+              <CardContent className="p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    form.form_type === 'onboarding' ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'
+                  }`}>
+                    {form.form_type === 'onboarding' ? <ClipboardList className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{form.title}</p>
+                      <Badge variant={form.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
+                        {form.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                      {form.form_type === 'onboarding' && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">Onboarding</Badge>
+                      )}
+                    </div>
+                    {form.description && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{form.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="ghost" size="icon" className="h-8 w-8"
+                    onClick={(e) => { e.stopPropagation(); copyLink(form); }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon" className="h-8 w-8"
+                    onClick={(e) => { e.stopPropagation(); window.open(getFormLink(form), '_blank'); }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                  {form.form_type !== 'onboarding' && (
+                    <Button
+                      variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                      onClick={(e) => { e.stopPropagation(); deleteForm(form.id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── EDITOR VIEW ──
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-display font-bold text-foreground">
-            Formulário de Onboarding
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monte seu formulário manualmente ou peça à IA para sugerir perguntas
-          </p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => { setView('list'); loadForms(); }}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <Input
+              value={formTitle}
+              onChange={e => setFormTitle(e.target.value)}
+              className="text-xl font-display font-bold border-none p-0 h-auto focus-visible:ring-0 bg-transparent"
+              placeholder="Título do formulário"
+            />
+            <Input
+              value={formDescription}
+              onChange={e => setFormDescription(e.target.value)}
+              className="text-sm text-muted-foreground border-none p-0 h-auto focus-visible:ring-0 bg-transparent mt-0.5"
+              placeholder="Descrição (opcional)"
+            />
+          </div>
         </div>
-        <Button size="sm" onClick={saveFormToDatabase} disabled={isSaving || questions.length === 0}>
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-          Salvar & Publicar
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Ativo</Label>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+          <Button onClick={saveForm} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Save className="h-4 w-4 mr-1.5" />}
+            Salvar
+          </Button>
+        </div>
       </div>
 
       {/* Link */}
-      {activeMembership && (
+      {activeForm && (
         <Card className="glass-card border-primary/20">
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <div className="flex items-center gap-3">
-              <ExternalLink className="h-4 w-4 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground mb-1">Link público do seu onboarding</p>
-                <code className="text-xs text-foreground/80 break-all">{onboardingLink}</code>
-              </div>
-              <Button variant="outline" size="sm" onClick={copyLink}>
+              <Globe className="h-4 w-4 text-primary shrink-0" />
+              <code className="text-xs text-foreground/80 break-all flex-1">{getFormLink(activeForm)}</code>
+              <Button variant="outline" size="sm" onClick={() => copyLink(activeForm)}>
                 <Copy className="h-3 w-3 mr-1" /> Copiar
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.open(getFormLink(activeForm), '_blank')}>
+                <Eye className="h-3 w-3 mr-1" /> Preview
               </Button>
             </div>
           </CardContent>
@@ -444,7 +604,6 @@ export default function OnboardingBuilder() {
 
         {/* ═══ EDITOR TAB ═══ */}
         <TabsContent value="editor" className="space-y-4 mt-4">
-          {/* Question list */}
           {questions.length === 0 && (
             <Card className="glass-card">
               <CardContent className="p-8 text-center space-y-3">
@@ -463,18 +622,12 @@ export default function OnboardingBuilder() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="flex flex-col gap-0.5">
-                      <button
-                        onClick={() => moveQuestion(q.id, 'up')}
-                        disabled={qi === 0}
-                        className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
-                      >
+                      <button onClick={() => moveQuestion(q.id, 'up')} disabled={qi === 0}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
                         <ChevronDown className="h-3 w-3 rotate-180" />
                       </button>
-                      <button
-                        onClick={() => moveQuestion(q.id, 'down')}
-                        disabled={qi === questions.length - 1}
-                        className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"
-                      >
+                      <button onClick={() => moveQuestion(q.id, 'down')} disabled={qi === questions.length - 1}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
                         <ChevronDown className="h-3 w-3" />
                       </button>
                     </div>
@@ -490,27 +643,17 @@ export default function OnboardingBuilder() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    <Select
-                      value={q.question_type}
-                      onValueChange={v => updateQuestion(q.id, 'question_type', v)}
-                    >
-                      <SelectTrigger className="h-8 w-[130px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={q.question_type} onValueChange={v => updateQuestion(q.id, 'question_type', v)}>
+                      <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {Object.entries(QUESTION_TYPE_LABELS)
-                          .filter(([k]) => k !== 'system_field')
-                          .map(([k, label]) => (
-                            <SelectItem key={k} value={k}>{label}</SelectItem>
-                          ))}
+                        {Object.entries(QUESTION_TYPE_LABELS).map(([k, label]) => (
+                          <SelectItem key={k} value={k}>{label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <div className="flex items-center gap-1">
                       <Label className="text-xs text-muted-foreground">Obrig.</Label>
-                      <Switch
-                        checked={q.is_required}
-                        onCheckedChange={v => updateQuestion(q.id, 'is_required', v)}
-                      />
+                      <Switch checked={q.is_required} onCheckedChange={v => updateQuestion(q.id, 'is_required', v)} />
                     </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeQuestion(q.id)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -518,7 +661,6 @@ export default function OnboardingBuilder() {
                   </div>
                 </div>
 
-                {/* Options for select/multiple_choice */}
                 {(q.question_type === 'select' || q.question_type === 'multiple_choice') && (
                   <div className="pl-8 space-y-1.5">
                     {(q.options || []).map((opt: any, oi: number) => (
@@ -540,7 +682,6 @@ export default function OnboardingBuilder() {
                   </div>
                 )}
 
-                {/* Type badge for special types */}
                 {['image', 'link', 'scale', 'yes_no'].includes(q.question_type) && (
                   <Badge variant="secondary" className="text-xs ml-8">
                     {QUESTION_TYPE_LABELS[q.question_type]}
@@ -557,7 +698,6 @@ export default function OnboardingBuilder() {
 
         {/* ═══ AI TAB ═══ */}
         <TabsContent value="ai" className="space-y-4 mt-4">
-          {/* AI Suggest */}
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -567,41 +707,28 @@ export default function OnboardingBuilder() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Descreva o que quer saber dos seus mentorados e a IA sugere perguntas prontas
+                Descreva o que quer saber e a IA sugere perguntas prontas
               </p>
               <Textarea
                 value={aiSuggestText}
                 onChange={e => setAiSuggestText(e.target.value)}
-                placeholder="Ex: Quero saber o nível de experiência em vendas, os canais de aquisição que usam, e os maiores desafios..."
+                placeholder="Ex: Quero saber o nível de experiência em vendas, os canais de aquisição que usam..."
                 className="min-h-[100px]"
               />
-              <Button
-                onClick={suggestFields}
-                disabled={isSuggesting || !aiSuggestText.trim()}
-                className="w-full"
-              >
-                {isSuggesting ? (
-                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Gerando sugestões...</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> Sugerir Perguntas</>
-                )}
+              <Button onClick={suggestFields} disabled={isSuggesting || !aiSuggestText.trim()} className="w-full">
+                {isSuggesting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Gerando...</> : <><Sparkles className="h-4 w-4 mr-2" /> Sugerir Perguntas</>}
               </Button>
-
-              {/* Suggestions list */}
               {suggestions.length > 0 && (
                 <div className="space-y-2 pt-2">
-                  <p className="text-xs text-muted-foreground font-medium">Sugestões da IA — clique para adicionar:</p>
+                  <p className="text-xs text-muted-foreground font-medium">Sugestões — clique para adicionar:</p>
                   {suggestions.map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => addSuggestion(s)}
-                      className="w-full text-left p-3 rounded-lg border border-border/50 bg-secondary/20 hover:bg-secondary/40 transition-colors space-y-1"
-                    >
+                    <button key={s.id} onClick={() => addSuggestion(s)}
+                      className="w-full text-left p-3 rounded-lg border border-border/50 bg-secondary/20 hover:bg-secondary/40 transition-colors space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-foreground">{s.question_text}</span>
                         <Badge variant="outline" className="text-[10px]">{QUESTION_TYPE_LABELS[s.question_type] || s.question_type}</Badge>
                       </div>
-                      {s.options && s.options.length > 0 && (
+                      {s.options?.length > 0 && (
                         <p className="text-xs text-muted-foreground">
                           Opções: {s.options.map((o: any) => typeof o === 'string' ? o : o.text).join(', ')}
                         </p>
@@ -614,31 +741,17 @@ export default function OnboardingBuilder() {
             </CardContent>
           </Card>
 
-          {/* Full AI generation from docs */}
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Upload className="h-4 w-4 text-primary" />
-                Gerar de Documentos
+                <Upload className="h-4 w-4 text-primary" /> Gerar de Documentos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Envie documentos e textos — a IA extrai perguntas e adiciona ao seu formulário
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".xlsx,.xls,.csv,.txt,.pdf,.doc,.docx"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                className="w-full h-20 border-dashed border-2"
-                onClick={() => fileInputRef.current?.click()}
-              >
+              <input ref={fileInputRef} type="file" multiple accept=".xlsx,.xls,.csv,.txt,.pdf,.doc,.docx"
+                onChange={handleFileUpload} className="hidden" />
+              <Button variant="outline" className="w-full h-20 border-dashed border-2"
+                onClick={() => fileInputRef.current?.click()}>
                 <div className="flex flex-col items-center gap-1">
                   <Upload className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Enviar arquivos</span>
@@ -650,29 +763,18 @@ export default function OnboardingBuilder() {
                     <div key={i} className="flex items-center gap-2 bg-secondary/50 rounded-lg p-2">
                       <FileText className="h-4 w-4 text-primary shrink-0" />
                       <span className="text-sm text-foreground truncate flex-1">{file.name}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setUploadedFiles(prev => prev.filter((_, ii) => ii !== i))}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6"
+                        onClick={() => setUploadedFiles(prev => prev.filter((_, ii) => ii !== i))}>
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-              <Textarea
-                value={freeText}
-                onChange={e => setFreeText(e.target.value)}
-                placeholder="Ou cole um texto aqui..."
-                className="min-h-[80px]"
-              />
-              <Button
-                onClick={generateForm}
-                disabled={isGenerating || (!freeText.trim() && uploadedFiles.length === 0)}
-                className="w-full gradient-gold text-primary-foreground"
-              >
-                {isGenerating ? (
-                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Gerando...</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> Gerar e Adicionar Perguntas</>
-                )}
+              <Textarea value={freeText} onChange={e => setFreeText(e.target.value)}
+                placeholder="Ou cole um texto aqui..." className="min-h-[80px]" />
+              <Button onClick={generateForm} disabled={isGenerating || (!freeText.trim() && uploadedFiles.length === 0)} className="w-full">
+                {isGenerating ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Gerando...</> : <><Sparkles className="h-4 w-4 mr-2" /> Gerar e Adicionar Perguntas</>}
               </Button>
             </CardContent>
           </Card>
@@ -680,29 +782,29 @@ export default function OnboardingBuilder() {
 
         {/* ═══ RESPONSES TAB ═══ */}
         <TabsContent value="responses" className="space-y-4 mt-4">
-          {isLoadingResponses && (
-            <div className="flex items-center justify-center py-12">
+          {isLoadingSubmissions && (
+            <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           )}
 
-          {!isLoadingResponses && responses.length === 0 && (
+          {!isLoadingSubmissions && submissions.length === 0 && (
             <Card className="glass-card">
               <CardContent className="p-8 text-center space-y-3">
                 <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/40" />
                 <p className="text-muted-foreground">Nenhuma resposta recebida ainda</p>
                 <p className="text-sm text-muted-foreground/60">
-                  Compartilhe o link do onboarding para receber respostas
+                  Compartilhe o link do formulário para receber respostas
                 </p>
               </CardContent>
             </Card>
           )}
 
-          {!isLoadingResponses && responses.map(r => (
-            <Card key={r.id} className="glass-card">
+          {!isLoadingSubmissions && submissions.map(sub => (
+            <Card key={sub.id} className="glass-card">
               <CardContent className="p-4">
                 <button
-                  onClick={() => setExpandedResponse(expandedResponse === r.id ? null : r.id)}
+                  onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}
                   className="w-full flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
@@ -711,24 +813,24 @@ export default function OnboardingBuilder() {
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-medium text-foreground">
-                        {r.profile?.full_name || 'Mentorado'}
+                        {sub.respondent_name || 'Respondente'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {r.profile?.email || r.membership_id.slice(0, 8)}
+                        {sub.respondent_email || '—'}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                      {new Date(sub.created_at).toLocaleDateString('pt-BR')}
                     </span>
-                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedResponse === r.id ? 'rotate-90' : ''}`} />
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSubmission === sub.id ? 'rotate-90' : ''}`} />
                   </div>
                 </button>
 
-                {expandedResponse === r.id && (
+                {expandedSubmission === sub.id && (
                   <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
-                    {Object.entries(r.responses).map(([qId, answer]) => (
+                    {Object.entries(sub.answers).map(([qId, answer]) => (
                       <div key={qId} className="space-y-1">
                         <p className="text-xs text-muted-foreground font-medium">{questionLabel(qId)}</p>
                         <p className="text-sm text-foreground bg-secondary/30 rounded-lg p-2">
@@ -738,17 +840,14 @@ export default function OnboardingBuilder() {
                         </p>
                       </div>
                     ))}
-                    {Object.keys(r.responses).length === 0 && (
-                      <p className="text-sm text-muted-foreground italic">Nenhuma resposta personalizada registrada</p>
-                    )}
                   </div>
                 )}
               </CardContent>
             </Card>
           ))}
 
-          {!isLoadingResponses && responses.length > 0 && (
-            <Button variant="outline" size="sm" onClick={loadResponses}>
+          {!isLoadingSubmissions && submissions.length > 0 && (
+            <Button variant="outline" size="sm" onClick={loadSubmissions}>
               <Loader2 className="h-3 w-3 mr-1" /> Atualizar
             </Button>
           )}
