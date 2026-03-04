@@ -341,7 +341,7 @@ function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchConfig = async () => {
       setLoading(true);
       const { data } = await supabase
         .from('tenant_whatsapp_config' as any)
@@ -353,7 +353,7 @@ function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
         setExistingId(d.id);
         setForm({
           ultramsg_instance_id: d.ultramsg_instance_id || '',
-          ultramsg_token: d.ultramsg_token || '',
+          ultramsg_token: '', // Never load token into form — it stays on server
           is_active: d.is_active || false,
           sender_name: d.sender_name || '',
         });
@@ -363,30 +363,38 @@ function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
       }
       setLoading(false);
     };
-    fetch();
+    fetchConfig();
   }, [tenantId]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Build update payload — only include token if user typed a new one
+      const payload: Record<string, any> = {
+        ultramsg_instance_id: form.ultramsg_instance_id || null,
+        is_active: form.is_active,
+        sender_name: form.sender_name || null,
+      };
+      // Only update token if a new value was entered
+      if (form.ultramsg_token.trim()) {
+        payload.ultramsg_token = form.ultramsg_token;
+      }
+
       if (existingId) {
         const { error } = await supabase
           .from('tenant_whatsapp_config' as any)
-          .update({
-            ultramsg_instance_id: form.ultramsg_instance_id || null,
-            ultramsg_token: form.ultramsg_token || null,
-            is_active: form.is_active,
-            sender_name: form.sender_name || null,
-          } as any)
+          .update(payload as any)
           .eq('id', existingId);
         if (error) throw error;
       } else {
+        if (!form.ultramsg_token.trim()) {
+          toast.error('Token é obrigatório para nova configuração');
+          setSaving(false);
+          return;
+        }
         const { error } = await supabase.from('tenant_whatsapp_config' as any).insert({
           tenant_id: tenantId,
-          ultramsg_instance_id: form.ultramsg_instance_id || null,
-          ultramsg_token: form.ultramsg_token || null,
-          is_active: form.is_active,
-          sender_name: form.sender_name || null,
+          ...payload,
         } as any);
         if (error) throw error;
       }
@@ -394,10 +402,12 @@ function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
       // Re-fetch to get the id
       const { data } = await supabase
         .from('tenant_whatsapp_config' as any)
-        .select('*')
+        .select('id')
         .eq('tenant_id', tenantId)
         .maybeSingle();
       if (data) setExistingId((data as any).id);
+      // Clear token field after save
+      setForm(f => ({ ...f, ultramsg_token: '' }));
     } catch (err: any) {
       toast.error('Erro ao salvar: ' + (err.message || 'Erro desconhecido'));
     } finally {
@@ -445,7 +455,7 @@ function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
             <Label>Token</Label>
             <Input
               type="password"
-              placeholder="Seu token UltraMsg"
+              placeholder={existingId ? "••••••••(salvo) — digite para substituir" : "Seu token UltraMsg"}
               value={form.ultramsg_token}
               onChange={(e) => setForm((f) => ({ ...f, ultramsg_token: e.target.value }))}
             />

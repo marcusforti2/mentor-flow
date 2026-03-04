@@ -4338,7 +4338,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      whatsapp_config_safe: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          sender_name: string | null
+          tenant_id: string | null
+          ultramsg_instance_id: string | null
+          ultramsg_token_masked: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          sender_name?: string | null
+          tenant_id?: string | null
+          ultramsg_instance_id?: string | null
+          ultramsg_token_masked?: never
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          sender_name?: string | null
+          tenant_id?: string | null
+          ultramsg_instance_id?: string | null
+          ultramsg_token_masked?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_whatsapp_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_receive_otp: {
