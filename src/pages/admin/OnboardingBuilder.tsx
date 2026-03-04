@@ -302,11 +302,30 @@ export default function OnboardingBuilder() {
     }
   };
 
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
   const deleteForm = async (formId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este formulário? Todas as perguntas e respostas serão perdidas.')) return;
-    await supabase.from('tenant_forms').delete().eq('id', formId);
-    setForms(prev => prev.filter(f => f.id !== formId));
-    toast.success('Formulário excluído');
+    if (pendingDeleteId !== formId) {
+      setPendingDeleteId(formId);
+      toast.info('Clique novamente no botão de excluir para confirmar');
+      setTimeout(() => setPendingDeleteId(null), 4000);
+      return;
+    }
+    setPendingDeleteId(null);
+    try {
+      const { error } = await supabase.from('tenant_forms').delete().eq('id', formId);
+      if (error) {
+        console.error('[deleteForm] Error:', error);
+        toast.error(`Erro ao excluir: ${error.message}`);
+        return;
+      }
+      setForms(prev => prev.filter(f => f.id !== formId));
+      if (tenant?.id) clearDraft(tenant.id);
+      toast.success('Formulário excluído');
+    } catch (err: any) {
+      console.error('[deleteForm] Exception:', err);
+      toast.error('Erro inesperado ao excluir formulário');
+    }
   };
 
   const toggleFormActive = async (formId: string, currentActive: boolean) => {
@@ -653,11 +672,14 @@ export default function OnboardingBuilder() {
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                   <Button
-                    variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                    variant={pendingDeleteId === form.id ? "destructive" : "ghost"}
+                    size={pendingDeleteId === form.id ? "sm" : "icon"}
+                    className={pendingDeleteId === form.id ? "h-8 text-xs" : "h-8 w-8 text-destructive"}
                     onClick={(e) => { e.stopPropagation(); deleteForm(form.id); }}
                     title="Excluir"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
+                    {pendingDeleteId === form.id && <span>Confirmar</span>}
                   </Button>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
