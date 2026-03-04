@@ -57,6 +57,7 @@ const PlaybookEditorPage = lazy(() => import("./pages/admin/PlaybookEditorPage")
 const MentoradoDetail = lazy(() => import("./pages/admin/MentoradoDetail"));
 const Automacoes = lazy(() => import("./pages/admin/Automacoes"));
 const Popups = lazy(() => import("./pages/admin/Popups"));
+const WhatsAppCampaigns = lazy(() => import("./pages/admin/WhatsAppCampaigns"));
 
 // Member Pages
 const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
@@ -172,6 +173,7 @@ const App = () => (
                     <Route path="playbooks/:playbookId" element={<PlaybookEditorPage />} />
                     <Route path="automacoes" element={<Automacoes />} />
                     <Route path="popups" element={<Popups />} />
+                    <Route path="whatsapp" element={<WhatsAppCampaigns />} />
                   </Route>
 
                   {/* Mentorado Routes */}

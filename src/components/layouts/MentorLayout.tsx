@@ -8,7 +8,7 @@ import { AlertsBell } from '@/components/admin/AlertsBell';
 import { AlertsPanel } from '@/components/admin/AlertsPanel';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare } from 'lucide-react';
+import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
  import {
    LayoutDashboard,
@@ -50,6 +50,7 @@ const menuItems: DockItem[] = [
     icon: Mail, label: 'Comunicação',
     children: [
       { icon: Mail, label: 'Emails', path: '/mentor/emails' },
+      { icon: MessageCircle, label: 'WhatsApp', path: '/mentor/whatsapp' },
       { icon: MessageSquare, label: 'Popups', path: '/mentor/popups' },
       { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
       { icon: Zap, label: 'Automações', path: '/mentor/automacoes' },
