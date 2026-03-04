@@ -72,41 +72,67 @@ interface UploadedFile {
 
 type View = 'list' | 'editor';
 
-const STORAGE_KEY = 'formbuilder_draft';
+type FormBuilderDraft = {
+  view: View;
+  activeForm: FormRecord | null;
+  questions: FormQuestion[];
+  formTitle: string;
+  formDescription: string;
+  isActive: boolean;
+  activeTab: string;
+  aiSuggestText: string;
+  suggestions: FormQuestion[];
+  freeText: string;
+};
 
-function saveDraft(data: Record<string, any>) {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
-}
-function loadDraft(): Record<string, any> | null {
+const LEGACY_STORAGE_KEY = 'formbuilder_draft';
+const getDraftKey = (tenantId: string) => `formbuilder_draft:${tenantId}`;
+
+function saveDraft(tenantId: string, data: FormBuilderDraft) {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+    sessionStorage.setItem(getDraftKey(tenantId), JSON.stringify(data));
+    sessionStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {}
 }
-function clearDraft() {
-  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+
+function loadDraft(tenantId: string): Partial<FormBuilderDraft> | null {
+  try {
+    const tenantRaw = sessionStorage.getItem(getDraftKey(tenantId));
+    if (tenantRaw) return JSON.parse(tenantRaw);
+
+    const legacyRaw = sessionStorage.getItem(LEGACY_STORAGE_KEY);
+    return legacyRaw ? JSON.parse(legacyRaw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft(tenantId: string) {
+  try {
+    sessionStorage.removeItem(getDraftKey(tenantId));
+    sessionStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {}
 }
 
 export default function OnboardingBuilder() {
   const { activeMembership, tenant } = useTenant();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Restore draft on mount
-  const draft = useRef(loadDraft());
+  const [hydratedDraftTenantId, setHydratedDraftTenantId] = useState<string | null>(null);
 
   // View state
-  const [view, setView] = useState<View>(draft.current?.view || 'list');
+  const [view, setView] = useState<View>('list');
   const [forms, setForms] = useState<FormRecord[]>([]);
   const [isLoadingForms, setIsLoadingForms] = useState(true);
 
   // Editor state
-  const [activeForm, setActiveForm] = useState<FormRecord | null>(draft.current?.activeForm || null);
-  const [questions, setQuestions] = useState<FormQuestion[]>(draft.current?.questions || []);
-  const [formTitle, setFormTitle] = useState(draft.current?.formTitle || '');
-  const [formDescription, setFormDescription] = useState(draft.current?.formDescription || '');
-  const [isActive, setIsActive] = useState(draft.current?.isActive ?? true);
+  const [activeForm, setActiveForm] = useState<FormRecord | null>(null);
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [formTitle, setFormTitle] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState(draft.current?.activeTab || 'editor');
+  const [activeTab, setActiveTab] = useState('editor');
 
   // AI state
   const [aiSuggestText, setAiSuggestText] = useState('');
@@ -121,14 +147,76 @@ export default function OnboardingBuilder() {
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!tenant?.id) {
+      setHydratedDraftTenantId(null);
+      return;
+    }
+
+    const draft = loadDraft(tenant.id);
+
+    if (draft) {
+      setView(draft.view ?? 'list');
+      setActiveForm((draft.activeForm as FormRecord | null) ?? null);
+      setQuestions(Array.isArray(draft.questions) ? (draft.questions as FormQuestion[]) : []);
+      setFormTitle(draft.formTitle ?? '');
+      setFormDescription(draft.formDescription ?? '');
+      setIsActive(draft.isActive ?? true);
+      setActiveTab(draft.activeTab ?? 'editor');
+      setAiSuggestText(draft.aiSuggestText ?? '');
+      setSuggestions(Array.isArray(draft.suggestions) ? (draft.suggestions as FormQuestion[]) : []);
+      setFreeText(draft.freeText ?? '');
+    } else {
+      setView('list');
+      setActiveForm(null);
+      setQuestions([]);
+      setFormTitle('');
+      setFormDescription('');
+      setIsActive(true);
+      setActiveTab('editor');
+      setAiSuggestText('');
+      setSuggestions([]);
+      setFreeText('');
+      setUploadedFiles([]);
+    }
+
+    setHydratedDraftTenantId(tenant.id);
+  }, [tenant?.id]);
+
   // Persist editor state to sessionStorage on changes
   useEffect(() => {
+    if (!tenant?.id || hydratedDraftTenantId !== tenant.id) return;
+
     if (view === 'editor') {
-      saveDraft({ view, activeForm, questions, formTitle, formDescription, isActive, activeTab });
+      saveDraft(tenant.id, {
+        view,
+        activeForm,
+        questions,
+        formTitle,
+        formDescription,
+        isActive,
+        activeTab,
+        aiSuggestText,
+        suggestions,
+        freeText,
+      });
     } else {
-      clearDraft();
+      clearDraft(tenant.id);
     }
-  }, [view, activeForm, questions, formTitle, formDescription, isActive, activeTab]);
+  }, [
+    tenant?.id,
+    hydratedDraftTenantId,
+    view,
+    activeForm,
+    questions,
+    formTitle,
+    formDescription,
+    isActive,
+    activeTab,
+    aiSuggestText,
+    suggestions,
+    freeText,
+  ]);
 
   /* ── load forms list ── */
   useEffect(() => {
@@ -340,7 +428,7 @@ export default function OnboardingBuilder() {
       }
 
       toast.success('Formulário salvo com sucesso!');
-      clearDraft();
+      clearDraft(tenant.id);
       await loadForms();
       setView('list');
     } catch (err: any) {
