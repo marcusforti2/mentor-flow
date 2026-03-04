@@ -111,15 +111,23 @@ export default function WhatsAppCampaigns() {
     const tenantId = activeMembership.tenant_id;
 
     try {
-      // Fetch config
+      // Fetch config via masked view (token is hidden)
       const { data: cfgData } = await supabase
-        .from("tenant_whatsapp_config" as any)
+        .from("whatsapp_config_safe" as any)
         .select("*")
         .eq("tenant_id", tenantId)
         .maybeSingle();
 
       if (cfgData) {
-        setConfig(cfgData as any);
+        const safe = cfgData as any;
+        setConfig({
+          id: safe.id,
+          tenant_id: safe.tenant_id,
+          ultramsg_instance_id: safe.ultramsg_instance_id,
+          ultramsg_token: safe.ultramsg_token_masked, // masked value
+          is_active: safe.is_active,
+          sender_name: safe.sender_name,
+        } as any);
       }
 
       // Fetch campaigns
