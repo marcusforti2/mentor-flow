@@ -222,7 +222,6 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
       className={cn(
         'floating-dock',
         position === 'left' && 'floating-dock-vertical',
-        collapsed && !isMobile && 'floating-dock-collapsed',
         collapsed && !isMobile && 'floating-dock-collapsed'
       )}
     >
