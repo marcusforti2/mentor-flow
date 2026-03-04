@@ -90,6 +90,8 @@ export default function WhatsAppCampaigns() {
     use_ai_personalization: true,
   });
   const [isSending, setIsSending] = useState(false);
+  const [isGeneratingMsg, setIsGeneratingMsg] = useState(false);
+  const [aiMsgObjective, setAiMsgObjective] = useState("");
 
   // Mentees for audience selection
   const [mentees, setMentees] = useState<Mentee[]>([]);
@@ -256,6 +258,41 @@ export default function WhatsAppCampaigns() {
       toast({ title: "Campanha removida" });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleGenerateCampaignMsg = async () => {
+    if (!aiMsgObjective.trim()) {
+      toast({ title: "Descreva o objetivo da mensagem", variant: "destructive" });
+      return;
+    }
+    setIsGeneratingMsg(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-whatsapp-flow", {
+        body: {
+          objective: aiMsgObjective,
+          target_audience: "mentorados",
+          tone: "motivacional e profissional",
+          num_steps: 1,
+          context: "Campanha de mensagem única de WhatsApp. A mensagem deve ser completa e impactante sozinha.",
+        },
+      });
+      if (error) throw error;
+      if (data?.flow) {
+        const msg = data.flow.steps?.[0]?.message_template || "";
+        const name = data.flow.name || "";
+        setNewCampaign(prev => ({
+          ...prev,
+          name: prev.name || name,
+          message_template: msg,
+        }));
+        setAiMsgObjective("");
+        toast({ title: "Mensagem gerada! ✨" });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar", description: err.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingMsg(false);
     }
   };
 
@@ -545,6 +582,33 @@ export default function WhatsAppCampaigns() {
                 onChange={(e) => setNewCampaign((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
+
+            {/* AI Message Generator */}
+            <Card className="border-emerald-500/30 bg-emerald-500/5">
+              <CardContent className="pt-4 pb-3 space-y-2">
+                <Label className="flex items-center gap-1.5 text-sm">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                  Gerar mensagem com IA
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ex: Parabenizar por resultados do mês, lembrar da próxima call..."
+                    value={aiMsgObjective}
+                    onChange={(e) => setAiMsgObjective(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                    onClick={handleGenerateCampaignMsg}
+                    disabled={isGeneratingMsg || !aiMsgObjective.trim()}
+                  >
+                    {isGeneratingMsg ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             <div className="space-y-2">
               <Label>Mensagem</Label>
