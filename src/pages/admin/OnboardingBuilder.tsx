@@ -652,15 +652,13 @@ export default function OnboardingBuilder() {
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
-                  {form.form_type !== 'onboarding' && (
-                    <Button
-                      variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                      onClick={(e) => { e.stopPropagation(); deleteForm(form.id); }}
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                    onClick={(e) => { e.stopPropagation(); deleteForm(form.id); }}
+                    title="Excluir"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardContent>
