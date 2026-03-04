@@ -117,78 +117,53 @@ const menuItems: DockItem[] = [
           </Tooltip>
         )}
        
-       {/* Floating Dock - only visible on dashboard */}
-       {isDashboard && <FloatingDock items={menuItems} position="left" />}
+       {/* Floating Dock - always visible as the only fixed element */}
+       <FloatingDock items={menuItems} position="left" />
  
-       {/* Back Header - visible on sub-pages */}
-       {!isDashboard && (
-          <header className="fixed left-0 right-0 z-40 h-14 md:h-16 flex items-center justify-between px-3 md:px-6 bg-background/80 backdrop-blur-md border-b border-border/50 top-0">
-            <div className="flex items-center gap-2 md:gap-4 min-w-0">
-              <Link to="/mentor" className="hidden md:block">
+       {/* Content area - everything scrolls */}
+       <div className={cn(
+         "min-h-screen md:ml-28 px-4 md:px-6 pb-24 md:pb-6",
+         isDashboard ? "pt-4" : "pt-4"
+       )}>
+         {/* Top bar - scrolls with content */}
+         <header className="flex items-center justify-between py-3 mb-4">
+           <div className="flex items-center gap-2 md:gap-4 min-w-0">
+             {!isDashboard && (
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 onClick={() => navigate('/mentor')}
+                 className="h-9 w-9 rounded-full hover:bg-primary/10 shrink-0"
+               >
+                 <ArrowLeft className="h-4 w-4" />
+               </Button>
+             )}
+             <Link to="/mentor">
                <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
              </Link>
-             <div className="hidden md:block h-6 w-px bg-border/50" />
-             <Button
-               variant="ghost"
-               size="icon"
-               onClick={() => navigate('/mentor')}
-               className="h-9 w-9 rounded-full hover:bg-primary/10 shrink-0"
-             >
-               <ArrowLeft className="h-4 w-4" />
-             </Button>
-             <h1 className="font-display font-semibold text-base md:text-lg text-foreground truncate">
-               {pageTitle}
-             </h1>
+             {!isDashboard && (
+               <>
+                 <div className="hidden md:block h-6 w-px bg-border/50" />
+                 <h1 className="font-display font-semibold text-base md:text-lg text-foreground truncate">
+                   {pageTitle}
+                 </h1>
+               </>
+             )}
            </div>
- 
-            <div className="flex items-center gap-3">
-              <AlertsBell onClick={() => setAlertsOpen(true)} />
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={profile?.avatar_url || ''} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {profile?.full_name?.charAt(0) || 'M'}
-                </AvatarFallback>
-              </Avatar>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={signOut}
-                    className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Sair</TooltipContent>
-              </Tooltip>
-            </div>
-         </header>
-       )}
- 
-       {/* Top bar with logo and user - only on dashboard */}
-       {isDashboard && (
-          <header className="fixed left-0 right-0 z-40 p-4 flex items-center justify-between top-0 bg-background/80 backdrop-blur-md border-b border-border/50">
-             <Link to="/mentor" className="md:ml-28">
-               <BrandLogo variant="full" size="sm" logoUrl={tenant?.logo_url || undefined} brandName={tenant?.name} />
-             </Link>
- 
-            <div className="flex items-center gap-3">
-              <AlertsBell onClick={() => setAlertsOpen(true)} />
-             <Tooltip>
-               <TooltipTrigger asChild>
-                 <Button
-                   variant="ghost"
-                   size="icon"
-                   className="glass-card h-10 w-10"
-                 >
-                   <Settings className="h-4 w-4" />
-                 </Button>
-               </TooltipTrigger>
-               <TooltipContent>Configurações</TooltipContent>
-             </Tooltip>
- 
-             <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
+
+           <div className="flex items-center gap-3">
+             <AlertsBell onClick={() => setAlertsOpen(true)} />
+             {isDashboard && (
+               <Tooltip>
+                 <TooltipTrigger asChild>
+                   <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                     <Settings className="h-4 w-4" />
+                   </Button>
+                 </TooltipTrigger>
+                 <TooltipContent>Configurações</TooltipContent>
+               </Tooltip>
+             )}
+             <div className="flex items-center gap-3 px-3 py-2 rounded-full">
                <Avatar className="h-8 w-8">
                  <AvatarImage src={profile?.avatar_url || ''} />
                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
@@ -214,16 +189,9 @@ const menuItems: DockItem[] = [
              </div>
            </div>
          </header>
-       )}
- 
-        <main className={cn(
-          "min-h-screen transition-all duration-300",
-          isDashboard 
-            ? "md:ml-28 pt-20 px-4 md:px-6 pb-24 md:pb-6" 
-            : "pt-14 md:pt-20 px-4 md:px-6 pb-24 md:pb-6"
-        )}>
-          <Outlet />
-       </main>
+
+         <Outlet />
+       </div>
  
         <SOSNotificationAlert />
         <AlertsPanel open={alertsOpen} onOpenChange={setAlertsOpen} />
