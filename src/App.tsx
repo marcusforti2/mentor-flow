@@ -24,6 +24,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ShowcasePage = lazy(() => import("./pages/ShowcasePage"));
 const TenantLandingPage = lazy(() => import("./pages/TenantLandingPage"));
 const PublicPlaybookPage = lazy(() => import("./pages/PublicPlaybookPage"));
+const PublicFormPage = lazy(() => import("./pages/PublicFormPage"));
 
 // Layouts (keep static - structural)
 import { MasterLayout } from "@/components/layouts/MasterLayout";
@@ -59,6 +60,7 @@ const MentoradoDetail = lazy(() => import("./pages/admin/MentoradoDetail"));
 const Automacoes = lazy(() => import("./pages/admin/Automacoes"));
 const Popups = lazy(() => import("./pages/admin/Popups"));
 const WhatsAppCampaigns = lazy(() => import("./pages/admin/WhatsAppCampaigns"));
+const FormulariosPage = lazy(() => import("./pages/admin/OnboardingBuilder"));
 
 
 // Member Pages
@@ -124,6 +126,7 @@ function AppRoutes() {
         <Route path="/showcase" element={<RouteFallback><ShowcasePage /></RouteFallback>} />
         <Route path="/t/:slug" element={<RouteFallback><TenantLandingPage /></RouteFallback>} />
         <Route path="/p/:slug" element={<RouteFallback><PublicPlaybookPage /></RouteFallback>} />
+        <Route path="/f/:slug" element={<RouteFallback><PublicFormPage /></RouteFallback>} />
         <Route
           path="/crm-mobile"
           element={
@@ -179,6 +182,7 @@ function AppRoutes() {
           <Route path="automacoes" element={<Automacoes />} />
           <Route path="popups" element={<Popups />} />
           <Route path="whatsapp" element={<WhatsAppCampaigns />} />
+          <Route path="formularios" element={<FormulariosPage />} />
         </Route>
 
         {/* Mentorado Routes */}

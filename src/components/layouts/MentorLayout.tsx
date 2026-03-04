@@ -9,7 +9,7 @@ import { AlertsPanel } from '@/components/admin/AlertsPanel';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle } from 'lucide-react';
+import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle, ClipboardList } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { PageSpinner } from '@/components/PageSpinner';
  import {
@@ -38,6 +38,7 @@ const menuItems: DockItem[] = [
       { icon: Users, label: 'Mentorados', path: '/mentor/mentorados' },
       { icon: Compass, label: 'Jornada CS', path: '/mentor/jornada-cs' },
       { icon: Target, label: 'CRM', path: '/mentor/crm' },
+      { icon: ClipboardList, label: 'Formulários', path: '/mentor/formularios' },
     ],
   },
   {

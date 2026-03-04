@@ -1591,6 +1591,111 @@ export type Database = {
           },
         ]
       }
+      form_questions: {
+        Row: {
+          created_at: string
+          form_id: string
+          id: string
+          is_required: boolean
+          options: Json | null
+          order_index: number
+          question_text: string
+          question_type: string
+          section: string | null
+          system_field_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          form_id: string
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+          order_index?: number
+          question_text: string
+          question_type?: string
+          section?: string | null
+          system_field_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          form_id?: string
+          id?: string
+          is_required?: boolean
+          options?: Json | null
+          order_index?: number
+          question_text?: string
+          question_type?: string
+          section?: string | null
+          system_field_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_questions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          answers: Json
+          created_at: string
+          form_id: string
+          id: string
+          membership_id: string | null
+          metadata: Json | null
+          respondent_email: string | null
+          respondent_name: string | null
+          tenant_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          form_id: string
+          id?: string
+          membership_id?: string | null
+          metadata?: Json | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          tenant_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          form_id?: string
+          id?: string
+          membership_id?: string | null
+          metadata?: Json | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       impersonation_logs: {
         Row: {
           admin_membership_id: string
@@ -3732,6 +3837,73 @@ export type Database = {
             foreignKeyName: "tenant_branding_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_forms: {
+        Row: {
+          created_at: string
+          description: string | null
+          form_type: string
+          id: string
+          is_active: boolean
+          journey_stage_id: string | null
+          owner_membership_id: string
+          settings: Json | null
+          slug: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          form_type?: string
+          id?: string
+          is_active?: boolean
+          journey_stage_id?: string | null
+          owner_membership_id: string
+          settings?: Json | null
+          slug?: string
+          tenant_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          form_type?: string
+          id?: string
+          is_active?: boolean
+          journey_stage_id?: string | null
+          owner_membership_id?: string
+          settings?: Json | null
+          slug?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_forms_journey_stage_id_fkey"
+            columns: ["journey_stage_id"]
+            isOneToOne: false
+            referencedRelation: "cs_journey_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_forms_owner_membership_id_fkey"
+            columns: ["owner_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_forms_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
