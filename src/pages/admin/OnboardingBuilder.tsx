@@ -194,6 +194,16 @@ export default function OnboardingBuilder() {
     toast.success('Formulário excluído');
   };
 
+  const toggleFormActive = async (formId: string, currentActive: boolean) => {
+    const { error } = await supabase.from('tenant_forms').update({ is_active: !currentActive }).eq('id', formId);
+    if (error) {
+      toast.error('Erro ao alterar status');
+      return;
+    }
+    setForms(prev => prev.map(f => f.id === formId ? { ...f, is_active: !currentActive } : f));
+    toast.success(!currentActive ? 'Formulário ativado' : 'Formulário desativado');
+  };
+
   /* ── question CRUD ── */
   const addManualQuestion = () => {
     setQuestions(prev => [...prev, {
@@ -303,6 +313,8 @@ export default function OnboardingBuilder() {
       }
 
       toast.success('Formulário salvo com sucesso!');
+      await loadForms();
+      setView('list');
     } catch (err: any) {
       console.error('Save error:', err);
       toast.error('Erro ao salvar: ' + (err.message || 'Erro desconhecido'));
@@ -504,15 +516,23 @@ export default function OnboardingBuilder() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    <Switch
+                      checked={form.is_active}
+                      onCheckedChange={() => toggleFormActive(form.id, form.is_active)}
+                    />
+                  </div>
                   <Button
                     variant="ghost" size="icon" className="h-8 w-8"
                     onClick={(e) => { e.stopPropagation(); copyLink(form); }}
+                    title="Copiar link"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost" size="icon" className="h-8 w-8"
                     onClick={(e) => { e.stopPropagation(); window.open(getFormLink(form), '_blank'); }}
+                    title="Abrir formulário"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
@@ -520,6 +540,7 @@ export default function OnboardingBuilder() {
                     <Button
                       variant="ghost" size="icon" className="h-8 w-8 text-destructive"
                       onClick={(e) => { e.stopPropagation(); deleteForm(form.id); }}
+                      title="Excluir"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
