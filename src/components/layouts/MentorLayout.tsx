@@ -117,13 +117,13 @@ const menuItems: DockItem[] = [
           </Tooltip>
         )}
        
-       {/* Floating Dock - always visible as the only fixed element */}
-       <FloatingDock items={menuItems} position="left" />
+       {/* Floating Dock - expanded on dashboard, collapsed on subpages */}
+       <FloatingDock items={menuItems} position="left" collapsed={!isDashboard} />
  
        {/* Content area - everything scrolls */}
        <div className={cn(
-         "min-h-screen md:ml-28 px-4 md:px-6 pb-24 md:pb-6",
-         isDashboard ? "pt-4" : "pt-4"
+         "min-h-screen px-4 md:px-6 pb-24 md:pb-6 pt-4",
+         isDashboard ? "md:ml-28" : "md:ml-6"
        )}>
          {/* Top bar - scrolls with content */}
          <header className="flex items-center justify-between py-3 mb-4">

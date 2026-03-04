@@ -19,11 +19,12 @@ export interface DockItem {
 interface FloatingDockProps {
   items: DockItem[];
   position?: 'left' | 'bottom';
+  collapsed?: boolean;
 }
 
 const MOBILE_VISIBLE_COUNT = 4;
 
-export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
+export function FloatingDock({ items, position = 'left', collapsed = false }: FloatingDockProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -218,7 +219,8 @@ export function FloatingDock({ items, position = 'left' }: FloatingDockProps) {
       <nav
         className={cn(
           'floating-dock',
-          position === 'left' && 'floating-dock-vertical'
+          position === 'left' && 'floating-dock-vertical',
+          collapsed && !isMobile && 'floating-dock-collapsed'
         )}
       >
         {visibleItems.map(item => renderDockItem(item))}
