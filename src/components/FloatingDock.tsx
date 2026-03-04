@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LucideIcon, MoreHorizontal, X, LayoutGrid } from 'lucide-react';
+import { LucideIcon, MoreHorizontal, X } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -29,7 +29,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
-  const [dockRevealed, setDockRevealed] = useState(false);
+  
   const panelRef = useRef<HTMLDivElement>(null);
   
 
@@ -216,12 +216,6 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
     );
   };
 
-  const toggleDock = () => setDockRevealed(prev => !prev);
-
-  // Close dock when navigating on subpages
-  useEffect(() => {
-    if (collapsed) setDockRevealed(false);
-  }, [location.pathname, collapsed]);
 
   const dockNav = (
     <nav
@@ -229,7 +223,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
         'floating-dock',
         position === 'left' && 'floating-dock-vertical',
         collapsed && !isMobile && 'floating-dock-collapsed',
-        collapsed && !isMobile && dockRevealed && 'dock-visible'
+        collapsed && !isMobile && 'floating-dock-collapsed'
       )}
     >
       {visibleItems.map(item => renderDockItem(item))}
@@ -249,26 +243,8 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
 
   return (
     <>
-      {/* Toggle button for collapsed dock */}
-      {collapsed && !isMobile && (
-        <button
-          onClick={toggleDock}
-          className={cn('dock-toggle-btn', dockRevealed && 'dock-active')}
-          aria-label="Abrir menu"
-        >
-          {dockRevealed ? <X className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
-        </button>
-      )}
-
-      {/* Backdrop to close dock when clicking outside */}
-      {collapsed && !isMobile && dockRevealed && (
-        <div
-          className="fixed inset-0 z-[49]"
-          onClick={() => setDockRevealed(false)}
-        />
-      )}
-
-      {dockNav}
+      {/* Hide dock entirely on subpages (desktop) — only show on dashboard */}
+      {!(collapsed && !isMobile) && dockNav}
 
       {/* Mobile overflow bottom sheet */}
       {moreOpen && hasOverflow && (
