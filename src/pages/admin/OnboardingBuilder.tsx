@@ -10,9 +10,29 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Loader2, Upload, Sparkles, Save, Trash2, GripVertical, Plus,
   FileText, X, Copy, ExternalLink, Eye,
 } from 'lucide-react';
+
+const QUESTION_TYPE_LABELS: Record<string, string> = {
+  text: 'Texto curto',
+  textarea: 'Texto longo',
+  select: 'Múltipla escolha',
+  multiple_choice: 'Múltipla escolha',
+  yes_no: 'Sim / Não',
+  scale: 'Escala (1-10)',
+  link: 'Link / URL',
+  image: 'Upload de Imagem',
+  disc: 'DISC',
+  system_field: 'Campo do sistema',
+};
 
 interface FormQuestion {
   id: string;
@@ -448,6 +468,23 @@ export default function OnboardingBuilder() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {q.section !== 'basic' && q.question_type !== 'system_field' && (
+                            <Select
+                              value={q.question_type}
+                              onValueChange={v => updateQuestion(q.id, 'question_type', v)}
+                            >
+                              <SelectTrigger className="h-8 w-[130px] text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(QUESTION_TYPE_LABELS)
+                                  .filter(([k]) => k !== 'system_field' && k !== 'disc')
+                                  .map(([k, label]) => (
+                                    <SelectItem key={k} value={k}>{label}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                           <div className="flex items-center gap-1">
                             <Label className="text-xs text-muted-foreground">Obrig.</Label>
                             <Switch
@@ -463,23 +500,58 @@ export default function OnboardingBuilder() {
                         </div>
                       </div>
 
-                      {/* Options for select/disc */}
-                      {(q.question_type === 'disc' || q.question_type === 'select') && q.options?.length > 0 && (
+                      {/* Options for select/disc/multiple_choice */}
+                      {(q.question_type === 'disc' || q.question_type === 'select' || q.question_type === 'multiple_choice') && (
                         <div className="pl-6 space-y-1.5">
-                          {q.options.map((opt: any, oi: number) => (
+                          {(q.options || []).map((opt: any, oi: number) => (
                             <div key={oi} className="flex items-center gap-2">
                               {q.question_type === 'disc' && (
                                 <span className="text-xs font-mono text-muted-foreground w-5">{opt.value}</span>
                               )}
                               <Input
-                                value={opt.text}
+                                value={typeof opt === 'string' ? opt : opt.text}
                                 onChange={e => updateOption(q.id, oi, e.target.value)}
-                                placeholder={`Opção ${opt.value || oi + 1}`}
+                                placeholder={`Opção ${oi + 1}`}
                                 className="h-8 text-xs flex-1"
                               />
+                              {q.question_type !== 'disc' && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                  if (!generatedForm) return;
+                                  setGeneratedForm({
+                                    ...generatedForm,
+                                    questions: generatedForm.questions.map(qq => {
+                                      if (qq.id !== q.id) return qq;
+                                      return { ...qq, options: qq.options.filter((_: any, ii: number) => ii !== oi) };
+                                    }),
+                                  });
+                                }}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
                           ))}
+                          {q.question_type !== 'disc' && (
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => {
+                              if (!generatedForm) return;
+                              setGeneratedForm({
+                                ...generatedForm,
+                                questions: generatedForm.questions.map(qq => {
+                                  if (qq.id !== q.id) return qq;
+                                  return { ...qq, options: [...(qq.options || []), { text: '', value: '' }] };
+                                }),
+                              });
+                            }}>
+                              <Plus className="h-3 w-3 mr-1" /> Opção
+                            </Button>
+                          )}
                         </div>
+                      )}
+
+                      {/* Type badge for non-editable types */}
+                      {['image', 'link', 'scale', 'yes_no'].includes(q.question_type) && (
+                        <Badge variant="secondary" className="text-xs ml-6">
+                          {QUESTION_TYPE_LABELS[q.question_type]}
+                        </Badge>
                       )}
 
                       {q.system_field_key && (

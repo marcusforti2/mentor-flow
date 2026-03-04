@@ -14,16 +14,11 @@ export function OnboardingProgressBar({
   const percentage = Math.min((current / total) * 100, 100);
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
-      <div className="h-2 w-32 md:w-48 bg-secondary rounded-full overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <span className="text-sm font-medium text-muted-foreground">
-        {Math.round(percentage)}%
-      </span>
+    <div className={cn("fixed top-0 left-0 right-0 z-[100] h-1", className)}>
+      <div
+        className="h-full bg-white transition-all duration-700 ease-out"
+        style={{ width: `${percentage}%` }}
+      />
     </div>
   );
 }
