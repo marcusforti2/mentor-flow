@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { useRouteChunkPrefetch } from "@/hooks/useRouteChunkPrefetch";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
@@ -94,12 +95,123 @@ function PageLoader() {
   );
 }
 
+function RouteFallback({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;
+}
+
+function AppRoutes() {
+  useRouteChunkPrefetch();
+
+  return (
+    <>
+      <ScrollToTop />
+      <ImpersonationBanner />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<RouteFallback><Auth /></RouteFallback>} />
+        <Route path="/onboarding" element={<RouteFallback><Onboarding /></RouteFallback>} />
+        <Route path="/setup" element={<Navigate to="/auth" replace />} />
+        <Route path="/showcase" element={<RouteFallback><ShowcasePage /></RouteFallback>} />
+        <Route path="/t/:slug" element={<RouteFallback><TenantLandingPage /></RouteFallback>} />
+        <Route path="/p/:slug" element={<RouteFallback><PublicPlaybookPage /></RouteFallback>} />
+        <Route
+          path="/crm-mobile"
+          element={
+            <RouteFallback>
+              <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor', 'mentee']}>
+                <CRMMobile />
+              </ProtectedRoute>
+            </RouteFallback>
+          }
+        />
+
+        {/* Master Admin Routes */}
+        <Route
+          path="/master"
+          element={
+            <ProtectedRoute allowedRoles={['master_admin']}>
+              <MasterLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<MasterDashboard />} />
+          <Route path="preview" element={<PreviewPage />} />
+          <Route path="tenants" element={<TenantsPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="config" element={<ConfigPage />} />
+          <Route path="branding" element={<BrandingPage />} />
+        </Route>
+
+        {/* Mentor Routes */}
+        <Route
+          path="/mentor"
+          element={
+            <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor']}>
+              <MentorLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminDashboard />} />
+          <Route path="jornada-cs" element={<JornadaCS />} />
+          <Route path="mentorados" element={<Mentorados />} />
+          <Route path="mentorados/:id" element={<MentoradoDetail />} />
+          <Route path="crm" element={<CRMMentorados />} />
+          <Route path="trilhas" element={<AdminTrilhas />} />
+          <Route path="calendario" element={<Calendario />} />
+          <Route path="sos" element={<AdminCentroSOS />} />
+          <Route path="emails" element={<EmailMarketing />} />
+          <Route path="relatorios" element={<Relatorios />} />
+          <Route path="perfil" element={<MentorPerfil />} />
+          <Route path="devtools" element={<DevTools />} />
+          <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
+          <Route path="playbooks" element={<PlaybooksHub />} />
+          <Route path="playbooks/:playbookId" element={<PlaybookEditorPage />} />
+          <Route path="automacoes" element={<Automacoes />} />
+          <Route path="popups" element={<Popups />} />
+          <Route path="whatsapp" element={<WhatsAppCampaigns />} />
+        </Route>
+
+        {/* Mentorado Routes */}
+        <Route
+          path="/mentorado"
+          element={
+            <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor', 'mentee']}>
+              <MentoradoLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<MemberDashboard />} />
+          <Route path="trilhas" element={<Trilhas />} />
+          <Route path="meu-crm" element={<MeuCRM />} />
+          <Route path="calendario" element={<CalendarioMembro />} />
+          <Route path="sos" element={<CentroSOS />} />
+          <Route path="perfil" element={<Perfil />} />
+          <Route path="ferramentas" element={<FerramentasIA />} />
+          <Route path="meus-arquivos" element={<MeusArquivos />} />
+          <Route path="tarefas" element={<MinhasTarefas />} />
+          <Route path="playbooks" element={<MentoradoPlaybooks />} />
+          <Route path="metricas" element={<MentoradoMetricas />} />
+        </Route>
+
+        {/* Legacy route redirect */}
+        <Route path="/dashboard" element={<Navigate to="/mentor" replace />} />
+        <Route path="/admin/*" element={<Navigate to="/mentor" replace />} />
+        <Route path="/app/*" element={<Navigate to="/mentorado" replace />} />
+
+        {/* Catch-all */}
+        <Route path="*" element={<RouteFallback><NotFound /></RouteFallback>} />
+      </Routes>
+    </>
+  );
 }
 
 const App = () => (
@@ -110,108 +222,12 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <TenantProvider>
-              <ScrollToTop />
-              <ImpersonationBanner />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/setup" element={<Navigate to="/auth" replace />} />
-                  <Route path="/showcase" element={<ShowcasePage />} />
-                  <Route path="/t/:slug" element={<TenantLandingPage />} />
-                  <Route path="/p/:slug" element={<PublicPlaybookPage />} />
-                  <Route path="/crm-mobile" element={
-                    <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor', 'mentee']}>
-                      <CRMMobile />
-                    </ProtectedRoute>
-                  } />
-
-                  {/* Master Admin Routes */}
-                  <Route
-                    path="/master"
-                    element={
-                      <ProtectedRoute allowedRoles={['master_admin']}>
-                        <MasterLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<MasterDashboard />} />
-                    <Route path="preview" element={<PreviewPage />} />
-                    <Route path="tenants" element={<TenantsPage />} />
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="config" element={<ConfigPage />} />
-                    <Route path="branding" element={<BrandingPage />} />
-                  </Route>
-
-                  {/* Mentor Routes */}
-                  <Route
-                    path="/mentor"
-                    element={
-                      <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor']}>
-                        <MentorLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<AdminDashboard />} />
-                    <Route path="jornada-cs" element={<JornadaCS />} />
-                    <Route path="mentorados" element={<Mentorados />} />
-                    <Route path="mentorados/:id" element={<MentoradoDetail />} />
-                    <Route path="crm" element={<CRMMentorados />} />
-                    <Route path="trilhas" element={<AdminTrilhas />} />
-                    <Route path="calendario" element={<Calendario />} />
-                    <Route path="sos" element={<AdminCentroSOS />} />
-                    <Route path="emails" element={<EmailMarketing />} />
-                    <Route path="relatorios" element={<Relatorios />} />
-                    <Route path="perfil" element={<MentorPerfil />} />
-                    <Route path="devtools" element={<DevTools />} />
-                    <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
-                    <Route path="playbooks" element={<PlaybooksHub />} />
-                    <Route path="playbooks/:playbookId" element={<PlaybookEditorPage />} />
-                    <Route path="automacoes" element={<Automacoes />} />
-                    <Route path="popups" element={<Popups />} />
-                    <Route path="whatsapp" element={<WhatsAppCampaigns />} />
-                  </Route>
-
-                  {/* Mentorado Routes */}
-                  <Route
-                    path="/mentorado"
-                    element={
-                      <ProtectedRoute allowedRoles={['master_admin', 'admin', 'ops', 'mentor', 'mentee']}>
-                        <MentoradoLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<MemberDashboard />} />
-                    <Route path="trilhas" element={<Trilhas />} />
-                    <Route path="meu-crm" element={<MeuCRM />} />
-                    <Route path="calendario" element={<CalendarioMembro />} />
-                    <Route path="sos" element={<CentroSOS />} />
-                    <Route path="perfil" element={<Perfil />} />
-                    <Route path="ferramentas" element={<FerramentasIA />} />
-                    <Route path="meus-arquivos" element={<MeusArquivos />} />
-                    <Route path="tarefas" element={<MinhasTarefas />} />
-                    <Route path="playbooks" element={<MentoradoPlaybooks />} />
-                    <Route path="metricas" element={<MentoradoMetricas />} />
-                  </Route>
-
-                  {/* Legacy route redirect */}
-                  <Route path="/dashboard" element={<Navigate to="/mentor" replace />} />
-                  <Route path="/admin/*" element={<Navigate to="/mentor" replace />} />
-                  <Route path="/app/*" element={<Navigate to="/mentorado" replace />} />
-
-                  {/* Catch-all */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-              
+            <AppRoutes />
           </TenantProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
-
 
 export default App;

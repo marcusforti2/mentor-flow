@@ -1,6 +1,6 @@
 import { useTilt } from '@/hooks/useTilt';
 import { cn } from '@/lib/utils';
-import { ReactNode, HTMLAttributes } from 'react';
+import { ReactNode, HTMLAttributes, forwardRef } from 'react';
 
 interface BentoCardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -10,14 +10,14 @@ interface BentoCardProps extends HTMLAttributes<HTMLDivElement> {
   tilt?: boolean;
 }
 
-export function BentoCard({ 
-  children, 
-  className, 
-  size = 'md', 
+export const BentoCard = forwardRef<HTMLDivElement, BentoCardProps>(function BentoCard({
+  children,
+  className,
+  size = 'md',
   glow = false,
-  tilt = true,
+  tilt = false,
   ...rest
-}: BentoCardProps) {
+}, ref) {
   const [tiltRef, tiltState] = useTilt({ max: 8, scale: 1.01 });
 
   const sizeClasses = {
@@ -60,11 +60,13 @@ export function BentoCard({
   }
 
   return (
-    <div className={cn(sizeClasses[size])} {...rest}>
+    <div ref={ref} className={cn(sizeClasses[size])} {...rest}>
       {cardContent}
     </div>
   );
-}
+});
+
+BentoCard.displayName = 'BentoCard';
 
 interface BentoGridProps {
   children: ReactNode;
