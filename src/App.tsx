@@ -143,7 +143,6 @@ const App = () => (
                     <Route path="users" element={<UsersPage />} />
                     <Route path="config" element={<ConfigPage />} />
                     <Route path="branding" element={<BrandingPage />} />
-                    
                   </Route>
 
                   {/* Mentor Routes */}
@@ -165,7 +164,6 @@ const App = () => (
                     <Route path="sos" element={<AdminCentroSOS />} />
                     <Route path="emails" element={<EmailMarketing />} />
                     <Route path="relatorios" element={<Relatorios />} />
-                    {/* Agendamento merged into calendario */}
                     <Route path="perfil" element={<MentorPerfil />} />
                     <Route path="devtools" element={<DevTools />} />
                     <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
@@ -194,7 +192,6 @@ const App = () => (
                     <Route path="ferramentas" element={<FerramentasIA />} />
                     <Route path="meus-arquivos" element={<MeusArquivos />} />
                     <Route path="tarefas" element={<MinhasTarefas />} />
-                    {/* Agendamento merged into calendario */}
                     <Route path="playbooks" element={<MentoradoPlaybooks />} />
                     <Route path="metricas" element={<MentoradoMetricas />} />
                   </Route>

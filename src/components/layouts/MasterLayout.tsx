@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/contexts/TenantContext';
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { FloatingDock } from '@/components/FloatingDock';
+import { PageSpinner } from '@/components/PageSpinner';
  
  const menuItems = [
    { icon: Shield, label: 'Dashboard', path: '/master' },
@@ -139,7 +141,9 @@ export function MasterLayout() {
            ? "ml-28 pt-20 px-6 pb-6" 
            : "pt-20 px-4 md:px-6 pb-6"
        )}>
-         <Outlet />
+          <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
        </main>
      </div>
    );

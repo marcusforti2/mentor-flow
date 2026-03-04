@@ -1,3 +1,4 @@
+ import { Suspense } from 'react';
  import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
  import { FloatingDock } from '@/components/FloatingDock';
  import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { useTenant } from '@/contexts/TenantContext';
+import { PageSpinner } from '@/components/PageSpinner';
 import {
   LayoutDashboard,
   BookOpen,
@@ -141,7 +143,9 @@ export function MemberLayout() {
           ? "ml-28 pt-20 px-6 pb-6" 
           : "pt-16 pb-6"
       )}>
-        <Outlet />
+        <Suspense fallback={<PageSpinner />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* WhatsApp Group Modal - First Login */}
