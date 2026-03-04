@@ -15,9 +15,11 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const { documents, freeText, mentorContext } = await req.json();
+    const { documents, freeText, mentorContext, mode } = await req.json();
 
-    // Build the content the AI will analyze
+    // mode = "full" (generate full form) or "suggest" (suggest fields from description)
+    const isFullMode = mode !== "suggest";
+
     let contentParts: string[] = [];
 
     if (freeText && freeText.trim()) {
@@ -37,7 +39,8 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Você é um especialista em criar formulários de onboarding para programas de mentoria de vendas e negócios.
+    const systemPrompt = isFullMode
+      ? `Você é um especialista em criar formulários de onboarding para programas de mentoria de vendas e negócios.
 
 Sua tarefa é analisar os documentos/textos fornecidos pelo mentor e gerar um formulário de onboarding completo.
 
@@ -56,11 +59,8 @@ O formulário deve conter:
 2. **Perguntas extraídas dos documentos** (baseadas no conteúdo enviado pelo mentor)
    - Adapte as perguntas ao contexto do mentor
    - Use os temas e terminologia dos documentos
-
-3. **10 perguntas de perfil comportamental DISC** (sempre incluir)
-   - Cada pergunta deve ter 4 opções mapeadas para D, I, S, C
-   - As perguntas devem ser contextualizadas para vendas e negócios
-   - Marque como question_type: "disc"
+   - Varie os tipos de pergunta: text, textarea, select, multiple_choice, yes_no, scale, link, image
+   - NÃO inclua perguntas DISC ou de perfil comportamental
 
 Retorne um JSON com esta estrutura EXATA:
 {
@@ -69,11 +69,12 @@ Retorne um JSON com esta estrutura EXATA:
   "questions": [
     {
       "question_text": "Texto da pergunta",
+      "question_type": "system_field" | "text" | "textarea" | "select" | "multiple_choice" | "yes_no" | "scale" | "link" | "image",
       "system_field_key": "full_name" (apenas para system_field),
-      "options": [{"text": "Opção", "value": "valor"}] (para select/multiple_choice/disc),
+      "options": [{"text": "Opção", "value": "valor"}] (para select/multiple_choice),
       "is_required": true/false,
       "order_index": 0,
-      "section": "basic" | "business" | "custom" | "behavioral"
+      "section": "basic" | "business" | "custom"
     }
   ]
 }
@@ -81,11 +82,29 @@ Retorne um JSON com esta estrutura EXATA:
 Regras:
 - Os campos do sistema vêm primeiro (section: "basic" e "business")
 - Depois as perguntas customizadas do mentor (section: "custom")
-- Por último as 10 perguntas DISC (section: "behavioral")
-- Todas as perguntas DISC devem ter exatamente 4 opções com values D, I, S, C
-- Retorne APENAS o JSON, sem markdown ou texto adicional`;
+- NÃO inclua perguntas DISC ou perfil comportamental
+- Retorne APENAS o JSON, sem markdown ou texto adicional`
+      : `Você é um especialista em criar formulários de onboarding para mentorias.
 
-    const userPrompt = `${mentorContext ? `Contexto do mentor: ${mentorContext}\n\n` : ""}Analise o seguinte conteúdo e gere o formulário de onboarding:\n\n${contentParts.join("\n\n")}`;
+O mentor descreveu o que quer perguntar. Sugira perguntas específicas e práticas baseadas na descrição.
+
+Varie os tipos: text, textarea, select, multiple_choice, yes_no, scale, link, image.
+
+Retorne um JSON:
+{
+  "suggestions": [
+    {
+      "question_text": "Texto da pergunta",
+      "question_type": "text" | "textarea" | "select" | "multiple_choice" | "yes_no" | "scale" | "link" | "image",
+      "options": [{"text": "Opção", "value": "valor"}] (quando aplicável),
+      "is_required": true/false
+    }
+  ]
+}
+
+NÃO inclua perguntas DISC. Retorne APENAS o JSON.`;
+
+    const userPrompt = `${mentorContext ? `Contexto do mentor: ${mentorContext}\n\n` : ""}${isFullMode ? "Analise o seguinte conteúdo e gere o formulário de onboarding" : "Sugira perguntas para o onboarding baseado nesta descrição"}:\n\n${contentParts.join("\n\n")}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -94,7 +113,7 @@ Regras:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3-pro-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -123,7 +142,6 @@ Regras:
     const aiData = await response.json();
     let content = aiData.choices?.[0]?.message?.content || "";
 
-    // Clean markdown fences if present
     content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 
     let parsed;
@@ -134,7 +152,7 @@ Regras:
       throw new Error("A IA retornou um formato inválido. Tente novamente.");
     }
 
-    return new Response(JSON.stringify({ success: true, form: parsed }), {
+    return new Response(JSON.stringify({ success: true, ...(isFullMode ? { form: parsed } : { suggestions: parsed.suggestions }) }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
