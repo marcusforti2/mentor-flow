@@ -503,13 +503,48 @@ const PublicFormPage = () => {
                 </div>
               )}
 
-              {/* OK button for text types */}
-              {['text', 'textarea', 'link'].includes(slide.question.question_type) && (
-                <button onClick={handleNext} disabled={isSubmitting} style={btnStyle}
-                  className="hover:opacity-90 active:scale-95 disabled:opacity-50">
-                  OK <CheckCircle className="h-4 w-4" />
-                </button>
-              )}
+              {/* Navigation buttons */}
+              <div className="flex items-center gap-3 pt-4">
+                {currentSlide > 1 && (
+                  <button onClick={handleBack}
+                    style={{
+                      background: hoverBg,
+                      color: textSecondary,
+                      fontWeight: 600,
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.875rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      border: `1px solid ${borderColor}`,
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s',
+                    }}
+                    className="hover:opacity-80 active:scale-95">
+                    <ArrowUp className="h-4 w-4 rotate-[-90deg]" /> Anterior
+                  </button>
+                )}
+                {currentSlide < totalSlides - 2 ? (
+                  <button onClick={handleNext} disabled={isSubmitting} style={btnStyle}
+                    className="hover:opacity-90 active:scale-95 disabled:opacity-50">
+                    Próxima <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button onClick={handleNext} disabled={isSubmitting} style={{
+                    ...btnStyle,
+                    padding: '0.85rem 2rem',
+                    fontSize: '1rem',
+                  }}
+                    className="hover:opacity-90 active:scale-95 disabled:opacity-50">
+                    {isSubmitting ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
+                    ) : (
+                      <><CheckCircle className="h-5 w-5" /> Finalizar</>
+                    )}
+                  </button>
+                )}
+              </div>
 
               {!slide.required && (
                 <p className="text-sm italic" style={{ color: textMuted }}>Opcional — pressione Enter para pular</p>
@@ -519,40 +554,41 @@ const PublicFormPage = () => {
 
           {/* ── COMPLETE ── */}
           {slide?.type === 'complete' && (
-            <div className="text-center space-y-8">
-              <div className="h-20 w-20 mx-auto rounded-full flex items-center justify-center"
-                style={{ background: `${primaryColor}20` }}>
-                <CheckCircle className="h-10 w-10" style={{ color: primaryColor }} />
+            <div className="text-center space-y-8 animate-in fade-in-0 zoom-in-95 duration-700">
+              {/* Robot emoji animation */}
+              <div className="relative mx-auto w-32 h-32">
+                <div className="absolute inset-0 rounded-full animate-ping opacity-20" style={{ background: primaryColor }} />
+                <div className="relative h-32 w-32 rounded-full flex items-center justify-center"
+                  style={{ background: `${primaryColor}15` }}>
+                  <span className="text-7xl animate-bounce" style={{ animationDuration: '2s' }}>🤖</span>
+                </div>
               </div>
-              <div className="space-y-3">
-                <h1 className="text-3xl md:text-4xl font-bold">Obrigado! 🎉</h1>
-                <p style={{ color: textMuted }} className="text-lg">Sua resposta foi enviada com sucesso.</p>
+              <div className="space-y-4">
+                <h1 className="text-3xl md:text-4xl font-bold">Formulário enviado!</h1>
+                <p style={{ color: textSecondary }} className="text-lg md:text-xl leading-relaxed max-w-md mx-auto">
+                  Nossos robôs já estão trabalhando nos seus dados. 
+                  Em breve, um <span className="font-semibold" style={{ color: primaryColor }}>ser humano de verdade</span> entrará em contato com você! 🚀
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-4" style={{ color: textMuted }}>
+                <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor }} />
+                <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor, animationDelay: '0.3s' }} />
+                <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor, animationDelay: '0.6s' }} />
+                <span className="text-sm ml-2">Processando...</span>
               </div>
               {branding?.logo_url && (
-                <img src={branding.logo_url} alt={branding.name} className="h-8 mx-auto object-contain opacity-50" />
+                <img src={branding.logo_url} alt={branding.name} className="h-8 mx-auto object-contain opacity-50 mt-6" />
               )}
             </div>
           )}
         </div>
       </main>
 
-      {/* Bottom nav */}
-      {slide?.type !== 'intro' && slide?.type !== 'complete' && (
-        <footer className="fixed bottom-0 left-0 right-0 p-4 flex items-center justify-between">
-          <div className="flex gap-2">
-            <button onClick={handleBack} disabled={currentSlide <= 0}
-              className="h-10 w-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-20"
-              style={{ background: hoverBg, color: textSecondary }}>
-              <ArrowUp className="h-4 w-4" />
-            </button>
-            <button onClick={handleNext} disabled={isSubmitting}
-              className="h-10 w-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-20"
-              style={{ background: hoverBg, color: textSecondary }}>
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
+      {/* Bottom hint */}
+      {slide?.type === 'question' && (
+        <footer className="fixed bottom-0 left-0 right-0 p-4 flex items-center justify-center">
           <p className="text-xs hidden md:block" style={{ color: textMuted }}>
-            Pressione <kbd className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: hoverBg, color: textSecondary }}>Enter ↵</kbd>
+            Pressione <kbd className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: hoverBg, color: textSecondary }}>Enter ↵</kbd> para avançar
           </p>
         </footer>
       )}
