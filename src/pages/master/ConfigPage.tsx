@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Settings, Palette, ToggleLeft, Key,
-  Save, Loader2, CheckCircle2, XCircle, Globe, Building2,
+  Save, Loader2, CheckCircle2, XCircle, Globe, Building2, MessageCircle,
 } from 'lucide-react';
 
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
@@ -327,6 +327,162 @@ function SecretsSection() {
   );
 }
 
+// ─── WhatsApp Config per Tenant ──────────────────────────────
+
+function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
+  const [form, setForm] = useState({
+    ultramsg_instance_id: '',
+    ultramsg_token: '',
+    is_active: false,
+    sender_name: '',
+  });
+  const [existingId, setExistingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('tenant_whatsapp_config' as any)
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (data) {
+        const d = data as any;
+        setExistingId(d.id);
+        setForm({
+          ultramsg_instance_id: d.ultramsg_instance_id || '',
+          ultramsg_token: d.ultramsg_token || '',
+          is_active: d.is_active || false,
+          sender_name: d.sender_name || '',
+        });
+      } else {
+        setExistingId(null);
+        setForm({ ultramsg_instance_id: '', ultramsg_token: '', is_active: false, sender_name: '' });
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, [tenantId]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (existingId) {
+        const { error } = await supabase
+          .from('tenant_whatsapp_config' as any)
+          .update({
+            ultramsg_instance_id: form.ultramsg_instance_id || null,
+            ultramsg_token: form.ultramsg_token || null,
+            is_active: form.is_active,
+            sender_name: form.sender_name || null,
+          } as any)
+          .eq('id', existingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('tenant_whatsapp_config' as any).insert({
+          tenant_id: tenantId,
+          ultramsg_instance_id: form.ultramsg_instance_id || null,
+          ultramsg_token: form.ultramsg_token || null,
+          is_active: form.is_active,
+          sender_name: form.sender_name || null,
+        } as any);
+        if (error) throw error;
+      }
+      toast.success('Configuração WhatsApp salva!');
+      // Re-fetch to get the id
+      const { data } = await supabase
+        .from('tenant_whatsapp_config' as any)
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (data) setExistingId((data as any).id);
+    } catch (err: any) {
+      toast.error('Erro ao salvar: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-emerald-500" />
+          Configuração WhatsApp (UltraMsg)
+        </CardTitle>
+        <CardDescription>
+          Configure as credenciais do UltraMsg para este tenant.
+          Acesse{' '}
+          <a href="https://ultramsg.com" target="_blank" rel="noopener" className="text-primary underline">
+            ultramsg.com
+          </a>{' '}
+          para criar sua conta.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Instance ID</Label>
+            <Input
+              placeholder="Ex: instance12345"
+              value={form.ultramsg_instance_id}
+              onChange={(e) => setForm((f) => ({ ...f, ultramsg_instance_id: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Token</Label>
+            <Input
+              type="password"
+              placeholder="Seu token UltraMsg"
+              value={form.ultramsg_token}
+              onChange={(e) => setForm((f) => ({ ...f, ultramsg_token: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Nome do Remetente (opcional)</Label>
+          <Input
+            placeholder="Ex: Mentoria Premium"
+            value={form.sender_name}
+            onChange={(e) => setForm((f) => ({ ...f, sender_name: e.target.value }))}
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.is_active}
+            onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))}
+          />
+          <Label>Integração ativa</Label>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar Configuração
+          </Button>
+          {existingId && form.is_active && (
+            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Ativa
+            </Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Config Page ────────────────────────────────────────
 
 export default function ConfigPage() {
@@ -396,6 +552,10 @@ export default function ConfigPage() {
               <Key className="h-4 w-4 mr-2" />
               Integrações
             </TabsTrigger>
+            <TabsTrigger value="whatsapp" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-500">
+              <MessageCircle className="h-4 w-4 mr-2" />
+              WhatsApp
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="platform" className="mt-6">
@@ -408,6 +568,10 @@ export default function ConfigPage() {
 
           <TabsContent value="secrets" className="mt-6">
             <SecretsSection />
+          </TabsContent>
+
+          <TabsContent value="whatsapp" className="mt-6">
+            <WhatsAppConfigSection tenantId={selectedTenantId} />
           </TabsContent>
         </Tabs>
       ) : (

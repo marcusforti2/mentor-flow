@@ -76,13 +76,7 @@ export default function WhatsAppCampaigns() {
 
   // Config
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
-  const [configForm, setConfigForm] = useState({
-    ultramsg_instance_id: "",
-    ultramsg_token: "",
-    is_active: false,
-    sender_name: "",
-  });
-  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  // Config form removed - managed by Master Admin
 
   // Campaigns
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -125,14 +119,7 @@ export default function WhatsAppCampaigns() {
         .maybeSingle();
 
       if (cfgData) {
-        const cfg = cfgData as any;
-        setConfig(cfg);
-        setConfigForm({
-          ultramsg_instance_id: cfg.ultramsg_instance_id || "",
-          ultramsg_token: cfg.ultramsg_token || "",
-          is_active: cfg.is_active || false,
-          sender_name: cfg.sender_name || "",
-        });
+        setConfig(cfgData as any);
       }
 
       // Fetch campaigns
@@ -185,40 +172,7 @@ export default function WhatsAppCampaigns() {
     }
   };
 
-  const handleSaveConfig = async () => {
-    if (!activeMembership) return;
-    setIsSavingConfig(true);
-    try {
-      const tenantId = activeMembership.tenant_id;
-      if (config?.id) {
-        const { error } = await supabase
-          .from("tenant_whatsapp_config" as any)
-          .update({
-            ultramsg_instance_id: configForm.ultramsg_instance_id || null,
-            ultramsg_token: configForm.ultramsg_token || null,
-            is_active: configForm.is_active,
-            sender_name: configForm.sender_name || null,
-          } as any)
-          .eq("id", config.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("tenant_whatsapp_config" as any).insert({
-          tenant_id: tenantId,
-          ultramsg_instance_id: configForm.ultramsg_instance_id || null,
-          ultramsg_token: configForm.ultramsg_token || null,
-          is_active: configForm.is_active,
-          sender_name: configForm.sender_name || null,
-        } as any);
-        if (error) throw error;
-      }
-      toast({ title: "Configuração salva! ✓" });
-      fetchAll();
-    } catch (err: any) {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
-    } finally {
-      setIsSavingConfig(false);
-    }
-  };
+  // handleSaveConfig removed - config is managed by Master Admin
 
   const handleCreateAndSendCampaign = async () => {
     if (!activeMembership || !newCampaign.name.trim() || !newCampaign.message_template.trim()) {
@@ -417,10 +371,6 @@ export default function WhatsAppCampaigns() {
             <Clock className="h-4 w-4" />
             Histórico
           </TabsTrigger>
-          <TabsTrigger value="config" className="gap-2">
-            <Settings className="h-4 w-4" />
-            Configuração
-          </TabsTrigger>
         </TabsList>
 
         {/* ======= CAMPAIGNS TAB ======= */}
@@ -431,14 +381,10 @@ export default function WhatsAppCampaigns() {
                 <div className="flex items-start gap-3">
                   <Settings className="h-5 w-5 text-amber-500 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-foreground">Configure o WhatsApp</h3>
+                    <h3 className="font-semibold text-foreground">WhatsApp não configurado</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Para enviar mensagens, configure suas credenciais UltraMsg na aba de <strong>Configuração</strong>.
+                      As credenciais do UltraMsg precisam ser configuradas pelo <strong>Administrador Master</strong> no painel de Configurações.
                     </p>
-                    <Button variant="outline" size="sm" className="mt-3" onClick={() => setActiveTab("config")}>
-                      <Settings className="h-4 w-4 mr-2" />
-                      Ir para Configuração
-                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -557,60 +503,7 @@ export default function WhatsAppCampaigns() {
         </TabsContent>
 
         {/* ======= CONFIG TAB ======= */}
-        <TabsContent value="config" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-emerald-500" />
-                Configuração UltraMsg
-              </CardTitle>
-              <CardDescription>
-                Configure suas credenciais do UltraMsg para enviar mensagens via WhatsApp.
-                Acesse <a href="https://ultramsg.com" target="_blank" rel="noopener" className="text-primary underline">ultramsg.com</a> para criar sua conta.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Instance ID</Label>
-                  <Input
-                    placeholder="Ex: instance12345"
-                    value={configForm.ultramsg_instance_id}
-                    onChange={(e) => setConfigForm((f) => ({ ...f, ultramsg_instance_id: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Token</Label>
-                  <Input
-                    type="password"
-                    placeholder="Seu token UltraMsg"
-                    value={configForm.ultramsg_token}
-                    onChange={(e) => setConfigForm((f) => ({ ...f, ultramsg_token: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Nome do Remetente (opcional)</Label>
-                <Input
-                  placeholder="Ex: Mentoria Premium"
-                  value={configForm.sender_name}
-                  onChange={(e) => setConfigForm((f) => ({ ...f, sender_name: e.target.value }))}
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={configForm.is_active}
-                  onCheckedChange={(v) => setConfigForm((f) => ({ ...f, is_active: v }))}
-                />
-                <Label>Integração ativa</Label>
-              </div>
-              <Button onClick={handleSaveConfig} disabled={isSavingConfig}>
-                {isSavingConfig ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Salvar Configuração
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Config tab removed - managed by Master Admin */}
       </Tabs>
 
       {/* ======= NEW CAMPAIGN DIALOG ======= */}
