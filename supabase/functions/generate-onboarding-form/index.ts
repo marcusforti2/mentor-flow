@@ -69,9 +69,8 @@ Retorne um JSON com esta estrutura EXATA:
   "questions": [
     {
       "question_text": "Texto da pergunta",
-      "question_type": "system_field" | "text" | "textarea" | "select" | "disc",
       "system_field_key": "full_name" (apenas para system_field),
-      "options": [{"text": "Opção", "value": "valor"}] (para select/disc),
+      "options": [{"text": "Opção", "value": "valor"}] (para select/multiple_choice/disc),
       "is_required": true/false,
       "order_index": 0,
       "section": "basic" | "business" | "custom" | "behavioral"
