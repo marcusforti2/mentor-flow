@@ -102,12 +102,19 @@ export function MenteeShowcaseEditor({
   };
 
   const uploadBase64ToStorage = async (base64: string): Promise<string> => {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      throw new Error('Sessão inválida. Faça login novamente.');
+    }
+
     const res = await fetch(base64);
     const blob = await res.blob();
     const ext = blob.type.includes('png') ? 'png' : 'jpg';
-    const path = `showcase/${membershipId}/portrait-${Date.now()}.${ext}`;
+    // RLS do bucket avatars exige que a primeira pasta seja o auth.uid()
+    const path = `${authData.user.id}/showcase/${membershipId}/portrait-${Date.now()}.${ext}`;
+
     const { error } = await supabase.storage.from('avatars').upload(path, blob, {
-      contentType: blob.type,
+      contentType: blob.type || 'image/jpeg',
       upsert: true,
     });
     if (error) throw error;
