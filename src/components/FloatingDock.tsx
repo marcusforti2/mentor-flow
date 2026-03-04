@@ -256,7 +256,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
           className={cn('dock-toggle-btn', dockRevealed && 'dock-active')}
           aria-label="Abrir menu"
         >
-          {dockRevealed ? <X className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+          {dockRevealed ? <X className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
         </button>
       )}
 

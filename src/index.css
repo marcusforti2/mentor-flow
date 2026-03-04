@@ -387,18 +387,18 @@
   @media (min-width: 768px) {
     .dock-toggle-btn {
       position: fixed;
-      left: 1rem;
-      top: 5.5rem;
+      left: 0.5rem;
+      top: 3.25rem;
       z-index: 51;
-      width: 2.25rem;
-      height: 2.25rem;
+      width: 1.75rem;
+      height: 1.75rem;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: hsl(var(--primary) / 0.15);
-      border: 1px solid hsl(var(--primary) / 0.3);
-      color: hsl(var(--primary));
+      background: hsl(var(--muted) / 0.6);
+      border: 1px solid hsl(var(--border) / 0.4);
+      color: hsl(var(--muted-foreground));
       cursor: pointer;
       backdrop-filter: blur(12px);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -406,15 +406,17 @@
     }
 
     .dock-toggle-btn:hover {
-      background: hsl(var(--primary) / 0.25);
-      transform: scale(1.1);
+      background: hsl(var(--primary) / 0.2);
+      color: hsl(var(--primary));
+      transform: scale(1.15);
       animation: none;
     }
 
     .dock-toggle-btn.dock-active {
       animation: none;
-      background: hsl(var(--primary) / 0.3);
-      box-shadow: 0 0 12px hsl(var(--primary) / 0.3);
+      background: hsl(var(--primary) / 0.25);
+      color: hsl(var(--primary));
+      box-shadow: 0 0 8px hsl(var(--primary) / 0.2);
     }
 
     @keyframes dock-pulse {
