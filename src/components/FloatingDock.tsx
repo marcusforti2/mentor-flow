@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LucideIcon, MoreHorizontal, X } from 'lucide-react';
+import { LucideIcon, MoreHorizontal, X, LayoutGrid } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -31,7 +31,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [dockRevealed, setDockRevealed] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
 
   // Close expanded group on outside click
   useEffect(() => {
@@ -216,14 +216,12 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
     );
   };
 
-  const handleWrapperEnter = () => {
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    setDockRevealed(true);
-  };
+  const toggleDock = () => setDockRevealed(prev => !prev);
 
-  const handleWrapperLeave = () => {
-    hideTimeoutRef.current = setTimeout(() => setDockRevealed(false), 300);
-  };
+  // Close dock when navigating on subpages
+  useEffect(() => {
+    if (collapsed) setDockRevealed(false);
+  }, [location.pathname, collapsed]);
 
   const dockNav = (
     <nav
@@ -233,8 +231,6 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
         collapsed && !isMobile && 'floating-dock-collapsed',
         collapsed && !isMobile && dockRevealed && 'dock-visible'
       )}
-      onMouseEnter={collapsed ? handleWrapperEnter : undefined}
-      onMouseLeave={collapsed ? handleWrapperLeave : undefined}
     >
       {visibleItems.map(item => renderDockItem(item))}
 
@@ -253,17 +249,26 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
 
   return (
     <>
-      {collapsed && !isMobile ? (
-        <div
-          className={cn('dock-hover-wrapper', dockRevealed && 'dock-revealed')}
-          onMouseEnter={handleWrapperEnter}
-          onMouseLeave={handleWrapperLeave}
+      {/* Toggle button for collapsed dock */}
+      {collapsed && !isMobile && (
+        <button
+          onClick={toggleDock}
+          className={cn('dock-toggle-btn', dockRevealed && 'dock-active')}
+          aria-label="Abrir menu"
         >
-          {dockNav}
-        </div>
-      ) : (
-        dockNav
+          {dockRevealed ? <X className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
+        </button>
       )}
+
+      {/* Backdrop to close dock when clicking outside */}
+      {collapsed && !isMobile && dockRevealed && (
+        <div
+          className="fixed inset-0 z-[49]"
+          onClick={() => setDockRevealed(false)}
+        />
+      )}
+
+      {dockNav}
 
       {/* Mobile overflow bottom sheet */}
       {moreOpen && hasOverflow && (
