@@ -1018,9 +1018,33 @@ export default function OnboardingBuilder() {
                       className="h-8 text-xs gap-1"
                       onClick={(e) => {
                         e.stopPropagation();
+                        const fieldMap: Record<string, string> = {};
+                        questions.forEach(q => {
+                          if (q.system_field_key && sub.answers[q.id] != null) {
+                            const val = typeof sub.answers[q.id] === 'object'
+                              ? (sub.answers[q.id] as any).text || String(sub.answers[q.id])
+                              : String(sub.answers[q.id]);
+                            fieldMap[q.system_field_key] = val;
+                          }
+                        });
+                        const extraAnswers: string[] = [];
+                        questions.forEach(q => {
+                          if (!q.system_field_key && sub.answers[q.id] != null) {
+                            const val = typeof sub.answers[q.id] === 'object'
+                              ? (sub.answers[q.id] as any).text || JSON.stringify(sub.answers[q.id])
+                              : String(sub.answers[q.id]);
+                            extraAnswers.push(`${q.question_text}: ${val}`);
+                          }
+                        });
                         setCreateMenteeData({
-                          fullName: sub.respondent_name || undefined,
-                          email: sub.respondent_email || undefined,
+                          fullName: fieldMap['full_name'] || sub.respondent_name || undefined,
+                          email: fieldMap['email'] || sub.respondent_email || undefined,
+                          phone: fieldMap['phone'] || fieldMap['whatsapp'] || undefined,
+                          businessName: fieldMap['business_name'] || fieldMap['company'] || undefined,
+                          instagram: fieldMap['instagram'] || undefined,
+                          linkedin: fieldMap['linkedin'] || undefined,
+                          website: fieldMap['website'] || undefined,
+                          notes: extraAnswers.length > 0 ? extraAnswers.join('\n') : undefined,
                         });
                         setCreateMenteeOpen(true);
                       }}
