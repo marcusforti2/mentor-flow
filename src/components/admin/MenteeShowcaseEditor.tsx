@@ -127,15 +127,30 @@ export function MenteeShowcaseEditor({
         photoUrl = await uploadBase64ToStorage(originalPhoto);
       }
 
-      const { error } = await supabase
+      // Try update first
+      const { data: updated, error: updateError } = await supabase
         .from('mentee_profiles')
         .update({
           showcase_photo_url: photoUrl,
           showcase_bio: showcaseBio.trim() || null,
-        } as any)
-        .eq('membership_id', membershipId);
+        })
+        .eq('membership_id', membershipId)
+        .select();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // If no row was updated, the mentee_profile doesn't exist yet — create it
+      if (!updated || updated.length === 0) {
+        const { error: insertError } = await supabase
+          .from('mentee_profiles')
+          .insert({
+            membership_id: membershipId,
+            showcase_photo_url: photoUrl,
+            showcase_bio: showcaseBio.trim() || null,
+          });
+
+        if (insertError) throw insertError;
+      }
 
       setSavedPhoto(photoUrl);
       setOriginalPhoto(null);
