@@ -72,23 +72,41 @@ interface UploadedFile {
 
 type View = 'list' | 'editor';
 
+const STORAGE_KEY = 'formbuilder_draft';
+
+function saveDraft(data: Record<string, any>) {
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+function loadDraft(): Record<string, any> | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function clearDraft() {
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
 export default function OnboardingBuilder() {
   const { activeMembership, tenant } = useTenant();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Restore draft on mount
+  const draft = useRef(loadDraft());
+
   // View state
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>(draft.current?.view || 'list');
   const [forms, setForms] = useState<FormRecord[]>([]);
   const [isLoadingForms, setIsLoadingForms] = useState(true);
 
   // Editor state
-  const [activeForm, setActiveForm] = useState<FormRecord | null>(null);
-  const [questions, setQuestions] = useState<FormQuestion[]>([]);
-  const [formTitle, setFormTitle] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [activeForm, setActiveForm] = useState<FormRecord | null>(draft.current?.activeForm || null);
+  const [questions, setQuestions] = useState<FormQuestion[]>(draft.current?.questions || []);
+  const [formTitle, setFormTitle] = useState(draft.current?.formTitle || '');
+  const [formDescription, setFormDescription] = useState(draft.current?.formDescription || '');
+  const [isActive, setIsActive] = useState(draft.current?.isActive ?? true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('editor');
+  const [activeTab, setActiveTab] = useState(draft.current?.activeTab || 'editor');
 
   // AI state
   const [aiSuggestText, setAiSuggestText] = useState('');
@@ -102,6 +120,15 @@ export default function OnboardingBuilder() {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
+
+  // Persist editor state to sessionStorage on changes
+  useEffect(() => {
+    if (view === 'editor') {
+      saveDraft({ view, activeForm, questions, formTitle, formDescription, isActive, activeTab });
+    } else {
+      clearDraft();
+    }
+  }, [view, activeForm, questions, formTitle, formDescription, isActive, activeTab]);
 
   /* ── load forms list ── */
   useEffect(() => {
@@ -313,6 +340,7 @@ export default function OnboardingBuilder() {
       }
 
       toast.success('Formulário salvo com sucesso!');
+      clearDraft();
       await loadForms();
       setView('list');
     } catch (err: any) {
