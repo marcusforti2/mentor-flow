@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock, type DockItem } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
+import { PageSpinner } from '@/components/PageSpinner';
 import {
   LayoutDashboard,
   BookOpen,
@@ -211,7 +213,9 @@ const menuItems: DockItem[] = [
             ? "md:ml-28 pt-20 px-4 md:px-6 pb-24 md:pb-6" 
             : "pt-14 md:pt-16 pb-24 md:pb-6"
         )}>
-         <Outlet />
+          <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
        </main>
  
        {!isImpersonating && <TenantPopupRenderer />}

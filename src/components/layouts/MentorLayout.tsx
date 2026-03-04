@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock, type DockItem } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
+import { PageSpinner } from '@/components/PageSpinner';
  import {
    LayoutDashboard,
    Users,
@@ -190,7 +191,9 @@ const menuItems: DockItem[] = [
            </div>
          </header>
 
-         <Outlet />
+          <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
        </div>
  
         <SOSNotificationAlert />
