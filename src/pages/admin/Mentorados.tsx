@@ -23,7 +23,7 @@ import {
   Users, UserCheck, Search, CheckCircle, Loader2, Mail, Plus,
   FileUp, Filter, TrendingUp, ChevronRight, Building2, ClipboardList
 } from "lucide-react";
-import Formularios from "./Formularios";
+import OnboardingBuilder from "./OnboardingBuilder";
 import { MentoradoUploadModal } from "@/components/admin/MentoradoUploadModal";
 import { CreateMenteeModal } from "@/components/admin/CreateMenteeModal";
 
@@ -152,7 +152,12 @@ const Mentorados = () => {
   if (showFormEditor && activeMembership) {
     return (
       <div className="max-w-[1200px] mx-auto">
-        <Formularios mentorId={activeMembership.id} onBack={() => setShowFormEditor(false)} />
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={() => setShowFormEditor(false)}>
+            ← Voltar para Mentorados
+          </Button>
+        </div>
+        <OnboardingBuilder />
       </div>
     );
   }
