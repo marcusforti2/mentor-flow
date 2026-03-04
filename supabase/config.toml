@@ -124,3 +124,6 @@ verify_jwt = false
 
 [functions.generate-onboarding-form]
 verify_jwt = false
+
+[functions.generate-whatsapp-flow]
+verify_jwt = false

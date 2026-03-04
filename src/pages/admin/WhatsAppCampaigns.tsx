@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+const WhatsAppAutomationTab = lazy(() => import("@/components/whatsapp/WhatsAppAutomationTab").then(m => ({ default: m.WhatsAppAutomationTab })));
 
 interface WhatsAppConfig {
   id: string;
@@ -375,6 +376,10 @@ export default function WhatsAppCampaigns() {
             <MessageCircle className="h-4 w-4" />
             Campanhas
           </TabsTrigger>
+          <TabsTrigger value="automations" className="gap-2">
+            <Zap className="h-4 w-4" />
+            Automações IA
+          </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <Clock className="h-4 w-4" />
             Histórico
@@ -510,8 +515,12 @@ export default function WhatsAppCampaigns() {
           )}
         </TabsContent>
 
-        {/* ======= CONFIG TAB ======= */}
-        {/* Config tab removed - managed by Master Admin */}
+        {/* ======= AUTOMATIONS TAB ======= */}
+        <TabsContent value="automations">
+          <Suspense fallback={<div className="flex items-center justify-center h-32"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <WhatsAppAutomationTab />
+          </Suspense>
+        </TabsContent>
       </Tabs>
 
       {/* ======= NEW CAMPAIGN DIALOG ======= */}
