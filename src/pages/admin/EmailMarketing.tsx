@@ -41,8 +41,9 @@ import {
   XCircle,
   Send,
 } from "lucide-react";
-import FlowEditor from "@/components/email/FlowEditor";
-import TemplateEditor from "@/components/email/TemplateEditor";
+import { lazy, Suspense } from 'react';
+const FlowEditor = lazy(() => import("@/components/email/FlowEditor"));
+const TemplateEditor = lazy(() => import("@/components/email/TemplateEditor"));
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -375,35 +376,39 @@ export default function EmailMarketing() {
   // Flow Editor View
   if (isFlowEditorOpen && selectedFlow) {
     return (
-      <FlowEditor
-        flow={selectedFlow}
-        templates={templates}
-        tenantId={activeMembership?.tenant_id}
-        onSave={(nodes, edges, audienceType, audienceMembershipIds, name, description) => handleSaveFlow(selectedFlow.id, nodes, edges, audienceType, audienceMembershipIds, name, description)}
-        onClose={() => {
-          setIsFlowEditorOpen(false);
-          setSelectedFlow(null);
-        }}
-      />
+      <Suspense fallback={<div className="flex items-center justify-center h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <FlowEditor
+          flow={selectedFlow}
+          templates={templates}
+          tenantId={activeMembership?.tenant_id}
+          onSave={(nodes, edges, audienceType, audienceMembershipIds, name, description) => handleSaveFlow(selectedFlow.id, nodes, edges, audienceType, audienceMembershipIds, name, description)}
+          onClose={() => {
+            setIsFlowEditorOpen(false);
+            setSelectedFlow(null);
+          }}
+        />
+      </Suspense>
     );
   }
 
   // Template Editor View
   if (isTemplateEditorOpen && selectedTemplate) {
     return (
-      <TemplateEditor
-        template={selectedTemplate}
-        mentorId={ownerMembershipId!}
-        onSave={() => {
-          fetchData();
-          setIsTemplateEditorOpen(false);
-          setSelectedTemplate(null);
-        }}
-        onClose={() => {
-          setIsTemplateEditorOpen(false);
-          setSelectedTemplate(null);
-        }}
-      />
+      <Suspense fallback={<div className="flex items-center justify-center h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <TemplateEditor
+          template={selectedTemplate}
+          mentorId={ownerMembershipId!}
+          onSave={() => {
+            fetchData();
+            setIsTemplateEditorOpen(false);
+            setSelectedTemplate(null);
+          }}
+          onClose={() => {
+            setIsTemplateEditorOpen(false);
+            setSelectedTemplate(null);
+          }}
+        />
+      </Suspense>
     );
   }
 

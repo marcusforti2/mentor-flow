@@ -1486,7 +1486,7 @@ export type Database = {
           created_at: string
           event_id: string
           id: string
-          remind_before: unknown
+          remind_before: string
           scheduled_at: string
           status: string
           tenant_id: string
@@ -1495,7 +1495,7 @@ export type Database = {
           created_at?: string
           event_id: string
           id?: string
-          remind_before: unknown
+          remind_before: string
           scheduled_at: string
           status?: string
           tenant_id: string
@@ -1504,7 +1504,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           id?: string
-          remind_before?: unknown
+          remind_before?: string
           scheduled_at?: string
           status?: string
           tenant_id?: string

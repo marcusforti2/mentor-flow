@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Loader2 as LazyLoader } from 'lucide-react';
 import { useAutomations, CATEGORY_LABELS, getAutomationMeta } from '@/hooks/useAutomations';
 import { AutomationCard } from '@/components/admin/AutomationCard';
-import { AutomationFlowView } from '@/components/admin/AutomationFlowView';
+import { lazy, Suspense } from 'react';
+const AutomationFlowView = lazy(() => import('@/components/admin/AutomationFlowView').then(m => ({ default: m.AutomationFlowView })));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Zap, CheckCircle2, XCircle, Pause, LayoutGrid, Workflow } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -144,6 +146,7 @@ export default function Automacoes() {
 
         {/* Map tab */}
         <TabsContent value="map">
+          <Suspense fallback={<div className="flex items-center justify-center h-64"><LazyLoader className="h-8 w-8 animate-spin text-primary" /></div>}>
           <AutomationFlowView
             automations={automations}
             onToggle={toggleAutomation}
@@ -151,6 +154,7 @@ export default function Automacoes() {
             onRunNow={handleRunNow}
             runningKey={runningKey}
           />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

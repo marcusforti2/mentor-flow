@@ -6,6 +6,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
 import { AlertsBell } from '@/components/admin/AlertsBell';
 import { AlertsPanel } from '@/components/admin/AlertsPanel';
+import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle } from 'lucide-react';
@@ -65,6 +66,7 @@ const menuItems: DockItem[] = [
     const { profile, signOut } = useAuth();
     const { tenant, activeMembership, realMembership, isImpersonating, endImpersonation, isLoading: tenantContextLoading } = useTenant();
     const [alertsOpen, setAlertsOpen] = useState(false);
+    const smartAlerts = useSmartAlerts();
     const location = useLocation();
     const navigate = useNavigate();
   
@@ -153,7 +155,7 @@ const menuItems: DockItem[] = [
            </div>
 
            <div className="flex items-center gap-3">
-             <AlertsBell onClick={() => setAlertsOpen(true)} />
+             <AlertsBell onClick={() => setAlertsOpen(true)} unreadCount={smartAlerts.unreadCount} />
              {isDashboard && (
                <Tooltip>
                  <TooltipTrigger asChild>
@@ -197,7 +199,7 @@ const menuItems: DockItem[] = [
        </div>
  
         <SOSNotificationAlert />
-        <AlertsPanel open={alertsOpen} onOpenChange={setAlertsOpen} />
+        <AlertsPanel open={alertsOpen} onOpenChange={setAlertsOpen} smartAlerts={smartAlerts} />
       </div>
    );
  }
