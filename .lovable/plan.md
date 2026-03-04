@@ -1,95 +1,111 @@
 
+Plano de análise e otimização completa de performance (troca de páginas lenta)
 
-## Plan: Mini Dashboard de ROI + Deals com Parcelas e Previsibilidade
+1) Diagnóstico principal (com base no código atual)
 
-### Contexto
-A page `Metricas.tsx` do mentorado já tem KPIs básicos (atividades, deals ativos, receita fechada, caixa recebido) mas falta um dashboard de ROI completo que cruze investimento no programa com receita gerada. Além disso, os deals (`mentee_deals`) não suportam parcelas, valor total ou notas de negociação.
+Os gargalos mais fortes hoje são:
 
----
+- Prefetch agressivo demais de rotas:
+  - `src/hooks/useRouteChunkPrefetch.ts` pré-carrega praticamente todas as subpáginas de cada área em lote.
+  - Isso dispara download + parse de muitos chunks pesados logo após entrar em `/mentor` ou `/mentorado`.
 
-### 1. Migração de banco de dados
+- Páginas sem cache de dados (fetch manual com `useEffect`):
+  - Ex.: `Mentorados.tsx`, `JornadaCS.tsx`, `CRMMentorados.tsx`, `Calendario.tsx`, `CentroSOS.tsx`, `EmailMarketing.tsx`, `WhatsAppCampaigns.tsx`.
+  - Cada navegação remonta e refaz consultas, gerando “loading” recorrente.
 
-Adicionar colunas na tabela `mentee_deals`:
-- `total_value_cents` (integer, default 0) -- valor total do contrato
-- `installments` (integer, nullable) -- quantidade de parcelas
-- `monthly_value_cents` (integer, default 0) -- valor mensal recorrente
-- `negotiation_notes` (text, nullable) -- observações de negociação
+- Waterfall e joins no cliente:
+  - Várias telas fazem múltiplas consultas sequenciais (`memberships -> profiles -> outras tabelas`), aumentando latência.
 
-Atualmente `value_cents` já existe e será mantido como o valor total (renomear semanticamente no frontend).
+- Bibliotecas pesadas carregadas cedo:
+  - `@xyflow/react` (Flow/Automações), `@tiptap/*` (Playbooks), `jspdf` (ferramentas IA) entram no bundle de páginas importantes.
+  - Mesmo quando o usuário não abre editor/mapa, parte do peso já entra.
 
----
+- Importações pesadas em tabs/modais não abertas:
+  - `Automacoes.tsx` importa `AutomationFlowView` direto.
+  - `EmailMarketing.tsx` importa `FlowEditor` direto.
+  - `member/Playbooks.tsx` importa `PlaybookReadOnly` direto.
 
-### 2. Hook `useMetrics.tsx`
+- Custo visual constante:
+  - `animated-gradient-bg` + `backdrop-filter: blur(...)` em várias camadas globais (`src/index.css`) aumentam custo de render/composição.
 
-- Atualizar a interface `MenteeDeal` com os novos campos
-- Atualizar `createDeal` mutation para incluir `installments`, `monthly_value_cents`, `negotiation_notes`
+- Duplicidade de hook com realtime:
+  - `useSmartAlerts()` é usado em `AlertsBell` e `AlertsPanel`, criando subscriptions duplicadas no layout mentor.
 
----
+2) Estratégia de correção (prioridade)
 
-### 3. Mini Dashboard de ROI (novo bloco na `Metricas.tsx`)
+Fase A — Ganho rápido imediato (alto impacto, baixo risco)
+- Reduzir prefetch para “smart prefetch”:
+  - Prefetch só de 2-3 rotas mais prováveis por área.
+  - Usar `requestIdleCallback` + checagem de conexão lenta (`saveData`, `2g`) para pular prefetch pesado.
+- Lazy load de componentes pesados por demanda:
+  - `FlowEditor`, `AutomationFlowView`, `PlaybookReadOnly`, ferramentas IA (cada tool lazy quando clicada).
+- Evitar hook duplicado de alertas:
+  - Ler `useSmartAlerts()` 1x no layout e repassar props para Bell/Panel.
 
-Inserido logo após o resumo da semana (antes do Passo 1), um card visual com:
+Fase B — Refatoração de dados para navegação fluida
+- Migrar páginas críticas de `useEffect + setState` para React Query:
+  - `Mentorados`, `JornadaCS`, `CRMMentorados`, `Calendario`, `CentroSOS`, `EmailMarketing`, `WhatsAppCampaigns`.
+- Aplicar cache por tenant/membership com `staleTime` por tela.
+- Usar `placeholderData`/`keepPreviousData` para evitar tela “vazia” a cada troca.
+- Mostrar skeleton parcial (não travar página inteira com spinner global).
 
-```text
-┌──────────────────────────────────────────────┐
-│  📊 Painel de ROI                            │
-│                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐     │
-│  │ ROI %    │ │ Payback  │ │ Falta p/ │     │
-│  │ +23%     │ │ 7.2 meses│ │ recuperar│     │
-│  │          │ │          │ │ R$ 42k   │     │
-│  └──────────┘ └──────────┘ └──────────┘     │
-│                                              │
-│  Investimento: R$ 110.000                    │
-│  ├─ Caixa Recebido (total): R$ 68.000       │
-│  ├─ Contratos Fechados: R$ 95.000            │
-│  ├─ Pipeline Aberto: R$ 32.000               │
-│  ├─ Custo Mensal: R$ 15.000                  │
-│  ├─ Receita Mensal Recorrente: R$ 18.000     │
-│  └─ Previsibilidade: 5.2 meses p/ ROI       │
-│                                              │
-│  [═══════════════════░░░░░] 62% recuperado   │
-└──────────────────────────────────────────────┘
-```
+Fase C — Otimização de consultas backend
+- Consolidar consultas repetidas em RPC/views para reduzir round-trips.
+- Revisar índices compostos para filtros mais usados:
+  - `memberships(tenant_id, role, status)`
+  - `crm_prospections(tenant_id, membership_id, created_at desc)`
+  - `activity_logs(tenant_id, membership_id, created_at desc)`
+  - `calendar_events(tenant_id, event_date, event_time)`
+  - `sos_requests(tenant_id, status, created_at desc)`
+  - `smart_alerts(tenant_id, is_dismissed, created_at desc)`
 
-**Cálculos:**
-- **Caixa Recebido Total**: soma de todos `mentee_payments` com `status = 'recebido'`
-- **Contratos Fechados**: soma de `value_cents` de deals com `stage = 'fechado'`
-- **Pipeline Aberto**: soma de `value_cents` de deals ativos (não fechados/perdidos)
-- **% Recuperado**: `caixa_recebido / investimento * 100`
-- **Falta Recuperar**: `investimento - caixa_recebido` (se positivo)
-- **ROI**: `((caixa_recebido - investimento) / investimento) * 100`
-- **Receita Mensal Recorrente (MRR)**: soma de `monthly_value_cents` de deals fechados
-- **Previsibilidade (meses p/ ROI)**: `falta_recuperar / receita_mensal_media` usando MRR ou média dos últimos 3 meses de recebimentos
-- **Custo Mensal vs Entrada**: comparação visual custo mensal total vs MRR
+Fase D — Render/UI performance
+- Reduzir efeitos visuais custosos fora do dashboard (gradiente animado, blur alto).
+- Manter estilo premium, mas com versão “light” em subpáginas para fluidez.
 
----
+3) Plano de execução prático
 
-### 4. Deal Modal atualizado
+Ordem sugerida:
+1. `useRouteChunkPrefetch` (prefetch inteligente e limitado)
+2. Lazy loading de módulos pesados (flow/tiptap/ai tools)
+3. Refactor das 3 telas mais acessadas primeiro:
+   - `Mentorados`, `CRMMentorados`, `Calendario`
+4. Refactor das demais telas de mentor
+5. Ajustes de backend (RPC/índices)
+6. Polimento visual de CSS custoso
 
-Adicionar no modal de "Novo Deal":
-- **Valor Total do Contrato (R$)** -- campo existente `value_cents`
-- **Parcelas** -- novo campo inteiro
-- **Valor Mensal (R$)** -- novo campo, auto-calculado se parcelas preenchido
-- **Observações de negociação** -- textarea opcional
+4) Critérios de sucesso (meta objetiva)
 
----
+- Transição entre subpáginas com dados em cache: < 400ms percebido
+- Primeira abertura de subpágina: queda de 30-50% no tempo atual
+- Redução clara de spinners de tela cheia
+- Menos requisições repetidas ao voltar para páginas já visitadas
+- Menos travadinhas ao alternar abas/modais pesadas
 
-### 5. Arquivos modificados
+5) Detalhes técnicos (seção dedicada)
 
-| Arquivo | Mudança |
-|---------|---------|
-| Migração SQL | 4 colunas em `mentee_deals` |
-| `src/hooks/useMetrics.tsx` | Interface + mutation |
-| `src/pages/member/Metricas.tsx` | ROI dashboard + deal modal expandido |
+Arquivos-alvo principais:
+- Roteamento/prefetch:
+  - `src/hooks/useRouteChunkPrefetch.ts`
+  - `src/App.tsx`
+- Telas com fetch manual (converter para React Query):
+  - `src/pages/admin/Mentorados.tsx`
+  - `src/pages/admin/JornadaCS.tsx`
+  - `src/pages/admin/CRMMentorados.tsx`
+  - `src/pages/admin/Calendario.tsx`
+  - `src/pages/admin/CentroSOS.tsx`
+  - `src/pages/admin/EmailMarketing.tsx`
+  - `src/pages/admin/WhatsAppCampaigns.tsx`
+- Carregamento pesado condicional:
+  - `src/pages/admin/Automacoes.tsx`
+  - `src/pages/admin/EmailMarketing.tsx`
+  - `src/pages/member/Playbooks.tsx`
+  - `src/pages/member/FerramentasIA.tsx`
+- Realtime/duplicidade:
+  - `src/hooks/useSmartAlerts.tsx`
+  - `src/components/admin/AlertsBell.tsx`
+  - `src/components/admin/AlertsPanel.tsx`
+- Visual performance:
+  - `src/index.css`
 
----
-
-### Detalhes Técnicos
-
-- O cálculo de previsibilidade usa o MRR dos deals fechados. Se MRR = 0, faz fallback para a média de recebimentos dos últimos 3 meses
-- O progress bar mostra `Math.min(100, percentRecuperado)` para não ultrapassar visualmente
-- ROI negativo mostra em vermelho, positivo em verde
-- Todos os novos campos de deals são opcionais (nullable / default 0)
-- RLS não precisa de alteração pois as policies existentes de `mentee_deals` já cobrem as novas colunas
-
+Resumo: o app não está “quebrado”; ele está sofrendo de combinação de prefetch excessivo + fetch sem cache em várias páginas + import antecipado de módulos pesados. Corrigindo esses três pilares primeiro, a troca de páginas deve ficar significativamente mais rápida.
