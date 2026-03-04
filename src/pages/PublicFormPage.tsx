@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, ArrowRight, ArrowUp, CheckCircle, ChevronDown,
-  Upload as UploadIcon, Link as LinkIcon, ImageIcon,
+  Upload as UploadIcon, Link as LinkIcon, ImageIcon, Mail,
 } from "lucide-react";
 
 /* ── types ── */
@@ -15,6 +15,7 @@ interface Question {
   options: any;
   order_index: number;
   is_required: boolean;
+  system_field_key?: string | null;
 }
 
 interface FormInfo {
@@ -24,6 +25,7 @@ interface FormInfo {
   form_type: string;
   tenant_id: string;
   settings: any;
+  owner_membership_id: string | null;
 }
 
 interface TenantBranding {
@@ -37,7 +39,7 @@ interface TenantBranding {
 
 interface Slide {
   key: string;
-  type: 'intro' | 'question' | 'complete';
+  type: 'intro' | 'question' | 'otp' | 'complete';
   label?: string;
   subtitle?: string;
   required?: boolean;
@@ -46,8 +48,22 @@ interface Slide {
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+/* ── field detection helpers ── */
+function detectFieldFromQuestion(q: Question): 'email' | 'name' | 'phone' | null {
+  if (q.system_field_key === 'email' || q.system_field_key === '_email') return 'email';
+  if (q.system_field_key === 'name' || q.system_field_key === '_name' || q.system_field_key === 'full_name') return 'name';
+  if (q.system_field_key === 'phone' || q.system_field_key === '_phone') return 'phone';
+
+  const t = q.question_text.toLowerCase();
+  if (/e[\-\s]?mail/.test(t) && q.question_type === 'text') return 'email';
+  if (/\bnome\b/.test(t) && q.order_index <= 3 && q.question_type === 'text') return 'name';
+  if (/whatsapp|telefone|celular/.test(t) && q.question_type === 'text') return 'phone';
+  return null;
+}
+
 const PublicFormPage = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +74,30 @@ const PublicFormPage = () => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [direction, setDirection] = useState<'up' | 'down'>('down');
+
+  // Onboarding-specific state
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
+  /* ── detect if this is an onboarding form ── */
+  const isOnboarding = form?.form_type === 'onboarding';
+
+  /* ── detect mapped fields (email, name, phone) from questions ── */
+  const fieldMap = useMemo(() => {
+    const map: Record<string, 'email' | 'name' | 'phone'> = {};
+    for (const q of questions) {
+      const field = detectFieldFromQuestion(q);
+      if (field) map[q.id] = field;
+    }
+    return map;
+  }, [questions]);
+
+  const getDetectedValue = (field: 'email' | 'name' | 'phone'): string => {
+    for (const [qId, f] of Object.entries(fieldMap)) {
+      if (f === field && answers[qId]) return String(answers[qId]);
+    }
+    return '';
+  };
 
   /* ── build slides ── */
   const slides: Slide[] = useMemo(() => {
@@ -71,9 +111,12 @@ const PublicFormPage = () => {
         question: q,
       });
     }
+    if (isOnboarding) {
+      s.push({ key: 'otp', type: 'otp', label: 'Verifique seu email' });
+    }
     s.push({ key: 'complete', type: 'complete' });
     return s;
-  }, [questions]);
+  }, [questions, isOnboarding]);
 
   const totalSlides = slides.length;
   const slide = slides[currentSlide];
@@ -85,10 +128,9 @@ const PublicFormPage = () => {
 
   const fetchFormData = async () => {
     try {
-      // Fetch form by slug
       const { data: formData, error } = await supabase
         .from('tenant_forms')
-        .select('id, title, description, form_type, tenant_id, settings, is_active')
+        .select('id, title, description, form_type, tenant_id, settings, is_active, owner_membership_id')
         .eq('slug', slug)
         .eq('is_active', true)
         .maybeSingle();
@@ -100,7 +142,6 @@ const PublicFormPage = () => {
 
       setForm(formData as FormInfo);
 
-      // Fetch branding
       const { data: tenantData } = await supabase
         .from('tenants')
         .select('name, logo_url, primary_color, secondary_color, accent_color, brand_attributes')
@@ -109,10 +150,9 @@ const PublicFormPage = () => {
 
       if (tenantData) setBranding(tenantData as TenantBranding);
 
-      // Fetch questions
       const { data: qs } = await supabase
         .from('form_questions')
-        .select('id, question_text, question_type, options, order_index, is_required')
+        .select('id, question_text, question_type, options, order_index, is_required, system_field_key')
         .eq('form_id', formData.id)
         .order('order_index', { ascending: true });
 
@@ -161,11 +201,104 @@ const PublicFormPage = () => {
         return false;
       }
     }
+    if (slide?.type === 'otp') {
+      if (!otpCode || otpCode.length !== 6) {
+        toast({ title: "Digite o código de 6 dígitos", variant: "destructive" });
+        return false;
+      }
+    }
     return true;
   };
 
-  /* ── submit ── */
-  const submitForm = async () => {
+  /* ── OTP (onboarding only) ── */
+  const sendOtp = async () => {
+    const email = getDetectedValue('email');
+    if (!email || !email.includes('@')) {
+      toast({ title: "Email não detectado no formulário", description: "Verifique se preencheu o campo de email.", variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-otp', { body: { email } });
+      if (error) throw error;
+      setOtpSent(true);
+      toast({ title: "Código enviado!", description: `Verifique ${email}` });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar código", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const processOnboarding = async () => {
+    const email = getDetectedValue('email');
+    const fullName = getDetectedValue('name');
+    const phone = getDetectedValue('phone');
+
+    if (!email) {
+      toast({ title: "Email não encontrado", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Build responses (exclude mapped system fields)
+      const responses: Record<string, any> = {};
+      for (const [qId, val] of Object.entries(answers)) {
+        if (!fieldMap[qId]) {
+          responses[qId] = val;
+        }
+      }
+
+      // Call process-onboarding to create account
+      const { data, error } = await supabase.functions.invoke('process-onboarding', {
+        body: {
+          email,
+          otp: otpCode,
+          mentorId: form?.owner_membership_id,
+          tenantId: form?.tenant_id,
+          fullName: fullName || email.split('@')[0],
+          phone: phone || undefined,
+          businessProfile: {},
+          responses,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Also save as form_submission for mentor to see answers
+      await supabase.from('form_submissions').insert({
+        form_id: form!.id,
+        tenant_id: form!.tenant_id,
+        answers,
+        respondent_name: fullName || null,
+        respondent_email: email,
+        membership_id: data?.membershipId || null,
+      });
+
+      // Set session if returned
+      if (data?.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
+      goTo(slides.length - 1);
+      toast({ title: "Conta criada com sucesso!" });
+
+      // Redirect to app after delay
+      setTimeout(() => navigate('/app'), 3000);
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Código inválido ou expirado", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /* ── submit (generic forms) ── */
+  const submitGenericForm = async () => {
     if (!form) return;
     setIsSubmitting(true);
     try {
@@ -173,8 +306,8 @@ const PublicFormPage = () => {
         form_id: form.id,
         tenant_id: form.tenant_id,
         answers,
-        respondent_name: answers._name || null,
-        respondent_email: answers._email || null,
+        respondent_name: getDetectedValue('name') || answers._name || null,
+        respondent_email: getDetectedValue('email') || answers._email || null,
       });
       if (error) throw error;
       goTo(slides.length - 1);
@@ -194,11 +327,33 @@ const PublicFormPage = () => {
 
   const handleNext = async () => {
     if (!validateSlide()) return;
-    // If this is the last question, submit
-    if (currentSlide === totalSlides - 2) {
-      await submitForm();
+
+    // For onboarding: when moving to OTP slide, send OTP
+    const nextSlide = slides[currentSlide + 1];
+    if (nextSlide?.type === 'otp') {
+      // Validate we have email
+      const email = getDetectedValue('email');
+      if (!email || !email.includes('@')) {
+        toast({ title: "Email obrigatório", description: "Não foi possível detectar seu email nas respostas. Verifique se preencheu corretamente.", variant: "destructive" });
+        return;
+      }
+      await sendOtp();
+      goTo(currentSlide + 1);
       return;
     }
+
+    // OTP slide: verify and create account
+    if (slide?.type === 'otp') {
+      await processOnboarding();
+      return;
+    }
+
+    // Generic form: last question submits
+    if (!isOnboarding && currentSlide === totalSlides - 2) {
+      await submitGenericForm();
+      return;
+    }
+
     if (currentSlide < totalSlides - 1) goTo(currentSlide + 1);
   };
 
@@ -212,7 +367,7 @@ const PublicFormPage = () => {
       e.preventDefault();
       handleNext();
     }
-  }, [currentSlide, answers, isSubmitting]);
+  }, [currentSlide, answers, isSubmitting, otpCode]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -287,6 +442,21 @@ const PublicFormPage = () => {
     transition: 'opacity 0.2s',
   };
 
+  const secondaryBtnStyle: React.CSSProperties = {
+    background: hoverBg,
+    color: textSecondary,
+    fontWeight: 600,
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    border: `1px solid ${borderColor}`,
+    cursor: 'pointer',
+    transition: 'opacity 0.2s',
+  };
+
   /* ── loading ── */
   if (isLoading) {
     return (
@@ -308,7 +478,10 @@ const PublicFormPage = () => {
   }
 
   /* ── progress bar ── */
-  const progress = totalSlides > 2 ? ((currentSlide) / (totalSlides - 2)) * 100 : 0;
+  const questionSlides = slides.filter(s => s.type === 'question' || s.type === 'otp');
+  const progress = questionSlides.length > 0
+    ? (Math.min(currentSlide, slides.length - 2) / (slides.length - 2)) * 100
+    : 0;
 
   /* ── main render ── */
   return (
@@ -366,7 +539,7 @@ const PublicFormPage = () => {
             <div className="space-y-8">
               <div className="space-y-2">
                 <p className="text-sm font-medium" style={{ color: textMuted }}>
-                  {currentSlide} <span style={{ color: borderColor }}>→</span> {totalSlides - 2}
+                  {currentSlide} <span style={{ color: borderColor }}>→</span> {slides.filter(s => s.type === 'question').length}
                 </p>
                 <h2 className="text-2xl md:text-3xl font-bold leading-tight">
                   {slide.question.question_text}
@@ -381,6 +554,7 @@ const PublicFormPage = () => {
                   onChange={(e) => setAnswer(slide.question.id, e.target.value)}
                   placeholder="Digite sua resposta..."
                   style={inputStyle}
+                  type={fieldMap[slide.question.id] === 'email' ? 'email' : 'text'}
                   autoFocus
                 />
               )}
@@ -506,44 +680,37 @@ const PublicFormPage = () => {
               {/* Navigation buttons */}
               <div className="flex items-center gap-3 pt-4">
                 {currentSlide > 1 && (
-                  <button onClick={handleBack}
-                    style={{
-                      background: hoverBg,
-                      color: textSecondary,
-                      fontWeight: 600,
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.875rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      border: `1px solid ${borderColor}`,
-                      cursor: 'pointer',
-                      transition: 'opacity 0.2s',
-                    }}
+                  <button onClick={handleBack} style={secondaryBtnStyle}
                     className="hover:opacity-80 active:scale-95">
                     <ArrowUp className="h-4 w-4 rotate-[-90deg]" /> Anterior
                   </button>
                 )}
-                {currentSlide < totalSlides - 2 ? (
-                  <button onClick={handleNext} disabled={isSubmitting} style={btnStyle}
-                    className="hover:opacity-90 active:scale-95 disabled:opacity-50">
-                    Próxima <ArrowRight className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <button onClick={handleNext} disabled={isSubmitting} style={{
-                    ...btnStyle,
-                    padding: '0.85rem 2rem',
-                    fontSize: '1rem',
-                  }}
-                    className="hover:opacity-90 active:scale-95 disabled:opacity-50">
-                    {isSubmitting ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
-                    ) : (
-                      <><CheckCircle className="h-5 w-5" /> Finalizar</>
-                    )}
-                  </button>
-                )}
+                {(() => {
+                  const isLastQuestion = !isOnboarding && currentSlide === totalSlides - 2;
+                  const nextIsOtp = slides[currentSlide + 1]?.type === 'otp';
+                  if (isLastQuestion) {
+                    return (
+                      <button onClick={handleNext} disabled={isSubmitting} style={{ ...btnStyle, padding: '0.85rem 2rem', fontSize: '1rem' }}
+                        className="hover:opacity-90 active:scale-95 disabled:opacity-50">
+                        {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</> : <><CheckCircle className="h-5 w-5" /> Finalizar</>}
+                      </button>
+                    );
+                  }
+                  if (nextIsOtp) {
+                    return (
+                      <button onClick={handleNext} disabled={isSubmitting} style={{ ...btnStyle, padding: '0.85rem 2rem', fontSize: '1rem' }}
+                        className="hover:opacity-90 active:scale-95 disabled:opacity-50">
+                        {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando código...</> : <><Mail className="h-5 w-5" /> Verificar email</>}
+                      </button>
+                    );
+                  }
+                  return (
+                    <button onClick={handleNext} disabled={isSubmitting} style={btnStyle}
+                      className="hover:opacity-90 active:scale-95 disabled:opacity-50">
+                      Próxima <ArrowRight className="h-4 w-4" />
+                    </button>
+                  );
+                })()}
               </div>
 
               {!slide.required && (
@@ -552,10 +719,64 @@ const PublicFormPage = () => {
             </div>
           )}
 
+          {/* ── OTP (onboarding only) ── */}
+          {slide?.type === 'otp' && (
+            <div className="space-y-8">
+              <div className="space-y-3">
+                <div className="h-16 w-16 rounded-2xl flex items-center justify-center mx-auto" style={{ background: `${primaryColor}20` }}>
+                  <Mail className="h-8 w-8" style={{ color: primaryColor }} />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold leading-tight text-center">
+                  Verifique seu email
+                </h2>
+                <p className="text-center" style={{ color: textSecondary }}>
+                  Enviamos um código de 6 dígitos para{' '}
+                  <span className="font-semibold" style={{ color: primaryColor }}>{getDetectedValue('email')}</span>
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <input
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  maxLength={6}
+                  style={{
+                    ...inputStyle,
+                    textAlign: 'center',
+                    fontSize: '2.5rem',
+                    letterSpacing: '0.5em',
+                    maxWidth: '280px',
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex flex-col items-center gap-4">
+                <button onClick={handleNext} disabled={isSubmitting || otpCode.length !== 6}
+                  style={{ ...btnStyle, padding: '0.85rem 2rem', fontSize: '1rem' }}
+                  className="hover:opacity-90 active:scale-95 disabled:opacity-50">
+                  {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Criando conta...</> : <><CheckCircle className="h-5 w-5" /> Confirmar e criar conta</>}
+                </button>
+
+                <button onClick={sendOtp} disabled={isSubmitting}
+                  className="text-sm underline underline-offset-4 hover:opacity-80"
+                  style={{ color: textMuted, background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Reenviar código
+                </button>
+
+                <button onClick={handleBack}
+                  className="text-sm hover:opacity-80"
+                  style={{ color: textMuted, background: 'none', border: 'none', cursor: 'pointer' }}>
+                  ← Voltar
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── COMPLETE ── */}
           {slide?.type === 'complete' && (
             <div className="text-center space-y-8 animate-in fade-in-0 zoom-in-95 duration-700">
-              {/* Robot emoji animation */}
               <div className="relative mx-auto w-32 h-32">
                 <div className="absolute inset-0 rounded-full animate-ping opacity-20" style={{ background: primaryColor }} />
                 <div className="relative h-32 w-32 rounded-full flex items-center justify-center"
@@ -564,17 +785,22 @@ const PublicFormPage = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                <h1 className="text-3xl md:text-4xl font-bold">Formulário enviado!</h1>
+                <h1 className="text-3xl md:text-4xl font-bold">
+                  {isOnboarding ? 'Conta criada com sucesso!' : 'Formulário enviado!'}
+                </h1>
                 <p style={{ color: textSecondary }} className="text-lg md:text-xl leading-relaxed max-w-md mx-auto">
-                  Nossos robôs já estão trabalhando nos seus dados. 
-                  Em breve, um <span className="font-semibold" style={{ color: primaryColor }}>ser humano de verdade</span> entrará em contato com você! 🚀
+                  {isOnboarding ? (
+                    <>Sua conta foi criada e seus dados já estão sendo processados. Você será redirecionado em instantes... 🚀</>
+                  ) : (
+                    <>Nossos robôs já estão trabalhando nos seus dados. Em breve, um <span className="font-semibold" style={{ color: primaryColor }}>ser humano de verdade</span> entrará em contato com você! 🚀</>
+                  )}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2 pt-4" style={{ color: textMuted }}>
                 <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor }} />
                 <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor, animationDelay: '0.3s' }} />
                 <span className="inline-block h-2 w-2 rounded-full animate-pulse" style={{ background: primaryColor, animationDelay: '0.6s' }} />
-                <span className="text-sm ml-2">Processando...</span>
+                <span className="text-sm ml-2">{isOnboarding ? 'Redirecionando...' : 'Processando...'}</span>
               </div>
               {branding?.logo_url && (
                 <img src={branding.logo_url} alt={branding.name} className="h-8 mx-auto object-contain opacity-50 mt-6" />
@@ -585,7 +811,7 @@ const PublicFormPage = () => {
       </main>
 
       {/* Bottom hint */}
-      {slide?.type === 'question' && (
+      {(slide?.type === 'question' || slide?.type === 'otp') && (
         <footer className="fixed bottom-0 left-0 right-0 p-4 flex items-center justify-center">
           <p className="text-xs hidden md:block" style={{ color: textMuted }}>
             Pressione <kbd className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: hoverBg, color: textSecondary }}>Enter ↵</kbd> para avançar
