@@ -3803,6 +3803,47 @@ export type Database = {
           },
         ]
       }
+      tenant_whatsapp_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          sender_name: string | null
+          tenant_id: string
+          ultramsg_instance_id: string | null
+          ultramsg_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sender_name?: string | null
+          tenant_id: string
+          ultramsg_instance_id?: string | null
+          ultramsg_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sender_name?: string | null
+          tenant_id?: string
+          ultramsg_instance_id?: string | null
+          ultramsg_token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_whatsapp_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           accent_color: string | null
@@ -4161,6 +4202,139 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      whatsapp_campaigns: {
+        Row: {
+          audience_membership_ids: string[] | null
+          audience_type: string
+          created_at: string
+          error_count: number | null
+          id: string
+          message_template: string
+          name: string
+          owner_membership_id: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          sent_count: number | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          use_ai_personalization: boolean
+        }
+        Insert: {
+          audience_membership_ids?: string[] | null
+          audience_type?: string
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          message_template: string
+          name: string
+          owner_membership_id?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          use_ai_personalization?: boolean
+        }
+        Update: {
+          audience_membership_ids?: string[] | null
+          audience_type?: string
+          created_at?: string
+          error_count?: number | null
+          id?: string
+          message_template?: string
+          name?: string
+          owner_membership_id?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          use_ai_personalization?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_campaigns_owner_membership_id_fkey"
+            columns: ["owner_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_message_logs: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          message_body: string
+          recipient_membership_id: string | null
+          recipient_name: string | null
+          recipient_phone: string
+          sent_at: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_body: string
+          recipient_membership_id?: string | null
+          recipient_name?: string | null
+          recipient_phone: string
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_body?: string
+          recipient_membership_id?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_message_logs_recipient_membership_id_fkey"
+            columns: ["recipient_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_message_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
