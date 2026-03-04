@@ -40,6 +40,11 @@ export interface CreateMenteeInitialData {
   fullName?: string;
   email?: string;
   phone?: string;
+  businessName?: string;
+  instagram?: string;
+  linkedin?: string;
+  website?: string;
+  notes?: string;
 }
 
 interface CreateMenteeModalProps {
@@ -146,6 +151,11 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
       if (initialData.fullName) setFullName(initialData.fullName);
       if (initialData.email) setEmail(initialData.email);
       if (initialData.phone) setPhone(initialData.phone);
+      if (initialData.businessName) { setBusinessName(initialData.businessName); setBusinessOpen(true); }
+      if (initialData.instagram) { setInstagram(initialData.instagram); setSocialOpen(true); }
+      if (initialData.linkedin) { setLinkedin(initialData.linkedin); setSocialOpen(true); }
+      if (initialData.website) { setWebsite(initialData.website); setSocialOpen(true); }
+      if (initialData.notes) setNotes(initialData.notes);
     }
   }, [open, initialData]);
 
