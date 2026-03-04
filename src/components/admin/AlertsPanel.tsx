@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSmartAlerts, type SmartAlert } from "@/hooks/useSmartAlerts";
+import type { SmartAlert } from "@/hooks/useSmartAlerts";
 import {
   UserX,
   Thermometer,
@@ -12,14 +12,23 @@ import {
   AlertTriangle,
   CheckCheck,
   X,
-  ExternalLink,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+interface SmartAlertsReturn {
+  alerts: SmartAlert[];
+  isLoading: boolean;
+  unreadCount: number;
+  markAsRead: (id: string) => void;
+  markAllRead: () => void;
+  dismissAlert: (id: string) => void;
+}
+
 interface AlertsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  smartAlerts: SmartAlertsReturn;
 }
 
 const ALERT_ICONS: Record<string, typeof UserX> = {
@@ -102,8 +111,8 @@ function AlertItem({
   );
 }
 
-export function AlertsPanel({ open, onOpenChange }: AlertsPanelProps) {
-  const { alerts, isLoading, unreadCount, markAsRead, markAllRead, dismissAlert } = useSmartAlerts();
+export function AlertsPanel({ open, onOpenChange, smartAlerts }: AlertsPanelProps) {
+  const { alerts, isLoading, unreadCount, markAsRead, markAllRead, dismissAlert } = smartAlerts;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

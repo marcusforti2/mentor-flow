@@ -158,7 +158,8 @@
       radial-gradient(ellipse at 80% 20%, hsl(var(--accent) / 0.12) 0%, transparent 50%),
       radial-gradient(ellipse at 40% 80%, hsl(var(--purple) / 0.1) 0%, transparent 50%),
       radial-gradient(ellipse at 90% 90%, hsl(var(--cyan) / 0.08) 0%, transparent 40%);
-    animation: gradient-rotate 20s linear infinite;
+    animation: gradient-rotate 30s linear infinite;
+    will-change: transform;
   }
 
   @keyframes gradient-rotate {
@@ -171,8 +172,8 @@
      ======================================== */
   .glass-card {
     background: hsl(var(--glass-bg));
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
     border: 1px solid hsl(var(--glass-border));
     border-radius: var(--radius);
     position: relative;
@@ -194,8 +195,8 @@
   /* Glass card with glow border */
   .glass-card-glow {
     background: hsl(var(--glass-bg));
-    backdrop-filter: blur(24px) saturate(200%);
-    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
     border-radius: var(--radius);
     position: relative;
   }

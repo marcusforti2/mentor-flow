@@ -1,16 +1,14 @@
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSmartAlerts } from "@/hooks/useSmartAlerts";
 import { cn } from "@/lib/utils";
 
 interface AlertsBellProps {
   onClick: () => void;
   className?: string;
+  unreadCount?: number;
 }
 
-export function AlertsBell({ onClick, className }: AlertsBellProps) {
-  const { unreadCount } = useSmartAlerts();
-
+export function AlertsBell({ onClick, className, unreadCount = 0 }: AlertsBellProps) {
   return (
     <Button
       variant="ghost"

@@ -9,7 +9,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PlaybookReadOnly } from '@/components/playbooks/PlaybookReadOnly';
+import { lazy, Suspense } from 'react';
+const PlaybookReadOnly = lazy(() => import('@/components/playbooks/PlaybookReadOnly').then(m => ({ default: m.PlaybookReadOnly })));
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { PlaybookFolder, Playbook } from '@/hooks/usePlaybooks';
@@ -150,7 +151,9 @@ export default function MentoradoPlaybooks() {
           {activePageId && activePage && (
             <h1 className="text-2xl font-display font-bold text-foreground mb-6">{currentTitle}</h1>
           )}
-          <PlaybookReadOnly content={currentContent} />
+          <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <PlaybookReadOnly content={currentContent} />
+          </Suspense>
         </div>
       </div>
     );

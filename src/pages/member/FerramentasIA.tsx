@@ -5,15 +5,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTenant } from '@/contexts/TenantContext';
 
-// AI Tool components
-import { VirtualMentor } from '@/components/ai-tools/VirtualMentor';
-import { LeadQualifier } from '@/components/ai-tools/LeadQualifier';
-import { BioGenerator } from '@/components/ai-tools/BioGenerator';
-import { ContentGenerator } from '@/components/ai-tools/ContentGenerator';
-import { CommunicationHub } from '@/components/ai-tools/CommunicationHub';
-import { ObjectionSimulator } from '@/components/ai-tools/ObjectionSimulator';
-import { ProposalCreator } from '@/components/ai-tools/ProposalCreator';
-import { ConversionAnalyzer } from '@/components/ai-tools/ConversionAnalyzer';
+import { lazy, Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+
+// Lazy-load AI Tool components (heavy modules)
+const VirtualMentor = lazy(() => import('@/components/ai-tools/VirtualMentor').then(m => ({ default: m.VirtualMentor })));
+const LeadQualifier = lazy(() => import('@/components/ai-tools/LeadQualifier').then(m => ({ default: m.LeadQualifier })));
+const BioGenerator = lazy(() => import('@/components/ai-tools/BioGenerator').then(m => ({ default: m.BioGenerator })));
+const ContentGenerator = lazy(() => import('@/components/ai-tools/ContentGenerator').then(m => ({ default: m.ContentGenerator })));
+const CommunicationHub = lazy(() => import('@/components/ai-tools/CommunicationHub').then(m => ({ default: m.CommunicationHub })));
+const ObjectionSimulator = lazy(() => import('@/components/ai-tools/ObjectionSimulator').then(m => ({ default: m.ObjectionSimulator })));
+const ProposalCreator = lazy(() => import('@/components/ai-tools/ProposalCreator').then(m => ({ default: m.ProposalCreator })));
+const ConversionAnalyzer = lazy(() => import('@/components/ai-tools/ConversionAnalyzer').then(m => ({ default: m.ConversionAnalyzer })));
 
 const tools = [
   { id: 'mentor', label: 'Mentor Virtual 24/7', icon: Bot, description: 'Seu mentor pessoal disponível a qualquer hora para tirar dúvidas', color: 'from-sky-500 to-blue-500' },
@@ -104,7 +107,9 @@ export default function FerramentasIA() {
               ← Voltar ao Arsenal
             </Button>
           </div>
-          {renderActiveTool()}
+          <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            {renderActiveTool()}
+          </Suspense>
         </div>
       )}
 
