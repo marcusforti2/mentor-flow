@@ -146,6 +146,8 @@ export default function OnboardingBuilder() {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [expandedSubmission, setExpandedSubmission] = useState<string | null>(null);
+  const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
+  const [pendingDeleteSubmissionId, setPendingDeleteSubmissionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tenant?.id) {
@@ -553,6 +555,26 @@ export default function OnboardingBuilder() {
     if (activeTab === 'responses' && activeForm) loadSubmissions();
   }, [activeTab, activeForm?.id]);
 
+  const deleteSubmission = async (submissionId: string) => {
+    if (pendingDeleteSubmissionId !== submissionId) {
+      setPendingDeleteSubmissionId(submissionId);
+      setTimeout(() => setPendingDeleteSubmissionId(null), 4000);
+      return;
+    }
+    setPendingDeleteSubmissionId(null);
+    setDeletingSubmissionId(submissionId);
+    try {
+      const { error } = await supabase.from('form_submissions').delete().eq('id', submissionId);
+      if (error) throw error;
+      setSubmissions(prev => prev.filter(s => s.id !== submissionId));
+      toast.success('Resposta excluída');
+    } catch (err: any) {
+      toast.error('Erro ao excluir: ' + (err.message || 'Erro'));
+    } finally {
+      setDeletingSubmissionId(null);
+    }
+  };
+
   /* ── helpers ── */
   const getFormLink = (form: FormRecord) => `${window.location.origin}/f/${form.slug}`;
 
@@ -957,33 +979,53 @@ export default function OnboardingBuilder() {
             </Card>
           )}
 
+          {!isLoadingSubmissions && submissions.length > 0 && (
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground">{submissions.length} resposta{submissions.length !== 1 ? 's' : ''}</p>
+              <Button variant="outline" size="sm" onClick={loadSubmissions}>
+                <Loader2 className="h-3 w-3 mr-1" /> Atualizar
+              </Button>
+            </div>
+          )}
+
           {!isLoadingSubmissions && submissions.map(sub => (
             <Card key={sub.id} className="glass-card">
               <CardContent className="p-4">
-                <button
-                  onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}
-                  className="w-full flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                       <User className="h-4 w-4 text-primary" />
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-foreground">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {sub.respondent_name || 'Respondente'}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {sub.respondent_email || '—'}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {sub.respondent_email || '—'} · {new Date(sub.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant={pendingDeleteSubmissionId === sub.id ? 'destructive' : 'ghost'}
+                      size={pendingDeleteSubmissionId === sub.id ? 'sm' : 'icon'}
+                      className={pendingDeleteSubmissionId === sub.id ? 'h-8 text-xs' : 'h-8 w-8 text-destructive'}
+                      disabled={deletingSubmissionId === sub.id}
+                      onClick={(e) => { e.stopPropagation(); deleteSubmission(sub.id); }}
+                    >
+                      {deletingSubmissionId === sub.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Trash2 className="h-3.5 w-3.5" />}
+                      {pendingDeleteSubmissionId === sub.id && <span>Confirmar</span>}
+                    </Button>
+                    <button onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}>
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSubmission === sub.id ? 'rotate-90' : ''}`} />
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(sub.created_at).toLocaleDateString('pt-BR')}
-                    </span>
-                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSubmission === sub.id ? 'rotate-90' : ''}`} />
-                  </div>
-                </button>
+                </div>
 
                 {expandedSubmission === sub.id && (
                   <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
@@ -1003,11 +1045,6 @@ export default function OnboardingBuilder() {
             </Card>
           ))}
 
-          {!isLoadingSubmissions && submissions.length > 0 && (
-            <Button variant="outline" size="sm" onClick={loadSubmissions}>
-              <Loader2 className="h-3 w-3 mr-1" /> Atualizar
-            </Button>
-          )}
         </TabsContent>
       </Tabs>
     </div>
