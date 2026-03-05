@@ -153,6 +153,7 @@ export default function OnboardingBuilder() {
   const [createMenteeOpen, setCreateMenteeOpen] = useState(false);
   const [createMenteeData, setCreateMenteeData] = useState<CreateMenteeInitialData | undefined>(undefined);
   const [detailSub, setDetailSub] = useState<FormSubmission | null>(null);
+  const [isEnrichingProfile, setIsEnrichingProfile] = useState(false);
 
   useEffect(() => {
     if (!tenant?.id) {
@@ -595,7 +596,41 @@ export default function OnboardingBuilder() {
 
   const hasOnboarding = forms.some(f => f.form_type === 'onboarding');
 
-  const handleCreateMenteeFromSub = (sub: FormSubmission) => {
+  const handleCreateMenteeFromSub = async (sub: FormSubmission) => {
+    // Try AI enrichment first
+    setIsEnrichingProfile(true);
+    toast.loading('IA analisando respostas do formulário...', { id: 'enrich' });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('enrich-mentee-profile', {
+        body: { questions, answers: sub.answers },
+      });
+
+      if (!error && data?.profile) {
+        const p = data.profile;
+        setCreateMenteeData({
+          fullName: p.full_name || sub.respondent_name || undefined,
+          email: p.email || sub.respondent_email || undefined,
+          phone: p.phone || undefined,
+          businessName: p.business_name || undefined,
+          instagram: p.instagram || undefined,
+          linkedin: p.linkedin || undefined,
+          website: p.website || undefined,
+          notes: [p.bio, p.notes].filter(Boolean).join('\n\n') || undefined,
+        });
+        toast.success('Perfil preenchido pela IA!', { id: 'enrich' });
+        setCreateMenteeOpen(true);
+        setIsEnrichingProfile(false);
+        return;
+      }
+    } catch (err) {
+      console.error('AI enrichment failed, falling back to manual:', err);
+    }
+
+    toast.dismiss('enrich');
+    setIsEnrichingProfile(false);
+
+    // Fallback: manual field mapping
     const fieldMap: Record<string, string> = {};
     questions.forEach(q => {
       if (q.system_field_key && sub.answers[q.id] != null) {
@@ -1068,10 +1103,10 @@ export default function OnboardingBuilder() {
                         variant="outline"
                         size="sm"
                         className="h-8 text-xs gap-1"
+                        disabled={isEnrichingProfile}
                         onClick={() => handleCreateMenteeFromSub(sub)}
                       >
-                        <UserPlus className="h-3.5 w-3.5" />
-                        Criar
+                        {isEnrichingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Sparkles className="h-3.5 w-3.5" /> Criar</>}
                       </Button>
                       <Button
                         variant={pendingDeleteSubmissionId === sub.id ? 'destructive' : 'ghost'}
