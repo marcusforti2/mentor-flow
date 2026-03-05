@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -258,17 +259,17 @@ export default function SubmissionDetailSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Lightbox */}
-      {lightboxUrl && (
+      {/* Lightbox via portal so it renders above Sheet overlay */}
+      {lightboxUrl && createPortal(
         <div
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setLightboxUrl(null)}
         >
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 right-4 text-white hover:bg-white/20"
-            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 text-white hover:bg-white/20 z-[201]"
+            onClick={(e) => { e.stopPropagation(); setLightboxUrl(null); }}
           >
             <X className="h-6 w-6" />
           </Button>
@@ -281,14 +282,15 @@ export default function SubmissionDetailSheet({
           <a
             href={lightboxUrl}
             download="imagem-formulario.png"
-            className="absolute bottom-6 right-6"
+            className="absolute bottom-6 right-6 z-[201]"
             onClick={e => e.stopPropagation()}
           >
             <Button size="sm" variant="secondary" className="gap-1.5">
               <Download className="h-4 w-4" /> Baixar
             </Button>
           </a>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
