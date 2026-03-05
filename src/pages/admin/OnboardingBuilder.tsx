@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { CreateMenteeModal, type CreateMenteeInitialData } from '@/components/admin/CreateMenteeModal';
+import SubmissionDetailSheet from '@/components/admin/SubmissionDetailSheet';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
@@ -151,6 +152,7 @@ export default function OnboardingBuilder() {
   const [pendingDeleteSubmissionId, setPendingDeleteSubmissionId] = useState<string | null>(null);
   const [createMenteeOpen, setCreateMenteeOpen] = useState(false);
   const [createMenteeData, setCreateMenteeData] = useState<CreateMenteeInitialData | undefined>(undefined);
+  const [detailSub, setDetailSub] = useState<FormSubmission | null>(null);
 
   useEffect(() => {
     if (!tenant?.id) {
@@ -593,6 +595,38 @@ export default function OnboardingBuilder() {
 
   const hasOnboarding = forms.some(f => f.form_type === 'onboarding');
 
+  const handleCreateMenteeFromSub = (sub: FormSubmission) => {
+    const fieldMap: Record<string, string> = {};
+    questions.forEach(q => {
+      if (q.system_field_key && sub.answers[q.id] != null) {
+        const val = typeof sub.answers[q.id] === 'object'
+          ? (sub.answers[q.id] as any).text || String(sub.answers[q.id])
+          : String(sub.answers[q.id]);
+        fieldMap[q.system_field_key] = val;
+      }
+    });
+    const extraAnswers: string[] = [];
+    questions.forEach(q => {
+      if (!q.system_field_key && sub.answers[q.id] != null && q.question_type !== 'image') {
+        const val = typeof sub.answers[q.id] === 'object'
+          ? (sub.answers[q.id] as any).text || JSON.stringify(sub.answers[q.id])
+          : String(sub.answers[q.id]);
+        extraAnswers.push(`${q.question_text}: ${val}`);
+      }
+    });
+    setCreateMenteeData({
+      fullName: fieldMap['full_name'] || sub.respondent_name || undefined,
+      email: fieldMap['email'] || sub.respondent_email || undefined,
+      phone: fieldMap['phone'] || fieldMap['whatsapp'] || undefined,
+      businessName: fieldMap['business_name'] || fieldMap['company'] || undefined,
+      instagram: fieldMap['instagram'] || undefined,
+      linkedin: fieldMap['linkedin'] || undefined,
+      website: fieldMap['website'] || undefined,
+      notes: extraAnswers.length > 0 ? extraAnswers.join('\n') : undefined,
+    });
+    setCreateMenteeOpen(true);
+  };
+
   /* ════════════ RENDER ════════════ */
 
   // ── LIST VIEW ──
@@ -991,103 +1025,84 @@ export default function OnboardingBuilder() {
             </div>
           )}
 
-          {!isLoadingSubmissions && submissions.map(sub => (
-            <Card key={sub.id} className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}
-                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                  >
-                    <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {sub.respondent_name || 'Respondente'}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {sub.respondent_email || '—'} · {new Date(sub.created_at).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const fieldMap: Record<string, string> = {};
-                        questions.forEach(q => {
-                          if (q.system_field_key && sub.answers[q.id] != null) {
-                            const val = typeof sub.answers[q.id] === 'object'
-                              ? (sub.answers[q.id] as any).text || String(sub.answers[q.id])
-                              : String(sub.answers[q.id]);
-                            fieldMap[q.system_field_key] = val;
-                          }
-                        });
-                        const extraAnswers: string[] = [];
-                        questions.forEach(q => {
-                          if (!q.system_field_key && sub.answers[q.id] != null) {
-                            const val = typeof sub.answers[q.id] === 'object'
-                              ? (sub.answers[q.id] as any).text || JSON.stringify(sub.answers[q.id])
-                              : String(sub.answers[q.id]);
-                            extraAnswers.push(`${q.question_text}: ${val}`);
-                          }
-                        });
-                        setCreateMenteeData({
-                          fullName: fieldMap['full_name'] || sub.respondent_name || undefined,
-                          email: fieldMap['email'] || sub.respondent_email || undefined,
-                          phone: fieldMap['phone'] || fieldMap['whatsapp'] || undefined,
-                          businessName: fieldMap['business_name'] || fieldMap['company'] || undefined,
-                          instagram: fieldMap['instagram'] || undefined,
-                          linkedin: fieldMap['linkedin'] || undefined,
-                          website: fieldMap['website'] || undefined,
-                          notes: extraAnswers.length > 0 ? extraAnswers.join('\n') : undefined,
-                        });
-                        setCreateMenteeOpen(true);
-                      }}
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      Criar Mentorado
-                    </Button>
-                    <Button
-                      variant={pendingDeleteSubmissionId === sub.id ? 'destructive' : 'ghost'}
-                      size={pendingDeleteSubmissionId === sub.id ? 'sm' : 'icon'}
-                      className={pendingDeleteSubmissionId === sub.id ? 'h-8 text-xs' : 'h-8 w-8 text-destructive'}
-                      disabled={deletingSubmissionId === sub.id}
-                      onClick={(e) => { e.stopPropagation(); deleteSubmission(sub.id); }}
-                    >
-                      {deletingSubmissionId === sub.id
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <Trash2 className="h-3.5 w-3.5" />}
-                      {pendingDeleteSubmissionId === sub.id && <span>Confirmar</span>}
-                    </Button>
-                    <button onClick={() => setExpandedSubmission(expandedSubmission === sub.id ? null : sub.id)}>
-                      <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSubmission === sub.id ? 'rotate-90' : ''}`} />
-                    </button>
-                  </div>
-                </div>
+          {!isLoadingSubmissions && submissions.map(sub => {
+            const initials = (sub.respondent_name || 'R').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const imageCount = Object.entries(sub.answers).filter(([qId, ans]) => {
+              const q = questions.find(x => x.id === qId);
+              return q?.question_type === 'image' && ans?.preview;
+            }).length;
 
-                {expandedSubmission === sub.id && (
-                  <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
-                    {Object.entries(sub.answers).map(([qId, answer]) => (
-                      <div key={qId} className="space-y-1">
-                        <p className="text-xs text-muted-foreground font-medium">{questionLabel(qId)}</p>
-                        <p className="text-sm text-foreground bg-secondary/30 rounded-lg p-2">
-                          {typeof answer === 'object' && answer !== null
-                            ? (answer as any).text || (answer as any).fileName || JSON.stringify(answer)
-                            : String(answer)}
+            return (
+              <Card
+                key={sub.id}
+                className="glass-card hover:border-primary/30 transition-colors cursor-pointer"
+                onClick={() => setDetailSub(sub)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-primary font-bold text-sm">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {sub.respondent_name || 'Respondente'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {sub.respondent_email || '—'} · {new Date(sub.created_at).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {imageCount > 0 && (
+                          <Badge variant="secondary" className="text-[10px] gap-0.5">
+                            📷 {imageCount}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px]">
+                          {Object.keys(sub.answers).length} respostas
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => handleCreateMenteeFromSub(sub)}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Criar
+                      </Button>
+                      <Button
+                        variant={pendingDeleteSubmissionId === sub.id ? 'destructive' : 'ghost'}
+                        size={pendingDeleteSubmissionId === sub.id ? 'sm' : 'icon'}
+                        className={pendingDeleteSubmissionId === sub.id ? 'h-8 text-xs' : 'h-8 w-8 text-destructive'}
+                        disabled={deletingSubmissionId === sub.id}
+                        onClick={() => deleteSubmission(sub.id)}
+                      >
+                        {deletingSubmissionId === sub.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Trash2 className="h-3.5 w-3.5" />}
+                        {pendingDeleteSubmissionId === sub.id && <span>Confirmar</span>}
+                      </Button>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
 
+          <SubmissionDetailSheet
+            open={!!detailSub}
+            onOpenChange={(open) => { if (!open) setDetailSub(null); }}
+            submission={detailSub}
+            questions={questions}
+            onCreateMentee={(sub) => {
+              handleCreateMenteeFromSub(sub);
+              setDetailSub(null);
+            }}
+          />
         </TabsContent>
       </Tabs>
 
