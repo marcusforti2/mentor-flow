@@ -127,3 +127,6 @@ verify_jwt = false
 
 [functions.generate-whatsapp-flow]
 verify_jwt = false
+
+[functions.enrich-mentee-profile]
+verify_jwt = false
