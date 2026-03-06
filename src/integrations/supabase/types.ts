@@ -3842,6 +3842,59 @@ export type Database = {
           },
         ]
       }
+      tenant_domains: {
+        Row: {
+          created_at: string
+          dns_verified: boolean
+          domain: string
+          error_message: string | null
+          id: string
+          is_primary: boolean
+          last_check_at: string | null
+          ssl_active: boolean
+          status: string
+          tenant_id: string
+          updated_at: string
+          verification_token: string | null
+        }
+        Insert: {
+          created_at?: string
+          dns_verified?: boolean
+          domain: string
+          error_message?: string | null
+          id?: string
+          is_primary?: boolean
+          last_check_at?: string | null
+          ssl_active?: boolean
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Update: {
+          created_at?: string
+          dns_verified?: boolean
+          domain?: string
+          error_message?: string | null
+          id?: string
+          is_primary?: boolean
+          last_check_at?: string | null
+          ssl_active?: boolean
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_forms: {
         Row: {
           created_at: string
