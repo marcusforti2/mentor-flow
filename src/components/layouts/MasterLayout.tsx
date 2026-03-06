@@ -5,7 +5,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette } from 'lucide-react';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
@@ -20,6 +20,7 @@ import { PageSpinner } from '@/components/PageSpinner';
    { icon: Shield, label: 'Dashboard', path: '/master' },
    { icon: Building2, label: 'Tenants', path: '/master/tenants' },
    { icon: Users, label: 'Usuários', path: '/master/users' },
+   { icon: Globe, label: 'Domínios', path: '/master/domains' },
    { icon: Palette, label: 'Branding', path: '/master/branding' },
    { icon: Eye, label: 'Preview', path: '/master/preview' },
    { icon: Settings, label: 'Config', path: '/master/config' },

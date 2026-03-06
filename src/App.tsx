@@ -39,6 +39,7 @@ const UsersPage = lazy(() => import("./pages/master/UsersPage"));
 
 const ConfigPage = lazy(() => import("./pages/master/ConfigPage"));
 const BrandingPage = lazy(() => import("./pages/master/BrandingPage"));
+const DomainsPage = lazy(() => import("./pages/master/DomainsPage"));
 
 // Admin/Mentor Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -153,6 +154,7 @@ function AppRoutes() {
           <Route path="users" element={<UsersPage />} />
           <Route path="config" element={<ConfigPage />} />
           <Route path="branding" element={<BrandingPage />} />
+          <Route path="domains" element={<DomainsPage />} />
         </Route>
 
         {/* Mentor Routes */}
