@@ -168,18 +168,34 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const detectTenantByDomain = useCallback(async (): Promise<string | null> => {
     const hostname = window.location.hostname;
     // Skip for lovable preview/staging domains and localhost
-    if (hostname.includes('lovable.app') || hostname === 'localhost' || hostname === '127.0.0.1') {
+    if (hostname.includes('lovable.app') || hostname.includes('lovableproject.com') || hostname === 'localhost' || hostname === '127.0.0.1') {
       return null;
     }
     try {
+      // First try tenants.custom_domain (active domains)
       const { data } = await supabase
         .from('tenants')
         .select('id')
         .eq('custom_domain', hostname)
         .single();
       if (data) {
-        console.log('[TenantContext] Tenant detected by domain:', hostname, '->', data.id);
+        console.log('[TenantContext] Tenant detected by custom_domain:', hostname, '->', data.id);
         return data.id;
+      }
+    } catch {
+      // Not found in tenants table, try tenant_domains
+    }
+    try {
+      // Fallback: check tenant_domains table (covers verifying/active domains)
+      const { data } = await supabase
+        .from('tenant_domains')
+        .select('tenant_id')
+        .eq('domain', hostname)
+        .in('status', ['active', 'verifying'])
+        .single();
+      if (data) {
+        console.log('[TenantContext] Tenant detected by tenant_domains:', hostname, '->', data.tenant_id);
+        return data.tenant_id;
       }
     } catch {
       // No tenant found for this domain
