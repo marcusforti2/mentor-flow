@@ -58,7 +58,7 @@ const menuItems: DockItem[] = [
       { icon: MessageCircle, label: 'WhatsApp', path: '/mentor/whatsapp' },
       { icon: MessageSquare, label: 'Popups', path: '/mentor/popups' },
       { icon: AlertTriangle, label: 'Centro SOS', path: '/mentor/sos' },
-      { icon: Zap, label: 'Automações', path: '/mentor/automacoes' },
+      { icon: Bot, label: 'Jarvis IA', path: '/mentor/automacoes' },
     ],
   },
   { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
