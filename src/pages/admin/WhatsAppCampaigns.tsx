@@ -21,7 +21,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   MessageCircle, Plus, Loader2, Send, Settings, Users, CheckCircle2, XCircle,
-  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket,
+  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket, Bot, FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,6 +30,8 @@ const WhatsAppAutomationTab = lazy(() => import("@/components/whatsapp/WhatsAppA
 import { WhatsAppDashboard } from "@/components/whatsapp/WhatsAppDashboard";
 import { WhatsAppQuickSend } from "@/components/whatsapp/WhatsAppQuickSend";
 import { WhatsAppIntelligence } from "@/components/whatsapp/WhatsAppIntelligence";
+import { WhatsAppAutoReply } from "@/components/whatsapp/WhatsAppAutoReply";
+import { WhatsAppDailySummary } from "@/components/whatsapp/WhatsAppDailySummary";
 
 interface WhatsAppConfig {
   id: string;
