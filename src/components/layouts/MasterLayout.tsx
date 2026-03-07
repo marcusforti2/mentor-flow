@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { LazyErrorBoundary } from '@/components/LazyErrorBoundary';
 import { RouteTransition } from '@/components/RouteTransition';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe } from 'lucide-react';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe, Download, X } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
