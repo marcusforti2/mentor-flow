@@ -136,7 +136,7 @@ export function JarvisFloatingOverlay() {
         stealthRetryCountRef.current += 1;
         toast.error('Erro ao iniciar microfone');
         if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
-          deactivateStealth();
+          setStealthActive(false);
         }
         return;
       }
