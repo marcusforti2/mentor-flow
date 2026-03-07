@@ -390,6 +390,10 @@ export function JarvisFloatingOverlay() {
           'onboarding-builder': '/mentor/onboarding-builder',
           'dev-tools': '/mentor/dev-tools',
           'ferramentas-ia': '/membro/ferramentas-ia',
+          metricas: '/membro/metricas',
+          'meus-arquivos': '/membro/meus-arquivos',
+          'minhas-tarefas': '/membro/minhas-tarefas',
+          'meu-crm': '/membro/meu-crm',
         };
         const route = routeMap[page];
         if (route) {
