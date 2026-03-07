@@ -4618,6 +4618,62 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_auto_reply_config: {
+        Row: {
+          ai_persona: string | null
+          auto_route_to_mentor: boolean | null
+          business_hours_end: number | null
+          business_hours_start: number | null
+          created_at: string | null
+          custom_instructions: string | null
+          greeting_message: string | null
+          id: string
+          is_enabled: boolean | null
+          only_business_hours: boolean | null
+          qualify_leads: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_persona?: string | null
+          auto_route_to_mentor?: boolean | null
+          business_hours_end?: number | null
+          business_hours_start?: number | null
+          created_at?: string | null
+          custom_instructions?: string | null
+          greeting_message?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          only_business_hours?: boolean | null
+          qualify_leads?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_persona?: string | null
+          auto_route_to_mentor?: boolean | null
+          business_hours_end?: number | null
+          business_hours_start?: number | null
+          created_at?: string | null
+          custom_instructions?: string | null
+          greeting_message?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          only_business_hours?: boolean | null
+          qualify_leads?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_auto_reply_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_automation_flows: {
         Row: {
           audience_membership_ids: string[] | null
@@ -4746,6 +4802,122 @@ export type Database = {
           },
           {
             foreignKeyName: "whatsapp_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_daily_summaries: {
+        Row: {
+          full_summary: string | null
+          generated_at: string | null
+          highlights: Json | null
+          id: string
+          next_steps: Json | null
+          pending_items: Json | null
+          summary_date: string
+          tenant_id: string
+          total_auto_replies: number | null
+          total_messages_received: number | null
+          total_messages_sent: number | null
+        }
+        Insert: {
+          full_summary?: string | null
+          generated_at?: string | null
+          highlights?: Json | null
+          id?: string
+          next_steps?: Json | null
+          pending_items?: Json | null
+          summary_date: string
+          tenant_id: string
+          total_auto_replies?: number | null
+          total_messages_received?: number | null
+          total_messages_sent?: number | null
+        }
+        Update: {
+          full_summary?: string | null
+          generated_at?: string | null
+          highlights?: Json | null
+          id?: string
+          next_steps?: Json | null
+          pending_items?: Json | null
+          summary_date?: string
+          tenant_id?: string
+          total_auto_replies?: number | null
+          total_messages_received?: number | null
+          total_messages_sent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_daily_summaries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_incoming_messages: {
+        Row: {
+          ai_reply_sent: boolean | null
+          ai_reply_text: string | null
+          created_at: string | null
+          from_name: string | null
+          from_phone: string
+          id: string
+          matched_membership_id: string | null
+          media_url: string | null
+          message_body: string
+          message_type: string | null
+          processed_at: string | null
+          status: string | null
+          tenant_id: string
+          ultramsg_message_id: string | null
+        }
+        Insert: {
+          ai_reply_sent?: boolean | null
+          ai_reply_text?: string | null
+          created_at?: string | null
+          from_name?: string | null
+          from_phone: string
+          id?: string
+          matched_membership_id?: string | null
+          media_url?: string | null
+          message_body: string
+          message_type?: string | null
+          processed_at?: string | null
+          status?: string | null
+          tenant_id: string
+          ultramsg_message_id?: string | null
+        }
+        Update: {
+          ai_reply_sent?: boolean | null
+          ai_reply_text?: string | null
+          created_at?: string | null
+          from_name?: string | null
+          from_phone?: string
+          id?: string
+          matched_membership_id?: string | null
+          media_url?: string | null
+          message_body?: string
+          message_type?: string | null
+          processed_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          ultramsg_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_incoming_messages_matched_membership_id_fkey"
+            columns: ["matched_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_incoming_messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
