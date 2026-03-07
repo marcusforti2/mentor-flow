@@ -43,7 +43,7 @@ export interface TenantContextType {
   switchMembership: (membershipId: string) => Promise<void>;
   endImpersonation: () => Promise<void>;
   refreshMemberships: () => Promise<void>;
-  refreshMembershipsAndWait: () => Promise<Membership[]>;
+  refreshMembershipsAndWait: (overrideUserId?: string) => Promise<Membership[]>;
   refreshTenant: () => Promise<void>;
   hasRole: (roles: MembershipRole | MembershipRole[]) => boolean;
   isAdmin: boolean;
