@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LucideIcon, MoreHorizontal, X } from 'lucide-react';
+import { getPrefetchHandlers } from '@/lib/routePrefetch';
 import {
   Tooltip,
   TooltipContent,
