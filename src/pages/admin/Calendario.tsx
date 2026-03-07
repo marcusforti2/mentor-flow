@@ -470,8 +470,8 @@ export default function Calendario() {
         </TabsList>
 
         {/* ── Programação Tab ── */}
-        <TabsContent value="programacao" className="flex-1 min-h-0 mt-0">
-          <div className="flex flex-col h-full gap-4">
+        <TabsContent value="programacao" className="mt-0">
+          <div className="flex flex-col gap-4">
             <Card className="glass-card p-4">
               <div className="flex items-center justify-between">
                 <div>
