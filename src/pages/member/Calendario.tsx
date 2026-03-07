@@ -158,7 +158,7 @@ export default function CalendarioMembro() {
   }
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4">
+    <div className="min-h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -170,7 +170,7 @@ export default function CalendarioMembro() {
         </div>
       </div>
 
-      <Tabs defaultValue="programacao" className="flex-1 flex flex-col min-h-0 gap-3">
+      <Tabs defaultValue="programacao" className="flex flex-col gap-3">
         <TabsList className="w-fit">
           <TabsTrigger value="programacao" className="gap-2">
             <ListChecks className="h-4 w-4" /> Programação
@@ -181,8 +181,8 @@ export default function CalendarioMembro() {
         </TabsList>
 
         {/* ── Programação Tab ── */}
-        <TabsContent value="programacao" className="flex-1 min-h-0 mt-0">
-          <div className="flex flex-col h-full gap-4">
+        <TabsContent value="programacao" className="mt-0">
+          <div className="flex flex-col gap-4">
             {/* Week navigator */}
             <Card className="glass-card p-4">
               <div className="flex items-center justify-between">
@@ -216,7 +216,7 @@ export default function CalendarioMembro() {
             </Card>
 
             {/* Events grouped by day */}
-            <ScrollArea className="flex-1">
+            <div className="pb-8">
               {sortedDays.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-secondary/50 flex items-center justify-center mb-4">
@@ -322,13 +322,13 @@ export default function CalendarioMembro() {
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </TabsContent>
 
         {/* ── Calendar Tab ── */}
-        <TabsContent value="calendar" className="flex-1 min-h-0 mt-0">
-          <div className="h-full grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
+        <TabsContent value="calendar" className="mt-0">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 min-h-[600px]">
             <Card className="glass-card overflow-hidden flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-secondary/20">
                 <div className="flex items-center gap-2">
@@ -377,7 +377,7 @@ export default function CalendarioMembro() {
             </Card>
 
             {/* Sidebar */}
-            <div className="flex flex-col gap-3 min-h-0">
+            <div className="flex flex-col gap-3">
               <Card className="glass-card p-4">
                 <div className="flex items-center justify-between mb-1">
                   <div>
@@ -410,8 +410,8 @@ export default function CalendarioMembro() {
                 </div>
               </Card>
 
-              <Card className="glass-card flex-1 min-h-0 flex flex-col overflow-hidden">
-                <ScrollArea className="flex-1 p-3">
+              <Card className="glass-card flex flex-col overflow-hidden">
+                <div className="p-3">
                   {selectedDayEvents.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <div className="w-14 h-14 rounded-2xl bg-secondary/50 flex items-center justify-center mb-3">
@@ -472,7 +472,7 @@ export default function CalendarioMembro() {
                         })}
                     </div>
                   )}
-                </ScrollArea>
+                </div>
               </Card>
             </div>
           </div>
