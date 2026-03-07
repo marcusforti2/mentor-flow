@@ -179,7 +179,7 @@ export function JarvisFloatingOverlay() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 group"
-        title="Jarvis IA (Ctrl+J)"
+        title="Jarvis IA (Ctrl+Alt+J)"
       >
         {/* Neural network glow effect */}
         <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-violet-500 to-purple-700 blur-lg opacity-60 group-hover:opacity-90 transition-opacity scale-110 animate-pulse" />
