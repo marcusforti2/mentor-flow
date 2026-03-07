@@ -180,6 +180,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
           key={item.path}
           to={item.path!}
           onClick={() => setMoreOpen(false)}
+          {...getPrefetchHandlers(item.path!)}
           className={cn(
             "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95",
             isActive
