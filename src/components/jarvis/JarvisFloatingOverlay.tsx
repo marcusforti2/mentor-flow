@@ -125,7 +125,7 @@ export function JarvisFloatingOverlay() {
     if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
       console.warn('Stealth mic: max retries reached, stopping auto-reconnect');
       toast.error('Microfone parou após falhas consecutivas. Clique duplo para reiniciar.', { duration: 4000 });
-      deactivateStealth();
+      setStealthActive(false);
       return;
     }
 
