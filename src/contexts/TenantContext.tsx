@@ -58,6 +58,7 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 const ACTIVE_MEMBERSHIP_KEY = 'active_membership_id';
 const IMPERSONATION_LOG_KEY = 'impersonation_log_id';
+const CACHED_BRANDING_KEY = 'cached_tenant_branding';
 
 // Role priority order (highest privilege first)
 const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'];
@@ -117,7 +118,11 @@ function cleanupBranding() {
 /** Synchronously inject CSS variables for the given tenant. Can be called outside React render. */
 function applyTenantBranding(t: Tenant | null, isMasterView: boolean) {
   cleanupBranding();
-  if (!t || isMasterView) return;
+  if (!t || isMasterView) {
+    // Clear cache when going to master view
+    if (isMasterView) localStorage.removeItem(CACHED_BRANDING_KEY);
+    return;
+  }
 
   if (t.theme_mode === 'light') {
     document.body.classList.add('theme-light');
@@ -149,8 +154,63 @@ function applyTenantBranding(t: Tenant | null, isMasterView: boolean) {
     _brandingInjectedProps.push('--font-display', '--font-body');
   }
 
+  // Cache branding for instant restore on next page load
+  try {
+    localStorage.setItem(CACHED_BRANDING_KEY, JSON.stringify({
+      primary_color: t.primary_color,
+      secondary_color: t.secondary_color,
+      accent_color: t.accent_color,
+      font_family: t.font_family,
+      brand_attributes: t.brand_attributes,
+      theme_mode: t.theme_mode,
+    }));
+  } catch { /* quota exceeded — safe to ignore */ }
+
   console.log('[Branding] Injected for', t.name, ':', _brandingInjectedProps.length, 'vars, theme:', t.theme_mode || 'dark');
 }
+
+/**
+ * Instantly restore cached branding from localStorage to prevent the
+ * "green flash" while TenantContext loads data from the server.
+ * Called once on module init (before React tree renders).
+ */
+function restoreCachedBranding() {
+  try {
+    const cached = localStorage.getItem(CACHED_BRANDING_KEY);
+    if (!cached) return;
+    const data = JSON.parse(cached);
+    if (data.theme_mode === 'light') {
+      document.body.classList.add('theme-light');
+    }
+    _injectCssVar('--primary', data.primary_color);
+    _injectCssVar('--primary-foreground', '0 0% 98%');
+    _injectCssVar('--secondary', data.secondary_color);
+    _injectCssVar('--accent', data.accent_color);
+    _injectCssVar('--ring', data.primary_color);
+    const attrs = data.brand_attributes as Record<string, string> | null;
+    if (attrs) {
+      _injectCssVar('--background', attrs.background);
+      _injectCssVar('--foreground', attrs.foreground);
+      _injectCssVar('--card', attrs.card);
+      _injectCssVar('--card-foreground', attrs.card_foreground);
+      _injectCssVar('--muted', attrs.muted);
+      _injectCssVar('--muted-foreground', attrs.muted_foreground);
+      _injectCssVar('--border', attrs.border);
+      _injectCssVar('--input', attrs.border);
+      _injectCssVar('--popover', attrs.card);
+      _injectCssVar('--popover-foreground', attrs.card_foreground);
+    }
+    if (data.font_family) {
+      document.body.style.setProperty('--font-display', `'${data.font_family}', sans-serif`);
+      document.body.style.setProperty('--font-body', `'${data.font_family}', sans-serif`);
+      _brandingInjectedProps.push('--font-display', '--font-body');
+    }
+    console.log('[Branding] Restored cached branding instantly');
+  } catch { /* corrupted cache — safe to ignore */ }
+}
+
+// Execute immediately on module load — before any React component mounts
+restoreCachedBranding();
 
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
