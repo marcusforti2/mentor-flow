@@ -66,6 +66,36 @@ export function JarvisFloatingOverlay() {
     }
   }, []);
 
+  const stealthScribe = useScribe({
+    modelId: 'scribe_v2_realtime' as any,
+    commitStrategy: 'vad' as any,
+    onPartialTranscript: (data: any) => {
+      if (data.text) setStealthPartial(data.text);
+    },
+    onCommittedTranscript: async (data: any) => {
+      const transcript = data.text?.trim();
+      if (!transcript || !stealthActive) return;
+
+      const commitKey = `${data.id ?? ''}:${transcript}`;
+      if (stealthLastCommitKeyRef.current === commitKey) return;
+      if (stealthAwaitingReplyRef.current || jarvis.isLoading || stealthSpeaking) return;
+
+      stealthLastCommitKeyRef.current = commitKey;
+      stealthAwaitingReplyRef.current = true;
+
+      setStealthPartial('');
+      try {
+        stealthScribe.disconnect();
+      } catch {
+        // noop
+      }
+      setStealthSttConnected(false);
+      setStealthListening(false);
+
+      await jarvis.sendMessage(transcript);
+    },
+  });
+
   const stealthStopListening = useCallback(() => {
     try {
       stealthScribe.disconnect();
@@ -113,37 +143,6 @@ export function JarvisFloatingOverlay() {
       stealthConnectingRef.current = false;
     }
   }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking]);
-
-  const scheduleStealthRestart = useCallback((delay = 300) => {
-    clearStealthRestartTimer();
-    stealthRestartTimerRef.current = setTimeout(() => {
-      if (!stealthActive || stealthSpeaking || jarvis.isLoading || stealthAwaitingReplyRef.current) return;
-      void stealthStartListening();
-    }, delay);
-  }, [clearStealthRestartTimer, jarvis.isLoading, stealthActive, stealthSpeaking, stealthStartListening]);
-
-  const stealthScribe = useScribe({
-    modelId: 'scribe_v2_realtime' as any,
-    commitStrategy: 'vad' as any,
-    onPartialTranscript: (data: any) => {
-      if (data.text) setStealthPartial(data.text);
-    },
-    onCommittedTranscript: async (data: any) => {
-      const transcript = data.text?.trim();
-      if (!transcript || !stealthActive) return;
-
-      const commitKey = `${data.id ?? ''}:${transcript}`;
-      if (stealthLastCommitKeyRef.current === commitKey) return;
-      if (stealthAwaitingReplyRef.current || jarvis.isLoading || stealthSpeaking) return;
-
-      stealthLastCommitKeyRef.current = commitKey;
-      stealthAwaitingReplyRef.current = true;
-
-      setStealthPartial('');
-      stealthStopListening();
-      await jarvis.sendMessage(transcript);
-    },
-  });
 
   const deactivateStealth = useCallback(() => {
     clearStealthRestartTimer();
