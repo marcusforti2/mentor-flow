@@ -23,6 +23,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ShowcasePage = lazy(() => import("./pages/ShowcasePage"));
 const TenantLandingPage = lazy(() => import("./pages/TenantLandingPage"));
+const TenantAuthPage = lazy(() => import("./pages/TenantAuthPage"));
 const PublicPlaybookPage = lazy(() => import("./pages/PublicPlaybookPage"));
 const PublicFormPage = lazy(() => import("./pages/PublicFormPage"));
 
