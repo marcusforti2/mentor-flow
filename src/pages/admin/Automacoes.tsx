@@ -1,19 +1,17 @@
 import { useState } from 'react';
-import { Loader2 as LazyLoader } from 'lucide-react';
-import { useAutomations, CATEGORY_LABELS, getAutomationMeta } from '@/hooks/useAutomations';
-import { AutomationCard } from '@/components/admin/AutomationCard';
-import { lazy, Suspense } from 'react';
-const AutomationFlowView = lazy(() => import('@/components/admin/AutomationFlowView').then(m => ({ default: m.AutomationFlowView })));
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Loader2, Zap, CheckCircle2, XCircle, Pause, LayoutGrid, Workflow } from 'lucide-react';
+import { useAutomations } from '@/hooks/useAutomations';
+import { useJarvis } from '@/hooks/useJarvis';
+import { JarvisChat } from '@/components/jarvis/JarvisChat';
+import { JarvisSidebar } from '@/components/jarvis/JarvisSidebar';
+import { Bot, PanelRightClose, PanelRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-type CategoryFilter = 'all' | 'engagement' | 'intelligence' | 'communication' | 'growth';
 
 export default function Automacoes() {
   const { automations, loading, toggleAutomation, updateConfig, runNow } = useAutomations();
+  const jarvis = useJarvis();
   const [runningKey, setRunningKey] = useState<string | null>(null);
-  const [filter, setFilter] = useState<CategoryFilter>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleRunNow = async (key: string) => {
     setRunningKey(key);
@@ -21,142 +19,68 @@ export default function Automacoes() {
     setRunningKey(null);
   };
 
-  const activeCount = automations.filter(a => a.is_enabled).length;
-  const errorCount = automations.filter(a => a.last_run_status === 'error').length;
-
-  const filtered = filter === 'all'
-    ? automations
-    : automations.filter(a => {
-        const meta = getAutomationMeta(a.automation_key);
-        return meta.category === filter;
-      });
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-[calc(100vh-120px)]">
+        <div className="flex flex-col items-center gap-3">
+          <Bot className="h-8 w-8 text-primary animate-pulse" />
+          <p className="text-sm text-muted-foreground">Carregando Jarvis...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="h-[calc(100vh-120px)] flex flex-col max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-xl bg-primary/20 text-primary">
-              <Zap className="h-5 w-5" />
-            </div>
-            <h1 className="text-2xl font-display font-bold text-foreground">Automações</h1>
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-primary/20 text-primary">
+            <Bot className="h-5 w-5" />
           </div>
-          <p className="text-sm text-muted-foreground ml-12">
-            Configure rotinas inteligentes que trabalham no piloto automático para você e seus mentorados.
-          </p>
+          <div>
+            <h1 className="text-xl font-display font-bold text-foreground">Jarvis</h1>
+            <p className="text-xs text-muted-foreground">Centro de comando inteligente — automações, WhatsApp, email e mais.</p>
+          </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 md:flex hidden"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          title={sidebarOpen ? 'Fechar painel' : 'Abrir painel'}
+        >
+          {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+        </Button>
       </div>
 
-      {/* Stats summary */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-full px-3 py-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-          <span><strong className="text-foreground">{activeCount}</strong> ativas</span>
+      {/* Main content */}
+      <div className="flex-1 flex gap-4 min-h-0">
+        {/* Chat area */}
+        <div className={cn(
+          "flex-1 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col min-w-0",
+        )}>
+          <JarvisChat
+            messages={jarvis.messages}
+            isLoading={jarvis.isLoading}
+            onSend={jarvis.sendMessage}
+            onStop={jarvis.stopStreaming}
+            onClear={jarvis.clearChat}
+          />
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-full px-3 py-1.5">
-          <Pause className="h-3.5 w-3.5" />
-          <span><strong className="text-foreground">{automations.length - activeCount}</strong> pausadas</span>
-        </div>
-        {errorCount > 0 && (
-          <div className="flex items-center gap-1.5 text-xs bg-destructive/10 text-destructive rounded-full px-3 py-1.5">
-            <XCircle className="h-3.5 w-3.5" />
-            <span><strong>{errorCount}</strong> com erro</span>
+
+        {/* Sidebar - automations panel */}
+        {sidebarOpen && (
+          <div className="hidden md:flex w-80 shrink-0 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden flex-col">
+            <JarvisSidebar
+              automations={automations}
+              onToggle={toggleAutomation}
+              onRunNow={handleRunNow}
+              runningKey={runningKey}
+            />
           </div>
         )}
       </div>
-
-      {/* Tabs: Cards vs Mapa Visual */}
-      <Tabs defaultValue="cards" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="cards" className="gap-1.5">
-            <LayoutGrid className="h-4 w-4" />
-            Cards
-          </TabsTrigger>
-          <TabsTrigger value="map" className="gap-1.5">
-            <Workflow className="h-4 w-4" />
-            Mapa Visual
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Cards tab */}
-        <TabsContent value="cards" className="space-y-4">
-          {/* Category filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setFilter('all')}
-              className={cn(
-                "text-xs px-3 py-1.5 rounded-full border transition-colors",
-                filter === 'all'
-                  ? "bg-primary/20 text-primary border-primary/30"
-                  : "bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50"
-              )}
-            >
-              Todas ({automations.length})
-            </button>
-            {Object.entries(CATEGORY_LABELS).map(([key, cat]) => {
-              const count = automations.filter(a => getAutomationMeta(a.automation_key).category === key).length;
-              if (count === 0) return null;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key as CategoryFilter)}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-full border transition-colors",
-                    filter === key
-                      ? cn(cat.color)
-                      : "bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50"
-                  )}
-                >
-                  {cat.label} ({count})
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((automation) => (
-              <AutomationCard
-                key={automation.id}
-                automation={automation}
-                onToggle={toggleAutomation}
-                onUpdateConfig={updateConfig}
-                onRunNow={handleRunNow}
-                running={runningKey === automation.automation_key}
-              />
-            ))}
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>Nenhuma automação encontrada nesta categoria.</p>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Map tab */}
-        <TabsContent value="map">
-          <Suspense fallback={<div className="flex items-center justify-center h-64"><LazyLoader className="h-8 w-8 animate-spin text-primary" /></div>}>
-          <AutomationFlowView
-            automations={automations}
-            onToggle={toggleAutomation}
-            onUpdateConfig={updateConfig}
-            onRunNow={handleRunNow}
-            runningKey={runningKey}
-          />
-          </Suspense>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
