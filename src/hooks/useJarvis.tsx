@@ -63,7 +63,7 @@ export function useJarvis() {
   }, []);
 
   const sendMessage = useCallback(async (input: string) => {
-    if (!activeMembership?.id || !input.trim()) return;
+    if (!activeMembership?.id || !input.trim() || isLoading) return;
 
     const userMsg: JarvisMessage = {
       id: crypto.randomUUID(),
@@ -181,7 +181,7 @@ export function useJarvis() {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [activeMembership?.id, conversationId, loadConversations]);
+  }, [activeMembership?.id, conversationId, isLoading, loadConversations]);
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();

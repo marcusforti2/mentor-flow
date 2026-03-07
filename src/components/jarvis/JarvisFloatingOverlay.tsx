@@ -55,36 +55,84 @@ export function JarvisFloatingOverlay() {
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stealthConnectingRef = useRef(false);
+  const stealthRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stealthAwaitingReplyRef = useRef(false);
+  const stealthLastCommitKeyRef = useRef<string | null>(null);
 
-  const stealthSendingRef = useRef(false);
+  const clearStealthRestartTimer = useCallback(() => {
+    if (stealthRestartTimerRef.current) {
+      clearTimeout(stealthRestartTimerRef.current);
+      stealthRestartTimerRef.current = null;
+    }
+  }, []);
+
   const stealthScribe = useScribe({
     modelId: 'scribe_v2_realtime' as any,
     commitStrategy: 'vad' as any,
     onPartialTranscript: (data: any) => {
       if (data.text) setStealthPartial(data.text);
     },
-    onCommittedTranscript: (data: any) => {
-      if (data.text?.trim() && !stealthSendingRef.current) {
-        stealthSendingRef.current = true;
-        setStealthPartial('');
-        stealthStopListening();
-        jarvis.sendMessage(data.text.trim());
-        // Reset guard after a delay
-        setTimeout(() => { stealthSendingRef.current = false; }, 2000);
+    onCommittedTranscript: async (data: any) => {
+      const transcript = data.text?.trim();
+      if (!transcript || !stealthActive) return;
+
+      const commitKey = `${data.id ?? ''}:${transcript}`;
+      if (stealthLastCommitKeyRef.current === commitKey) return;
+      if (stealthAwaitingReplyRef.current || jarvis.isLoading || stealthSpeaking) return;
+
+      stealthLastCommitKeyRef.current = commitKey;
+      stealthAwaitingReplyRef.current = true;
+
+      setStealthPartial('');
+      try {
+        stealthScribe.disconnect();
+      } catch {
+        // noop
       }
+      setStealthSttConnected(false);
+      setStealthListening(false);
+
+      await jarvis.sendMessage(transcript);
     },
   });
 
+  const stealthStopListening = useCallback(() => {
+    try {
+      stealthScribe.disconnect();
+    } catch {
+      // noop
+    }
+    setStealthSttConnected(false);
+    setStealthListening(false);
+  }, [stealthScribe]);
+
   const stealthStartListening = useCallback(async () => {
-    if (stealthConnectingRef.current || stealthListening) return;
+    if (
+      !stealthActive ||
+      stealthConnectingRef.current ||
+      stealthListening ||
+      stealthScribe.isConnected ||
+      jarvis.isLoading ||
+      stealthSpeaking ||
+      stealthAwaitingReplyRef.current
+    ) {
+      return;
+    }
+
     stealthConnectingRef.current = true;
     try {
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (error || !data?.token) { toast.error('Erro ao iniciar microfone'); return; }
+      if (error || !data?.token) {
+        toast.error('Erro ao iniciar microfone');
+        return;
+      }
+
       await stealthScribe.connect({
         token: data.token,
         microphone: { echoCancellation: true, noiseSuppression: true },
       });
+
+      setStealthPartial('');
       setStealthListening(true);
       setStealthSttConnected(true);
     } catch (err) {
@@ -94,34 +142,41 @@ export function JarvisFloatingOverlay() {
     } finally {
       stealthConnectingRef.current = false;
     }
-  }, [stealthScribe, stealthListening]);
+  }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking]);
 
-  const stealthStopListening = useCallback(() => {
-    if (stealthSttConnected) {
-      stealthScribe.disconnect();
-      setStealthSttConnected(false);
-    }
-    setStealthListening(false);
-  }, [stealthScribe, stealthSttConnected]);
+  const scheduleStealthRestart = useCallback((delay = 300) => {
+    clearStealthRestartTimer();
+    stealthRestartTimerRef.current = setTimeout(() => {
+      if (!stealthActive || stealthSpeaking || jarvis.isLoading || stealthAwaitingReplyRef.current) return;
+      void stealthStartListening();
+    }, delay);
+  }, [clearStealthRestartTimer, jarvis.isLoading, stealthActive, stealthSpeaking, stealthStartListening]);
 
   const deactivateStealth = useCallback(() => {
+    clearStealthRestartTimer();
     stealthStopListening();
+
     if (stealthAudioRef.current) {
+      stealthAudioRef.current.onended = null;
+      stealthAudioRef.current.onerror = null;
       stealthAudioRef.current.pause();
       stealthAudioRef.current = null;
     }
+
+    stealthAwaitingReplyRef.current = false;
+    stealthLastCommitKeyRef.current = null;
+
     setStealthActive(false);
     setStealthResponse(null);
     setStealthPartial('');
     setStealthSpeaking(false);
-  }, [stealthStopListening]);
+  }, [clearStealthRestartTimer, stealthStopListening]);
 
   // Auto-start listening when stealth activates
   useEffect(() => {
-    if (stealthActive && !stealthListening && !jarvis.isLoading && !stealthSpeaking) {
-      stealthStartListening();
-    }
-  }, [stealthActive]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current) return;
+    void stealthStartListening();
+  }, [jarvis.isLoading, stealthActive, stealthListening, stealthSpeaking, stealthStartListening]);
 
   // Watch for Jarvis response in stealth mode
   useEffect(() => {
@@ -129,6 +184,7 @@ export function JarvisFloatingOverlay() {
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.isStreaming) return;
     if (stealthLastSpokenRef.current === lastMsg.id) return;
+
     stealthLastSpokenRef.current = lastMsg.id;
 
     const text = stripMarkdown(lastMsg.content);
@@ -137,17 +193,39 @@ export function JarvisFloatingOverlay() {
     // Auto-hide response after 8s
     setTimeout(() => setStealthResponse(null), 8000);
 
-    // TTS
     if (text && text.length >= 5) {
-      stealthSpeakTTS(text);
-    } else {
-      // No TTS, restart listening
-      setTimeout(() => stealthStartListening(), 500);
+      void stealthSpeakTTS(text);
+      return;
     }
-  }, [jarvis.messages, stealthActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    stealthAwaitingReplyRef.current = false;
+    scheduleStealthRestart(400);
+  }, [jarvis.messages, scheduleStealthRestart, stealthActive]);
 
   const stealthSpeakTTS = async (text: string) => {
+    clearStealthRestartTimer();
+
+    if (stealthAudioRef.current) {
+      stealthAudioRef.current.onended = null;
+      stealthAudioRef.current.onerror = null;
+      stealthAudioRef.current.pause();
+      stealthAudioRef.current = null;
+    }
+
     setStealthSpeaking(true);
+
+    let audioUrl = '';
+    let finalized = false;
+
+    const finishCycle = () => {
+      if (finalized) return;
+      finalized = true;
+      setStealthSpeaking(false);
+      stealthAwaitingReplyRef.current = false;
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (stealthActive) scheduleStealthRestart(350);
+    };
+
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
@@ -161,27 +239,28 @@ export function JarvisFloatingOverlay() {
           body: JSON.stringify({ text }),
         }
       );
+
       if (!response.ok) throw new Error('TTS failed');
+
       const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       stealthAudioRef.current = audio;
+
       audio.onended = () => {
-        setStealthSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-        // Auto-restart listening
-        if (stealthActive) {
-          setTimeout(() => stealthStartListening(), 300);
-        }
+        stealthAudioRef.current = null;
+        finishCycle();
       };
+
       audio.onerror = () => {
-        setStealthSpeaking(false);
-        if (stealthActive) setTimeout(() => stealthStartListening(), 300);
+        stealthAudioRef.current = null;
+        finishCycle();
       };
+
       await audio.play();
     } catch {
-      setStealthSpeaking(false);
-      if (stealthActive) setTimeout(() => stealthStartListening(), 300);
+      stealthAudioRef.current = null;
+      finishCycle();
     }
   };
 
