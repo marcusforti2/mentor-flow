@@ -136,3 +136,12 @@ verify_jwt = false
 
 [functions.google-drive-callback]
 verify_jwt = false
+
+[functions.notify-event-mentees]
+verify_jwt = false
+
+[functions.process-event-reminders]
+verify_jwt = false
+
+[functions.ai-schedule-agent]
+verify_jwt = false
