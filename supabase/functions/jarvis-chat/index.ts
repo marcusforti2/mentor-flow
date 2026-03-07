@@ -635,6 +635,13 @@ Você pode EXECUTAR ações reais usando as ferramentas disponíveis:
               break;
             }
 
+            case "navigate_to_page": {
+              const { page } = args;
+              result = `Navegando para a página "${page}".`;
+              executedActions.push(`navigate:${page}`);
+              break;
+            }
+
             default:
               result = `Ferramenta "${fn.name}" não reconhecida.`;
           }
