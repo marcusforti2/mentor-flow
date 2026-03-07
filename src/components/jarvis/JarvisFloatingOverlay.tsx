@@ -40,10 +40,10 @@ export function JarvisFloatingOverlay() {
 
   const [input, setInput] = useState('');
 
-  // Global hotkey: Ctrl+J or Cmd+J
+  // Global hotkey: Ctrl+Alt+J or Cmd+Alt+J
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'j') {
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
@@ -179,7 +179,7 @@ export function JarvisFloatingOverlay() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 group"
-        title="Jarvis IA (Ctrl+J)"
+        title="Jarvis IA (Ctrl+Alt+J)"
       >
         {/* Neural network glow effect */}
         <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-violet-500 to-purple-700 blur-lg opacity-60 group-hover:opacity-90 transition-opacity scale-110 animate-pulse" />
@@ -190,7 +190,7 @@ export function JarvisFloatingOverlay() {
           <Bot className="h-6 w-6 text-white drop-shadow-lg" />
         </div>
         <span className="absolute -top-8 right-0 bg-card/90 backdrop-blur-sm text-[10px] text-foreground px-2 py-1 rounded-lg border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
-          Ctrl+J
+          Ctrl+Alt+J
         </span>
       </button>
     );
@@ -250,7 +250,7 @@ export function JarvisFloatingOverlay() {
                 </div>
                 <div>
                   <h2 className="text-sm font-display font-bold text-foreground">Jarvis</h2>
-                  <p className="text-[10px] text-muted-foreground">Centro de Comando • Ctrl+J</p>
+                  <p className="text-[10px] text-muted-foreground">Centro de Comando • Ctrl+Alt+J</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
