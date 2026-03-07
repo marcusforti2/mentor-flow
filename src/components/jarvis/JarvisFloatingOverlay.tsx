@@ -54,7 +54,9 @@ export function JarvisFloatingOverlay() {
   const stealthLastSpokenRef = useRef<string | null>(null);
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stealthConnectingRef = useRef(false);
 
+  const stealthSendingRef = useRef(false);
   const stealthScribe = useScribe({
     modelId: 'scribe_v2_realtime' as any,
     commitStrategy: 'vad' as any,
@@ -62,15 +64,20 @@ export function JarvisFloatingOverlay() {
       if (data.text) setStealthPartial(data.text);
     },
     onCommittedTranscript: (data: any) => {
-      if (data.text?.trim()) {
+      if (data.text?.trim() && !stealthSendingRef.current) {
+        stealthSendingRef.current = true;
         setStealthPartial('');
         stealthStopListening();
         jarvis.sendMessage(data.text.trim());
+        // Reset guard after a delay
+        setTimeout(() => { stealthSendingRef.current = false; }, 2000);
       }
     },
   });
 
   const stealthStartListening = useCallback(async () => {
+    if (stealthConnectingRef.current || stealthListening) return;
+    stealthConnectingRef.current = true;
     try {
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
       if (error || !data?.token) { toast.error('Erro ao iniciar microfone'); return; }
@@ -84,8 +91,10 @@ export function JarvisFloatingOverlay() {
       console.error('Stealth STT error:', err);
       toast.error('Não foi possível acessar o microfone');
       setStealthActive(false);
+    } finally {
+      stealthConnectingRef.current = false;
     }
-  }, [stealthScribe]);
+  }, [stealthScribe, stealthListening]);
 
   const stealthStopListening = useCallback(() => {
     if (stealthSttConnected) {
