@@ -177,7 +177,7 @@ const Auth = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email, tenant_hint: tenantHint || selectedTenantId || undefined },
+        body: { email, tenant_hint: tenantHint || selectedTenantId || undefined, channel: otpChannel },
       });
 
       if (error) throw error;
