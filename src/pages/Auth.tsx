@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Building2 } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Building2, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
