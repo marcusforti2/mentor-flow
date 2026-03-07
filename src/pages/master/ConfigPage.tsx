@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Settings, Palette, ToggleLeft, Key,
   Save, Loader2, CheckCircle2, XCircle, Globe, Building2, MessageCircle,
+  Download, Database, FolderDown, RefreshCw, FileJson,
 } from 'lucide-react';
 
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
