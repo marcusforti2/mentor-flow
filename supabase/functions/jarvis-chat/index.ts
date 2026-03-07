@@ -231,9 +231,30 @@ serve(async (req) => {
       { type: "function", function: { name: "create_badge", description: "Cria badge", parameters: { type: "object", properties: { name: { type: "string" }, description: { type: "string" }, points_required: { type: "number" }, criteria: { type: "string" } }, required: ["name"], additionalProperties: false } } },
       // FORMS
       { type: "function", function: { name: "get_form_submissions", description: "Respostas de formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, limit: { type: "number" } }, required: ["form_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_form", description: "Cria formulário", parameters: { type: "object", properties: { title: { type: "string" }, form_type: { type: "string", enum: ["onboarding", "feedback", "survey", "application", "custom"] }, is_active: { type: "boolean" } }, required: ["title"], additionalProperties: false } } },
+      { type: "function", function: { name: "add_form_question", description: "Adiciona pergunta a formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, question_text: { type: "string" }, question_type: { type: "string", enum: ["text", "textarea", "select", "multiselect", "rating", "yes_no"] }, options: { type: "array", items: { type: "string" } }, is_required: { type: "boolean" }, order_index: { type: "number" } }, required: ["form_id", "question_text"], additionalProperties: false } } },
+      { type: "function", function: { name: "toggle_form", description: "Ativa/desativa formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["form_id", "is_active"], additionalProperties: false } } },
       // POPUPS & FLOWS
       { type: "function", function: { name: "toggle_popup", description: "Ativa/desativa popup", parameters: { type: "object", properties: { popup_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["popup_id", "is_active"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_popup", description: "Cria popup", parameters: { type: "object", properties: { title: { type: "string" }, popup_type: { type: "string", enum: ["announcement", "promotion", "survey", "welcome"] }, content: { type: "string" }, is_active: { type: "boolean" } }, required: ["title"], additionalProperties: false } } },
       { type: "function", function: { name: "toggle_email_flow", description: "Ativa/desativa fluxo email", parameters: { type: "object", properties: { flow_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["flow_id", "is_active"], additionalProperties: false } } },
+      // INVITES MANAGEMENT
+      { type: "function", function: { name: "list_pending_invites", description: "Lista convites pendentes", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
+      { type: "function", function: { name: "revoke_invite", description: "Revoga convite", parameters: { type: "object", properties: { invite_id: { type: "string" } }, required: ["invite_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "bulk_invite_mentorados", description: "Convida vários mentorados de uma vez", parameters: { type: "object", properties: { invites: { type: "array", items: { type: "object", properties: { email: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" } }, required: ["email", "full_name"] } } }, required: ["invites"], additionalProperties: false } } },
+      // JOURNEY CS
+      { type: "function", function: { name: "get_mentee_journey_position", description: "Posição do mentorado na jornada CS", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      // TENANT SETTINGS
+      { type: "function", function: { name: "update_tenant_settings", description: "Atualiza configurações do programa", parameters: { type: "object", properties: { setting_key: { type: "string" }, setting_value: { type: "string" } }, required: ["setting_key", "setting_value"], additionalProperties: false } } },
+      // MENTOR REPORT
+      { type: "function", function: { name: "generate_mentor_report", description: "Gera relatório completo do mentor", parameters: { type: "object", properties: { period: { type: "string", enum: ["week", "month", "quarter"] } }, required: [], additionalProperties: false } } },
+      // PIPELINE MANAGEMENT
+      { type: "function", function: { name: "create_pipeline_stage", description: "Cria etapa no pipeline CRM", parameters: { type: "object", properties: { name: { type: "string" }, status_key: { type: "string" }, color: { type: "string" }, position: { type: "number" } }, required: ["name", "status_key"], additionalProperties: false } } },
+      // BULK OPERATIONS
+      { type: "function", function: { name: "bulk_send_email", description: "Envia email para vários mentorados", parameters: { type: "object", properties: { mentee_membership_ids: { type: "array", items: { type: "string" } }, subject: { type: "string" }, body_html: { type: "string" } }, required: ["mentee_membership_ids", "subject", "body_html"], additionalProperties: false } } },
+      { type: "function", function: { name: "bulk_update_lead_stage", description: "Move vários leads de etapa", parameters: { type: "object", properties: { lead_ids: { type: "array", items: { type: "string" } }, stage: { type: "string" } }, required: ["lead_ids", "stage"], additionalProperties: false } } },
+      // ACTIVITY LOG
+      { type: "function", function: { name: "log_custom_activity", description: "Registra atividade personalizada", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, action_type: { type: "string" }, description: { type: "string" }, points: { type: "number" } }, required: ["mentee_membership_id", "action_type", "description"], additionalProperties: false } } },
     ];
 
     // ====== SYSTEM PROMPT — JARVIS TONY STARK STYLE ======
