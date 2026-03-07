@@ -75,6 +75,8 @@ export function JarvisFloatingOverlay() {
     onCommittedTranscript: async (data: any) => {
       const transcript = data.text?.trim();
       if (!transcript || !stealthActive) return;
+      // Filter out very short/noise transcriptions (less than 3 chars)
+      if (transcript.length < 3) return;
 
       const commitKey = `${data.id ?? ''}:${transcript}`;
       if (stealthLastCommitKeyRef.current === commitKey) return;
@@ -84,13 +86,11 @@ export function JarvisFloatingOverlay() {
       stealthAwaitingReplyRef.current = true;
 
       setStealthPartial('');
-      try {
-        stealthScribe.disconnect();
-      } catch {
-        // noop
-      }
+      // Force mic OFF immediately before sending
+      try { stealthScribe.disconnect(); } catch {}
       setStealthSttConnected(false);
       setStealthListening(false);
+      stealthConnectingRef.current = false;
 
       await jarvis.sendMessage(transcript);
     },
