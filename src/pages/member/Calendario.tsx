@@ -158,7 +158,7 @@ export default function CalendarioMembro() {
   }
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4">
+    <div className="min-h-[calc(100vh-6rem)] flex flex-col p-4 md:p-6 gap-4 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
