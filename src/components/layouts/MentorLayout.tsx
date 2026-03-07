@@ -202,11 +202,12 @@ const menuItems: DockItem[] = [
                 <Outlet />
               </RouteTransition>
             </Suspense>
-          </LazyErrorBoundary>
+           </LazyErrorBoundary>
        </div>
  
         <SOSNotificationAlert />
         <AlertsPanel open={alertsOpen} onOpenChange={setAlertsOpen} smartAlerts={smartAlerts} />
+        <JarvisFloatingOverlay />
       </div>
    );
  }
