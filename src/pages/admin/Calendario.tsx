@@ -639,8 +639,8 @@ export default function Calendario() {
         </TabsContent>
 
         {/* ── Calendar Tab ── */}
-        <TabsContent value="calendar" className="flex-1 min-h-0 mt-0">
-          <div className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 min-h-0 h-full">
+        <TabsContent value="calendar" className="mt-0">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4 min-h-[600px]">
             <Card className="glass-card overflow-hidden flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-secondary/20">
                 <div className="flex items-center gap-2">
