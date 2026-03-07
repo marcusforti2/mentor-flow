@@ -127,6 +127,7 @@ function AppRoutes() {
         <Route path="/setup" element={<Navigate to="/auth" replace />} />
         <Route path="/showcase" element={<RouteFallback><ShowcasePage /></RouteFallback>} />
         <Route path="/t/:slug" element={<RouteFallback><TenantLandingPage /></RouteFallback>} />
+        <Route path="/login/:tenantSlug" element={<RouteFallback><TenantAuthPage /></RouteFallback>} />
         <Route path="/p/:slug" element={<RouteFallback><PublicPlaybookPage /></RouteFallback>} />
         <Route path="/f/:slug" element={<RouteFallback><PublicFormPage /></RouteFallback>} />
         <Route
