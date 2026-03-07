@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
-  MessageSquare, Loader2, Send, Sparkles, RefreshCw, Edit2
+  MessageSquare, Loader2, Send, Sparkles, RefreshCw, Edit2, CalendarDays
 } from 'lucide-react';
 import type { Trail, TrailModule, TrailLesson } from '@/hooks/useTrails';
 
@@ -26,11 +28,14 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
   const [generatingMsg, setGeneratingMsg] = useState(false);
   const [generatedMsg, setGeneratedMsg] = useState('');
   const [editingMsg, setEditingMsg] = useState(false);
+  const [deadline, setDeadline] = useState<Date | undefined>(undefined);
 
   const [equipment, setEquipment] = useState('celular');
   const [recordStyle, setRecordStyle] = useState('talking_head');
   const [videoDuration, setVideoDuration] = useState('5-10');
   const [extraNotes, setExtraNotes] = useState('');
+
+  const scope = module ? 'module' : (lessons.length === 1 ? 'lesson' : 'trail');
 
   const handlePreview = async () => {
     setGeneratingMsg(true);
@@ -41,6 +46,7 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
           trailTitle: trail.title,
           moduleTitle: module?.title || 'Módulo único',
           lessons: lessons.map(l => ({ title: l.title, description: l.description })),
+          deadline: deadline ? deadline.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : null,
           equipment,
           recordStyle,
           videoDuration,
@@ -63,11 +69,36 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
 
     setSending(true);
     try {
-      const { error } = await supabase.functions.invoke('send-whatsapp', {
-        body: { phone: phone.trim(), message: generatedMsg },
-      });
-      if (error) throw error;
-      toast.success('Roteiro enviado via WhatsApp! 🚀');
+      if (scope === 'trail' && trail.modules.length > 1) {
+        // Send one message per module
+        for (const mod of trail.modules) {
+          const modLessons = mod.lessons;
+          if (modLessons.length === 0) continue;
+          const { data, error } = await supabase.functions.invoke('generate-trail-scripts', {
+            body: {
+              mentorName: mentorName || 'Mentor',
+              trailTitle: trail.title,
+              moduleTitle: mod.title,
+              lessons: modLessons.map(l => ({ title: l.title, description: l.description })),
+              deadline: deadline ? deadline.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : null,
+              equipment, recordStyle, videoDuration, extraNotes: extraNotes || null,
+            },
+          });
+          if (data?.message) {
+            await supabase.functions.invoke('send-whatsapp', {
+              body: { phone: phone.trim(), message: data.message },
+            });
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+        toast.success(`Roteiros de ${trail.modules.length} módulos enviados via WhatsApp! 🚀`);
+      } else {
+        const { error } = await supabase.functions.invoke('send-whatsapp', {
+          body: { phone: phone.trim(), message: generatedMsg },
+        });
+        if (error) throw error;
+        toast.success('Roteiro enviado via WhatsApp! 🚀');
+      }
       setOpen(false);
       setGeneratedMsg('');
     } catch (e: any) {
@@ -76,11 +107,13 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
     setSending(false);
   };
 
+  const iconSize = scope === 'lesson' ? 'h-3 w-3' : scope === 'module' ? 'h-3 w-3' : 'h-4 w-4';
+
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setGeneratedMsg(''); setEditingMsg(false); } }}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9 hover:bg-primary/20 hover:text-primary" title="Enviar roteiro via WhatsApp">
-          <MessageSquare className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className={scope === 'trail' ? 'h-8 w-8' : 'h-6 w-6'} title="Enviar roteiro via WhatsApp">
+          <MessageSquare className={iconSize} />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
@@ -90,23 +123,48 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
             Enviar Roteiro via WhatsApp
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Trilha "{trail.title}" {module ? `— Módulo "${module.title}"` : ''} ({lessons.length} aulas)
+            {scope === 'trail' && `Trilha "${trail.title}" — ${trail.modules.length} módulos (1 mensagem por módulo)`}
+            {scope === 'module' && `Módulo "${module?.title}" da trilha "${trail.title}"`}
+            {scope === 'lesson' && `Aula "${lessons[0]?.title}"`}
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 max-h-[65vh]">
           <div className="space-y-3 pt-1 pr-3">
-            <div className="grid grid-cols-2 gap-2">
+            {/* Name + Phone + Deadline */}
+            <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="text-[11px] font-medium text-foreground mb-1 block">Nome do destinatário</label>
+                <label className="text-[11px] font-medium text-foreground mb-1 block">Destinatário</label>
                 <Input value={mentorName} onChange={e => { setMentorName(e.target.value); setGeneratedMsg(''); }} placeholder="Ex: João" className="h-8 text-xs" />
               </div>
               <div>
                 <label className="text-[11px] font-medium text-foreground mb-1 block">WhatsApp</label>
                 <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="5511999999999" className="h-8 text-xs" />
               </div>
+              <div>
+                <label className="text-[11px] font-medium text-foreground mb-1 block">Prazo</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={`h-8 w-full text-xs justify-start font-normal ${!deadline ? 'text-muted-foreground' : ''}`}>
+                      <CalendarDays className="h-3 w-3 mr-1.5 shrink-0" />
+                      {deadline ? deadline.toLocaleDateString('pt-BR') : 'Sem prazo'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={deadline}
+                      onSelect={(d) => { setDeadline(d); setGeneratedMsg(''); }}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
+            {/* Recording preferences */}
             <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[11px] font-medium text-foreground mb-1 block">Equipamento</label>
@@ -156,6 +214,7 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
               />
             </div>
 
+            {/* Generate / Preview */}
             {!generatedMsg ? (
               <Button
                 onClick={handlePreview}
@@ -192,14 +251,20 @@ export function TrailScriptSender({ trail, module, lessons }: TrailScriptSenderP
                     <pre className="text-[10px] text-foreground whitespace-pre-wrap font-sans leading-relaxed">{generatedMsg}</pre>
                   </div>
                 )}
+                {scope === 'trail' && trail.modules.length > 1 && (
+                  <p className="text-[9px] text-muted-foreground bg-secondary/30 rounded p-2">
+                    ℹ️ Esta é a prévia do 1º módulo. Ao enviar, a IA gerará uma mensagem personalizada para cada um dos {trail.modules.length} módulos.
+                  </p>
+                )}
               </div>
             )}
 
+            {/* Actions */}
             <div className="flex gap-2 pt-1">
               <Button variant="outline" onClick={() => setOpen(false)} className="flex-1 text-xs h-9">Cancelar</Button>
               <Button
                 onClick={handleSend}
-                disabled={sending || !generatedMsg || !phone.trim()}
+                disabled={sending || !phone.trim() || (!generatedMsg && scope !== 'trail')}
                 className="flex-1 gap-1.5 text-xs h-9"
               >
                 {sending ? <><Loader2 className="h-3 w-3 animate-spin" /> Enviando...</> : <><Send className="h-3 w-3" /> Enviar</>}
