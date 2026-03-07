@@ -277,7 +277,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     try {
       const { data: membershipData, error } = await supabase
-        .rpc('get_user_memberships', { _user_id: user.id });
+        .rpc('get_user_memberships', { _user_id: effectiveUserId });
 
       if (error) throw error;
 
