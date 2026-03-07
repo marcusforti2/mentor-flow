@@ -418,6 +418,14 @@ export default function WhatsAppCampaigns() {
             <Brain className="h-4 w-4" />
             Inteligência IA
           </TabsTrigger>
+          <TabsTrigger value="auto_reply" className="gap-1.5">
+            <Bot className="h-4 w-4" />
+            Pré-atendimento
+          </TabsTrigger>
+          <TabsTrigger value="daily_summary" className="gap-1.5">
+            <FileText className="h-4 w-4" />
+            Resumo Diário
+          </TabsTrigger>
           <TabsTrigger value="logs" className="gap-1.5">
             <Clock className="h-4 w-4" />
             Histórico
