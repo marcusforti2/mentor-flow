@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, MessageCircle } from "lucide-react";
 import { z } from "zod";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
 
@@ -29,6 +29,7 @@ export default function TenantAuthPage() {
   const [step, setStep] = useState<AuthStep>("email");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
+  const [otpChannel, setOtpChannel] = useState<"email" | "whatsapp">("email");
   const [countdown, setCountdown] = useState(0);
   const isSubmittingRef = useRef(false);
 
@@ -124,11 +125,11 @@ export default function TenantAuthPage() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email, tenant_hint: tenant?.id },
+        body: { email, tenant_hint: tenant?.id, channel: otpChannel },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
-      toast({ title: "Código enviado!", description: "Verifique seu email e digite o código recebido." });
+      toast({ title: "Código enviado!", description: otpChannel === "whatsapp" ? "Verifique seu WhatsApp." : "Verifique seu email." });
       setStep("code");
       setCountdown(60);
     } catch (error: any) {
@@ -241,7 +242,7 @@ export default function TenantAuthPage() {
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">{tenant.name}</CardTitle>
             <CardDescription className="text-muted-foreground">
-              {step === "email" ? "Digite seu email para acessar o programa" : "Digite o código enviado para seu email"}
+              {step === "email" ? "Digite seu email para acessar o programa" : otpChannel === "whatsapp" ? "Digite o código enviado para seu WhatsApp" : "Digite o código enviado para seu email"}
             </CardDescription>
           </CardHeader>
 
@@ -263,6 +264,37 @@ export default function TenantAuthPage() {
                     />
                   </div>
                   {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+
+                {/* Channel selector */}
+                <div className="space-y-2">
+                  <Label className="text-foreground text-sm">Receber código por:</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("email")}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                        otpChannel === "email"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-secondary text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("whatsapp")}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                        otpChannel === "whatsapp"
+                          ? "border-green-500 bg-green-500/10 text-green-600"
+                          : "border-border bg-secondary text-muted-foreground hover:border-green-500/40"
+                      }`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </button>
+                  </div>
                 </div>
 
                 <Button

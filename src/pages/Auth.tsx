@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Building2 } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, Building2, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
   const [countdown, setCountdown] = useState(0);
+  const [otpChannel, setOtpChannel] = useState<"email" | "whatsapp">("email");
   
   // Multi-tenant selection state
   const [availableTenants, setAvailableTenants] = useState<TenantOption[]>([]);
@@ -176,7 +177,7 @@ const Auth = () => {
     
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email, tenant_hint: tenantHint || selectedTenantId || undefined },
+        body: { email, tenant_hint: tenantHint || selectedTenantId || undefined, channel: otpChannel },
       });
 
       if (error) throw error;
@@ -194,7 +195,9 @@ const Auth = () => {
 
       toast({
         title: "Código enviado!",
-        description: "Verifique seu email e digite o código recebido.",
+        description: otpChannel === "whatsapp" 
+          ? "Verifique seu WhatsApp e digite o código recebido." 
+          : "Verifique seu email e digite o código recebido.",
       });
       
       setStep("code");
@@ -432,6 +435,37 @@ const Auth = () => {
                     />
                   </div>
                   {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+
+                {/* Channel selector */}
+                <div className="space-y-2">
+                  <Label className="text-foreground text-sm">Receber código por:</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("email")}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                        otpChannel === "email"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-secondary text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("whatsapp")}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                        otpChannel === "whatsapp"
+                          ? "border-green-500 bg-green-500/10 text-green-600"
+                          : "border-border bg-secondary text-muted-foreground hover:border-green-500/40"
+                      }`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </button>
+                  </div>
                 </div>
                 
                 <Button 
