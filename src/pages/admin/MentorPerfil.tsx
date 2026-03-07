@@ -4,6 +4,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { Button } from "@/components/ui/button";
+import { GoogleConnectionsPanel } from "@/components/admin/GoogleConnectionsPanel";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -203,6 +204,8 @@ const MentorPerfil = () => {
         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
         Salvar Perfil da Mentoria
       </Button>
+
+      <GoogleConnectionsPanel />
     </div>
   );
 };

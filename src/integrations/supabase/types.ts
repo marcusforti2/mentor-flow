@@ -1696,6 +1696,120 @@ export type Database = {
           },
         ]
       }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          calendar_email: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          membership_id: string
+          refresh_token: string | null
+          scope: string | null
+          tenant_id: string
+          token_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          calendar_email?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          membership_id: string
+          refresh_token?: string | null
+          scope?: string | null
+          tenant_id: string
+          token_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          calendar_email?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          membership_id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          tenant_id?: string
+          token_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: true
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_calendar_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_drive_tokens: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          drive_email: string | null
+          expires_at: string | null
+          id: string
+          membership_id: string
+          refresh_token: string | null
+          scope: string | null
+          tenant_id: string
+          token_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string | null
+          drive_email?: string | null
+          expires_at?: string | null
+          id?: string
+          membership_id: string
+          refresh_token?: string | null
+          scope?: string | null
+          tenant_id: string
+          token_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          drive_email?: string | null
+          expires_at?: string | null
+          id?: string
+          membership_id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          tenant_id?: string
+          token_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_drive_tokens_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: true
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_drive_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       impersonation_logs: {
         Row: {
           admin_membership_id: string
