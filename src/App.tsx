@@ -161,6 +161,8 @@ function AppRoutes() {
         <Route path="/login/:tenantSlug" element={<RouteFallback><TenantAuthPage /></RouteFallback>} />
         <Route path="/p/:slug" element={<RouteFallback><PublicPlaybookPage /></RouteFallback>} />
         <Route path="/f/:slug" element={<RouteFallback><PublicFormPage /></RouteFallback>} />
+        <Route path="/privacidade" element={<RouteFallback><PrivacyPolicy /></RouteFallback>} />
+        <Route path="/termos" element={<RouteFallback><TermsOfService /></RouteFallback>} />
         <Route
           path="/crm-mobile"
           element={
