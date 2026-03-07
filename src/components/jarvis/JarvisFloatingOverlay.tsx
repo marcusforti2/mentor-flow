@@ -403,6 +403,7 @@ export function JarvisFloatingOverlay() {
   }, [jarvis.messages, navigate]);
 
   // Overlay TTS (browser native, only when overlay is open)
+  // Best voice selection: prioritize Google/Microsoft PT-BR voices
   useEffect(() => {
     if (!ttsEnabled || !hasSpeechSynthesis) return;
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
@@ -416,11 +417,23 @@ export function JarvisFloatingOverlay() {
     utterance.lang = 'pt-BR';
     utterance.rate = 1.05;
     utterance.pitch = 0.95;
+
     const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang.startsWith('pt') && v.name.toLowerCase().includes('google')) ||
-                    voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt'));
-    if (ptVoice) utterance.voice = ptVoice;
+    const lowerName = (v: SpeechSynthesisVoice) => v.name.toLowerCase();
+    const isPtBR = (v: SpeechSynthesisVoice) => v.lang === 'pt-BR';
+    const isPt = (v: SpeechSynthesisVoice) => v.lang.startsWith('pt');
+
+    // Priority: Google PT-BR > Microsoft PT-BR > any PT-BR > Google PT > Microsoft PT > any PT
+    const bestVoice =
+      voices.find(v => isPtBR(v) && lowerName(v).includes('google')) ||
+      voices.find(v => isPtBR(v) && lowerName(v).includes('microsoft')) ||
+      voices.find(v => isPtBR(v) && !v.localService) ||
+      voices.find(v => isPtBR(v)) ||
+      voices.find(v => isPt(v) && lowerName(v).includes('google')) ||
+      voices.find(v => isPt(v) && lowerName(v).includes('microsoft')) ||
+      voices.find(v => isPt(v));
+
+    if (bestVoice) utterance.voice = bestVoice;
     window.speechSynthesis.speak(utterance);
   }, [jarvis.messages, ttsEnabled, hasSpeechSynthesis]);
 
