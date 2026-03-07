@@ -18,7 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2,
   ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List,
-  ExternalLink, Sparkles, CalendarDays, Users, Lock, Bell, ListChecks, UserCircle
+  ExternalLink, Sparkles, CalendarDays, Users, Lock, Bell, ListChecks, UserCircle,
+  RefreshCw
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
