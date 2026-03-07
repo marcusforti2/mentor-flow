@@ -250,7 +250,7 @@ export function JarvisFloatingOverlay() {
                 </div>
                 <div>
                   <h2 className="text-sm font-display font-bold text-foreground">Jarvis</h2>
-                  <p className="text-[10px] text-muted-foreground">Centro de Comando • Ctrl+J</p>
+                  <p className="text-[10px] text-muted-foreground">Centro de Comando • Ctrl+Alt+J</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
