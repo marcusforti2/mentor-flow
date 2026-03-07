@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Square, Trash2, Bot, User, CheckCircle2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Send, Square, Trash2, Bot, User, CheckCircle2, Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { type JarvisMessage } from '@/hooks/useJarvis';
+import { useScribe } from '@elevenlabs/react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
 interface Props {
@@ -72,14 +75,30 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Voice state
-  const [isListening, setIsListening] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
   const lastSpokenMsgRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Check browser support
-  const hasSpeechRecognition = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-  const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  // ElevenLabs STT
+  const [isListening, setIsListening] = useState(false);
+  const [sttConnected, setSttConnected] = useState(false);
+
+  const scribe = useScribe({
+    modelId: 'scribe_v2_realtime',
+    commitStrategy: 'vad',
+    onPartialTranscript: (data) => {
+      if (data.text) setInput(data.text);
+    },
+    onCommittedTranscript: (data) => {
+      if (data.text?.trim()) {
+        onSend(data.text.trim());
+        setInput('');
+        stopListening();
+      }
+    },
+  });
 
   // Auto-scroll
   useEffect(() => {
@@ -87,92 +106,125 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // TTS: speak new assistant messages
+  // ElevenLabs TTS: speak new assistant messages
   useEffect(() => {
-    if (!ttsEnabled || !hasSpeechSynthesis) return;
+    if (!ttsEnabled) return;
     const lastMsg = messages[messages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.isStreaming) return;
     if (lastSpokenMsgRef.current === lastMsg.id) return;
 
     lastSpokenMsgRef.current = lastMsg.id;
     const text = stripMarkdown(lastMsg.content);
-    if (!text) return;
+    if (!text || text.length < 5) return;
 
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+    speakWithElevenLabs(text);
+  }, [messages, ttsEnabled]);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 1.05;
-    utterance.pitch = 0.95;
-
-    // Try to find a good PT-BR voice
-    const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang.startsWith('pt') && v.name.toLowerCase().includes('google')) ||
-                    voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt'));
-    if (ptVoice) utterance.voice = ptVoice;
-
-    window.speechSynthesis.speak(utterance);
-  }, [messages, ttsEnabled, hasSpeechSynthesis]);
-
-  // Stop TTS when disabled
+  // Stop audio when TTS disabled
   useEffect(() => {
-    if (!ttsEnabled && hasSpeechSynthesis) {
-      window.speechSynthesis.cancel();
+    if (!ttsEnabled) {
+      stopAudio();
     }
-  }, [ttsEnabled, hasSpeechSynthesis]);
+  }, [ttsEnabled]);
 
-  // STT: start/stop listening
-  const toggleListening = useCallback(() => {
-    if (!hasSpeechRecognition) return;
+  const speakWithElevenLabs = async (text: string) => {
+    stopAudio();
+    setTtsLoading(true);
+    setIsSpeaking(false);
 
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'pt-BR';
-    recognition.interimResults = true;
-    recognition.continuous = false;
-
-    let finalTranscript = '';
-
-    recognition.onresult = (event: any) => {
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interim = transcript;
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text }),
         }
-      }
-      setInput(finalTranscript || interim);
-    };
+      );
 
-    recognition.onend = () => {
-      setIsListening(false);
-      // Auto-send if we got a final transcript
-      if (finalTranscript.trim()) {
-        onSend(finalTranscript.trim());
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'TTS failed');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onplay = () => { setIsSpeaking(true); setTtsLoading(false); };
+      audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(audioUrl); };
+      audio.onerror = () => { setIsSpeaking(false); setTtsLoading(false); };
+
+      await audio.play();
+    } catch (err: any) {
+      console.error('ElevenLabs TTS error:', err);
+      setTtsLoading(false);
+      setIsSpeaking(false);
+      // Fallback silently - don't toast on every message
+    }
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
+    setTtsLoading(false);
+  };
+
+  // STT: start/stop listening with ElevenLabs Scribe
+  const startListening = useCallback(async () => {
+    try {
+      // Get scribe token
+      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !data?.token) {
+        toast.error('Erro ao iniciar reconhecimento de voz');
+        return;
+      }
+
+      await scribe.connect({
+        token: data.token,
+        microphone: {
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+
+      setIsListening(true);
+      setSttConnected(true);
+    } catch (err) {
+      console.error('STT start error:', err);
+      toast.error('Não foi possível acessar o microfone');
+    }
+  }, [scribe]);
+
+  const stopListening = useCallback(() => {
+    if (sttConnected) {
+      scribe.disconnect();
+      setSttConnected(false);
+    }
+    setIsListening(false);
+  }, [scribe, sttConnected]);
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      // If there's partial text, send it before stopping
+      if (input.trim()) {
+        onSend(input.trim());
         setInput('');
-        finalTranscript = '';
       }
-    };
-
-    recognition.onerror = (event: any) => {
-      console.warn('Speech recognition error:', event.error);
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [isListening, hasSpeechRecognition, onSend]);
+      stopListening();
+    } else {
+      startListening();
+    }
+  }, [isListening, input, onSend, startListening, stopListening]);
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
@@ -204,11 +256,9 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               Seu centro de comando inteligente. Posso gerenciar automações, enviar mensagens,
               criar campanhas, agendar eventos e analisar seus mentorados. O que precisa?
             </p>
-            {hasSpeechRecognition && (
-              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                <Mic className="h-3 w-3" /> Clique no microfone para falar comigo
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+              <Mic className="h-3 w-3" /> Clique no microfone para falar comigo
+            </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
                 '📊 Como estão meus mentorados?',
@@ -310,20 +360,29 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
           )}
 
           {/* TTS toggle */}
-          {hasSpeechSynthesis && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-10 w-10 shrink-0 transition-colors",
-                ttsEnabled ? "text-primary bg-primary/10" : "text-muted-foreground"
-              )}
-              onClick={() => setTtsEnabled(!ttsEnabled)}
-              title={ttsEnabled ? "Desativar voz do Jarvis" : "Ativar voz do Jarvis"}
-            >
-              {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-10 w-10 shrink-0 transition-colors relative",
+              ttsEnabled ? "text-primary bg-primary/10" : "text-muted-foreground"
+            )}
+            onClick={() => {
+              if (isSpeaking) { stopAudio(); return; }
+              setTtsEnabled(!ttsEnabled);
+            }}
+            title={isSpeaking ? "Parar áudio" : ttsEnabled ? "Desativar voz ElevenLabs" : "Ativar voz ElevenLabs"}
+          >
+            {ttsLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isSpeaking ? (
+              <Volume2 className="h-4 w-4 animate-pulse" />
+            ) : ttsEnabled ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
+          </Button>
 
           <div className="flex-1 relative">
             <Textarea
@@ -331,7 +390,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? "🎤 Escutando..." : "Pergunte ao Jarvis... (Enter para enviar)"}
+              placeholder={isListening ? "🎤 Escutando com ElevenLabs..." : "Pergunte ao Jarvis... (Enter para enviar)"}
               className={cn(
                 "min-h-[44px] max-h-32 resize-none pr-20 bg-muted/30 border-border/50",
                 isListening && "border-primary/50 ring-1 ring-primary/30"
@@ -339,21 +398,19 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               rows={1}
             />
             <div className="absolute right-2 bottom-2 flex items-center gap-1">
-              {/* Mic button */}
-              {hasSpeechRecognition && (
-                <Button
-                  size="icon"
-                  variant={isListening ? "default" : "ghost"}
-                  className={cn(
-                    "h-7 w-7",
-                    isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
-                  )}
-                  onClick={toggleListening}
-                  title={isListening ? "Parar de escutar" : "Falar com Jarvis"}
-                >
-                  {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-                </Button>
-              )}
+              {/* Mic button - ElevenLabs STT */}
+              <Button
+                size="icon"
+                variant={isListening ? "default" : "ghost"}
+                className={cn(
+                  "h-7 w-7",
+                  isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
+                )}
+                onClick={toggleListening}
+                title={isListening ? "Parar de escutar" : "Falar com Jarvis (ElevenLabs)"}
+              >
+                {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+              </Button>
               {/* Send / Stop button */}
               <Button
                 size="icon"
@@ -368,8 +425,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
           {isListening
-            ? "🎤 Fale agora — sua mensagem será enviada automaticamente ao parar"
-            : "Jarvis pode executar ações reais: automações, WhatsApp, email e calendário."
+            ? "🎤 ElevenLabs Scribe ativo — fale agora, a mensagem será enviada ao detectar pausa"
+            : isSpeaking
+            ? "🔊 Jarvis falando via ElevenLabs..."
+            : "Jarvis com voz ElevenLabs — microfone para falar, alto-falante para ouvir respostas."
           }
         </p>
       </div>
