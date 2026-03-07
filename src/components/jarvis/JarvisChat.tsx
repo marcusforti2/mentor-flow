@@ -77,12 +77,14 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Voice state
-  const [ttsEnabled, setTtsEnabled] = useState(false);
+  // Voice state — auto-enabled by default (Jarvis mode)
+  const [ttsEnabled, setTtsEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
   const lastSpokenMsgRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const shouldAutoRelisten = useRef(true);
+  const hasAutoStarted = useRef(false);
 
   // ElevenLabs STT
   const [isListening, setIsListening] = useState(false);
