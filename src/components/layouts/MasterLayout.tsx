@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { RouteTransition } from '@/components/RouteTransition';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/contexts/TenantContext';
