@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Plus, Edit, Eye, Trash2, GripVertical, Loader2,
+  Plus, Edit, Eye, Trash2, GripVertical, Loader2, Copy,
   BookOpen, Play, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
