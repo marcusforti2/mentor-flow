@@ -53,6 +53,8 @@ const TenantLandingPage = lazyRetry(() => import("./pages/TenantLandingPage"));
 const TenantAuthPage = lazyRetry(() => import("./pages/TenantAuthPage"));
 const PublicPlaybookPage = lazyRetry(() => import("./pages/PublicPlaybookPage"));
 const PublicFormPage = lazyRetry(() => import("./pages/PublicFormPage"));
+const PrivacyPolicy = lazyRetry(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazyRetry(() => import("./pages/TermsOfService"));
 
 // Layouts (keep static - structural)
 import { MasterLayout } from "@/components/layouts/MasterLayout";
