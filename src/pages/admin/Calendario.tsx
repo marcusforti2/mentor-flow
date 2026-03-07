@@ -168,7 +168,7 @@ export default function Calendario() {
   };
 
   const resetForm = () => {
-    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, remind_before: "24h", facilitator_name: "" });
+    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, notify_whatsapp: true, push_to_google: true, create_google_meet: false, reminder_intervals: [], remind_before: "24h", facilitator_name: "" });
     setEditingEvent(null);
   };
 
