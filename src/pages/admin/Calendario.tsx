@@ -19,8 +19,9 @@ import {
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2,
   ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List,
   ExternalLink, Sparkles, CalendarDays, Users, Lock, Bell, ListChecks, UserCircle,
-  RefreshCw
+  RefreshCw, MessageSquare, Mail, Send
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, addMonths, subMonths, isToday, parseISO, startOfWeek,
