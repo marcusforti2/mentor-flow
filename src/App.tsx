@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode, type ComponentType } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,33 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { Loader2 } from "lucide-react";
+
+/**
+ * Lazy import with automatic retry (up to 3 attempts).
+ * Prevents stuck pages when a chunk fails to load due to network issues.
+ */
+function lazyRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+  retries = 3,
+  interval = 1000
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    new Promise<{ default: T }>((resolve, reject) => {
+      const attempt = (remaining: number) => {
+        factory()
+          .then(resolve)
+          .catch((err: Error) => {
+            if (remaining <= 1) {
+              reject(err);
+              return;
+            }
+            setTimeout(() => attempt(remaining - 1), interval);
+          });
+      };
+      attempt(retries);
+    })
+  );
+}
 
 // Public Pages
 import Index from "./pages/Index";
