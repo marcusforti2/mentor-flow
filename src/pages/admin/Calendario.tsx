@@ -634,7 +634,7 @@ export default function Calendario() {
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </TabsContent>
 

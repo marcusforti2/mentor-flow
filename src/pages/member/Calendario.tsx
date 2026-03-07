@@ -322,7 +322,7 @@ export default function CalendarioMembro() {
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
         </TabsContent>
 
