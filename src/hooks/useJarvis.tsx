@@ -181,7 +181,7 @@ export function useJarvis() {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [activeMembership?.id, conversationId, loadConversations]);
+  }, [activeMembership?.id, conversationId, isLoading, loadConversations]);
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
