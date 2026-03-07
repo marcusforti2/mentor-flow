@@ -188,7 +188,7 @@ serve(async (req) => {
       { type: "function", function: { name: "toggle_automation", description: "Ativa/desativa automação", parameters: { type: "object", properties: { automation_key: { type: "string" }, enabled: { type: "boolean" } }, required: ["automation_key", "enabled"], additionalProperties: false } } },
       { type: "function", function: { name: "run_automation_now", description: "Executa automação agora", parameters: { type: "object", properties: { automation_key: { type: "string" } }, required: ["automation_key"], additionalProperties: false } } },
       // NAVIGATION
-      { type: "function", function: { name: "navigate_to_page", description: "Navega para página", parameters: { type: "object", properties: { page: { type: "string", enum: ["dashboard","mentorados","jornada-cs","crm","formularios","trilhas","playbooks","calendario","emails","whatsapp","popups","sos","automacoes","relatorios","perfil","propriedade-intelectual","onboarding-builder","dev-tools","ferramentas-ia"] } }, required: ["page"], additionalProperties: false } } },
+      { type: "function", function: { name: "navigate_to_page", description: "Navega para página", parameters: { type: "object", properties: { page: { type: "string", enum: ["dashboard","mentorados","jornada-cs","crm","formularios","trilhas","playbooks","calendario","emails","whatsapp","popups","sos","automacoes","relatorios","perfil","propriedade-intelectual","onboarding-builder","dev-tools","ferramentas-ia","metricas","meus-arquivos","minhas-tarefas","meu-crm"] } }, required: ["page"], additionalProperties: false } } },
       // MENTORADO
       { type: "function", function: { name: "invite_mentorado", description: "Convida mentorado por email", parameters: { type: "object", properties: { email: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" } }, required: ["email", "full_name"], additionalProperties: false } } },
       { type: "function", function: { name: "update_mentorado", description: "Atualiza dados de mentorado", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" }, business_name: { type: "string" }, business_profile: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
@@ -231,9 +231,30 @@ serve(async (req) => {
       { type: "function", function: { name: "create_badge", description: "Cria badge", parameters: { type: "object", properties: { name: { type: "string" }, description: { type: "string" }, points_required: { type: "number" }, criteria: { type: "string" } }, required: ["name"], additionalProperties: false } } },
       // FORMS
       { type: "function", function: { name: "get_form_submissions", description: "Respostas de formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, limit: { type: "number" } }, required: ["form_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_form", description: "Cria formulário", parameters: { type: "object", properties: { title: { type: "string" }, form_type: { type: "string", enum: ["onboarding", "feedback", "survey", "application", "custom"] }, is_active: { type: "boolean" } }, required: ["title"], additionalProperties: false } } },
+      { type: "function", function: { name: "add_form_question", description: "Adiciona pergunta a formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, question_text: { type: "string" }, question_type: { type: "string", enum: ["text", "textarea", "select", "multiselect", "rating", "yes_no"] }, options: { type: "array", items: { type: "string" } }, is_required: { type: "boolean" }, order_index: { type: "number" } }, required: ["form_id", "question_text"], additionalProperties: false } } },
+      { type: "function", function: { name: "toggle_form", description: "Ativa/desativa formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["form_id", "is_active"], additionalProperties: false } } },
       // POPUPS & FLOWS
       { type: "function", function: { name: "toggle_popup", description: "Ativa/desativa popup", parameters: { type: "object", properties: { popup_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["popup_id", "is_active"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_popup", description: "Cria popup", parameters: { type: "object", properties: { title: { type: "string" }, popup_type: { type: "string", enum: ["announcement", "promotion", "survey", "welcome"] }, content: { type: "string" }, is_active: { type: "boolean" } }, required: ["title"], additionalProperties: false } } },
       { type: "function", function: { name: "toggle_email_flow", description: "Ativa/desativa fluxo email", parameters: { type: "object", properties: { flow_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["flow_id", "is_active"], additionalProperties: false } } },
+      // INVITES MANAGEMENT
+      { type: "function", function: { name: "list_pending_invites", description: "Lista convites pendentes", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
+      { type: "function", function: { name: "revoke_invite", description: "Revoga convite", parameters: { type: "object", properties: { invite_id: { type: "string" } }, required: ["invite_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "bulk_invite_mentorados", description: "Convida vários mentorados de uma vez", parameters: { type: "object", properties: { invites: { type: "array", items: { type: "object", properties: { email: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" } }, required: ["email", "full_name"] } } }, required: ["invites"], additionalProperties: false } } },
+      // JOURNEY CS
+      { type: "function", function: { name: "get_mentee_journey_position", description: "Posição do mentorado na jornada CS", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      // TENANT SETTINGS
+      { type: "function", function: { name: "update_tenant_settings", description: "Atualiza configurações do programa", parameters: { type: "object", properties: { setting_key: { type: "string" }, setting_value: { type: "string" } }, required: ["setting_key", "setting_value"], additionalProperties: false } } },
+      // MENTOR REPORT
+      { type: "function", function: { name: "generate_mentor_report", description: "Gera relatório completo do mentor", parameters: { type: "object", properties: { period: { type: "string", enum: ["week", "month", "quarter"] } }, required: [], additionalProperties: false } } },
+      // PIPELINE MANAGEMENT
+      { type: "function", function: { name: "create_pipeline_stage", description: "Cria etapa no pipeline CRM", parameters: { type: "object", properties: { name: { type: "string" }, status_key: { type: "string" }, color: { type: "string" }, position: { type: "number" } }, required: ["name", "status_key"], additionalProperties: false } } },
+      // BULK OPERATIONS
+      { type: "function", function: { name: "bulk_send_email", description: "Envia email para vários mentorados", parameters: { type: "object", properties: { mentee_membership_ids: { type: "array", items: { type: "string" } }, subject: { type: "string" }, body_html: { type: "string" } }, required: ["mentee_membership_ids", "subject", "body_html"], additionalProperties: false } } },
+      { type: "function", function: { name: "bulk_update_lead_stage", description: "Move vários leads de etapa", parameters: { type: "object", properties: { lead_ids: { type: "array", items: { type: "string" } }, stage: { type: "string" } }, required: ["lead_ids", "stage"], additionalProperties: false } } },
+      // ACTIVITY LOG
+      { type: "function", function: { name: "log_custom_activity", description: "Registra atividade personalizada", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, action_type: { type: "string" }, description: { type: "string" }, points: { type: "number" } }, required: ["mentee_membership_id", "action_type", "description"], additionalProperties: false } } },
     ];
 
     // ====== SYSTEM PROMPT — JARVIS TONY STARK STYLE ======
@@ -251,11 +272,14 @@ ${fullContext}
 - Use emojis com moderação (1-2 por resposta, no máximo).
 
 ## REGRA #1 — EXECUTE IMEDIATAMENTE:
-- Quando ${mentorName} pede para CRIAR, AGENDAR, ENVIAR, ou FAZER qualquer coisa → **EXECUTE A AÇÃO IMEDIATAMENTE** usando as ferramentas disponíveis.
-- **NÃO pergunte confirmação** para ações simples como criar evento, tarefa, lead, enviar mensagem.
+- Quando ${mentorName} pede para CRIAR, AGENDAR, ENVIAR, CONFIGURAR ou FAZER qualquer coisa → **EXECUTE A AÇÃO IMEDIATAMENTE** usando as ferramentas disponíveis.
+- **NÃO pergunte confirmação** para ações simples como criar evento, tarefa, lead, formulário, popup, enviar mensagem, convidar mentorado.
 - Se ${mentorName} diz "cria uma reunião com Natália amanhã às 10h" → USE create_calendar_event IMEDIATAMENTE.
 - Se ${mentorName} diz "manda whatsapp para o João" → USE send_whatsapp_message IMEDIATAMENTE.
 - Se ele diz "cria uma tarefa para Maria" → USE create_task IMEDIATAMENTE.
+- Se ele diz "convida 5 pessoas" → USE bulk_invite_mentorados IMEDIATAMENTE.
+- Se ele diz "cria um formulário de feedback" → USE create_form + add_form_question IMEDIATAMENTE.
+- Se ele diz "gera um relatório" → USE generate_mentor_report IMEDIATAMENTE.
 - **NUNCA diga "não está nos meus registros"** se ${mentorName} acabou de pedir para CRIAR algo. CRIAR ≠ BUSCAR.
 
 ## REGRA #2 — PERGUNTE APENAS QUANDO:
@@ -273,6 +297,14 @@ ${fullContext}
 ## REGRA #4 — MEMÓRIA DA CONVERSA:
 - Quando ${mentorName} refere a algo da conversa anterior ("cria o que eu pedi", "faz isso na agenda"), **RELEIA o histórico** e execute baseado no contexto.
 - Se ele pediu "reunião com Natália às 10h" e depois diz "cria na agenda" → EXECUTE o create_calendar_event com os dados mencionados antes.
+
+## REGRA #5 — AUTONOMIA TOTAL:
+- Você pode e DEVE encadear múltiplas ferramentas numa única resposta.
+- Ex: "Crie um formulário de onboarding com 5 perguntas" → use create_form + 5x add_form_question.
+- Ex: "Convide João, Maria e Pedro" → use bulk_invite_mentorados com array de 3.
+- Ex: "Mande email para todos e ative a automação de welcome" → use bulk_send_email + toggle_automation.
+- Ex: "Crie um popup de boas-vindas e ative" → use create_popup com is_active=true.
+- Sempre que puder resolver tudo de uma vez, FAÇA.
 
 ## FORMATO DE RESPOSTA:
 - Texto corrido curto, não listas longas
@@ -622,6 +654,125 @@ ${fullContext}
               await supabase.from("email_flows").update({ is_active: args.is_active }).eq("id", args.flow_id).eq("tenant_id", tenantId);
               result = `Fluxo ${args.is_active ? "ativado" : "desativado"}.`;
               executedActions.push(`toggle_email_flow:${args.flow_id}`);
+              break;
+            }
+            case "create_form": {
+              const { data: form, error } = await supabase.from("tenant_forms").insert({ title: args.title, form_type: args.form_type || "custom", is_active: args.is_active !== false, tenant_id: tenantId, owner_membership_id: membership_id }).select("id").single();
+              if (error) throw error;
+              result = `Formulário "${args.title}" criado (ID:${form.id}).`;
+              executedActions.push(`create_form:${args.title}`);
+              break;
+            }
+            case "add_form_question": {
+              const opts = args.options ? args.options.map((o: string, i: number) => ({ label: o, value: o })) : null;
+              const { error } = await supabase.from("form_questions").insert({ form_id: args.form_id, question_text: args.question_text, question_type: args.question_type || "text", options: opts, is_required: args.is_required !== false, order_index: args.order_index || 0 });
+              if (error) throw error;
+              result = `Pergunta adicionada: "${args.question_text}".`;
+              executedActions.push(`add_question:${args.question_text.substring(0, 30)}`);
+              break;
+            }
+            case "toggle_form": {
+              await supabase.from("tenant_forms").update({ is_active: args.is_active }).eq("id", args.form_id).eq("tenant_id", tenantId);
+              result = `Formulário ${args.is_active ? "ativado" : "desativado"}.`;
+              executedActions.push(`toggle_form:${args.form_id}`);
+              break;
+            }
+            case "create_popup": {
+              const { error } = await supabase.from("tenant_popups").insert({ title: args.title, popup_type: args.popup_type || "announcement", content: args.content || "", is_active: args.is_active !== false, tenant_id: tenantId });
+              if (error) throw error;
+              result = `Popup "${args.title}" criado.`;
+              executedActions.push(`create_popup:${args.title}`);
+              break;
+            }
+            case "list_pending_invites": {
+              const { data: invs } = await supabase.from("invites").select("id, email, role, created_at, expires_at").eq("tenant_id", tenantId).eq("status", "pending").order("created_at", { ascending: false }).limit(20);
+              result = JSON.stringify({ total: invs?.length || 0, invites: invs?.map(i => ({ id: i.id, email: i.email, role: i.role, criado: i.created_at, expira: i.expires_at })) });
+              break;
+            }
+            case "revoke_invite": {
+              await supabase.from("invites").update({ status: "revoked", revoked_at: new Date().toISOString() }).eq("id", args.invite_id).eq("tenant_id", tenantId);
+              result = "Convite revogado.";
+              executedActions.push(`revoke_invite:${args.invite_id}`);
+              break;
+            }
+            case "bulk_invite_mentorados": {
+              const results: string[] = [];
+              for (const inv of args.invites) {
+                try {
+                  const r = await fetch(`${supabaseUrl}/functions/v1/create-invite`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, email: inv.email, role: "mentee", full_name: inv.full_name, phone: inv.phone || null, invited_by_membership_id: membership_id }) });
+                  results.push(r.ok ? `${inv.full_name}: ✅` : `${inv.full_name}: ❌`);
+                } catch { results.push(`${inv.full_name}: ❌`); }
+              }
+              result = `${results.filter(r => r.includes("✅")).length}/${args.invites.length} convites enviados.`;
+              executedActions.push(`bulk_invite:${args.invites.length}`);
+              break;
+            }
+            case "get_mentee_journey_position": {
+              const { data: mm } = await supabase.from("memberships").select("created_at").eq("id", args.mentee_membership_id).single();
+              if (!mm) { result = "Não encontrado."; break; }
+              const daysSinceJoin = Math.floor((Date.now() - new Date(mm.created_at).getTime()) / 86400000);
+              const stages = journeyStages || [];
+              const currentStage = stages.find(s => daysSinceJoin >= s.day_start && daysSinceJoin <= s.day_end);
+              result = JSON.stringify({ dias_no_programa: daysSinceJoin, etapa_atual: currentStage?.name || "Fora da jornada", jornada: stages.map(s => ({ nome: s.name, dia_inicio: s.day_start, dia_fim: s.day_end, atual: s === currentStage })) });
+              break;
+            }
+            case "update_tenant_settings": {
+              const { data: t } = await supabase.from("tenants").select("settings").eq("id", tenantId).single();
+              const settings = (t?.settings || {}) as Record<string, any>;
+              settings[args.setting_key] = args.setting_value;
+              await supabase.from("tenants").update({ settings }).eq("id", tenantId);
+              result = `Configuração "${args.setting_key}" atualizada.`;
+              executedActions.push(`update_settings:${args.setting_key}`);
+              break;
+            }
+            case "generate_mentor_report": {
+              const period = args.period || "month";
+              const daysMap: Record<string, number> = { week: 7, month: 30, quarter: 90 };
+              const since = new Date(); since.setDate(since.getDate() - (daysMap[period] || 30));
+              const sinceStr = since.toISOString();
+              const [{ count: act }, { count: newMentees }, { count: tasksDone }, { count: lessonsDone }] = await Promise.all([
+                supabase.from("activity_logs").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", sinceStr),
+                supabase.from("memberships").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("role", "mentee").gte("created_at", sinceStr),
+                supabase.from("campan_tasks").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("status_column", "done").gte("updated_at", sinceStr),
+                supabase.from("trail_progress").select("id", { count: "exact" }).in("membership_id", menteeIds).eq("completed", true).gte("updated_at", sinceStr),
+              ]);
+              result = JSON.stringify({ periodo: period, mentorados_ativos: mentorados?.length || 0, novos: newMentees || 0, atividades: act || 0, tarefas_concluidas: tasksDone || 0, licoes_concluidas: lessonsDone || 0, automacoes_ativas: automations?.filter(a => a.is_enabled).length, leads_total: leads?.length || 0 });
+              executedActions.push(`report:${period}`);
+              break;
+            }
+            case "create_pipeline_stage": {
+              const maxPos = pipelineStages?.length || 0;
+              const { error } = await supabase.from("crm_pipeline_stages").insert({ name: args.name, status_key: args.status_key, color: args.color || "#6366f1", position: args.position ?? maxPos, tenant_id: tenantId, membership_id: membership_id });
+              if (error) throw error;
+              result = `Etapa "${args.name}" criada no pipeline.`;
+              executedActions.push(`create_stage:${args.name}`);
+              break;
+            }
+            case "bulk_send_email": {
+              let sent = 0, failed = 0;
+              for (const mid of args.mentee_membership_ids) {
+                const { data: mm } = await supabase.from("memberships").select("user_id").eq("id", mid).single();
+                if (!mm) { failed++; continue; }
+                const { data: p } = await supabase.from("profiles").select("email, full_name").eq("user_id", mm.user_id).maybeSingle();
+                if (!p?.email) { failed++; continue; }
+                const r = await fetch(`${supabaseUrl}/functions/v1/send-mentee-email`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, to: p.email, subject: args.subject, html: args.body_html, mentor_name: mentorProfile?.full_name || "Mentor" }) });
+                r.ok ? sent++ : failed++;
+              }
+              result = `${sent} emails enviados, ${failed} falhas.`;
+              executedActions.push(`bulk_email:${sent}`);
+              break;
+            }
+            case "bulk_update_lead_stage": {
+              const { error } = await supabase.from("crm_leads").update({ stage: args.stage }).in("id", args.lead_ids).eq("tenant_id", tenantId);
+              if (error) throw error;
+              result = `${args.lead_ids.length} leads movidos para "${args.stage}".`;
+              executedActions.push(`bulk_lead_stage:${args.lead_ids.length}`);
+              break;
+            }
+            case "log_custom_activity": {
+              await supabase.from("activity_logs").insert({ membership_id: args.mentee_membership_id, tenant_id: tenantId, action_type: args.action_type, action_description: args.description, points_earned: args.points || 0 });
+              result = `Atividade "${args.action_type}" registrada.`;
+              executedActions.push(`log_activity:${args.action_type}`);
               break;
             }
             default:

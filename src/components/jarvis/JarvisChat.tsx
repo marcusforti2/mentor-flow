@@ -49,7 +49,19 @@ const ACTION_LABELS: Record<string, string> = {
   award_badge: '🏆 Badge',
   create_badge: '🏆 Badge',
   toggle_popup: '🔔 Popup',
+  create_popup: '🔔 Popup criado',
   toggle_email_flow: '📧 Fluxo',
+  create_form: '📝 Formulário criado',
+  add_question: '📝 Pergunta adicionada',
+  toggle_form: '📝 Formulário',
+  revoke_invite: '🚫 Convite revogado',
+  bulk_invite: '👥 Convites em massa',
+  bulk_email: '📧 Emails em massa',
+  bulk_lead_stage: '🎯 Leads movidos',
+  report: '📊 Relatório',
+  update_settings: '⚙️ Configuração',
+  create_stage: '🎯 Etapa criada',
+  log_activity: '📝 Atividade registrada',
 };
 
 function getActionLabel(action: string) {
@@ -285,10 +297,12 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
              </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
-                '📊 Como estão meus mentorados?',
+                '📊 Gere meu relatório mensal',
                 '⚡ Ative todas as automações',
-                '📱 Mande um WhatsApp motivacional',
-                '📧 Crie uma campanha de email',
+                '👥 Convide 3 mentorados',
+                '📝 Crie um formulário de feedback',
+                '📱 Mande WhatsApp motivacional pra todos',
+                '📖 Gere um playbook de vendas',
               ].map(suggestion => (
                 <button
                   key={suggestion}
