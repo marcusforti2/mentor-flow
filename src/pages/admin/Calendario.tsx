@@ -1002,32 +1002,89 @@ export default function Calendario() {
               </div>
             )}
 
-            {/* Email toggle */}
+            {/* Notifications & Reminders */}
             {!editingEvent && (
-              <div className="space-y-2 p-3 rounded-xl border border-border/40 bg-secondary/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-muted-foreground" />
-                    <Label className="text-xs font-medium cursor-pointer">Notificar por email</Label>
+              <div className="space-y-3 p-3 rounded-xl border border-border/40 bg-secondary/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Bell className="w-4 h-4 text-primary" />
+                  <Label className="text-xs font-semibold">Notificações & Lembretes</Label>
+                </div>
+
+                {/* Push to Google */}
+                {hasGoogleCalendar && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Sincronizar com Google Calendar</Label>
+                    <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, push_to_google: !prev.push_to_google }))}
+                      className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.push_to_google ? "bg-primary" : "bg-muted-foreground/30")}>
+                      <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.push_to_google && "translate-x-4")} />
+                    </button>
                   </div>
+                )}
+
+                {/* Create Google Meet */}
+                {hasGoogleCalendar && newEvent.push_to_google && !newEvent.meeting_url && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> Gerar Google Meet automaticamente</Label>
+                    <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, create_google_meet: !prev.create_google_meet }))}
+                      className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.create_google_meet ? "bg-primary" : "bg-muted-foreground/30")}>
+                      <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.create_google_meet && "translate-x-4")} />
+                    </button>
+                  </div>
+                )}
+
+                {/* WhatsApp */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Notificar por WhatsApp</Label>
+                  <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, notify_whatsapp: !prev.notify_whatsapp }))}
+                    className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.notify_whatsapp ? "bg-primary" : "bg-muted-foreground/30")}>
+                    <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.notify_whatsapp && "translate-x-4")} />
+                  </button>
+                </div>
+
+                {/* Email */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Notificar por Email</Label>
                   <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, notify_email: !prev.notify_email }))}
                     className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.notify_email ? "bg-primary" : "bg-muted-foreground/30")}>
                     <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.notify_email && "translate-x-4")} />
                   </button>
                 </div>
-                {newEvent.notify_email && (
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] text-muted-foreground">Quando enviar?</Label>
-                    <Select value={newEvent.remind_before} onValueChange={(v) => setNewEvent({ ...newEvent, remind_before: v })}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent className="z-50">
-                        <SelectItem value="1h">1 hora antes</SelectItem>
-                        <SelectItem value="24h">24 horas antes</SelectItem>
-                        <SelectItem value="48h">48 horas antes</SelectItem>
-                        <SelectItem value="1w">1 semana antes</SelectItem>
-                        <SelectItem value="now">Enviar agora</SelectItem>
-                      </SelectContent>
-                    </Select>
+
+                {/* Reminder intervals */}
+                {(newEvent.notify_whatsapp || newEvent.notify_email) && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-[11px] text-muted-foreground">Lembretes automáticos (selecione quantos quiser)</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { key: "1h", label: "1h antes" },
+                        { key: "2h", label: "2h antes" },
+                        { key: "6h", label: "6h antes" },
+                        { key: "12h", label: "12h antes" },
+                        { key: "24h", label: "24h antes" },
+                        { key: "48h", label: "48h antes" },
+                        { key: "72h", label: "3 dias" },
+                        { key: "1w", label: "1 semana" },
+                      ].map(({ key, label }) => {
+                        const selected = newEvent.reminder_intervals.includes(key);
+                        return (
+                          <button key={key} type="button"
+                            onClick={() => setNewEvent(prev => ({
+                              ...prev,
+                              reminder_intervals: selected
+                                ? prev.reminder_intervals.filter(i => i !== key)
+                                : [...prev.reminder_intervals, key],
+                            }))}
+                            className={cn(
+                              "px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all",
+                              selected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                            )}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
