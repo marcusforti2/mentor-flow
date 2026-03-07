@@ -77,12 +77,14 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Voice state
-  const [ttsEnabled, setTtsEnabled] = useState(false);
+  // Voice state — auto-enabled by default (Jarvis mode)
+  const [ttsEnabled, setTtsEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
   const lastSpokenMsgRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const shouldAutoRelisten = useRef(true);
+  const hasAutoStarted = useRef(false);
 
   // ElevenLabs STT
   const [isListening, setIsListening] = useState(false);
@@ -108,6 +110,18 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // Auto-start listening when Jarvis opens
+  useEffect(() => {
+    if (!hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      // Small delay to let component mount
+      const timer = setTimeout(() => {
+        startListening();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ElevenLabs TTS: speak new assistant messages
   useEffect(() => {
@@ -160,7 +174,14 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
       audioRef.current = audio;
 
       audio.onplay = () => { setIsSpeaking(true); setTtsLoading(false); };
-      audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(audioUrl); };
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+        // Auto-restart listening after Jarvis finishes speaking
+        if (shouldAutoRelisten.current && ttsEnabled) {
+          setTimeout(() => startListening(), 300);
+        }
+      };
       audio.onerror = () => { setIsSpeaking(false); setTtsLoading(false); };
 
       await audio.play();
@@ -259,9 +280,9 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               Seu centro de comando inteligente. Posso gerenciar automações, enviar mensagens,
               criar campanhas, agendar eventos e analisar seus mentorados. O que precisa?
             </p>
-            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              <Mic className="h-3 w-3" /> Clique no microfone para falar comigo
-            </p>
+             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+               <Mic className="h-3 w-3" /> Já estou ouvindo — pode falar!
+             </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
                 '📊 Como estão meus mentorados?',
@@ -428,9 +449,11 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
           {isListening
-            ? "🎤 ElevenLabs Scribe ativo — fale agora, a mensagem será enviada ao detectar pausa"
+            ? "🎤 Escutando... fale agora, envio automático ao detectar pausa"
             : isSpeaking
-            ? "🔊 Jarvis falando via ElevenLabs..."
+            ? "🔊 Jarvis falando... voltarei a ouvir quando terminar"
+            : ttsEnabled
+            ? "🎙️ Modo conversação ativo — falo e ouço automaticamente"
             : "Jarvis com voz ElevenLabs — microfone para falar, alto-falante para ouvir respostas."
           }
         </p>
