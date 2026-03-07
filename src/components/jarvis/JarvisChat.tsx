@@ -280,9 +280,9 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               Seu centro de comando inteligente. Posso gerenciar automações, enviar mensagens,
               criar campanhas, agendar eventos e analisar seus mentorados. O que precisa?
             </p>
-            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              <Mic className="h-3 w-3" /> Clique no microfone para falar comigo
-            </p>
+             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+               <Mic className="h-3 w-3" /> Já estou ouvindo — pode falar!
+             </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
                 '📊 Como estão meus mentorados?',
