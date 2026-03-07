@@ -125,7 +125,7 @@ export default function TenantAuthPage() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-otp", {
-        body: { email, tenant_hint: tenant?.id },
+        body: { email, tenant_hint: tenant?.id, channel: otpChannel },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
