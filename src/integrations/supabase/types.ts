@@ -1481,6 +1481,73 @@ export type Database = {
           },
         ]
       }
+      event_mentee_reminders: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          hours_before: number
+          id: string
+          interval_key: string
+          mentee_membership_id: string
+          reminder_type: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string | null
+          tenant_id: string
+          whatsapp_message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          hours_before?: number
+          id?: string
+          interval_key?: string
+          mentee_membership_id: string
+          reminder_type?: string | null
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string | null
+          tenant_id: string
+          whatsapp_message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          hours_before?: number
+          id?: string
+          interval_key?: string
+          mentee_membership_id?: string
+          reminder_type?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string | null
+          tenant_id?: string
+          whatsapp_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_mentee_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_mentee_reminders_mentee_membership_id_fkey"
+            columns: ["mentee_membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_mentee_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_reminders: {
         Row: {
           created_at: string
