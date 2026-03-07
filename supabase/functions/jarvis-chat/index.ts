@@ -322,6 +322,25 @@ PROGRAMA: ${tenantData?.name || "N/A"} (slug: ${tenantData?.slug || "N/A"})`);
           },
         },
       },
+      {
+        type: "function",
+        function: {
+          name: "navigate_to_page",
+          description: "Navega o mentor para uma página específica da plataforma. Use quando o mentor pedir para abrir uma tela, seção ou página.",
+          parameters: {
+            type: "object",
+            properties: {
+              page: {
+                type: "string",
+                enum: ["dashboard", "mentorados", "jornada-cs", "crm", "formularios", "trilhas", "playbooks", "calendario", "emails", "whatsapp", "popups", "sos", "automacoes", "relatorios", "perfil"],
+                description: "Página de destino"
+              },
+            },
+            required: ["page"],
+            additionalProperties: false,
+          },
+        },
+      },
     ];
 
     // System prompt
@@ -337,19 +356,38 @@ Você pode EXECUTAR ações reais usando as ferramentas disponíveis:
 4. **create_calendar_event** — Agendar eventos no calendário
 5. **run_automation_now** — Executar automação imediatamente
 6. **get_mentee_details** — Buscar detalhes de um mentorado
+7. **navigate_to_page** — Navegar para qualquer página da plataforma
+
+## NAVEGAÇÃO DISPONÍVEL:
+- dashboard → Painel principal
+- mentorados → Lista de mentorados
+- jornada-cs → Jornada Customer Success
+- crm → CRM de vendas
+- formularios → Formulários
+- trilhas → Trilhas de aprendizado
+- playbooks → Playbooks
+- calendario → Calendário de eventos
+- emails → Email marketing
+- whatsapp → Hub de WhatsApp
+- popups → Pop-ups
+- sos → Centro SOS
+- automacoes → Automações (Jarvis)
+- relatorios → Relatórios
+- perfil → Meu perfil
 
 ## DIRETRIZES:
 - Você É o centro de comando do mentor. Tudo que ele precisa, ele pede a você.
 - Antes de executar ações destrutivas ou em massa, SEMPRE confirme com o mentor.
 - Seja proativo: sugira melhorias, identifique riscos e oportunidades nos dados.
 - Quando o mentor perguntar sobre um mentorado, use get_mentee_details para obter dados atualizados.
+- Quando o mentor pedir para abrir/ir para uma página, use navigate_to_page.
 - Formate respostas em Markdown com emojis para clareza visual.
 - Seja direto mas sofisticado. Você é um assistente de alto nível.
 - Quando não souber executar algo, explique e sugira alternativas.
 - Se o WhatsApp não estiver configurado, avise o mentor.
 - Referencie sempre os dados concretos que você tem acesso.
-- Ao listar mentorados, não mostre IDs internos — use nomes.`;
-
+- Ao listar mentorados, não mostre IDs internos — use nomes.
+- Respostas CURTAS e diretas. Não seja verboso. Máximo 3-4 parágrafos.`;
     const aiMessages = [
       { role: "system", content: systemPrompt },
       ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
@@ -594,6 +632,13 @@ Você pode EXECUTAR ações reais usando as ferramentas disponíveis:
                 leads: { total: prospections?.length || 0, quentes: hotLeads },
                 trilhas: { licoes_concluidas: lessonsCount || 0, certificados: certs?.length || 0 },
               });
+              break;
+            }
+
+            case "navigate_to_page": {
+              const { page } = args;
+              result = `Navegando para a página "${page}".`;
+              executedActions.push(`navigate:${page}`);
               break;
             }
 
