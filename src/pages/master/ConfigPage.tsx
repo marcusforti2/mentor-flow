@@ -711,7 +711,10 @@ export default function ConfigPage() {
               <MessageCircle className="h-4 w-4 mr-2" />
               WhatsApp
             </TabsTrigger>
-          </TabsList>
+            <TabsTrigger value="backup" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+              <Database className="h-4 w-4 mr-2" />
+              Backup
+            </TabsTrigger>
 
           <TabsContent value="platform" className="mt-6">
             <PlatformSection tenantId={selectedTenantId} />
