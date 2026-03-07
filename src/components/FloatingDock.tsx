@@ -201,6 +201,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
         <TooltipTrigger asChild>
           <Link
             to={item.path!}
+            {...getPrefetchHandlers(item.path!)}
             className={cn('dock-item', isActive && 'active')}
             onClick={() => { setMoreOpen(false); setExpandedGroup(null); }}
           >
