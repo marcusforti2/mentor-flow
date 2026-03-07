@@ -377,7 +377,7 @@ export default function CalendarioMembro() {
             </Card>
 
             {/* Sidebar */}
-            <div className="flex flex-col gap-3 min-h-0">
+            <div className="flex flex-col gap-3">
               <Card className="glass-card p-4">
                 <div className="flex items-center justify-between mb-1">
                   <div>
