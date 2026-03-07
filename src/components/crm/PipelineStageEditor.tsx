@@ -124,7 +124,8 @@ export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembership
       } else {
         deleteQuery = deleteQuery.is("membership_id", null);
       }
-      await deleteQuery;
+      const { error: deleteError } = await deleteQuery;
+      if (deleteError) throw deleteError;
 
       // Check if stages match default
       const isDefault =
