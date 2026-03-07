@@ -72,6 +72,8 @@ export function JarvisFloatingOverlay() {
   });
 
   const stealthStartListening = useCallback(async () => {
+    if (stealthConnectingRef.current || stealthListening) return;
+    stealthConnectingRef.current = true;
     try {
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
       if (error || !data?.token) { toast.error('Erro ao iniciar microfone'); return; }
@@ -85,8 +87,10 @@ export function JarvisFloatingOverlay() {
       console.error('Stealth STT error:', err);
       toast.error('Não foi possível acessar o microfone');
       setStealthActive(false);
+    } finally {
+      stealthConnectingRef.current = false;
     }
-  }, [stealthScribe]);
+  }, [stealthScribe, stealthListening]);
 
   const stealthStopListening = useCallback(() => {
     if (stealthSttConnected) {
