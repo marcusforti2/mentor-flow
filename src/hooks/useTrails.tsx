@@ -37,8 +37,10 @@ export function useTrails() {
   const { activeMembership } = useTenant();
   const queryClient = useQueryClient();
 
+  const queryKey = ['admin-trails', activeMembership?.tenant_id];
+
   const { data: trails = [], isLoading, error } = useQuery({
-    queryKey: ['admin-trails', activeMembership?.tenant_id],
+    queryKey,
     queryFn: async () => {
       if (!activeMembership?.tenant_id) return [];
 
@@ -57,6 +59,7 @@ export function useTrails() {
             title,
             description,
             order_index,
+            drive_folder_id,
             trail_lessons (
               id,
               title,
@@ -67,7 +70,8 @@ export function useTrails() {
               text_content,
               file_url,
               file_name,
-              order_index
+              order_index,
+              drive_folder_id
             )
           )
         `)
@@ -120,13 +124,14 @@ export function useTrails() {
     enabled: !!activeMembership?.tenant_id,
   });
 
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
+
   const createTrail = useMutation({
     mutationFn: async (input: TrailInput) => {
       if (!activeMembership?.tenant_id || !activeMembership?.id) {
         throw new Error('Tenant não encontrado');
       }
 
-      // 1. Create trail
       const { data: trail, error: trailError } = await supabase
         .from('trails')
         .insert([{
@@ -143,7 +148,6 @@ export function useTrails() {
 
       if (trailError) throw trailError;
 
-      // 2. Create modules and lessons
       for (const mod of input.modules) {
         const { data: module, error: moduleError } = await supabase
           .from('trail_modules')
@@ -158,7 +162,6 @@ export function useTrails() {
 
         if (moduleError) throw moduleError;
 
-        // 3. Create lessons for this module
         if (mod.lessons.length > 0) {
           const lessonsToInsert = mod.lessons.map(les => ({
             module_id: module.id,
@@ -184,7 +187,7 @@ export function useTrails() {
       return trail;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-trails'] });
+      invalidate();
       toast.success('Trilha criada com sucesso!');
     },
     onError: (error) => {
@@ -197,7 +200,7 @@ export function useTrails() {
     mutationFn: async (input: TrailInput) => {
       if (!input.id) throw new Error('ID da trilha não informado');
 
-      // 1. Update trail
+      // 1. Update trail metadata
       const { error: trailError } = await supabase
         .from('trails')
         .update({
@@ -211,55 +214,106 @@ export function useTrails() {
 
       if (trailError) throw trailError;
 
-      // 2. Delete existing modules (cascades to lessons)
-      const { error: deleteError } = await supabase
+      // 2. Get existing modules to preserve drive_folder_ids
+      const { data: existingModules } = await supabase
         .from('trail_modules')
-        .delete()
+        .select('id, title, drive_folder_id, trail_lessons(id, title, drive_folder_id)')
         .eq('trail_id', input.id);
 
-      if (deleteError) throw deleteError;
+      // Build lookup maps for drive_folder_id preservation
+      const moduleDriveMap = new Map<string, string>();
+      const lessonDriveMap = new Map<string, string>();
+      for (const mod of existingModules || []) {
+        if (mod.drive_folder_id) moduleDriveMap.set(mod.id, mod.drive_folder_id);
+        for (const les of (mod as any).trail_lessons || []) {
+          if (les.drive_folder_id) lessonDriveMap.set(les.id, les.drive_folder_id);
+        }
+      }
 
-      // 3. Recreate modules and lessons
+      // 3. Upsert modules (update existing, insert new, delete removed)
+      const inputModuleIds = input.modules.filter(m => m.id).map(m => m.id!);
+      const existingModuleIds = (existingModules || []).map(m => m.id);
+      const modulesToDelete = existingModuleIds.filter(id => !inputModuleIds.includes(id));
+
+      if (modulesToDelete.length > 0) {
+        await supabase.from('trail_modules').delete().in('id', modulesToDelete);
+      }
+
       for (const mod of input.modules) {
-        const { data: module, error: moduleError } = await supabase
-          .from('trail_modules')
-          .insert({
-            trail_id: input.id,
+        let moduleId: string;
+
+        if (mod.id && existingModuleIds.includes(mod.id)) {
+          // Update existing module
+          await supabase.from('trail_modules').update({
             title: mod.title,
             description: mod.description,
             order_index: mod.order_index,
-          })
-          .select()
-          .single();
+          }).eq('id', mod.id);
+          moduleId = mod.id;
+        } else {
+          // Insert new module
+          const { data: newMod, error } = await supabase
+            .from('trail_modules')
+            .insert({
+              trail_id: input.id,
+              title: mod.title,
+              description: mod.description,
+              order_index: mod.order_index,
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          moduleId = newMod.id;
+        }
 
-        if (moduleError) throw moduleError;
+        // Handle lessons for this module
+        const { data: existingLessons } = await supabase
+          .from('trail_lessons')
+          .select('id')
+          .eq('module_id', moduleId);
 
-        if (mod.lessons.length > 0) {
-          const lessonsToInsert = mod.lessons.map(les => ({
-            module_id: module.id,
-            title: les.title,
-            description: les.description,
-            duration_minutes: les.duration_minutes,
-            content_url: les.content_url,
-            content_type: les.content_type || 'video',
-            text_content: les.text_content || null,
-            file_url: les.file_url || null,
-            file_name: les.file_name || null,
-            order_index: les.order_index,
-          }));
+        const existingLessonIds = (existingLessons || []).map(l => l.id);
+        const inputLessonIds = mod.lessons.filter(l => l.id).map(l => l.id!);
+        const lessonsToDelete = existingLessonIds.filter(id => !inputLessonIds.includes(id));
 
-          const { error: lessonsError } = await supabase
-            .from('trail_lessons')
-            .insert(lessonsToInsert);
+        if (lessonsToDelete.length > 0) {
+          await supabase.from('trail_lessons').delete().in('id', lessonsToDelete);
+        }
 
-          if (lessonsError) throw lessonsError;
+        for (const les of mod.lessons) {
+          if (les.id && existingLessonIds.includes(les.id)) {
+            await supabase.from('trail_lessons').update({
+              title: les.title,
+              description: les.description,
+              duration_minutes: les.duration_minutes,
+              content_url: les.content_url,
+              content_type: les.content_type || 'video',
+              text_content: les.text_content || null,
+              file_url: les.file_url || null,
+              file_name: les.file_name || null,
+              order_index: les.order_index,
+            }).eq('id', les.id);
+          } else {
+            await supabase.from('trail_lessons').insert({
+              module_id: moduleId,
+              title: les.title,
+              description: les.description,
+              duration_minutes: les.duration_minutes,
+              content_url: les.content_url,
+              content_type: les.content_type || 'video',
+              text_content: les.text_content || null,
+              file_url: les.file_url || null,
+              file_name: les.file_name || null,
+              order_index: les.order_index,
+            });
+          }
         }
       }
 
       return input;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-trails'] });
+      invalidate();
       toast.success('Trilha atualizada com sucesso!');
     },
     onError: (error) => {
@@ -278,7 +332,7 @@ export function useTrails() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-trails'] });
+      invalidate();
       toast.success('Trilha excluída com sucesso!');
     },
     onError: (error) => {
@@ -294,5 +348,6 @@ export function useTrails() {
     createTrail,
     updateTrail,
     deleteTrail,
+    invalidate,
   };
 }
