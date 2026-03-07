@@ -29,6 +29,7 @@ export default function TenantAuthPage() {
   const [step, setStep] = useState<AuthStep>("email");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
+  const [otpChannel, setOtpChannel] = useState<"email" | "whatsapp">("email");
   const [countdown, setCountdown] = useState(0);
   const isSubmittingRef = useRef(false);
 
