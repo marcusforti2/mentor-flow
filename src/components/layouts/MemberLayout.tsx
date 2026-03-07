@@ -1,4 +1,5 @@
  import { Suspense } from 'react';
+import { RouteTransition } from '@/components/RouteTransition';
  import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
  import { FloatingDock } from '@/components/FloatingDock';
  import { useAuth } from '@/hooks/useAuth';
@@ -144,7 +145,9 @@ export function MemberLayout() {
           : "pt-16 pb-6"
       )}>
         <Suspense fallback={<PageSpinner />}>
-          <Outlet />
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
         </Suspense>
       </main>
 

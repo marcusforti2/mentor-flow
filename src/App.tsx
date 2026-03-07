@@ -85,6 +85,8 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000,   // 10 minutes
+      refetchOnWindowFocus: false, // Don't refetch on tab focus — reduces network churn
+      retry: 1, // Single retry instead of 3 — faster failure feedback
     },
   },
 });

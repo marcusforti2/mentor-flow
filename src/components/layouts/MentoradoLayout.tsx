@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { RouteTransition } from '@/components/RouteTransition';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock, type DockItem } from '@/components/FloatingDock';
 import { useAuth } from '@/hooks/useAuth';
@@ -214,7 +215,9 @@ const menuItems: DockItem[] = [
             : "pt-14 md:pt-16 pb-24 md:pb-6"
         )}>
           <Suspense fallback={<PageSpinner />}>
-            <Outlet />
+            <RouteTransition>
+              <Outlet />
+            </RouteTransition>
           </Suspense>
        </main>
  
