@@ -56,6 +56,7 @@ export function JarvisFloatingOverlay() {
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stealthConnectingRef = useRef(false);
 
+  const stealthSendingRef = useRef(false);
   const stealthScribe = useScribe({
     modelId: 'scribe_v2_realtime' as any,
     commitStrategy: 'vad' as any,
@@ -63,10 +64,13 @@ export function JarvisFloatingOverlay() {
       if (data.text) setStealthPartial(data.text);
     },
     onCommittedTranscript: (data: any) => {
-      if (data.text?.trim()) {
+      if (data.text?.trim() && !stealthSendingRef.current) {
+        stealthSendingRef.current = true;
         setStealthPartial('');
         stealthStopListening();
         jarvis.sendMessage(data.text.trim());
+        // Reset guard after a delay
+        setTimeout(() => { stealthSendingRef.current = false; }, 2000);
       }
     },
   });
