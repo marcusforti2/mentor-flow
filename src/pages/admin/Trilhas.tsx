@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Plus, Edit, Eye, Trash2, GripVertical, Loader2 } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, GripVertical, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { TrailEditorSheet } from '@/components/admin/TrailEditorSheet';
 import { TrailPreviewModal } from '@/components/admin/TrailPreviewModal';
+import { AiTrailGenerator } from '@/components/admin/AiTrailGenerator';
+import { TrailScriptSender } from '@/components/admin/TrailScriptSender';
 import { useTrails, Trail, TrailInput } from '@/hooks/useTrails';
 import {
   AlertDialog,
@@ -59,6 +61,10 @@ export default function AdminTrilhas() {
     setIsCreating(false);
   };
 
+  const handleAiTrailCreated = (trailData: TrailInput) => {
+    createTrail.mutate(trailData);
+  };
+
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -85,10 +91,13 @@ export default function AdminTrilhas() {
             Crie e edite trilhas de conteúdo para seus mentorados
           </p>
         </div>
-        <Button onClick={handleCreateNew} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Trilha
-        </Button>
+        <div className="flex items-center gap-2">
+          <AiTrailGenerator onTrailCreated={handleAiTrailCreated} />
+          <Button onClick={handleCreateNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Trilha
+          </Button>
+        </div>
       </div>
 
       {/* Trail List */}
@@ -143,7 +152,11 @@ export default function AdminTrilhas() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <TrailScriptSender
+                    trail={trail}
+                    lessons={trail.modules.flatMap(m => m.lessons)}
+                  />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -180,10 +193,13 @@ export default function AdminTrilhas() {
               <p className="text-muted-foreground mb-4">
                 Você ainda não criou nenhuma trilha
               </p>
-              <Button onClick={handleCreateNew} variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Criar primeira trilha
-              </Button>
+              <div className="flex items-center justify-center gap-3">
+                <AiTrailGenerator onTrailCreated={handleAiTrailCreated} />
+                <Button onClick={handleCreateNew} variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Criar manualmente
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
