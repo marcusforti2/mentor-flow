@@ -37,6 +37,8 @@ export function JarvisFloatingOverlay() {
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const recognitionRef = useRef<any>(null);
   const lastSpokenMsgRef = useRef<string | null>(null);
+  const stealthRetryCountRef = useRef(0);
+  const STEALTH_MAX_RETRIES = 2;
 
   const hasSpeechRecognition = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -119,11 +121,23 @@ export function JarvisFloatingOverlay() {
       return;
     }
 
+    // Enforce max retry limit
+    if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
+      console.warn('Stealth mic: max retries reached, stopping auto-reconnect');
+      toast.error('Microfone parou após falhas consecutivas. Clique duplo para reiniciar.', { duration: 4000 });
+      setStealthActive(false);
+      return;
+    }
+
     stealthConnectingRef.current = true;
     try {
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
       if (error || !data?.token) {
+        stealthRetryCountRef.current += 1;
         toast.error('Erro ao iniciar microfone');
+        if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
+          setStealthActive(false);
+        }
         return;
       }
 
@@ -133,13 +147,20 @@ export function JarvisFloatingOverlay() {
         microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       } as any);
 
+      // Reset retry count on successful connection
+      stealthRetryCountRef.current = 0;
       setStealthPartial('');
       setStealthListening(true);
       setStealthSttConnected(true);
     } catch (err) {
       console.error('Stealth STT error:', err);
-      toast.error('Não foi possível acessar o microfone');
-      setStealthActive(false);
+      stealthRetryCountRef.current += 1;
+      if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
+        toast.error('Microfone indisponível. Clique duplo para tentar novamente.');
+        setStealthActive(false);
+      } else {
+        toast.error('Erro no microfone, tentando novamente...');
+      }
     } finally {
       stealthConnectingRef.current = false;
     }
@@ -296,6 +317,7 @@ export function JarvisFloatingOverlay() {
     if (clickCountRef.current >= 2) {
       clickCountRef.current = 0;
       // Double-click → stealth mode
+      stealthRetryCountRef.current = 0;
       setStealthActive(true);
       toast('🎤 Modo voz ativado — fale com o Jarvis', { duration: 2000 });
     } else {
@@ -381,6 +403,7 @@ export function JarvisFloatingOverlay() {
   }, [jarvis.messages, navigate]);
 
   // Overlay TTS (browser native, only when overlay is open)
+  // Best voice selection: prioritize Google/Microsoft PT-BR voices
   useEffect(() => {
     if (!ttsEnabled || !hasSpeechSynthesis) return;
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
@@ -394,11 +417,23 @@ export function JarvisFloatingOverlay() {
     utterance.lang = 'pt-BR';
     utterance.rate = 1.05;
     utterance.pitch = 0.95;
+
     const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find(v => v.lang.startsWith('pt') && v.name.toLowerCase().includes('google')) ||
-                    voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt'));
-    if (ptVoice) utterance.voice = ptVoice;
+    const lowerName = (v: SpeechSynthesisVoice) => v.name.toLowerCase();
+    const isPtBR = (v: SpeechSynthesisVoice) => v.lang === 'pt-BR';
+    const isPt = (v: SpeechSynthesisVoice) => v.lang.startsWith('pt');
+
+    // Priority: Google PT-BR > Microsoft PT-BR > any PT-BR > Google PT > Microsoft PT > any PT
+    const bestVoice =
+      voices.find(v => isPtBR(v) && lowerName(v).includes('google')) ||
+      voices.find(v => isPtBR(v) && lowerName(v).includes('microsoft')) ||
+      voices.find(v => isPtBR(v) && !v.localService) ||
+      voices.find(v => isPtBR(v)) ||
+      voices.find(v => isPt(v) && lowerName(v).includes('google')) ||
+      voices.find(v => isPt(v) && lowerName(v).includes('microsoft')) ||
+      voices.find(v => isPt(v));
+
+    if (bestVoice) utterance.voice = bestVoice;
     window.speechSynthesis.speak(utterance);
   }, [jarvis.messages, ttsEnabled, hasSpeechSynthesis]);
 
