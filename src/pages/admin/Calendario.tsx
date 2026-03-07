@@ -424,12 +424,10 @@ export default function Calendario() {
               <span className="text-xs text-muted-foreground">próximos</span>
             </div>
           </div>
-          {hasGoogleCalendar && (
-            <Button variant="outline" onClick={handleSyncGoogleCalendar} disabled={isSyncing} className="gap-2">
-              <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
-              <span className="hidden sm:inline">Sincronizar Google</span>
-            </Button>
-          )}
+          <Button variant="outline" onClick={hasGoogleCalendar ? handleSyncGoogleCalendar : () => window.location.href = '/mentor/perfil'} disabled={isSyncing} className="gap-2">
+            <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+            <span className="hidden sm:inline">{hasGoogleCalendar ? 'Sincronizar Google' : 'Conectar Google'}</span>
+          </Button>
           <Button onClick={() => openEventDialog(undefined, selectedDate)} className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Novo Evento</span>
