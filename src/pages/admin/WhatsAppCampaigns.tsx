@@ -21,7 +21,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   MessageCircle, Plus, Loader2, Send, Settings, Users, CheckCircle2, XCircle,
-  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket, Bot, FileText,
+  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket, Bot, FileText, Contact,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -32,6 +32,7 @@ import { WhatsAppQuickSend } from "@/components/whatsapp/WhatsAppQuickSend";
 import { WhatsAppIntelligence } from "@/components/whatsapp/WhatsAppIntelligence";
 import { WhatsAppAutoReply } from "@/components/whatsapp/WhatsAppAutoReply";
 import { WhatsAppDailySummary } from "@/components/whatsapp/WhatsAppDailySummary";
+import { WhatsAppCRM } from "@/components/whatsapp/WhatsAppCRM";
 
 interface WhatsAppConfig {
   id: string;
@@ -430,6 +431,10 @@ export default function WhatsAppCampaigns() {
             <Clock className="h-4 w-4" />
             Histórico
           </TabsTrigger>
+          <TabsTrigger value="crm" className="gap-1.5">
+            <Contact className="h-4 w-4" />
+            CRM
+          </TabsTrigger>
         </TabsList>
 
         {/* ======= DASHBOARD TAB ======= */}
@@ -618,6 +623,11 @@ export default function WhatsAppCampaigns() {
         {/* ======= DAILY SUMMARY TAB ======= */}
         <TabsContent value="daily_summary">
           <WhatsAppDailySummary />
+        </TabsContent>
+
+        {/* ======= CRM TAB ======= */}
+        <TabsContent value="crm">
+          <WhatsAppCRM />
         </TabsContent>
 
         {/* ======= LOGS TAB ======= */}
