@@ -104,16 +104,18 @@ export default function Calendario() {
   const { activeMembership } = useTenant();
   const { toast } = useToast();
 
-  const fetchData = async () => {
+    const fetchData = async () => {
     if (!user || !activeMembership?.tenant_id) { setEvents([]); setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      const [eventsRes, membersRes] = await Promise.all([
+      const [eventsRes, membersRes, gcalRes] = await Promise.all([
         supabase.from('calendar_events').select('*').eq('tenant_id', activeMembership.tenant_id).order('event_date', { ascending: true }),
         supabase.from('memberships').select('id, user_id, role').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').eq('role', 'mentee'),
+        supabase.from('google_calendar_tokens' as any).select('id').eq('membership_id', activeMembership.id).maybeSingle(),
       ]);
       if (eventsRes.error) throw eventsRes.error;
       setEvents(eventsRes.data || []);
+      setHasGoogleCalendar(!!gcalRes.data);
 
       const members = membersRes.data || [];
       if (members.length > 0) {
@@ -139,6 +141,27 @@ export default function Calendario() {
   };
 
   useEffect(() => { fetchData(); }, [user, activeMembership]);
+
+  const handleSyncGoogleCalendar = async () => {
+    if (!activeMembership) return;
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-google-calendar', {
+        body: {
+          membership_id: activeMembership.id,
+          tenant_id: activeMembership.tenant_id,
+          days_ahead: 60,
+        },
+      });
+      if (error) throw error;
+      toast({ title: "✅ Sincronizado!", description: data?.message || `${data?.synced} evento(s) importado(s)` });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const resetForm = () => {
     setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, remind_before: "24h", facilitator_name: "" });
