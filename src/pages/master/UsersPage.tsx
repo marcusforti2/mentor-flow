@@ -40,7 +40,7 @@ const statusConfig = {
   convidado: { label: 'Convidado', variant: 'outline' as const },
 };
 
-const LOGIN_URL = 'https://mentorflow.aceleracaoforti.online/auth';
+const LOGIN_URL = 'https://bymentorflow.com.br/auth';
 
 const canInviteMentor = (membership: MembershipWithDetails): boolean => {
   return (
