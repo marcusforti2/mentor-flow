@@ -17,6 +17,13 @@ const emailSchema = z.string().email("Email inválido");
 
 type AuthStep = "email" | "code";
 
+const normalizeTenantSlug = (value?: string | null) =>
+  (value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+
 export default function TenantAuthPage() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const navigate = useNavigate();
@@ -33,17 +40,42 @@ export default function TenantAuthPage() {
   const [countdown, setCountdown] = useState(0);
   const isSubmittingRef = useRef(false);
 
-  // Fetch tenant by slug
+  // Fetch tenant by slug (with compact-slug fallback, e.g. learningbrand -> learning-brand)
   const { data: tenant, isLoading: tenantDataLoading } = useQuery({
     queryKey: ["tenant-auth", tenantSlug],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const tenantSelect = "id, name, slug, logo_url, primary_color, secondary_color, settings";
+
+      const { data: exactTenant, error: exactError } = await supabase
         .from("tenants")
-        .select("id, name, slug, logo_url, primary_color, secondary_color, settings")
+        .select(tenantSelect)
         .eq("slug", tenantSlug!)
         .maybeSingle();
-      if (error) throw error;
-      return data;
+
+      if (exactError) throw exactError;
+      if (exactTenant) return exactTenant;
+
+      const normalizedInput = normalizeTenantSlug(tenantSlug);
+      if (!normalizedInput) return null;
+
+      const { data: candidates, error: candidatesError } = await supabase
+        .from("tenants")
+        .select("slug")
+        .limit(1000);
+
+      if (candidatesError) throw candidatesError;
+
+      const matchedSlug = candidates?.find((candidate) => normalizeTenantSlug(candidate.slug) === normalizedInput)?.slug;
+      if (!matchedSlug) return null;
+
+      const { data: fallbackTenant, error: fallbackError } = await supabase
+        .from("tenants")
+        .select(tenantSelect)
+        .eq("slug", matchedSlug)
+        .maybeSingle();
+
+      if (fallbackError) throw fallbackError;
+      return fallbackTenant;
     },
     enabled: !!tenantSlug,
   });
