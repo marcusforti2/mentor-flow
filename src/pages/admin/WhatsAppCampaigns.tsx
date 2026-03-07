@@ -21,11 +21,15 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   MessageCircle, Plus, Loader2, Send, Settings, Users, CheckCircle2, XCircle,
-  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap,
+  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
 const WhatsAppAutomationTab = lazy(() => import("@/components/whatsapp/WhatsAppAutomationTab").then(m => ({ default: m.WhatsAppAutomationTab })));
+import { WhatsAppDashboard } from "@/components/whatsapp/WhatsAppDashboard";
+import { WhatsAppQuickSend } from "@/components/whatsapp/WhatsAppQuickSend";
+import { WhatsAppIntelligence } from "@/components/whatsapp/WhatsAppIntelligence";
 
 interface WhatsAppConfig {
   id: string;
@@ -72,12 +76,11 @@ export default function WhatsAppCampaigns() {
   const { activeMembership } = useTenant();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState("campaigns");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
 
   // Config
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
-  // Config form removed - managed by Master Admin
 
   // Campaigns
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -93,7 +96,7 @@ export default function WhatsAppCampaigns() {
   const [isGeneratingMsg, setIsGeneratingMsg] = useState(false);
   const [aiMsgObjective, setAiMsgObjective] = useState("");
 
-  // Mentees for audience selection
+  // Mentees
   const [mentees, setMentees] = useState<Mentee[]>([]);
 
   // Logs
@@ -103,6 +106,7 @@ export default function WhatsAppCampaigns() {
   // Stats
   const [totalSent, setTotalSent] = useState(0);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [activeFlows, setActiveFlows] = useState(0);
 
   useEffect(() => {
     if (activeMembership && user) fetchAll();
@@ -114,7 +118,7 @@ export default function WhatsAppCampaigns() {
     const tenantId = activeMembership.tenant_id;
 
     try {
-      // Fetch config via masked view (token is hidden)
+      // Fetch config via masked view
       const { data: cfgData } = await supabase
         .from("whatsapp_config_safe" as any)
         .select("*")
@@ -127,7 +131,7 @@ export default function WhatsAppCampaigns() {
           id: safe.id,
           tenant_id: safe.tenant_id,
           ultramsg_instance_id: safe.ultramsg_instance_id,
-          ultramsg_token: safe.ultramsg_token_masked, // masked value
+          ultramsg_token: safe.ultramsg_token_masked,
           is_active: safe.is_active,
           sender_name: safe.sender_name,
         } as any);
@@ -152,7 +156,16 @@ export default function WhatsAppCampaigns() {
 
       setTotalSent(count || 0);
 
-      // Fetch mentees for audience picker
+      // Active flows count
+      const { count: flowCount } = await supabase
+        .from("whatsapp_automation_flows" as any)
+        .select("*", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("is_active", true);
+
+      setActiveFlows(flowCount || 0);
+
+      // Fetch mentees
       const { data: memberships } = await supabase
         .from("memberships")
         .select("id, user_id")
@@ -176,14 +189,22 @@ export default function WhatsAppCampaigns() {
           })) as Mentee[]
         );
       }
+
+      // Fetch recent logs for dashboard
+      const { data: recentLogs } = await supabase
+        .from("whatsapp_message_logs" as any)
+        .select("status")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      setLogs((recentLogs as any[]) || []);
     } catch (err) {
       console.error("Error loading WhatsApp data:", err);
     } finally {
       setIsLoading(false);
     }
   };
-
-  // handleSaveConfig removed - config is managed by Master Admin
 
   const handleCreateAndSendCampaign = async () => {
     if (!activeMembership || !newCampaign.name.trim() || !newCampaign.message_template.trim()) {
@@ -195,7 +216,6 @@ export default function WhatsAppCampaigns() {
     try {
       const tenantId = activeMembership.tenant_id;
 
-      // Create campaign record
       const { data: campaign, error: campErr } = await supabase
         .from("whatsapp_campaigns" as any)
         .insert({
@@ -214,7 +234,6 @@ export default function WhatsAppCampaigns() {
       if (campErr) throw campErr;
       const campData = campaign as any;
 
-      // Send via edge function
       const { data: result, error: sendErr } = await supabase.functions.invoke("send-whatsapp", {
         body: {
           tenant_id: tenantId,
@@ -274,7 +293,7 @@ export default function WhatsAppCampaigns() {
           target_audience: "mentorados",
           tone: "motivacional e profissional",
           num_steps: 1,
-          context: "Campanha de mensagem única de WhatsApp. A mensagem deve ser completa e impactante sozinha.",
+          context: "Campanha de mensagem única de WhatsApp.",
         },
       });
       if (error) throw error;
@@ -333,119 +352,143 @@ export default function WhatsAppCampaigns() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-500">
-              <MessageCircle className="h-5 w-5" />
+            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-500">
+              <MessageCircle className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-display font-bold text-foreground">WhatsApp</h1>
+            <div>
+              <h1 className="text-2xl font-display font-bold text-foreground">Hub WhatsApp</h1>
+              <p className="text-sm text-muted-foreground">
+                Central de automação, campanhas e inteligência comercial via WhatsApp.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground ml-12">
-            Envie mensagens personalizadas para seus mentorados via WhatsApp.
-          </p>
         </div>
         {isConfigured && (
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setIsNewCampaignOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Campanha
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setActiveTab("quick_send")}>
+              <Send className="h-4 w-4 mr-2" />
+              Disparo Rápido
+            </Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setIsNewCampaignOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Campanha
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <Send className="h-5 w-5 text-emerald-500" />
-              </div>
+      {!isConfigured && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Settings className="h-5 w-5 text-amber-500 mt-0.5" />
               <div>
-                <p className="text-2xl font-bold">{totalSent}</p>
-                <p className="text-xs text-muted-foreground">Msgs Enviadas</p>
+                <h3 className="font-semibold text-foreground">WhatsApp não configurado</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  As credenciais do UltraMsg precisam ser configuradas pelo <strong>Administrador Master</strong> no painel de Configurações.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Zap className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalCampaigns}</p>
-                <p className="text-xs text-muted-foreground">Campanhas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Users className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{menteesWithPhone.length}</p>
-                <p className="text-xs text-muted-foreground">Com telefone</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <Phone className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-500">{menteesWithoutPhone.length}</p>
-                <p className="text-xs text-muted-foreground">Sem telefone</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); if (v === "logs") loadLogs(); }}>
-        <TabsList>
-          <TabsTrigger value="campaigns" className="gap-2">
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="dashboard" className="gap-1.5">
+            <TrendingUp className="h-4 w-4" />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="campaigns" className="gap-1.5">
             <MessageCircle className="h-4 w-4" />
             Campanhas
           </TabsTrigger>
-          <TabsTrigger value="automations" className="gap-2">
+          <TabsTrigger value="automations" className="gap-1.5">
             <Zap className="h-4 w-4" />
             Automações IA
           </TabsTrigger>
-          <TabsTrigger value="logs" className="gap-2">
+          <TabsTrigger value="quick_send" className="gap-1.5">
+            <Send className="h-4 w-4" />
+            Disparo Rápido
+          </TabsTrigger>
+          <TabsTrigger value="intelligence" className="gap-1.5">
+            <Brain className="h-4 w-4" />
+            Inteligência IA
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="gap-1.5">
             <Clock className="h-4 w-4" />
             Histórico
           </TabsTrigger>
         </TabsList>
 
-        {/* ======= CAMPAIGNS TAB ======= */}
-        <TabsContent value="campaigns" className="space-y-4">
-          {!isConfigured && (
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-3">
-                  <Settings className="h-5 w-5 text-amber-500 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-foreground">WhatsApp não configurado</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      As credenciais do UltraMsg precisam ser configuradas pelo <strong>Administrador Master</strong> no painel de Configurações.
-                    </p>
-                  </div>
+        {/* ======= DASHBOARD TAB ======= */}
+        <TabsContent value="dashboard" className="space-y-4">
+          <WhatsAppDashboard
+            totalSent={totalSent}
+            totalCampaigns={totalCampaigns}
+            menteesWithPhone={menteesWithPhone.length}
+            menteesWithoutPhone={menteesWithoutPhone.length}
+            activeFlows={activeFlows}
+            recentLogs={logs}
+          />
+
+          {/* Quick actions */}
+          <div className="grid gap-3 md:grid-cols-3">
+            <Card
+              className="cursor-pointer hover:border-emerald-500/30 transition-colors group"
+              onClick={() => setIsNewCampaignOpen(true)}
+            >
+              <CardContent className="pt-5 pb-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/30 transition-colors">
+                  <Rocket className="h-6 w-6 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Nova Campanha</p>
+                  <p className="text-xs text-muted-foreground">Envie mensagens em massa com IA</p>
                 </div>
               </CardContent>
             </Card>
-          )}
 
+            <Card
+              className="cursor-pointer hover:border-primary/30 transition-colors group"
+              onClick={() => setActiveTab("automations")}
+            >
+              <CardContent className="pt-5 pb-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Criar Fluxo Automático</p>
+                  <p className="text-xs text-muted-foreground">Sequências multi-etapa com IA</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:border-violet-500/30 transition-colors group"
+              onClick={() => setActiveTab("intelligence")}
+            >
+              <CardContent className="pt-5 pb-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-violet-500/20 flex items-center justify-center group-hover:bg-violet-500/30 transition-colors">
+                  <Brain className="h-6 w-6 text-violet-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Inteligência Comercial</p>
+                  <p className="text-xs text-muted-foreground">IA analisa e sugere cadências</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ======= CAMPAIGNS TAB ======= */}
+        <TabsContent value="campaigns" className="space-y-4">
           {campaigns.length === 0 && isConfigured && (
             <div className="text-center py-16 text-muted-foreground">
               <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />
               <h3 className="text-lg font-semibold">Nenhuma campanha ainda</h3>
-              <p className="text-sm mt-1">Crie sua primeira campanha de WhatsApp para seus mentorados!</p>
+              <p className="text-sm mt-1">Crie sua primeira campanha de WhatsApp!</p>
               <Button className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setIsNewCampaignOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Campanha
@@ -507,6 +550,23 @@ export default function WhatsAppCampaigns() {
           </div>
         </TabsContent>
 
+        {/* ======= AUTOMATIONS TAB ======= */}
+        <TabsContent value="automations">
+          <Suspense fallback={<div className="flex items-center justify-center h-32"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <WhatsAppAutomationTab />
+          </Suspense>
+        </TabsContent>
+
+        {/* ======= QUICK SEND TAB ======= */}
+        <TabsContent value="quick_send">
+          <WhatsAppQuickSend mentees={mentees} onSent={fetchAll} />
+        </TabsContent>
+
+        {/* ======= INTELLIGENCE TAB ======= */}
+        <TabsContent value="intelligence">
+          <WhatsAppIntelligence mentees={mentees} />
+        </TabsContent>
+
         {/* ======= LOGS TAB ======= */}
         <TabsContent value="logs" className="space-y-4">
           {isLogsLoading ? (
@@ -521,7 +581,7 @@ export default function WhatsAppCampaigns() {
           ) : (
             <ScrollArea className="h-[500px]">
               <div className="space-y-2">
-                {logs.map((log) => (
+                {(logs as any[]).filter(l => l.recipient_phone).map((log: any) => (
                   <Card key={log.id} className="p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -550,13 +610,6 @@ export default function WhatsAppCampaigns() {
               </div>
             </ScrollArea>
           )}
-        </TabsContent>
-
-        {/* ======= AUTOMATIONS TAB ======= */}
-        <TabsContent value="automations">
-          <Suspense fallback={<div className="flex items-center justify-center h-32"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
-            <WhatsAppAutomationTab />
-          </Suspense>
         </TabsContent>
       </Tabs>
 
@@ -592,7 +645,7 @@ export default function WhatsAppCampaigns() {
                 </Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Ex: Parabenizar por resultados do mês, lembrar da próxima call..."
+                    placeholder="Ex: Parabenizar por resultados do mês..."
                     value={aiMsgObjective}
                     onChange={(e) => setAiMsgObjective(e.target.value)}
                     className="flex-1"
