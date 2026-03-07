@@ -77,6 +77,11 @@ export default function Automacoes() {
               onToggle={toggleAutomation}
               onRunNow={handleRunNow}
               runningKey={runningKey}
+              conversations={jarvis.conversations}
+              activeConversationId={jarvis.conversationId}
+              onSelectConversation={jarvis.loadConversation}
+              onDeleteConversation={jarvis.deleteConversation}
+              onNewChat={jarvis.clearChat}
             />
           </div>
         )}
