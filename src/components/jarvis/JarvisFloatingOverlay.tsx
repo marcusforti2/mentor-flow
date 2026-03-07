@@ -75,6 +75,8 @@ export function JarvisFloatingOverlay() {
     onCommittedTranscript: async (data: any) => {
       const transcript = data.text?.trim();
       if (!transcript || !stealthActive) return;
+      // Filter out very short/noise transcriptions (less than 3 chars)
+      if (transcript.length < 3) return;
 
       const commitKey = `${data.id ?? ''}:${transcript}`;
       if (stealthLastCommitKeyRef.current === commitKey) return;
@@ -84,13 +86,11 @@ export function JarvisFloatingOverlay() {
       stealthAwaitingReplyRef.current = true;
 
       setStealthPartial('');
-      try {
-        stealthScribe.disconnect();
-      } catch {
-        // noop
-      }
+      // Force mic OFF immediately before sending
+      try { stealthScribe.disconnect(); } catch {}
       setStealthSttConnected(false);
       setStealthListening(false);
+      stealthConnectingRef.current = false;
 
       await jarvis.sendMessage(transcript);
     },
@@ -129,8 +129,9 @@ export function JarvisFloatingOverlay() {
 
       await stealthScribe.connect({
         token: data.token,
-        microphone: { echoCancellation: true, noiseSuppression: true },
-      });
+        languageCode: 'por',
+        microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      } as any);
 
       setStealthPartial('');
       setStealthListening(true);
@@ -172,10 +173,27 @@ export function JarvisFloatingOverlay() {
     setStealthSpeaking(false);
   }, [clearStealthRestartTimer, stealthStopListening]);
 
-  // Auto-start listening when stealth activates
+  // Force mic OFF when Jarvis is loading or speaking — this is the critical guard
   useEffect(() => {
-    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current) return;
-    void stealthStartListening();
+    if (stealthActive && (jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current)) {
+      if (stealthScribe.isConnected || stealthListening) {
+        try { stealthScribe.disconnect(); } catch {}
+        setStealthSttConnected(false);
+        setStealthListening(false);
+        stealthConnectingRef.current = false;
+      }
+    }
+  }, [jarvis.isLoading, stealthActive, stealthSpeaking, stealthScribe, stealthListening]);
+
+  // Auto-start listening only when stealth is active AND idle
+  useEffect(() => {
+    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current || stealthConnectingRef.current) return;
+    // Small delay to avoid race conditions
+    const timer = setTimeout(() => {
+      if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current || stealthConnectingRef.current) return;
+      void stealthStartListening();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [jarvis.isLoading, stealthActive, stealthListening, stealthSpeaking, stealthStartListening]);
 
   // Watch for Jarvis response in stealth mode
