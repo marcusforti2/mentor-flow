@@ -50,9 +50,9 @@ export function PlaybookAccessPanel({ playbookId, visibility, onVisibilityChange
     queryKey: ['tenant-mentees', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from('memberships')
-        .select('id, user_id, role, profiles:user_id(full_name, email)')
+        .select('id, user_id, role') as any)
         .eq('tenant_id', tenantId)
         .eq('role', 'mentee')
         .eq('status', 'active');
