@@ -172,10 +172,27 @@ export function JarvisFloatingOverlay() {
     setStealthSpeaking(false);
   }, [clearStealthRestartTimer, stealthStopListening]);
 
-  // Auto-start listening when stealth activates
+  // Force mic OFF when Jarvis is loading or speaking — this is the critical guard
   useEffect(() => {
-    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current) return;
-    void stealthStartListening();
+    if (stealthActive && (jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current)) {
+      if (stealthScribe.isConnected || stealthListening) {
+        try { stealthScribe.disconnect(); } catch {}
+        setStealthSttConnected(false);
+        setStealthListening(false);
+        stealthConnectingRef.current = false;
+      }
+    }
+  }, [jarvis.isLoading, stealthActive, stealthSpeaking, stealthScribe, stealthListening]);
+
+  // Auto-start listening only when stealth is active AND idle
+  useEffect(() => {
+    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current || stealthConnectingRef.current) return;
+    // Small delay to avoid race conditions
+    const timer = setTimeout(() => {
+      if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current || stealthConnectingRef.current) return;
+      void stealthStartListening();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [jarvis.isLoading, stealthActive, stealthListening, stealthSpeaking, stealthStartListening]);
 
   // Watch for Jarvis response in stealth mode
