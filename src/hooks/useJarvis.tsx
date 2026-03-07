@@ -63,7 +63,7 @@ export function useJarvis() {
   }, []);
 
   const sendMessage = useCallback(async (input: string) => {
-    if (!activeMembership?.id || !input.trim()) return;
+    if (!activeMembership?.id || !input.trim() || isLoading) return;
 
     const userMsg: JarvisMessage = {
       id: crypto.randomUUID(),
