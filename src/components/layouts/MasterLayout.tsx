@@ -175,6 +175,49 @@ export function MasterLayout() {
          </header>
        )}
  
+       {/* Backup Reminder Popup */}
+       {showReminder && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+           <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+             <div className="flex items-start justify-between">
+               <div className="flex items-center gap-3">
+                 <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+                   <Download className="h-6 w-6 text-amber-500" />
+                 </div>
+                 <div>
+                   <h3 className="font-display font-bold text-foreground text-lg">Hora do Backup! 🛡️</h3>
+                   <p className="text-sm text-muted-foreground">Segunda-feira — lembrete semanal</p>
+                 </div>
+               </div>
+             </div>
+             <p className="text-sm text-muted-foreground">
+               Faça o download do backup semanal dos seus dados. Vá em <strong className="text-foreground">Configurações → Backup</strong> e clique em "Baixar tudo".
+             </p>
+             <div className="flex items-center gap-3">
+               <Button
+                 className="flex-1"
+                 onClick={() => {
+                   navigate('/master/config');
+                   // Don't mark done — only mark when they actually download
+                 }}
+               >
+                 <Download className="h-4 w-4 mr-2" />
+                 Ir para Backup
+               </Button>
+               <Button
+                 variant="outline"
+                 onClick={markDone}
+               >
+                 Já baixei ✓
+               </Button>
+             </div>
+             <p className="text-[10px] text-muted-foreground text-center">
+               Este lembrete aparece toda segunda até você confirmar o download.
+             </p>
+           </div>
+         </div>
+       )}
+
        <main className={cn(
          "min-h-screen transition-all duration-300",
          isDashboard 
