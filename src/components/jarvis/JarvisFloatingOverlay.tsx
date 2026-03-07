@@ -54,6 +54,7 @@ export function JarvisFloatingOverlay() {
   const stealthLastSpokenRef = useRef<string | null>(null);
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stealthConnectingRef = useRef(false);
 
   const stealthScribe = useScribe({
     modelId: 'scribe_v2_realtime' as any,
