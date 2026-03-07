@@ -124,7 +124,8 @@ export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembership
       } else {
         deleteQuery = deleteQuery.is("membership_id", null);
       }
-      await deleteQuery;
+      const { error: deleteError } = await deleteQuery;
+      if (deleteError) throw deleteError;
 
       // Check if stages match default
       const isDefault =
@@ -147,9 +148,9 @@ export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembership
 
       await reload();
       toast({ title: "Pipeline salvo com sucesso!" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving pipeline:", error);
-      toast({ title: "Erro ao salvar pipeline", variant: "destructive" });
+      toast({ title: "Erro ao salvar pipeline", description: error?.message || "Verifique suas permissões.", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
