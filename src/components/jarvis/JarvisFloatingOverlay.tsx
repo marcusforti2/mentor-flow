@@ -121,11 +121,23 @@ export function JarvisFloatingOverlay() {
       return;
     }
 
+    // Enforce max retry limit
+    if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
+      console.warn('Stealth mic: max retries reached, stopping auto-reconnect');
+      toast.error('Microfone parou após falhas consecutivas. Clique duplo para reiniciar.', { duration: 4000 });
+      deactivateStealth();
+      return;
+    }
+
     stealthConnectingRef.current = true;
     try {
       const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
       if (error || !data?.token) {
+        stealthRetryCountRef.current += 1;
         toast.error('Erro ao iniciar microfone');
+        if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
+          deactivateStealth();
+        }
         return;
       }
 
@@ -135,17 +147,24 @@ export function JarvisFloatingOverlay() {
         microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       } as any);
 
+      // Reset retry count on successful connection
+      stealthRetryCountRef.current = 0;
       setStealthPartial('');
       setStealthListening(true);
       setStealthSttConnected(true);
     } catch (err) {
       console.error('Stealth STT error:', err);
-      toast.error('Não foi possível acessar o microfone');
-      setStealthActive(false);
+      stealthRetryCountRef.current += 1;
+      if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
+        toast.error('Microfone indisponível. Clique duplo para tentar novamente.');
+        deactivateStealth();
+      } else {
+        toast.error('Erro no microfone, tentando novamente...');
+      }
     } finally {
       stealthConnectingRef.current = false;
     }
-  }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking]);
+  }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking, deactivateStealth]);
 
   const scheduleStealthRestart = useCallback((delay = 300) => {
     clearStealthRestartTimer();
