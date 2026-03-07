@@ -223,56 +223,74 @@ export default function Calendario() {
         const { error } = await supabase.from('calendar_events').insert(eventsToCreate as any);
         if (error) throw error;
 
-        // Send email notification if requested
-        if (newEvent.notify_email && eventsToCreate.length > 0) {
-          const reminderLabels: Record<string, string> = { "1h": "1 hora antes", "24h": "24 horas antes", "48h": "48 horas antes", "1w": "1 semana antes", "now": "Agora" };
-          
-          if (newEvent.remind_before === "now") {
-            const { data: createdEvents } = await supabase.from('calendar_events')
-              .select('id').eq('tenant_id', activeMembership?.tenant_id)
-              .eq('title', newEvent.title)
-              .order('created_at', { ascending: false }).limit(1);
-            
-            if (createdEvents?.[0]) {
-              supabase.functions.invoke('send-event-notification', {
-                body: { event_id: createdEvents[0].id, tenant_id: activeMembership?.tenant_id, remind_before_label: "Agora" },
-              }).then(() => toast({ title: "📧 Notificação enviada!" }))
-                .catch(() => toast({ title: "Aviso", description: "Evento criado, mas falha ao enviar email.", variant: "destructive" }));
-            }
-          } else {
-            const intervalMap: Record<string, string> = { "1h": "1 hour", "24h": "1 day", "48h": "2 days", "1w": "7 days" };
-            const pgInterval = intervalMap[newEvent.remind_before] || "1 day";
-            
-            const { data: createdEvents } = await supabase.from('calendar_events')
-              .select('id, event_date, event_time').eq('tenant_id', activeMembership?.tenant_id)
-              .eq('title', newEvent.title)
-              .order('created_at', { ascending: false }).limit(eventsToCreate.length);
-            
-            if (createdEvents?.length) {
-              const reminders = createdEvents.map((ce: any) => {
-                const eventDatetime = ce.event_time 
-                  ? `${ce.event_date}T${ce.event_time}` 
-                  : `${ce.event_date}T09:00:00`;
-                const scheduledDate = new Date(eventDatetime);
-                const hoursMap: Record<string, number> = { "1h": 1, "24h": 24, "48h": 48, "1w": 168 };
-                scheduledDate.setHours(scheduledDate.getHours() - (hoursMap[newEvent.remind_before] || 24));
-                
-                return {
-                  event_id: ce.id,
-                  tenant_id: activeMembership?.tenant_id,
-                  remind_before: pgInterval,
-                  scheduled_at: scheduledDate.toISOString(),
-                  status: 'pending',
-                };
-              });
-              await supabase.from('event_reminders' as any).insert(reminders as any);
+        // Get created event IDs
+        const { data: createdEvents } = await supabase.from('calendar_events')
+          .select('id, event_date, event_time').eq('tenant_id', activeMembership?.tenant_id)
+          .eq('title', newEvent.title)
+          .order('created_at', { ascending: false }).limit(eventsToCreate.length);
+
+        const firstEventId = createdEvents?.[0]?.id;
+
+        // Push to Google Calendar if enabled
+        if (newEvent.push_to_google && hasGoogleCalendar && firstEventId) {
+          const attendeeEmails: string[] = [];
+          if (newEvent.audience_type !== 'staff_only' && newEvent.audience_membership_ids.length > 0) {
+            const { data: mems } = await supabase.from('memberships').select('user_id').in('id', newEvent.audience_membership_ids);
+            if (mems?.length) {
+              const { data: profs } = await supabase.from('profiles').select('user_id, email').in('user_id', mems.map(m => m.user_id));
+              profs?.forEach(p => { if (p.email) attendeeEmails.push(p.email); });
             }
           }
-          
-          toast({ title: "✅ Evento criado!", description: newEvent.remind_before === "now" ? "Notificação sendo enviada..." : `Lembrete agendado para ${reminderLabels[newEvent.remind_before]}.` });
-        } else {
-          toast({ title: "✅ Evento criado!", description: newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined });
+
+          const pushRes = await supabase.functions.invoke('push-to-google-calendar', {
+            body: {
+              membership_id: activeMembership?.id,
+              tenant_id: activeMembership?.tenant_id,
+              title: newEvent.title,
+              description: newEvent.description,
+              event_date: format(newEvent.event_date, 'yyyy-MM-dd'),
+              event_time: newEvent.event_time ? `${newEvent.event_time}:00` : null,
+              meeting_url: newEvent.meeting_url || undefined,
+              attendee_emails: attendeeEmails,
+            },
+          });
+
+          // Update meeting URL if Google Meet was generated
+          if (pushRes.data?.meeting_url && !newEvent.meeting_url && firstEventId) {
+            await supabase.from('calendar_events').update({ meeting_url: pushRes.data.meeting_url } as any).eq('id', firstEventId);
+          }
         }
+
+        // Notify mentees via WhatsApp + Email
+        const menteeIds = newEvent.audience_type === 'all_mentees'
+          ? tenantMembers.map(m => m.id)
+          : newEvent.audience_membership_ids;
+
+        if (menteeIds.length > 0 && (newEvent.notify_whatsapp || newEvent.notify_email)) {
+          supabase.functions.invoke('notify-event-mentees', {
+            body: {
+              event_id: firstEventId,
+              tenant_id: activeMembership?.tenant_id,
+              event_title: newEvent.title,
+              event_date: format(newEvent.event_date, 'yyyy-MM-dd'),
+              event_time: newEvent.event_time ? `${newEvent.event_time}:00` : null,
+              event_description: newEvent.description,
+              meeting_url: newEvent.meeting_url,
+              mentee_membership_ids: menteeIds,
+              reminder_intervals: newEvent.reminder_intervals,
+              send_whatsapp: newEvent.notify_whatsapp,
+              send_email: newEvent.notify_email,
+            },
+          }).catch(console.error);
+        }
+
+        const parts = [];
+        if (newEvent.push_to_google && hasGoogleCalendar) parts.push("Google Calendar");
+        if (newEvent.notify_whatsapp) parts.push("WhatsApp");
+        if (newEvent.notify_email) parts.push("Email");
+        const notifDesc = parts.length > 0 ? `Notificações: ${parts.join(", ")}` : undefined;
+
+        toast({ title: "✅ Evento criado!", description: notifDesc || (newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined) });
       }
       resetForm();
       setIsDialogOpen(false);
