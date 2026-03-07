@@ -50,18 +50,25 @@ export function PlaybookAccessPanel({ playbookId, visibility, onVisibilityChange
     queryKey: ['tenant-mentees', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const { data, error } = await supabase
+      const { data: memberships, error } = await supabase
         .from('memberships')
-        .select('id, user_id, role, profiles:user_id(full_name, email)')
+        .select('id, user_id, role')
         .eq('tenant_id', tenantId)
         .eq('role', 'mentee')
         .eq('status', 'active');
       if (error) throw error;
-      return (data || []).map((m: any) => ({
-        membership_id: m.id,
-        full_name: m.profiles?.full_name || 'Sem nome',
-        email: m.profiles?.email || '',
-      }));
+      if (!memberships || memberships.length === 0) return [];
+      const userIds = [...new Set(memberships.map((m: any) => m.user_id))];
+      const { data: profiles } = await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      return memberships.map((m: any) => {
+        const p = profileMap.get(m.user_id);
+        return {
+          membership_id: m.id,
+          full_name: p?.full_name || 'Sem nome',
+          email: p?.email || '',
+        };
+      });
     },
     enabled: !!tenantId && visibility === 'specific_mentees',
   });

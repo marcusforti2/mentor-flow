@@ -19,8 +19,9 @@ import {
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2,
   ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List,
   ExternalLink, Sparkles, CalendarDays, Users, Lock, Bell, ListChecks, UserCircle,
-  RefreshCw
+  RefreshCw, MessageSquare, Mail, Send
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, addMonths, subMonths, isToday, parseISO, startOfWeek,
@@ -95,6 +96,10 @@ export default function Calendario() {
     audience_type: "all_mentees" as string,
     audience_membership_ids: [] as string[],
     notify_email: false,
+    notify_whatsapp: true,
+    push_to_google: true,
+    create_google_meet: false,
+    reminder_intervals: [] as string[],
     remind_before: "24h" as string,
     facilitator_name: "",
   });
@@ -164,7 +169,7 @@ export default function Calendario() {
   };
 
   const resetForm = () => {
-    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, remind_before: "24h", facilitator_name: "" });
+    setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, notify_whatsapp: true, push_to_google: true, create_google_meet: false, reminder_intervals: [], remind_before: "24h", facilitator_name: "" });
     setEditingEvent(null);
   };
 
@@ -218,56 +223,74 @@ export default function Calendario() {
         const { error } = await supabase.from('calendar_events').insert(eventsToCreate as any);
         if (error) throw error;
 
-        // Send email notification if requested
-        if (newEvent.notify_email && eventsToCreate.length > 0) {
-          const reminderLabels: Record<string, string> = { "1h": "1 hora antes", "24h": "24 horas antes", "48h": "48 horas antes", "1w": "1 semana antes", "now": "Agora" };
-          
-          if (newEvent.remind_before === "now") {
-            const { data: createdEvents } = await supabase.from('calendar_events')
-              .select('id').eq('tenant_id', activeMembership?.tenant_id)
-              .eq('title', newEvent.title)
-              .order('created_at', { ascending: false }).limit(1);
-            
-            if (createdEvents?.[0]) {
-              supabase.functions.invoke('send-event-notification', {
-                body: { event_id: createdEvents[0].id, tenant_id: activeMembership?.tenant_id, remind_before_label: "Agora" },
-              }).then(() => toast({ title: "📧 Notificação enviada!" }))
-                .catch(() => toast({ title: "Aviso", description: "Evento criado, mas falha ao enviar email.", variant: "destructive" }));
-            }
-          } else {
-            const intervalMap: Record<string, string> = { "1h": "1 hour", "24h": "1 day", "48h": "2 days", "1w": "7 days" };
-            const pgInterval = intervalMap[newEvent.remind_before] || "1 day";
-            
-            const { data: createdEvents } = await supabase.from('calendar_events')
-              .select('id, event_date, event_time').eq('tenant_id', activeMembership?.tenant_id)
-              .eq('title', newEvent.title)
-              .order('created_at', { ascending: false }).limit(eventsToCreate.length);
-            
-            if (createdEvents?.length) {
-              const reminders = createdEvents.map((ce: any) => {
-                const eventDatetime = ce.event_time 
-                  ? `${ce.event_date}T${ce.event_time}` 
-                  : `${ce.event_date}T09:00:00`;
-                const scheduledDate = new Date(eventDatetime);
-                const hoursMap: Record<string, number> = { "1h": 1, "24h": 24, "48h": 48, "1w": 168 };
-                scheduledDate.setHours(scheduledDate.getHours() - (hoursMap[newEvent.remind_before] || 24));
-                
-                return {
-                  event_id: ce.id,
-                  tenant_id: activeMembership?.tenant_id,
-                  remind_before: pgInterval,
-                  scheduled_at: scheduledDate.toISOString(),
-                  status: 'pending',
-                };
-              });
-              await supabase.from('event_reminders' as any).insert(reminders as any);
+        // Get created event IDs
+        const { data: createdEvents } = await supabase.from('calendar_events')
+          .select('id, event_date, event_time').eq('tenant_id', activeMembership?.tenant_id)
+          .eq('title', newEvent.title)
+          .order('created_at', { ascending: false }).limit(eventsToCreate.length);
+
+        const firstEventId = createdEvents?.[0]?.id;
+
+        // Push to Google Calendar if enabled
+        if (newEvent.push_to_google && hasGoogleCalendar && firstEventId) {
+          const attendeeEmails: string[] = [];
+          if (newEvent.audience_type !== 'staff_only' && newEvent.audience_membership_ids.length > 0) {
+            const { data: mems } = await supabase.from('memberships').select('user_id').in('id', newEvent.audience_membership_ids);
+            if (mems?.length) {
+              const { data: profs } = await supabase.from('profiles').select('user_id, email').in('user_id', mems.map(m => m.user_id));
+              profs?.forEach(p => { if (p.email) attendeeEmails.push(p.email); });
             }
           }
-          
-          toast({ title: "✅ Evento criado!", description: newEvent.remind_before === "now" ? "Notificação sendo enviada..." : `Lembrete agendado para ${reminderLabels[newEvent.remind_before]}.` });
-        } else {
-          toast({ title: "✅ Evento criado!", description: newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined });
+
+          const pushRes = await supabase.functions.invoke('push-to-google-calendar', {
+            body: {
+              membership_id: activeMembership?.id,
+              tenant_id: activeMembership?.tenant_id,
+              title: newEvent.title,
+              description: newEvent.description,
+              event_date: format(newEvent.event_date, 'yyyy-MM-dd'),
+              event_time: newEvent.event_time ? `${newEvent.event_time}:00` : null,
+              meeting_url: newEvent.meeting_url || undefined,
+              attendee_emails: attendeeEmails,
+            },
+          });
+
+          // Update meeting URL if Google Meet was generated
+          if (pushRes.data?.meeting_url && !newEvent.meeting_url && firstEventId) {
+            await supabase.from('calendar_events').update({ meeting_url: pushRes.data.meeting_url } as any).eq('id', firstEventId);
+          }
         }
+
+        // Notify mentees via WhatsApp + Email
+        const menteeIds = newEvent.audience_type === 'all_mentees'
+          ? tenantMembers.map(m => m.id)
+          : newEvent.audience_membership_ids;
+
+        if (menteeIds.length > 0 && (newEvent.notify_whatsapp || newEvent.notify_email)) {
+          supabase.functions.invoke('notify-event-mentees', {
+            body: {
+              event_id: firstEventId,
+              tenant_id: activeMembership?.tenant_id,
+              event_title: newEvent.title,
+              event_date: format(newEvent.event_date, 'yyyy-MM-dd'),
+              event_time: newEvent.event_time ? `${newEvent.event_time}:00` : null,
+              event_description: newEvent.description,
+              meeting_url: newEvent.meeting_url,
+              mentee_membership_ids: menteeIds,
+              reminder_intervals: newEvent.reminder_intervals,
+              send_whatsapp: newEvent.notify_whatsapp,
+              send_email: newEvent.notify_email,
+            },
+          }).catch(console.error);
+        }
+
+        const parts = [];
+        if (newEvent.push_to_google && hasGoogleCalendar) parts.push("Google Calendar");
+        if (newEvent.notify_whatsapp) parts.push("WhatsApp");
+        if (newEvent.notify_email) parts.push("Email");
+        const notifDesc = parts.length > 0 ? `Notificações: ${parts.join(", ")}` : undefined;
+
+        toast({ title: "✅ Evento criado!", description: notifDesc || (newEvent.is_recurring ? `${eventsToCreate.length} eventos recorrentes criados.` : undefined) });
       }
       resetForm();
       setIsDialogOpen(false);
@@ -320,7 +343,8 @@ export default function Calendario() {
         is_recurring: event.is_recurring, recurrence_type: "weekly",
         audience_type: event.audience_type || "all_mentees",
         audience_membership_ids: (event.audience_membership_ids || []) as string[],
-        notify_email: false, remind_before: "24h",
+        notify_email: false, notify_whatsapp: true, push_to_google: true,
+        create_google_meet: false, reminder_intervals: [], remind_before: "24h",
         facilitator_name: event.facilitator_name || "",
       });
     } else {
@@ -996,32 +1020,89 @@ export default function Calendario() {
               </div>
             )}
 
-            {/* Email toggle */}
+            {/* Notifications & Reminders */}
             {!editingEvent && (
-              <div className="space-y-2 p-3 rounded-xl border border-border/40 bg-secondary/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-muted-foreground" />
-                    <Label className="text-xs font-medium cursor-pointer">Notificar por email</Label>
+              <div className="space-y-3 p-3 rounded-xl border border-border/40 bg-secondary/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Bell className="w-4 h-4 text-primary" />
+                  <Label className="text-xs font-semibold">Notificações & Lembretes</Label>
+                </div>
+
+                {/* Push to Google */}
+                {hasGoogleCalendar && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5" /> Sincronizar com Google Calendar</Label>
+                    <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, push_to_google: !prev.push_to_google }))}
+                      className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.push_to_google ? "bg-primary" : "bg-muted-foreground/30")}>
+                      <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.push_to_google && "translate-x-4")} />
+                    </button>
                   </div>
+                )}
+
+                {/* Create Google Meet */}
+                {hasGoogleCalendar && newEvent.push_to_google && !newEvent.meeting_url && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> Gerar Google Meet automaticamente</Label>
+                    <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, create_google_meet: !prev.create_google_meet }))}
+                      className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.create_google_meet ? "bg-primary" : "bg-muted-foreground/30")}>
+                      <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.create_google_meet && "translate-x-4")} />
+                    </button>
+                  </div>
+                )}
+
+                {/* WhatsApp */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> Notificar por WhatsApp</Label>
+                  <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, notify_whatsapp: !prev.notify_whatsapp }))}
+                    className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.notify_whatsapp ? "bg-primary" : "bg-muted-foreground/30")}>
+                    <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.notify_whatsapp && "translate-x-4")} />
+                  </button>
+                </div>
+
+                {/* Email */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Notificar por Email</Label>
                   <button type="button" onClick={() => setNewEvent(prev => ({ ...prev, notify_email: !prev.notify_email }))}
                     className={cn("relative w-9 h-5 rounded-full transition-colors", newEvent.notify_email ? "bg-primary" : "bg-muted-foreground/30")}>
                     <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", newEvent.notify_email && "translate-x-4")} />
                   </button>
                 </div>
-                {newEvent.notify_email && (
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] text-muted-foreground">Quando enviar?</Label>
-                    <Select value={newEvent.remind_before} onValueChange={(v) => setNewEvent({ ...newEvent, remind_before: v })}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent className="z-50">
-                        <SelectItem value="1h">1 hora antes</SelectItem>
-                        <SelectItem value="24h">24 horas antes</SelectItem>
-                        <SelectItem value="48h">48 horas antes</SelectItem>
-                        <SelectItem value="1w">1 semana antes</SelectItem>
-                        <SelectItem value="now">Enviar agora</SelectItem>
-                      </SelectContent>
-                    </Select>
+
+                {/* Reminder intervals */}
+                {(newEvent.notify_whatsapp || newEvent.notify_email) && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-[11px] text-muted-foreground">Lembretes automáticos (selecione quantos quiser)</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { key: "1h", label: "1h antes" },
+                        { key: "2h", label: "2h antes" },
+                        { key: "6h", label: "6h antes" },
+                        { key: "12h", label: "12h antes" },
+                        { key: "24h", label: "24h antes" },
+                        { key: "48h", label: "48h antes" },
+                        { key: "72h", label: "3 dias" },
+                        { key: "1w", label: "1 semana" },
+                      ].map(({ key, label }) => {
+                        const selected = newEvent.reminder_intervals.includes(key);
+                        return (
+                          <button key={key} type="button"
+                            onClick={() => setNewEvent(prev => ({
+                              ...prev,
+                              reminder_intervals: selected
+                                ? prev.reminder_intervals.filter(i => i !== key)
+                                : [...prev.reminder_intervals, key],
+                            }))}
+                            className={cn(
+                              "px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all",
+                              selected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background border-border text-muted-foreground hover:border-primary/50"
+                            )}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
