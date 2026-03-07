@@ -196,11 +196,13 @@ const menuItems: DockItem[] = [
            </div>
          </header>
 
-          <Suspense fallback={<PageSpinner />}>
-            <RouteTransition>
-              <Outlet />
-            </RouteTransition>
-          </Suspense>
+          <LazyErrorBoundary>
+            <Suspense fallback={<PageSpinner />}>
+              <RouteTransition>
+                <Outlet />
+              </RouteTransition>
+            </Suspense>
+          </LazyErrorBoundary>
        </div>
  
         <SOSNotificationAlert />

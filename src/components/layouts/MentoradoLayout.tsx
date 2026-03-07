@@ -215,11 +215,13 @@ const menuItems: DockItem[] = [
             ? "md:ml-28 pt-20 px-4 md:px-6 pb-24 md:pb-6" 
             : "pt-14 md:pt-16 pb-24 md:pb-6"
         )}>
-          <Suspense fallback={<PageSpinner />}>
-            <RouteTransition>
-              <Outlet />
-            </RouteTransition>
-          </Suspense>
+          <LazyErrorBoundary>
+            <Suspense fallback={<PageSpinner />}>
+              <RouteTransition>
+                <Outlet />
+              </RouteTransition>
+            </Suspense>
+          </LazyErrorBoundary>
        </main>
  
        {!isImpersonating && <TenantPopupRenderer />}
