@@ -1,24 +1,49 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { prefetchRoute } from '@/lib/routePrefetch';
 
 type RouteGroup = 'master' | 'mentor' | 'mentorado';
-type Loader = () => Promise<unknown>;
 
-// Only prefetch the 3 most-visited routes per group
-const routePrefetchLoaders: Record<RouteGroup, Loader[]> = {
+// Prefetch ALL routes in the active group on idle
+const groupRoutes: Record<RouteGroup, string[]> = {
   master: [
-    () => import('../pages/master/TenantsPage'),
-    () => import('../pages/master/UsersPage'),
+    '/master',
+    '/master/tenants',
+    '/master/users',
+    '/master/config',
+    '/master/branding',
+    '/master/domains',
+    '/master/preview',
   ],
   mentor: [
-    () => import('../pages/admin/Mentorados'),
-    () => import('../pages/admin/Calendario'),
-    () => import('../pages/admin/CRMMentorados'),
+    '/mentor',
+    '/mentor/mentorados',
+    '/mentor/jornada-cs',
+    '/mentor/crm',
+    '/mentor/trilhas',
+    '/mentor/calendario',
+    '/mentor/sos',
+    '/mentor/emails',
+    '/mentor/relatorios',
+    '/mentor/perfil',
+    '/mentor/playbooks',
+    '/mentor/automacoes',
+    '/mentor/popups',
+    '/mentor/whatsapp',
+    '/mentor/formularios',
   ],
   mentorado: [
-    () => import('../pages/member/MeuCRM'),
-    () => import('../pages/member/Trilhas'),
-    () => import('../pages/member/FerramentasIA'),
+    '/mentorado',
+    '/mentorado/trilhas',
+    '/mentorado/meu-crm',
+    '/mentorado/calendario',
+    '/mentorado/sos',
+    '/mentorado/perfil',
+    '/mentorado/ferramentas',
+    '/mentorado/meus-arquivos',
+    '/mentorado/tarefas',
+    '/mentorado/playbooks',
+    '/mentorado/metricas',
   ],
 };
 
@@ -41,13 +66,14 @@ export function useRouteChunkPrefetch() {
     const nav = navigator as any;
     if (nav.connection && (nav.connection.saveData || nav.connection.effectiveType === '2g')) return;
 
-    const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: () => void) => setTimeout(cb, 500);
+    const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : (cb: () => void) => setTimeout(cb, 300);
     const cancelSchedule = typeof cancelIdleCallback === 'function' ? cancelIdleCallback : clearTimeout;
 
     const handle = schedule(() => {
       prefetchedGroups.current.add(group);
-      routePrefetchLoaders[group].forEach((loader) => {
-        void loader().catch(() => undefined);
+      // Stagger prefetches to avoid network contention
+      groupRoutes[group].forEach((path, i) => {
+        setTimeout(() => prefetchRoute(path), i * 100);
       });
     });
 
