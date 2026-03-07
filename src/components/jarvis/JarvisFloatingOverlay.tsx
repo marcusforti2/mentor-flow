@@ -6,12 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useJarvis, type JarvisMessage } from '@/hooks/useJarvis';
-import { useScribe } from '@elevenlabs/react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
-// Strip markdown for TTS
 function stripMarkdown(text: string): string {
   return text
     .replace(/#{1,6}\s/g, '')
@@ -25,6 +22,9 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+const HAS_SPEECH = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+const HAS_SYNTHESIS = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
 export function JarvisFloatingOverlay() {
   const [isOpen, setIsOpen] = useState(false);
   const jarvis = useJarvis();
@@ -32,192 +32,155 @@ export function JarvisFloatingOverlay() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Voice state (overlay mode)
+  // Overlay voice state
   const [isListening, setIsListening] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const recognitionRef = useRef<any>(null);
   const lastSpokenMsgRef = useRef<string | null>(null);
-  const stealthRetryCountRef = useRef(0);
-  const STEALTH_MAX_RETRIES = 2;
-
-  const hasSpeechRecognition = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-  const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const [input, setInput] = useState('');
 
-  // ===== STEALTH VOICE MODE =====
+  // ===== STEALTH VOICE MODE (native SpeechRecognition) =====
   const [stealthActive, setStealthActive] = useState(false);
   const [stealthListening, setStealthListening] = useState(false);
-  const [stealthSttConnected, setStealthSttConnected] = useState(false);
   const [stealthResponse, setStealthResponse] = useState<string | null>(null);
   const [stealthPartial, setStealthPartial] = useState('');
   const [stealthSpeaking, setStealthSpeaking] = useState(false);
   const stealthAudioRef = useRef<HTMLAudioElement | null>(null);
   const stealthLastSpokenRef = useRef<string | null>(null);
+  const stealthRecognitionRef = useRef<any>(null);
+  const stealthAwaitingReplyRef = useRef(false);
+  const stealthSilenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stealthFinalRef = useRef('');
+
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stealthConnectingRef = useRef(false);
-  const stealthRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stealthAwaitingReplyRef = useRef(false);
-  const stealthLastCommitKeyRef = useRef<string | null>(null);
 
-  const clearStealthRestartTimer = useCallback(() => {
-    if (stealthRestartTimerRef.current) {
-      clearTimeout(stealthRestartTimerRef.current);
-      stealthRestartTimerRef.current = null;
-    }
-  }, []);
+  // ====== STEALTH: Start native recognition ======
+  const stealthStartListening = useCallback(() => {
+    if (!HAS_SPEECH || !stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current) return;
+    if (stealthRecognitionRef.current) return;
 
-  const stealthScribe = useScribe({
-    modelId: 'scribe_v2_realtime' as any,
-    commitStrategy: 'vad' as any,
-    onPartialTranscript: (data: any) => {
-      if (data.text) setStealthPartial(data.text);
-    },
-    onCommittedTranscript: async (data: any) => {
-      const transcript = data.text?.trim();
-      if (!transcript || !stealthActive) return;
-      // Filter out very short/noise transcriptions (less than 3 chars)
-      if (transcript.length < 3) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.maxAlternatives = 1;
 
-      const commitKey = `${data.id ?? ''}:${transcript}`;
-      if (stealthLastCommitKeyRef.current === commitKey) return;
-      if (stealthAwaitingReplyRef.current || jarvis.isLoading || stealthSpeaking) return;
+    stealthFinalRef.current = '';
 
-      stealthLastCommitKeyRef.current = commitKey;
-      stealthAwaitingReplyRef.current = true;
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let final = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      if (final) stealthFinalRef.current = final;
+      setStealthPartial(final || interim);
 
-      setStealthPartial('');
-      // Force mic OFF immediately before sending
-      try { stealthScribe.disconnect(); } catch {}
-      setStealthSttConnected(false);
+      // Auto-send after 1.2s silence on final
+      if (stealthSilenceTimerRef.current) clearTimeout(stealthSilenceTimerRef.current);
+      if (final) {
+        stealthSilenceTimerRef.current = setTimeout(() => {
+          const text = stealthFinalRef.current.trim();
+          if (text && text.length >= 2 && !stealthAwaitingReplyRef.current) {
+            stealthAwaitingReplyRef.current = true;
+            setStealthPartial('');
+            stealthFinalRef.current = '';
+            // Stop recognition while processing
+            try { recognition.stop(); } catch {}
+            stealthRecognitionRef.current = null;
+            setStealthListening(false);
+            jarvis.sendMessage(text);
+          }
+        }, 1200);
+      }
+    };
+
+    recognition.onend = () => {
+      stealthRecognitionRef.current = null;
       setStealthListening(false);
-      stealthConnectingRef.current = false;
+      if (stealthSilenceTimerRef.current) {
+        clearTimeout(stealthSilenceTimerRef.current);
+        stealthSilenceTimerRef.current = null;
+      }
+      // Send pending text
+      const pending = stealthFinalRef.current.trim();
+      if (pending && pending.length >= 2 && !stealthAwaitingReplyRef.current) {
+        stealthAwaitingReplyRef.current = true;
+        setStealthPartial('');
+        stealthFinalRef.current = '';
+        jarvis.sendMessage(pending);
+      }
+    };
 
-      await jarvis.sendMessage(transcript);
-    },
-  });
-
-  const stealthStopListening = useCallback(() => {
-    try {
-      stealthScribe.disconnect();
-    } catch {
-      // noop
-    }
-    setStealthSttConnected(false);
-    setStealthListening(false);
-  }, [stealthScribe]);
-
-  const stealthStartListening = useCallback(async () => {
-    if (
-      !stealthActive ||
-      stealthConnectingRef.current ||
-      stealthListening ||
-      stealthScribe.isConnected ||
-      jarvis.isLoading ||
-      stealthSpeaking ||
-      stealthAwaitingReplyRef.current
-    ) {
-      return;
-    }
-
-    // Enforce max retry limit
-    if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
-      console.warn('Stealth mic: max retries reached, stopping auto-reconnect');
-      toast.error('Microfone parou após falhas consecutivas. Clique duplo para reiniciar.', { duration: 4000 });
-      setStealthActive(false);
-      return;
-    }
-
-    stealthConnectingRef.current = true;
-    try {
-      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (error || !data?.token) {
-        stealthRetryCountRef.current += 1;
-        toast.error('Erro ao iniciar microfone');
-        if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
-          setStealthActive(false);
-        }
+    recognition.onerror = (e: any) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') {
+        // Silently restart
+        stealthRecognitionRef.current = null;
+        setStealthListening(false);
         return;
       }
+      console.error('Stealth STT error:', e.error);
+      stealthRecognitionRef.current = null;
+      setStealthListening(false);
+    };
 
-      await stealthScribe.connect({
-        token: data.token,
-        languageCode: 'por',
-        microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      } as any);
+    stealthRecognitionRef.current = recognition;
+    recognition.start();
+    setStealthListening(true);
+  }, [stealthActive, stealthListening, jarvis, stealthSpeaking]);
 
-      // Reset retry count on successful connection
-      stealthRetryCountRef.current = 0;
-      setStealthPartial('');
-      setStealthListening(true);
-      setStealthSttConnected(true);
-    } catch (err) {
-      console.error('Stealth STT error:', err);
-      stealthRetryCountRef.current += 1;
-      if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
-        toast.error('Microfone indisponível. Clique duplo para tentar novamente.');
-        setStealthActive(false);
-      } else {
-        toast.error('Erro no microfone, tentando novamente...');
-      }
-    } finally {
-      stealthConnectingRef.current = false;
+  const stealthStopListening = useCallback(() => {
+    if (stealthSilenceTimerRef.current) {
+      clearTimeout(stealthSilenceTimerRef.current);
+      stealthSilenceTimerRef.current = null;
     }
-  }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking]);
-
-  const scheduleStealthRestart = useCallback((delay = 300) => {
-    clearStealthRestartTimer();
-    stealthRestartTimerRef.current = setTimeout(() => {
-      if (!stealthActive || stealthSpeaking || jarvis.isLoading || stealthAwaitingReplyRef.current) return;
-      void stealthStartListening();
-    }, delay);
-  }, [clearStealthRestartTimer, jarvis.isLoading, stealthActive, stealthSpeaking, stealthStartListening]);
+    if (stealthRecognitionRef.current) {
+      try { stealthRecognitionRef.current.stop(); } catch {}
+      stealthRecognitionRef.current = null;
+    }
+    setStealthListening(false);
+  }, []);
 
   const deactivateStealth = useCallback(() => {
-    clearStealthRestartTimer();
     stealthStopListening();
-
     if (stealthAudioRef.current) {
       stealthAudioRef.current.onended = null;
       stealthAudioRef.current.onerror = null;
       stealthAudioRef.current.pause();
       stealthAudioRef.current = null;
     }
-
     stealthAwaitingReplyRef.current = false;
-    stealthLastCommitKeyRef.current = null;
-
+    stealthFinalRef.current = '';
     setStealthActive(false);
     setStealthResponse(null);
     setStealthPartial('');
     setStealthSpeaking(false);
-  }, [clearStealthRestartTimer, stealthStopListening]);
+  }, [stealthStopListening]);
 
-  // Force mic OFF when Jarvis is loading or speaking — this is the critical guard
+  // Force mic OFF when loading or speaking
   useEffect(() => {
     if (stealthActive && (jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current)) {
-      if (stealthScribe.isConnected || stealthListening) {
-        try { stealthScribe.disconnect(); } catch {}
-        setStealthSttConnected(false);
-        setStealthListening(false);
-        stealthConnectingRef.current = false;
-      }
+      stealthStopListening();
     }
-  }, [jarvis.isLoading, stealthActive, stealthSpeaking, stealthScribe, stealthListening]);
+  }, [jarvis.isLoading, stealthActive, stealthSpeaking, stealthStopListening]);
 
-  // Auto-start listening only when stealth is active AND idle
+  // Auto-start listening when idle in stealth
   useEffect(() => {
-    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current || stealthConnectingRef.current) return;
-    // Small delay to avoid race conditions
+    if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current) return;
+    if (stealthRecognitionRef.current) return;
     const timer = setTimeout(() => {
-      if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current || stealthConnectingRef.current) return;
-      void stealthStartListening();
-    }, 200);
+      if (!stealthActive || stealthListening || jarvis.isLoading || stealthSpeaking || stealthAwaitingReplyRef.current) return;
+      stealthStartListening();
+    }, 300);
     return () => clearTimeout(timer);
   }, [jarvis.isLoading, stealthActive, stealthListening, stealthSpeaking, stealthStartListening]);
 
-  // Watch for Jarvis response in stealth mode
+  // Watch for Jarvis response in stealth mode → TTS
   useEffect(() => {
     if (!stealthActive) return;
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
@@ -225,11 +188,8 @@ export function JarvisFloatingOverlay() {
     if (stealthLastSpokenRef.current === lastMsg.id) return;
 
     stealthLastSpokenRef.current = lastMsg.id;
-
     const text = stripMarkdown(lastMsg.content);
     setStealthResponse(lastMsg.content);
-
-    // Auto-hide response after 8s
     setTimeout(() => setStealthResponse(null), 8000);
 
     if (text && text.length >= 5) {
@@ -238,12 +198,9 @@ export function JarvisFloatingOverlay() {
     }
 
     stealthAwaitingReplyRef.current = false;
-    scheduleStealthRestart(400);
-  }, [jarvis.messages, scheduleStealthRestart, stealthActive]);
+  }, [jarvis.messages, stealthActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stealthSpeakTTS = async (text: string) => {
-    clearStealthRestartTimer();
-
     if (stealthAudioRef.current) {
       stealthAudioRef.current.onended = null;
       stealthAudioRef.current.onerror = null;
@@ -252,7 +209,6 @@ export function JarvisFloatingOverlay() {
     }
 
     setStealthSpeaking(true);
-
     let audioUrl = '';
     let finalized = false;
 
@@ -262,7 +218,6 @@ export function JarvisFloatingOverlay() {
       setStealthSpeaking(false);
       stealthAwaitingReplyRef.current = false;
       if (audioUrl) URL.revokeObjectURL(audioUrl);
-      if (stealthActive) scheduleStealthRestart(350);
     };
 
     try {
@@ -290,7 +245,6 @@ export function JarvisFloatingOverlay() {
         stealthAudioRef.current = null;
         finishCycle();
       };
-
       audio.onerror = () => {
         stealthAudioRef.current = null;
         finishCycle();
@@ -303,7 +257,7 @@ export function JarvisFloatingOverlay() {
     }
   };
 
-  // Handle FAB clicks: double-click = stealth, single = open overlay
+  // Handle FAB clicks
   const handleFabClick = useCallback(() => {
     if (stealthActive) {
       deactivateStealth();
@@ -311,48 +265,37 @@ export function JarvisFloatingOverlay() {
     }
 
     clickCountRef.current += 1;
-
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
     if (clickCountRef.current >= 2) {
       clickCountRef.current = 0;
-      // Double-click → stealth mode
-      stealthRetryCountRef.current = 0;
       setStealthActive(true);
       toast('🎤 Modo voz ativado — fale com o Jarvis', { duration: 2000 });
     } else {
       clickTimerRef.current = setTimeout(() => {
-        if (clickCountRef.current === 1) {
-          setIsOpen(true);
-        }
+        if (clickCountRef.current === 1) setIsOpen(true);
         clickCountRef.current = 0;
       }, 300);
     }
   }, [stealthActive, deactivateStealth]);
 
-  // Global hotkey: Ctrl+Alt+J or Cmd+Alt+J
+  // Global hotkey
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'j') {
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
-      if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
-      }
-      if (e.key === 'Escape' && stealthActive) {
-        deactivateStealth();
-      }
+      if (e.key === 'Escape' && isOpen) setIsOpen(false);
+      if (e.key === 'Escape' && stealthActive) deactivateStealth();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [isOpen, stealthActive, deactivateStealth]);
 
-  // Focus input when opening
+  // Focus input
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
 
   // Auto-scroll
@@ -361,7 +304,7 @@ export function JarvisFloatingOverlay() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [jarvis.messages]);
 
-  // Handle navigation actions from Jarvis responses
+  // Navigation actions
   useEffect(() => {
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.isStreaming) return;
@@ -406,10 +349,9 @@ export function JarvisFloatingOverlay() {
     }
   }, [jarvis.messages, navigate]);
 
-  // Overlay TTS (browser native, only when overlay is open)
-  // Best voice selection: prioritize Google/Microsoft PT-BR voices
+  // Overlay TTS (browser native)
   useEffect(() => {
-    if (!ttsEnabled || !hasSpeechSynthesis) return;
+    if (!ttsEnabled || !HAS_SYNTHESIS) return;
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.isStreaming) return;
     if (lastSpokenMsgRef.current === lastMsg.id) return;
@@ -427,7 +369,6 @@ export function JarvisFloatingOverlay() {
     const isPtBR = (v: SpeechSynthesisVoice) => v.lang === 'pt-BR';
     const isPt = (v: SpeechSynthesisVoice) => v.lang.startsWith('pt');
 
-    // Priority: Google PT-BR > Microsoft PT-BR > any PT-BR > Google PT > Microsoft PT > any PT
     const bestVoice =
       voices.find(v => isPtBR(v) && lowerName(v).includes('google')) ||
       voices.find(v => isPtBR(v) && lowerName(v).includes('microsoft')) ||
@@ -439,11 +380,11 @@ export function JarvisFloatingOverlay() {
 
     if (bestVoice) utterance.voice = bestVoice;
     window.speechSynthesis.speak(utterance);
-  }, [jarvis.messages, ttsEnabled, hasSpeechSynthesis]);
+  }, [jarvis.messages, ttsEnabled]);
 
-  // Overlay STT
+  // Overlay STT (native)
   const toggleListening = useCallback(() => {
-    if (!hasSpeechRecognition) return;
+    if (!HAS_SPEECH) return;
     if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return; }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -468,7 +409,6 @@ export function JarvisFloatingOverlay() {
       if (finalTranscript.trim()) {
         jarvis.sendMessage(finalTranscript.trim());
         setInput('');
-        finalTranscript = '';
       }
     };
 
@@ -476,7 +416,7 @@ export function JarvisFloatingOverlay() {
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [isListening, hasSpeechRecognition, jarvis]);
+  }, [isListening, jarvis]);
 
   const handleSubmit = () => {
     if (!input.trim() || jarvis.isLoading) return;
@@ -494,7 +434,6 @@ export function JarvisFloatingOverlay() {
         {/* Stealth mode floating indicators */}
         {stealthActive && (
           <>
-            {/* Listening indicator */}
             {stealthListening && (
               <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
                 <div className="relative">
@@ -507,7 +446,6 @@ export function JarvisFloatingOverlay() {
               </div>
             )}
 
-            {/* Loading indicator */}
             {jarvis.isLoading && !stealthListening && (
               <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
                 <Bot className="h-4 w-4 text-purple-400 animate-pulse" />
@@ -515,7 +453,6 @@ export function JarvisFloatingOverlay() {
               </div>
             )}
 
-            {/* Speaking indicator */}
             {stealthSpeaking && (
               <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
                 <Volume2 className="h-4 w-4 text-purple-400" />
@@ -523,7 +460,6 @@ export function JarvisFloatingOverlay() {
               </div>
             )}
 
-            {/* Response bubble */}
             {stealthResponse && (
               <div className="fixed bottom-24 right-6 z-50 max-w-sm bg-card/95 backdrop-blur-xl border border-purple-500/20 rounded-2xl px-4 py-3 shadow-2xl shadow-purple-500/10 animate-in slide-in-from-right-5 fade-in-0 duration-300">
                 <div className="prose prose-sm prose-invert max-w-none text-foreground text-xs [&_p]:mb-1 [&_strong]:text-foreground">
@@ -540,7 +476,6 @@ export function JarvisFloatingOverlay() {
           className="fixed bottom-6 right-6 z-50 group"
           title="Jarvis IA — clique duplo para modo voz"
         >
-          {/* Neural network glow effect */}
           <div className={cn(
             "absolute inset-0 rounded-full blur-lg transition-opacity scale-110",
             stealthActive
@@ -553,7 +488,6 @@ export function JarvisFloatingOverlay() {
               ? "bg-gradient-to-br from-emerald-500 via-green-400 to-emerald-600 shadow-emerald-500/40 border-emerald-400/30"
               : "bg-gradient-to-br from-purple-600 via-violet-500 to-purple-800 shadow-purple-500/40 border-purple-400/30"
           )}>
-            {/* Animated neural rings */}
             <div className={cn(
               "absolute inset-0 rounded-full border animate-ping",
               stealthActive ? "border-emerald-400/30" : "border-purple-400/20"
@@ -578,20 +512,16 @@ export function JarvisFloatingOverlay() {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-background/60 backdrop-blur-md animate-in fade-in-0 duration-200"
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Overlay */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div className="relative w-full max-w-2xl h-[600px] max-h-[80vh] pointer-events-auto animate-in zoom-in-95 fade-in-0 duration-300">
-          {/* Neural network background effect */}
           <div className="absolute -inset-[2px] rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-600/40 via-violet-500/30 to-purple-800/40" />
             <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 400 400">
-              {/* Neural network nodes */}
               {Array.from({ length: 20 }).map((_, i) => {
                 const cx = 40 + (i % 5) * 80 + Math.sin(i * 1.3) * 20;
                 const cy = 40 + Math.floor(i / 5) * 90 + Math.cos(i * 0.9) * 15;
@@ -601,7 +531,6 @@ export function JarvisFloatingOverlay() {
                       <animate attributeName="opacity" values={`${0.3 + Math.sin(i) * 0.2};${0.8};${0.3 + Math.sin(i) * 0.2}`} dur={`${2 + i * 0.3}s`} repeatCount="indefinite" />
                       <animate attributeName="r" values="2;4;2" dur={`${3 + i * 0.2}s`} repeatCount="indefinite" />
                     </circle>
-                    {/* Connections to nearby nodes */}
                     {Array.from({ length: 20 }).map((_, j) => {
                       if (j <= i) return null;
                       const cx2 = 40 + (j % 5) * 80 + Math.sin(j * 1.3) * 20;
@@ -620,9 +549,7 @@ export function JarvisFloatingOverlay() {
             </svg>
           </div>
 
-          {/* Main card */}
           <div className="relative h-full rounded-3xl bg-card/95 backdrop-blur-xl border border-purple-500/20 shadow-2xl shadow-purple-500/10 flex flex-col overflow-hidden">
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border/30">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-purple-600 to-violet-500 flex items-center justify-center">
@@ -634,7 +561,7 @@ export function JarvisFloatingOverlay() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                {hasSpeechSynthesis && (
+                {HAS_SYNTHESIS && (
                   <Button variant="ghost" size="icon" className={cn("h-7 w-7", ttsEnabled && "text-purple-400")} onClick={() => setTtsEnabled(!ttsEnabled)}>
                     {ttsEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
                   </Button>
@@ -645,7 +572,6 @@ export function JarvisFloatingOverlay() {
               </div>
             </div>
 
-            {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {jarvis.messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
@@ -660,12 +586,7 @@ export function JarvisFloatingOverlay() {
                     Pergunte qualquer coisa, peça para abrir uma página, ou dê um comando.
                   </p>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-4 max-w-md">
-                    {[
-                      'Abra os mentorados',
-                      'Status das automações',
-                      'Resumo do CRM',
-                      'Agendar reunião',
-                    ].map(s => (
+                    {['Abra os mentorados', 'Status das automações', 'Resumo do CRM', 'Agendar reunião'].map(s => (
                       <button
                         key={s}
                         onClick={() => setInput(s)}
@@ -728,7 +649,6 @@ export function JarvisFloatingOverlay() {
               )}
             </div>
 
-            {/* Input */}
             <div className="border-t border-border/30 px-4 py-3">
               <div className="flex items-end gap-2">
                 <div className="flex-1 relative">
@@ -745,7 +665,7 @@ export function JarvisFloatingOverlay() {
                     rows={1}
                   />
                   <div className="absolute right-2 bottom-1.5 flex items-center gap-1">
-                    {hasSpeechRecognition && (
+                    {HAS_SPEECH && (
                       <Button
                         size="icon"
                         variant={isListening ? "default" : "ghost"}

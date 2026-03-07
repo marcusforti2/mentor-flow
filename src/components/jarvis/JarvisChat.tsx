@@ -5,8 +5,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { type JarvisMessage } from '@/hooks/useJarvis';
-import { useScribe } from '@elevenlabs/react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
@@ -90,7 +88,6 @@ function getActionLabel(action: string) {
   return `${ACTION_LABELS[key] || key}${detail ? `: ${detail}` : ''}`;
 }
 
-// Strip markdown for TTS
 function stripMarkdown(text: string): string {
   return text
     .replace(/#{1,6}\s/g, '')
@@ -104,38 +101,27 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+const HAS_SPEECH = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
 export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Props) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Voice state — auto-enabled by default (Jarvis mode)
+  // Voice state
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ttsLoading, setTtsLoading] = useState(false);
   const lastSpokenMsgRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const shouldAutoRelisten = useRef(true);
-  const hasAutoStarted = useRef(false);
 
-  // ElevenLabs STT
+  // Native STT
   const [isListening, setIsListening] = useState(false);
-  const [sttConnected, setSttConnected] = useState(false);
-
-  const scribe = useScribe({
-    modelId: 'scribe_v2_realtime' as any,
-    commitStrategy: 'vad' as any,
-    onPartialTranscript: (data: any) => {
-      if (data.text) setInput(data.text);
-    },
-    onCommittedTranscript: (data: any) => {
-      if (data.text?.trim()) {
-        onSend(data.text.trim());
-        setInput('');
-        stopListening();
-      }
-    },
-  });
+  const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef('');
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoRelistenRef = useRef(true);
+  const hasAutoStarted = useRef(false);
 
   // Auto-scroll
   useEffect(() => {
@@ -143,19 +129,108 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Auto-start listening when Jarvis opens
+  // ====== NATIVE SPEECH RECOGNITION (instant, no token) ======
+  const startListening = useCallback(() => {
+    if (!HAS_SPEECH || isListening || isLoading || isSpeaking) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.maxAlternatives = 1;
+
+    finalTranscriptRef.current = '';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let final = '';
+      for (let i = 0; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += t;
+        } else {
+          interim += t;
+        }
+      }
+
+      if (final) {
+        finalTranscriptRef.current = final;
+      }
+
+      setInput(final || interim);
+
+      // Auto-send after 1.5s of silence following final result
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (final) {
+        silenceTimerRef.current = setTimeout(() => {
+          if (finalTranscriptRef.current.trim()) {
+            onSend(finalTranscriptRef.current.trim());
+            setInput('');
+            finalTranscriptRef.current = '';
+            // Stop current recognition session
+            try { recognition.stop(); } catch {}
+          }
+        }, 1200);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+      // Send any pending final transcript
+      if (finalTranscriptRef.current.trim()) {
+        onSend(finalTranscriptRef.current.trim());
+        setInput('');
+        finalTranscriptRef.current = '';
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      console.error('STT error:', e.error);
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening, isLoading, isSpeaking, onSend]);
+
+  const stopListening = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  // Auto-start on mount
   useEffect(() => {
-    if (!hasAutoStarted.current) {
+    if (!hasAutoStarted.current && HAS_SPEECH) {
       hasAutoStarted.current = true;
-      // Small delay to let component mount
-      const timer = setTimeout(() => {
-        startListening();
-      }, 600);
+      const timer = setTimeout(() => startListening(), 400);
       return () => clearTimeout(timer);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ElevenLabs TTS: speak new assistant messages
+  // Stop mic while loading/speaking
+  useEffect(() => {
+    if (isLoading || isSpeaking) {
+      stopListening();
+    }
+  }, [isLoading, isSpeaking, stopListening]);
+
+  // ====== ELEVENLABS TTS ======
   useEffect(() => {
     if (!ttsEnabled) return;
     const lastMsg = messages[messages.length - 1];
@@ -164,20 +239,21 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
 
     lastSpokenMsgRef.current = lastMsg.id;
     const text = stripMarkdown(lastMsg.content);
-    if (!text || text.length < 5) return;
-
-    speakWithElevenLabs(text);
-  }, [messages, ttsEnabled]);
-
-  // Stop audio when TTS disabled
-  useEffect(() => {
-    if (!ttsEnabled) {
-      stopAudio();
+    if (!text || text.length < 5) {
+      // No TTS needed, restart mic
+      if (autoRelistenRef.current) setTimeout(() => startListening(), 200);
+      return;
     }
+    speakWithElevenLabs(text);
+  }, [messages, ttsEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!ttsEnabled) stopAudio();
   }, [ttsEnabled]);
 
   const speakWithElevenLabs = async (text: string) => {
     stopAudio();
+    stopListening();
     setTtsLoading(true);
     setIsSpeaking(false);
 
@@ -195,10 +271,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
         }
       );
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || 'TTS failed');
-      }
+      if (!response.ok) throw new Error('TTS failed');
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
@@ -209,19 +282,28 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
       audio.onended = () => {
         setIsSpeaking(false);
         URL.revokeObjectURL(audioUrl);
-        // Auto-restart listening after Jarvis finishes speaking
-        if (shouldAutoRelisten.current && ttsEnabled) {
-          setTimeout(() => startListening(), 300);
+        audioRef.current = null;
+        // Auto-restart listening after TTS finishes
+        if (autoRelistenRef.current && ttsEnabled) {
+          setTimeout(() => startListening(), 250);
         }
       };
-      audio.onerror = () => { setIsSpeaking(false); setTtsLoading(false); };
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        setTtsLoading(false);
+        audioRef.current = null;
+        if (autoRelistenRef.current && ttsEnabled) {
+          setTimeout(() => startListening(), 250);
+        }
+      };
 
       await audio.play();
-    } catch (err: any) {
-      console.error('ElevenLabs TTS error:', err);
+    } catch {
       setTtsLoading(false);
       setIsSpeaking(false);
-      // Fallback silently - don't toast on every message
+      if (autoRelistenRef.current && ttsEnabled) {
+        setTimeout(() => startListening(), 250);
+      }
     }
   };
 
@@ -235,43 +317,8 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     setTtsLoading(false);
   };
 
-  // STT: start/stop listening with ElevenLabs Scribe
-  const startListening = useCallback(async () => {
-    try {
-      // Get scribe token
-      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
-      if (error || !data?.token) {
-        toast.error('Erro ao iniciar reconhecimento de voz');
-        return;
-      }
-
-      await scribe.connect({
-        token: data.token,
-        microphone: {
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
-
-      setIsListening(true);
-      setSttConnected(true);
-    } catch (err) {
-      console.error('STT start error:', err);
-      toast.error('Não foi possível acessar o microfone');
-    }
-  }, [scribe]);
-
-  const stopListening = useCallback(() => {
-    if (sttConnected) {
-      scribe.disconnect();
-      setSttConnected(false);
-    }
-    setIsListening(false);
-  }, [scribe, sttConnected]);
-
   const toggleListening = useCallback(() => {
     if (isListening) {
-      // If there's partial text, send it before stopping
       if (input.trim()) {
         onSend(input.trim());
         setInput('');
@@ -284,6 +331,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
+    stopListening();
     onSend(input);
     setInput('');
     textareaRef.current?.focus();
@@ -429,7 +477,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               if (isSpeaking) { stopAudio(); return; }
               setTtsEnabled(!ttsEnabled);
             }}
-            title={isSpeaking ? "Parar áudio" : ttsEnabled ? "Desativar voz ElevenLabs" : "Ativar voz ElevenLabs"}
+            title={isSpeaking ? "Parar áudio" : ttsEnabled ? "Desativar voz" : "Ativar voz"}
           >
             {ttsLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -448,7 +496,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? "🎤 Escutando com ElevenLabs..." : "Pergunte ao Jarvis... (Enter para enviar)"}
+              placeholder={isListening ? "🎤 Escutando... fale agora" : "Pergunte ao Jarvis... (Enter para enviar)"}
               className={cn(
                 "min-h-[44px] max-h-32 resize-none pr-20 bg-muted/30 border-border/50",
                 isListening && "border-primary/50 ring-1 ring-primary/30"
@@ -456,20 +504,20 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               rows={1}
             />
             <div className="absolute right-2 bottom-2 flex items-center gap-1">
-              {/* Mic button - ElevenLabs STT */}
-              <Button
-                size="icon"
-                variant={isListening ? "default" : "ghost"}
-                className={cn(
-                  "h-7 w-7",
-                  isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
-                )}
-                onClick={toggleListening}
-                title={isListening ? "Parar de escutar" : "Falar com Jarvis (ElevenLabs)"}
-              >
-                {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-              </Button>
-              {/* Send / Stop button */}
+              {HAS_SPEECH && (
+                <Button
+                  size="icon"
+                  variant={isListening ? "default" : "ghost"}
+                  className={cn(
+                    "h-7 w-7",
+                    isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
+                  )}
+                  onClick={toggleListening}
+                  title={isListening ? "Parar de escutar" : "Falar com Jarvis"}
+                >
+                  {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                </Button>
+              )}
               <Button
                 size="icon"
                 className="h-7 w-7"
@@ -488,7 +536,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
             ? "🔊 Jarvis falando... voltarei a ouvir quando terminar"
             : ttsEnabled
             ? "🎙️ Modo conversação ativo — falo e ouço automaticamente"
-            : "Jarvis com voz ElevenLabs — microfone para falar, alto-falante para ouvir respostas."
+            : "Jarvis pronto — microfone para falar, alto-falante para ouvir respostas."
           }
         </p>
       </div>
