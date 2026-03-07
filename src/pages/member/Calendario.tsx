@@ -472,7 +472,7 @@ export default function CalendarioMembro() {
                         })}
                     </div>
                   )}
-                </ScrollArea>
+                </div>
               </Card>
             </div>
           </div>
