@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
@@ -11,12 +11,56 @@ export interface JarvisMessage {
   isStreaming?: boolean;
 }
 
+export interface JarvisConversation {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
 export function useJarvis() {
   const { activeMembership } = useTenant();
   const [messages, setMessages] = useState<JarvisMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<JarvisConversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Load conversations list
+  const loadConversations = useCallback(async () => {
+    if (!activeMembership?.id) return;
+    const { data } = await supabase
+      .from('chat_conversations')
+      .select('id, title, updated_at')
+      .eq('membership_id', activeMembership.id)
+      .order('updated_at', { ascending: false })
+      .limit(30);
+    setConversations(data || []);
+  }, [activeMembership?.id]);
+
+  // Load on mount
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  // Load a specific conversation
+  const loadConversation = useCallback(async (convId: string) => {
+    setIsLoadingHistory(true);
+    setConversationId(convId);
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('id, role, content, created_at')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: true });
+
+    const msgs: JarvisMessage[] = (data || []).map(m => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
+    setMessages(msgs);
+    setIsLoadingHistory(false);
+  }, []);
 
   const sendMessage = useCallback(async (input: string) => {
     if (!activeMembership?.id || !input.trim()) return;
@@ -60,25 +104,27 @@ export function useJarvis() {
         throw new Error(errBody || 'Request failed');
       }
 
-      // Get conversation ID from headers
       const newConvId = resp.headers.get('X-Conversation-Id');
-      if (newConvId) setConversationId(newConvId);
+      if (newConvId) {
+        setConversationId(newConvId);
+        // Refresh conversations list when new conversation is created
+        if (!conversationId) {
+          setTimeout(() => loadConversations(), 1000);
+        }
+      }
 
-      // Get executed actions
       const actionsHeader = resp.headers.get('X-Actions-Executed');
       let executedActions: string[] = [];
       try { executedActions = actionsHeader ? JSON.parse(actionsHeader) : []; } catch {}
 
       if (!resp.body) throw new Error('No response body');
 
-      // Stream the response
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let assistantContent = '';
       let textBuffer = '';
       const assistantId = crypto.randomUUID();
 
-      // Create initial assistant message
       setMessages(prev => [...prev, {
         id: assistantId,
         role: 'assistant',
@@ -119,7 +165,6 @@ export function useJarvis() {
         }
       }
 
-      // Finalize
       setMessages(prev =>
         prev.map(m => m.id === assistantId ? { ...m, isStreaming: false } : m)
       );
@@ -136,7 +181,7 @@ export function useJarvis() {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [activeMembership?.id, conversationId]);
+  }, [activeMembership?.id, conversationId, loadConversations]);
 
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
@@ -148,5 +193,21 @@ export function useJarvis() {
     setConversationId(null);
   }, []);
 
-  return { messages, isLoading, sendMessage, stopStreaming, clearChat, conversationId };
+  // Delete a conversation
+  const deleteConversation = useCallback(async (convId: string) => {
+    await supabase.from('chat_messages').delete().eq('conversation_id', convId);
+    await supabase.from('chat_conversations').delete().eq('id', convId);
+    if (conversationId === convId) {
+      setMessages([]);
+      setConversationId(null);
+    }
+    setConversations(prev => prev.filter(c => c.id !== convId));
+  }, [conversationId]);
+
+  return {
+    messages, isLoading, isLoadingHistory,
+    sendMessage, stopStreaming, clearChat,
+    conversationId, conversations,
+    loadConversation, loadConversations, deleteConversation,
+  };
 }
