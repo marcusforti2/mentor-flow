@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, KeyRound, ArrowRight, ClipboardPaste, MessageCircle } from "lucide-react";
 import { z } from "zod";
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
 
