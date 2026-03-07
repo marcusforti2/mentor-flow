@@ -11,7 +11,7 @@ import { AlertsPanel } from '@/components/admin/AlertsPanel';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle, ClipboardList } from 'lucide-react';
+import { LogOut, Settings, ArrowLeft, UserCircle, BookMarked, Zap, MessageSquare, MessageCircle, ClipboardList, Bot } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { PageSpinner } from '@/components/PageSpinner';
  import {
