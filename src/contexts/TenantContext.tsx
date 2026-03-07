@@ -610,7 +610,7 @@ export function useTenant() {
       switchMembership: async () => {},
       endImpersonation: async () => {},
       refreshMemberships: async () => {},
-      refreshMembershipsAndWait: async () => [],
+      refreshMembershipsAndWait: async () => [] as Membership[],
       refreshTenant: async () => {},
       hasRole: () => false,
       isAdmin: false,
