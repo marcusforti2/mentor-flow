@@ -21,7 +21,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   MessageCircle, Plus, Loader2, Send, Settings, Users, CheckCircle2, XCircle,
-  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket, Bot, FileText,
+  Sparkles, Clock, Eye, Trash2, Phone, TrendingUp, Zap, Brain, Rocket, Bot, FileText, Contact,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
