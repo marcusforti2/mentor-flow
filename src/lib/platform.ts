@@ -4,7 +4,7 @@ export const PLATFORM = {
   shortName: 'MF',
   tagline: 'Sua plataforma de mentoria inteligente',
   description: 'Escale sua mentoria com o MentorFlow.io. CRM inteligente, gamificação, IA avançada e ferramentas premium.',
-  domain: 'mentorflow.io',
+  domain: 'bymentorflow.com.br',
   email: {
     from: 'MentorFlow.io <noreply@equipe.aceleracaoforti.online>',
     footer: `© ${new Date().getFullYear()} MentorFlow.io. Todos os direitos reservados.`,

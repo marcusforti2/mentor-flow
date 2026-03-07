@@ -372,7 +372,7 @@ serve(async (req) => {
     let emailSent = false;
     
     if (tenant_id !== SANDBOX_TENANT_ID) {
-      const siteUrl = Deno.env.get("SITE_URL") || "https://mentorflow.aceleracaoforti.online";
+      const siteUrl = Deno.env.get("SITE_URL") || "https://bymentorflow.com.br";
       const loginUrl = `${siteUrl}/auth`;
 
       const branding = await getTenantBranding(supabaseAdmin, tenant_id);

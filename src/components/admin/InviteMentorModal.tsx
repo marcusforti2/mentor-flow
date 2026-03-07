@@ -14,7 +14,7 @@ interface InviteMentorModalProps {
   membership: MembershipWithDetails | null;
 }
 
-const LOGIN_URL = 'https://mentorflow.aceleracaoforti.online/auth';
+const LOGIN_URL = 'https://bymentorflow.com.br/auth';
 
 const generateMessage = (
   name: string,

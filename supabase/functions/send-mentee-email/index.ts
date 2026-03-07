@@ -196,7 +196,7 @@ REGRAS:
         });
       }
 
-      const loginUrl = "https://mentorflow.aceleracaoforti.online";
+      const loginUrl = "https://bymentorflow.com.br";
       const results: any[] = [];
 
       for (const email of emails) {
