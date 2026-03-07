@@ -7,6 +7,59 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "X-Conversation-Id, X-Actions-Executed",
 };
 
+// Tables Jarvis can read (whitelist for security)
+const READABLE_TABLES = [
+  "memberships", "profiles", "mentee_profiles", "tenants",
+  "activity_logs", "ai_tool_history", "ai_tool_usage", "audit_logs",
+  "badges", "membership_badges", "behavioral_questions", "behavioral_responses", "behavioral_reports",
+  "calendar_events", "event_reminders", "event_mentee_reminders",
+  "call_transcripts", "call_analyses", "meeting_transcripts",
+  "campan_tasks", "extracted_task_drafts",
+  "certificates", "chat_conversations", "chat_messages",
+  "community_posts", "community_comments", "community_likes", "community_messages",
+  "crm_leads", "crm_prospections", "crm_interactions", "crm_pipeline_stages", "crm_stage_automations",
+  "cs_journeys", "cs_journey_stages",
+  "email_templates", "email_automations", "email_logs", "email_flows", "email_flow_executions", "email_flow_triggers",
+  "form_submissions", "form_questions", "tenant_forms",
+  "google_calendar_tokens", "google_drive_tokens",
+  "impersonation_logs", "invites",
+  "mentor_mentee_assignments",
+  "mentorado_files",
+  "metrics",
+  "otp_codes",
+  "playbooks", "playbook_access_rules",
+  "reward_catalog", "reward_redemptions",
+  "scheduling_availability", "scheduling_bookings",
+  "smart_alerts",
+  "tenant_automations", "tenant_branding", "tenant_domains", "tenant_popups",
+  "trails", "trail_modules", "trail_lessons", "trail_progress",
+  "whatsapp_config", "whatsapp_automation_flows", "whatsapp_messages",
+];
+
+// Tables Jarvis can write to (whitelist)
+const WRITABLE_TABLES = [
+  "memberships", "profiles", "mentee_profiles",
+  "activity_logs", "badges", "membership_badges",
+  "behavioral_questions",
+  "calendar_events", "event_reminders",
+  "campan_tasks",
+  "certificates",
+  "community_posts", "community_comments",
+  "crm_leads", "crm_prospections", "crm_interactions", "crm_pipeline_stages", "crm_stage_automations",
+  "cs_journeys", "cs_journey_stages",
+  "email_templates", "email_automations", "email_flows",
+  "form_questions", "tenant_forms",
+  "invites",
+  "mentor_mentee_assignments",
+  "playbooks", "playbook_access_rules",
+  "reward_catalog",
+  "scheduling_availability",
+  "smart_alerts",
+  "tenant_automations", "tenant_popups",
+  "trails", "trail_modules", "trail_lessons", "trail_progress",
+  "whatsapp_automation_flows",
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -102,6 +155,16 @@ serve(async (req) => {
       { data: badges },
       { data: popups },
       { data: pipelineStages },
+      { data: emailTemplates },
+      { data: invitesPending },
+      { data: assignments },
+      { data: branding },
+      { data: journeys },
+      { data: stageAutomations },
+      { data: waFlows },
+      { data: rewards },
+      { data: smartAlerts },
+      { data: scheduling },
     ] = await Promise.all([
       supabase.from("profiles").select("full_name, email, phone").eq("user_id", callerId).maybeSingle(),
       supabase.from("tenants").select("name, slug, settings").eq("id", tenantId).single(),
@@ -119,18 +182,33 @@ serve(async (req) => {
       supabase.from("badges").select("id, name, description, points_required").eq("tenant_id", tenantId),
       supabase.from("tenant_popups").select("id, title, is_active, popup_type").eq("tenant_id", tenantId),
       supabase.from("crm_pipeline_stages").select("id, name, status_key, position, color").eq("tenant_id", tenantId).order("position"),
+      supabase.from("email_templates").select("id, name, subject").eq("tenant_id", tenantId).limit(30),
+      supabase.from("invites").select("id, email, role, status, created_at").eq("tenant_id", tenantId).eq("status", "pending").limit(20),
+      supabase.from("mentor_mentee_assignments").select("mentor_membership_id, mentee_membership_id, status").eq("tenant_id", tenantId),
+      supabase.from("tenant_branding").select("primary_color, logo_url, company_name").eq("tenant_id", tenantId).maybeSingle(),
+      supabase.from("cs_journeys").select("id, name, total_days, is_default").eq("tenant_id", tenantId),
+      supabase.from("crm_stage_automations").select("id, from_stage_key, to_stage_key, delay_days, is_active").eq("tenant_id", tenantId),
+      supabase.from("whatsapp_automation_flows").select("id, name, trigger_type, is_active").eq("tenant_id", tenantId),
+      supabase.from("reward_catalog").select("id, name, points_cost, is_active").eq("tenant_id", tenantId),
+      supabase.from("smart_alerts").select("id, alert_type, severity, message, is_resolved, created_at").eq("tenant_id", tenantId).eq("is_resolved", false).limit(20),
+      supabase.from("scheduling_availability").select("id, day_of_week, start_time, end_time").eq("membership_id", membership_id),
     ]);
 
     const menteeIds = mentorados?.map(m => m.id) || [];
     const menteeUserIds = mentorados?.map(m => m.user_id) || [];
 
     // Secondary parallel fetch
-    const [menteeProfilesRes, businessProfilesRes, menteeTasksRes, menteeProspectionsRes, trailProgressRes] = await Promise.all([
+    const [menteeProfilesRes, businessProfilesRes, menteeTasksRes, menteeProspectionsRes, trailProgressRes, certificatesRes, behavioralRes, metricsRes, filesRes, meetingsRes] = await Promise.all([
       menteeUserIds.length > 0 ? supabase.from("profiles").select("user_id, full_name, email, phone").in("user_id", menteeUserIds) : { data: [] },
       menteeIds.length > 0 ? supabase.from("mentee_profiles").select("membership_id, business_name, business_profile").in("membership_id", menteeIds) : { data: [] },
       menteeIds.length > 0 ? supabase.from("campan_tasks").select("mentorado_membership_id, status_column, title, priority, due_date").eq("tenant_id", tenantId) : { data: [] },
       menteeIds.length > 0 ? supabase.from("crm_prospections").select("membership_id, status, temperature, contact_name, company").eq("tenant_id", tenantId) : { data: [] },
       menteeIds.length > 0 ? supabase.from("trail_progress").select("membership_id, completed").in("membership_id", menteeIds) : { data: [] },
+      menteeIds.length > 0 ? supabase.from("certificates").select("membership_id, trail_id, issued_at").in("membership_id", menteeIds) : { data: [] },
+      menteeIds.length > 0 ? supabase.from("behavioral_reports").select("membership_id, disc_profile, enneagram_type, communication_style").in("membership_id", menteeIds) : { data: [] },
+      menteeIds.length > 0 ? supabase.from("metrics").select("membership_id, metric_key, metric_value, period").in("membership_id", menteeIds).order("created_at", { ascending: false }).limit(100) : { data: [] },
+      supabase.from("mentorado_files").select("id, file_name, membership_id, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(30),
+      supabase.from("meeting_transcripts").select("id, title, meeting_date, membership_id, status").eq("tenant_id", tenantId).order("meeting_date", { ascending: false }).limit(20),
     ]);
 
     const menteeProfiles = (menteeProfilesRes as any).data || [];
@@ -138,6 +216,11 @@ serve(async (req) => {
     const allTasks = (menteeTasksRes as any).data || [];
     const allProspections = (menteeProspectionsRes as any).data || [];
     const allTrailProgress = (trailProgressRes as any).data || [];
+    const allCertificates = (certificatesRes as any).data || [];
+    const allBehavioral = (behavioralRes as any).data || [];
+    const allMetrics = (metricsRes as any).data || [];
+    const allFiles = (filesRes as any).data || [];
+    const allMeetings = (meetingsRes as any).data || [];
 
     // Build compact context
     const mentorName = mentorProfile?.full_name?.split(" ")[0] || "Mentor";
@@ -151,9 +234,14 @@ serve(async (req) => {
       const t = allTasks.filter((x: any) => x.mentorado_membership_id === m.id);
       const pr = allProspections.filter((x: any) => x.membership_id === m.id);
       const tp = allTrailProgress.filter((x: any) => x.membership_id === m.id);
+      const ct = allCertificates.filter((x: any) => x.membership_id === m.id);
+      const bh = allBehavioral.find((x: any) => x.membership_id === m.id);
       const overdue = t.filter((x: any) => x.due_date && new Date(x.due_date) < new Date() && x.status_column !== "done").length;
       const daysSince = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 86400000);
-      return `- ${p?.full_name || "?"} | ${p?.email || ""} | Tel:${p?.phone || "—"} | Negócio:${b?.business_name || "—"} | Tarefas:${t.filter((x: any) => x.status_column === "done").length}/${t.length}${overdue ? ` ⚠${overdue}atrasadas` : ""} | Leads:${pr.length}(${pr.filter((x: any) => x.temperature === "hot").length}🔥) | Trilhas:${tp.filter((x: any) => x.completed).length}✅ | Dias:${daysSince} | ID:${m.id}`;
+      let line = `- ${p?.full_name || "?"} | ${p?.email || ""} | Tel:${p?.phone || "—"} | Negócio:${b?.business_name || "—"} | Tarefas:${t.filter((x: any) => x.status_column === "done").length}/${t.length}${overdue ? ` ⚠${overdue}atrasadas` : ""} | Leads:${pr.length}(${pr.filter((x: any) => x.temperature === "hot").length}🔥) | Trilhas:${tp.filter((x: any) => x.completed).length}✅ | Certs:${ct.length} | Dias:${daysSince}`;
+      if (bh) line += ` | DISC:${JSON.stringify(bh.disc_profile || {})} | Enea:${bh.enneagram_type || "—"} | Estilo:${bh.communication_style || "—"}`;
+      line += ` | ID:${m.id}`;
+      return line;
     }).join("\n") || "Nenhum";
     ctx.push(`MENTORADOS(${mentorados?.length || 0}):\n${mList}`);
 
@@ -169,21 +257,47 @@ serve(async (req) => {
     }
 
     if (pipelineStages?.length) ctx.push(`PIPELINE: ${pipelineStages.map(s => s.name).join(" → ")}`);
+    if (stageAutomations?.length) ctx.push(`AUTOMAÇÕES PIPELINE: ${stageAutomations.map(a => `${a.from_stage_key}→${a.to_stage_key} ${a.delay_days}d ${a.is_active ? "✅" : "⏸"}`).join(" | ")}`);
     if (recentActivity?.length) ctx.push(`ATIVIDADE(últimas):\n${recentActivity.slice(0, 10).map(a => `- ${a.action_type}: ${a.action_description || ""}`).join("\n")}`);
     if (upcomingEvents?.length) ctx.push(`AGENDA:\n${upcomingEvents.map(e => `- ${e.title} ${e.event_date} ${e.event_time || ""} ${e.meeting_url ? "🔗" : ""} | ID:${e.id}`).join("\n")}`);
     if (emailFlows?.length) ctx.push(`FLUXOS EMAIL: ${emailFlows.map(f => `${f.name}(${f.is_active ? "✅" : "⏸"}) ID:${f.id}`).join(", ")}`);
+    if (emailTemplates?.length) ctx.push(`TEMPLATES EMAIL(${emailTemplates.length}): ${emailTemplates.map(t => `"${t.name}" subj:"${t.subject}" ID:${t.id}`).join(" | ")}`);
     ctx.push(`WHATSAPP: ${waConfig?.instance_id ? "✅ Conectado" : "❌ Não configurado"}`);
+    if (waFlows?.length) ctx.push(`FLUXOS WA: ${waFlows.map(f => `${f.name}(${f.trigger_type}) ${f.is_active ? "✅" : "⏸"} ID:${f.id}`).join(" | ")}`);
     if (trails?.length) ctx.push(`TRILHAS(${trails.length}): ${trails.map(t => `"${t.title}"${t.is_published ? "📢" : "📝"} ${t.module_count || 0}mod ID:${t.id}`).join(" | ")}`);
     if (playbooks?.length) ctx.push(`PLAYBOOKS(${playbooks.length}): ${playbooks.map(p => `${p.emoji || "📖"}"${p.title}"(${p.visibility}) ID:${p.id}`).join(" | ")}`);
-    if (journeyStages?.length) ctx.push(`JORNADA CS: ${journeyStages.map(s => `${s.name}(d${s.day_start}-${s.day_end})`).join(" → ")}`);
-    if (forms?.length) ctx.push(`FORMS: ${forms.map(f => `${f.title}(${f.is_active ? "✅" : "⏸"}) ID:${f.id}`).join(", ")}`);
+    if (journeys?.length) ctx.push(`JORNADAS CS: ${journeys.map(j => `"${j.name}" ${j.total_days}d ${j.is_default ? "⭐" : ""} ID:${j.id}`).join(" | ")}`);
+    if (journeyStages?.length) ctx.push(`ETAPAS JORNADA: ${journeyStages.map(s => `${s.name}(d${s.day_start}-${s.day_end})`).join(" → ")}`);
+    if (forms?.length) ctx.push(`FORMS: ${forms.map(f => `${f.title}(${f.form_type},${f.is_active ? "✅" : "⏸"}) ID:${f.id}`).join(", ")}`);
     if (badges?.length) ctx.push(`BADGES: ${badges.map(b => `${b.name}(${b.points_required}pts) ID:${b.id}`).join(", ")}`);
+    if (rewards?.length) ctx.push(`RECOMPENSAS: ${rewards.map(r => `${r.name}(${r.points_cost}pts,${r.is_active ? "✅" : "⏸"}) ID:${r.id}`).join(", ")}`);
     if (popups?.length) ctx.push(`POPUPS: ${popups.map(p => `${p.title}(${p.is_active ? "✅" : "⏸"}) ID:${p.id}`).join(", ")}`);
+    if (invitesPending?.length) ctx.push(`CONVITES PENDENTES(${invitesPending.length}): ${invitesPending.map(i => `${i.email}(${i.role}) ID:${i.id}`).join(", ")}`);
+    if (assignments?.length) ctx.push(`ATRIBUIÇÕES MENTOR→MENTEE: ${assignments.map(a => `${a.mentor_membership_id}→${a.mentee_membership_id}(${a.status})`).join(", ")}`);
+    if (smartAlerts?.length) ctx.push(`⚠️ ALERTAS(${smartAlerts.length}): ${smartAlerts.map(a => `${a.severity} ${a.alert_type}: ${a.message}`).join(" | ")}`);
+    if (allMeetings?.length) ctx.push(`REUNIÕES RECENTES(${allMeetings.length}): ${allMeetings.map(m => `"${m.title || "sem título"}" ${m.meeting_date} ${m.status} ID:${m.id}`).join(" | ")}`);
+    if (allFiles?.length) ctx.push(`ARQUIVOS RECENTES(${allFiles.length}): ${allFiles.map(f => `"${f.file_name}" ID:${f.id}`).join(", ")}`);
+    if (scheduling?.length) ctx.push(`DISPONIBILIDADE: ${scheduling.map(s => `${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][s.day_of_week]} ${s.start_time}-${s.end_time}`).join(", ")}`);
+    if (branding) ctx.push(`BRANDING: cor:${branding.primary_color || "—"} empresa:${branding.company_name || "—"}`);
+
+    // Metrics summary
+    if (allMetrics?.length) {
+      const metricKeys = [...new Set(allMetrics.map((m: any) => m.metric_key))];
+      ctx.push(`MÉTRICAS RASTREADAS: ${metricKeys.join(", ")}`);
+    }
+
+    ctx.push(`\nTABELAS DISPONÍVEIS PARA CONSULTA: ${READABLE_TABLES.join(", ")}`);
 
     const fullContext = ctx.join("\n\n");
 
     // ====== TOOLS ======
     const tools = [
+      // === GENERIC DATABASE ACCESS ===
+      { type: "function", function: { name: "query_database", description: "Consulta qualquer tabela do banco de dados. Use para buscar dados que não estão no contexto. Filtre por tenant_id quando a tabela tiver essa coluna.", parameters: { type: "object", properties: { table: { type: "string", description: "Nome da tabela" }, select: { type: "string", description: "Colunas a retornar (SQL select). Ex: 'id, name, created_at' ou '*'" }, filters: { type: "array", items: { type: "object", properties: { column: { type: "string" }, operator: { type: "string", enum: ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "in", "is"] }, value: { type: "string" } }, required: ["column", "operator", "value"] }, description: "Filtros a aplicar" }, order_by: { type: "string", description: "Coluna para ordenar" }, order_asc: { type: "boolean", description: "Ascendente? Default false" }, limit: { type: "number", description: "Limite de registros. Default 50" } }, required: ["table", "select"], additionalProperties: false } } },
+      { type: "function", function: { name: "insert_record", description: "Insere registro em qualquer tabela editável", parameters: { type: "object", properties: { table: { type: "string", description: "Nome da tabela" }, data: { type: "object", description: "Dados do registro (JSON)" } }, required: ["table", "data"], additionalProperties: false } } },
+      { type: "function", function: { name: "update_record", description: "Atualiza registro(s) em qualquer tabela editável", parameters: { type: "object", properties: { table: { type: "string", description: "Nome da tabela" }, data: { type: "object", description: "Campos a atualizar" }, filters: { type: "array", items: { type: "object", properties: { column: { type: "string" }, operator: { type: "string", enum: ["eq", "neq", "in"] }, value: { type: "string" } }, required: ["column", "operator", "value"] } } }, required: ["table", "data", "filters"], additionalProperties: false } } },
+      { type: "function", function: { name: "delete_record", description: "Remove registro(s) de qualquer tabela editável", parameters: { type: "object", properties: { table: { type: "string", description: "Nome da tabela" }, filters: { type: "array", items: { type: "object", properties: { column: { type: "string" }, operator: { type: "string", enum: ["eq", "in"] }, value: { type: "string" } }, required: ["column", "operator", "value"] } } }, required: ["table", "filters"], additionalProperties: false } } },
+      { type: "function", function: { name: "count_records", description: "Conta registros numa tabela", parameters: { type: "object", properties: { table: { type: "string" }, filters: { type: "array", items: { type: "object", properties: { column: { type: "string" }, operator: { type: "string", enum: ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "in", "is"] }, value: { type: "string" } }, required: ["column", "operator", "value"] } } }, required: ["table"], additionalProperties: false } } },
       // AUTOMATIONS
       { type: "function", function: { name: "toggle_automation", description: "Ativa/desativa automação", parameters: { type: "object", properties: { automation_key: { type: "string" }, enabled: { type: "boolean" } }, required: ["automation_key", "enabled"], additionalProperties: false } } },
       { type: "function", function: { name: "run_automation_now", description: "Executa automação agora", parameters: { type: "object", properties: { automation_key: { type: "string" } }, required: ["automation_key"], additionalProperties: false } } },
@@ -193,7 +307,8 @@ serve(async (req) => {
       { type: "function", function: { name: "invite_mentorado", description: "Convida mentorado por email", parameters: { type: "object", properties: { email: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" } }, required: ["email", "full_name"], additionalProperties: false } } },
       { type: "function", function: { name: "update_mentorado", description: "Atualiza dados de mentorado", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" }, business_name: { type: "string" }, business_profile: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
       { type: "function", function: { name: "suspend_mentorado", description: "Suspende/reativa mentorado", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, action: { type: "string", enum: ["suspend", "reactivate"] } }, required: ["mentee_membership_id", "action"], additionalProperties: false } } },
-      { type: "function", function: { name: "get_mentee_details", description: "Detalhes completos de mentorado", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "get_mentee_details", description: "Detalhes completos de mentorado incluindo comportamental, métricas, arquivos e reuniões", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "assign_mentor", description: "Atribui mentor a mentorado", parameters: { type: "object", properties: { mentor_membership_id: { type: "string" }, mentee_membership_id: { type: "string" } }, required: ["mentor_membership_id", "mentee_membership_id"], additionalProperties: false } } },
       // COMMUNICATION
       { type: "function", function: { name: "send_whatsapp_message", description: "Envia WhatsApp para mentorados", parameters: { type: "object", properties: { mentee_membership_ids: { type: "array", items: { type: "string" } }, message_text: { type: "string" } }, required: ["mentee_membership_ids", "message_text"], additionalProperties: false } } },
       { type: "function", function: { name: "send_whatsapp_to_all", description: "Envia WhatsApp para TODOS os mentorados ativos", parameters: { type: "object", properties: { message_text: { type: "string" } }, required: ["message_text"], additionalProperties: false } } },
@@ -214,21 +329,27 @@ serve(async (req) => {
       { type: "function", function: { name: "update_lead_stage", description: "Move lead no pipeline", parameters: { type: "object", properties: { lead_id: { type: "string" }, stage: { type: "string" } }, required: ["lead_id", "stage"], additionalProperties: false } } },
       { type: "function", function: { name: "delete_lead", description: "Remove lead", parameters: { type: "object", properties: { lead_id: { type: "string" } }, required: ["lead_id"], additionalProperties: false } } },
       { type: "function", function: { name: "create_prospection", description: "Cria prospecção", parameters: { type: "object", properties: { membership_id: { type: "string" }, contact_name: { type: "string" }, company: { type: "string" }, contact_email: { type: "string" }, contact_phone: { type: "string" }, whatsapp: { type: "string" }, instagram_url: { type: "string" }, linkedin_url: { type: "string" }, notes: { type: "string" }, temperature: { type: "string", enum: ["cold", "warm", "hot"] } }, required: ["membership_id", "contact_name"], additionalProperties: false } } },
-      // TRAILS
+      { type: "function", function: { name: "add_crm_interaction", description: "Registra interação no CRM", parameters: { type: "object", properties: { lead_id: { type: "string" }, prospection_id: { type: "string" }, type: { type: "string", enum: ["call", "email", "whatsapp", "meeting", "note"] }, description: { type: "string" }, outcome: { type: "string" } }, required: ["type", "description"], additionalProperties: false } } },
+      // TRAILS & LESSONS
       { type: "function", function: { name: "toggle_trail_publish", description: "Publica/despublica trilha", parameters: { type: "object", properties: { trail_id: { type: "string" }, publish: { type: "boolean" } }, required: ["trail_id", "publish"], additionalProperties: false } } },
       { type: "function", function: { name: "generate_trail_ai", description: "Gera trilha com IA", parameters: { type: "object", properties: { topic: { type: "string" }, num_modules: { type: "number" } }, required: ["topic"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_trail", description: "Cria trilha manualmente", parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" } }, required: ["title"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_trail_module", description: "Cria módulo numa trilha", parameters: { type: "object", properties: { trail_id: { type: "string" }, title: { type: "string" }, position: { type: "number" } }, required: ["trail_id", "title"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_lesson", description: "Cria aula num módulo", parameters: { type: "object", properties: { module_id: { type: "string" }, title: { type: "string" }, content: { type: "string" }, video_url: { type: "string" }, position: { type: "number" } }, required: ["module_id", "title"], additionalProperties: false } } },
+      { type: "function", function: { name: "mark_lesson_complete", description: "Marca aula como concluída para mentorado", parameters: { type: "object", properties: { membership_id: { type: "string" }, lesson_id: { type: "string" } }, required: ["membership_id", "lesson_id"], additionalProperties: false } } },
       // PLAYBOOKS
       { type: "function", function: { name: "create_playbook", description: "Cria playbook", parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, emoji: { type: "string" }, visibility: { type: "string", enum: ["all_mentees", "specific_mentees", "staff_only", "public"] }, content: { type: "string" } }, required: ["title"], additionalProperties: false } } },
       { type: "function", function: { name: "update_playbook", description: "Atualiza playbook", parameters: { type: "object", properties: { playbook_id: { type: "string" }, title: { type: "string" }, content: { type: "string" }, visibility: { type: "string" } }, required: ["playbook_id"], additionalProperties: false } } },
       { type: "function", function: { name: "generate_playbook_ai", description: "Gera conteúdo de playbook com IA", parameters: { type: "object", properties: { title: { type: "string" }, topic: { type: "string" }, style: { type: "string", enum: ["tutorial", "framework", "checklist", "case_study"] } }, required: ["title", "topic"], additionalProperties: false } } },
       // SEARCH
       { type: "function", function: { name: "search_playbook_content", description: "Busca em playbooks", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } } },
-      { type: "function", function: { name: "search_trail_content", description: "Busca em trilhas", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } } },
+      { type: "function", function: { name: "search_trail_content", description: "Busca em trilhas e aulas", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false } } },
       // ANALYTICS
-      { type: "function", function: { name: "get_tenant_analytics", description: "Métricas do programa", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
-      // BADGES
+      { type: "function", function: { name: "get_tenant_analytics", description: "Métricas completas do programa", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
+      // BADGES & REWARDS
       { type: "function", function: { name: "award_badge", description: "Concede badge", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, badge_id: { type: "string" } }, required: ["mentee_membership_id", "badge_id"], additionalProperties: false } } },
       { type: "function", function: { name: "create_badge", description: "Cria badge", parameters: { type: "object", properties: { name: { type: "string" }, description: { type: "string" }, points_required: { type: "number" }, criteria: { type: "string" } }, required: ["name"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_reward", description: "Cria recompensa no catálogo", parameters: { type: "object", properties: { name: { type: "string" }, description: { type: "string" }, points_cost: { type: "number" }, is_active: { type: "boolean" } }, required: ["name", "points_cost"], additionalProperties: false } } },
       // FORMS
       { type: "function", function: { name: "get_form_submissions", description: "Respostas de formulário", parameters: { type: "object", properties: { form_id: { type: "string" }, limit: { type: "number" } }, required: ["form_id"], additionalProperties: false } } },
       { type: "function", function: { name: "create_form", description: "Cria formulário", parameters: { type: "object", properties: { title: { type: "string" }, form_type: { type: "string", enum: ["onboarding", "feedback", "survey", "application", "custom"] }, is_active: { type: "boolean" } }, required: ["title"], additionalProperties: false } } },
@@ -238,23 +359,38 @@ serve(async (req) => {
       { type: "function", function: { name: "toggle_popup", description: "Ativa/desativa popup", parameters: { type: "object", properties: { popup_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["popup_id", "is_active"], additionalProperties: false } } },
       { type: "function", function: { name: "create_popup", description: "Cria popup", parameters: { type: "object", properties: { title: { type: "string" }, popup_type: { type: "string", enum: ["announcement", "promotion", "survey", "welcome"] }, content: { type: "string" }, is_active: { type: "boolean" } }, required: ["title"], additionalProperties: false } } },
       { type: "function", function: { name: "toggle_email_flow", description: "Ativa/desativa fluxo email", parameters: { type: "object", properties: { flow_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["flow_id", "is_active"], additionalProperties: false } } },
+      // EMAIL TEMPLATES
+      { type: "function", function: { name: "create_email_template", description: "Cria template de email", parameters: { type: "object", properties: { name: { type: "string" }, subject: { type: "string" }, body_html: { type: "string" } }, required: ["name", "subject", "body_html"], additionalProperties: false } } },
       // INVITES MANAGEMENT
       { type: "function", function: { name: "list_pending_invites", description: "Lista convites pendentes", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
       { type: "function", function: { name: "revoke_invite", description: "Revoga convite", parameters: { type: "object", properties: { invite_id: { type: "string" } }, required: ["invite_id"], additionalProperties: false } } },
       { type: "function", function: { name: "bulk_invite_mentorados", description: "Convida vários mentorados de uma vez", parameters: { type: "object", properties: { invites: { type: "array", items: { type: "object", properties: { email: { type: "string" }, full_name: { type: "string" }, phone: { type: "string" } }, required: ["email", "full_name"] } } }, required: ["invites"], additionalProperties: false } } },
       // JOURNEY CS
       { type: "function", function: { name: "get_mentee_journey_position", description: "Posição do mentorado na jornada CS", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_journey", description: "Cria jornada CS", parameters: { type: "object", properties: { name: { type: "string" }, total_days: { type: "number" }, is_default: { type: "boolean" } }, required: ["name", "total_days"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_journey_stage", description: "Cria etapa na jornada", parameters: { type: "object", properties: { journey_id: { type: "string" }, name: { type: "string" }, stage_key: { type: "string" }, day_start: { type: "number" }, day_end: { type: "number" }, color: { type: "string" }, position: { type: "number" } }, required: ["journey_id", "name", "stage_key", "day_start", "day_end"], additionalProperties: false } } },
       // TENANT SETTINGS
       { type: "function", function: { name: "update_tenant_settings", description: "Atualiza configurações do programa", parameters: { type: "object", properties: { setting_key: { type: "string" }, setting_value: { type: "string" } }, required: ["setting_key", "setting_value"], additionalProperties: false } } },
       // MENTOR REPORT
       { type: "function", function: { name: "generate_mentor_report", description: "Gera relatório completo do mentor", parameters: { type: "object", properties: { period: { type: "string", enum: ["week", "month", "quarter"] } }, required: [], additionalProperties: false } } },
       // PIPELINE MANAGEMENT
       { type: "function", function: { name: "create_pipeline_stage", description: "Cria etapa no pipeline CRM", parameters: { type: "object", properties: { name: { type: "string" }, status_key: { type: "string" }, color: { type: "string" }, position: { type: "number" } }, required: ["name", "status_key"], additionalProperties: false } } },
+      { type: "function", function: { name: "create_stage_automation", description: "Cria automação de etapa CRM", parameters: { type: "object", properties: { from_stage_key: { type: "string" }, to_stage_key: { type: "string" }, delay_days: { type: "number" }, is_active: { type: "boolean" } }, required: ["from_stage_key", "to_stage_key", "delay_days"], additionalProperties: false } } },
       // BULK OPERATIONS
       { type: "function", function: { name: "bulk_send_email", description: "Envia email para vários mentorados", parameters: { type: "object", properties: { mentee_membership_ids: { type: "array", items: { type: "string" } }, subject: { type: "string" }, body_html: { type: "string" } }, required: ["mentee_membership_ids", "subject", "body_html"], additionalProperties: false } } },
       { type: "function", function: { name: "bulk_update_lead_stage", description: "Move vários leads de etapa", parameters: { type: "object", properties: { lead_ids: { type: "array", items: { type: "string" } }, stage: { type: "string" } }, required: ["lead_ids", "stage"], additionalProperties: false } } },
       // ACTIVITY LOG
       { type: "function", function: { name: "log_custom_activity", description: "Registra atividade personalizada", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, action_type: { type: "string" }, description: { type: "string" }, points: { type: "number" } }, required: ["mentee_membership_id", "action_type", "description"], additionalProperties: false } } },
+      // ALERTS
+      { type: "function", function: { name: "resolve_alert", description: "Resolve um alerta", parameters: { type: "object", properties: { alert_id: { type: "string" } }, required: ["alert_id"], additionalProperties: false } } },
+      // BEHAVIORAL
+      { type: "function", function: { name: "create_behavioral_question", description: "Cria pergunta comportamental", parameters: { type: "object", properties: { question_text: { type: "string" }, question_type: { type: "string", enum: ["disc", "enneagram", "custom"] }, options: { type: "array", items: { type: "object", properties: { label: { type: "string" }, value: { type: "string" } }, required: ["label", "value"] } }, order_index: { type: "number" }, is_required: { type: "boolean" } }, required: ["question_text", "options"], additionalProperties: false } } },
+      // WHATSAPP FLOWS
+      { type: "function", function: { name: "toggle_wa_flow", description: "Ativa/desativa fluxo WhatsApp", parameters: { type: "object", properties: { flow_id: { type: "string" }, is_active: { type: "boolean" } }, required: ["flow_id", "is_active"], additionalProperties: false } } },
+      // SCHEDULING
+      { type: "function", function: { name: "set_availability", description: "Define disponibilidade de agenda", parameters: { type: "object", properties: { day_of_week: { type: "number", description: "0=Dom, 1=Seg...6=Sáb" }, start_time: { type: "string" }, end_time: { type: "string" } }, required: ["day_of_week", "start_time", "end_time"], additionalProperties: false } } },
+      // CALL EDGE FUNCTIONS
+      { type: "function", function: { name: "call_edge_function", description: "Chama qualquer edge function do sistema", parameters: { type: "object", properties: { function_name: { type: "string", description: "Nome da função (ex: generate-trail, check-alerts)" }, payload: { type: "object", description: "Body JSON da requisição" } }, required: ["function_name", "payload"], additionalProperties: false } } },
     ];
 
     // ====== SYSTEM PROMPT — JARVIS TONY STARK STYLE ======
@@ -274,42 +410,40 @@ ${fullContext}
 ## REGRA #1 — EXECUTE IMEDIATAMENTE:
 - Quando ${mentorName} pede para CRIAR, AGENDAR, ENVIAR, CONFIGURAR ou FAZER qualquer coisa → **EXECUTE A AÇÃO IMEDIATAMENTE** usando as ferramentas disponíveis.
 - **NÃO pergunte confirmação** para ações simples como criar evento, tarefa, lead, formulário, popup, enviar mensagem, convidar mentorado.
-- Se ${mentorName} diz "cria uma reunião com Natália amanhã às 10h" → USE create_calendar_event IMEDIATAMENTE.
-- Se ${mentorName} diz "manda whatsapp para o João" → USE send_whatsapp_message IMEDIATAMENTE.
-- Se ele diz "cria uma tarefa para Maria" → USE create_task IMEDIATAMENTE.
-- Se ele diz "convida 5 pessoas" → USE bulk_invite_mentorados IMEDIATAMENTE.
-- Se ele diz "cria um formulário de feedback" → USE create_form + add_form_question IMEDIATAMENTE.
-- Se ele diz "gera um relatório" → USE generate_mentor_report IMEDIATAMENTE.
 - **NUNCA diga "não está nos meus registros"** se ${mentorName} acabou de pedir para CRIAR algo. CRIAR ≠ BUSCAR.
 
 ## REGRA #2 — PERGUNTE APENAS QUANDO:
-- Falta informação ESSENCIAL que você não consegue inferir (ex: "manda whatsapp" sem dizer para quem)
+- Falta informação ESSENCIAL que você não consegue inferir
 - Ação é DESTRUTIVA em massa (deletar vários, suspender vários)
-- Pedido é genuinamente ambíguo ("faz aquilo" sem contexto)
+- Pedido é genuinamente ambíguo
 
 ## REGRA #3 — INTERPRETAR INTELIGENTEMENTE:
 - "reunião com Natália às 10h" → crie evento com título "Reunião com Natália", horário 10:00
 - "amanhã" → calcule a data de amanhã
 - "semana que vem" → próxima segunda-feira
-- Se o nome do mentorado não bate exato, use fuzzy matching nos dados do contexto
-- Se mencionam um nome que não existe como mentorado, crie o evento mesmo assim (pode ser contato externo)
+- Fuzzy matching nos nomes dos dados do contexto
 
 ## REGRA #4 — MEMÓRIA DA CONVERSA:
-- Quando ${mentorName} refere a algo da conversa anterior ("cria o que eu pedi", "faz isso na agenda"), **RELEIA o histórico** e execute baseado no contexto.
-- Se ele pediu "reunião com Natália às 10h" e depois diz "cria na agenda" → EXECUTE o create_calendar_event com os dados mencionados antes.
+- Quando ${mentorName} refere a algo da conversa anterior, **RELEIA o histórico** e execute baseado no contexto.
 
 ## REGRA #5 — AUTONOMIA TOTAL:
 - Você pode e DEVE encadear múltiplas ferramentas numa única resposta.
-- Ex: "Crie um formulário de onboarding com 5 perguntas" → use create_form + 5x add_form_question.
-- Ex: "Convide João, Maria e Pedro" → use bulk_invite_mentorados com array de 3.
-- Ex: "Mande email para todos e ative a automação de welcome" → use bulk_send_email + toggle_automation.
-- Ex: "Crie um popup de boas-vindas e ative" → use create_popup com is_active=true.
 - Sempre que puder resolver tudo de uma vez, FAÇA.
+
+## REGRA #6 — ACESSO TOTAL AO BANCO:
+- Você tem acesso a TODAS as tabelas do banco via query_database, insert_record, update_record, delete_record e count_records.
+- Use query_database quando precisar de dados que não estão no contexto inicial.
+- Use insert_record/update_record/delete_record para operações que não têm ferramenta dedicada.
+- SEMPRE filtre por tenant_id=${tenantId} quando a tabela tiver essa coluna.
+- Pode chamar qualquer edge function via call_edge_function.
+
+## REGRA #7 — DADOS SENSÍVEIS:
+- NUNCA exponha IDs técnicos ao mentor — use nomes/títulos.
+- NUNCA revele service_role_key, tokens OAuth ou senhas.
 
 ## FORMATO DE RESPOSTA:
 - Texto corrido curto, não listas longas
 - Para confirmação de ação: "✅ Feito." + detalhes mínimos
-- Para pergunta de clarificação: pergunta direta e curta, sem rodeios
 - NUNCA mostre IDs ao mentor — use nomes/títulos`;
 
     const aiMessages = [
@@ -343,6 +477,90 @@ ${fullContext}
 
         try {
           switch (fn.name) {
+            // ===== GENERIC DATABASE ACCESS =====
+            case "query_database": {
+              if (!READABLE_TABLES.includes(args.table)) { result = `Tabela "${args.table}" não permitida.`; break; }
+              let query = supabase.from(args.table).select(args.select || "*");
+              // Auto-filter by tenant_id
+              const tenantTables = READABLE_TABLES.filter(t => !["profiles", "behavioral_reports", "call_transcripts", "call_analyses", "otp_codes"].includes(t));
+              if (tenantTables.includes(args.table)) {
+                query = query.eq("tenant_id", tenantId);
+              }
+              if (args.filters) {
+                for (const f of args.filters) {
+                  if (f.operator === "in") {
+                    query = query.in(f.column, JSON.parse(f.value));
+                  } else if (f.operator === "is") {
+                    query = query.is(f.column, f.value === "null" ? null : f.value);
+                  } else {
+                    query = query[f.operator as "eq"](f.column, f.value);
+                  }
+                }
+              }
+              if (args.order_by) query = query.order(args.order_by, { ascending: args.order_asc ?? false });
+              query = query.limit(args.limit || 50);
+              const { data: qData, error: qErr } = await query;
+              if (qErr) throw qErr;
+              result = JSON.stringify({ count: qData?.length || 0, data: qData });
+              executedActions.push(`query:${args.table}`);
+              break;
+            }
+            case "insert_record": {
+              if (!WRITABLE_TABLES.includes(args.table)) { result = `Tabela "${args.table}" não permitida para escrita.`; break; }
+              const insertData = { ...args.data };
+              if (WRITABLE_TABLES.includes(args.table) && !["profiles", "behavioral_reports"].includes(args.table)) {
+                insertData.tenant_id = insertData.tenant_id || tenantId;
+              }
+              const { data: iData, error: iErr } = await supabase.from(args.table).insert(insertData).select("id").maybeSingle();
+              if (iErr) throw iErr;
+              result = `Registro inserido em ${args.table}${iData?.id ? ` (ID:${iData.id})` : ""}.`;
+              executedActions.push(`insert:${args.table}`);
+              break;
+            }
+            case "update_record": {
+              if (!WRITABLE_TABLES.includes(args.table)) { result = `Tabela "${args.table}" não permitida para escrita.`; break; }
+              let uQuery = supabase.from(args.table).update(args.data);
+              for (const f of args.filters) {
+                if (f.operator === "in") { uQuery = uQuery.in(f.column, JSON.parse(f.value)); }
+                else { uQuery = uQuery[f.operator as "eq"](f.column, f.value); }
+              }
+              const { error: uErr } = await uQuery;
+              if (uErr) throw uErr;
+              result = `Registro(s) atualizado(s) em ${args.table}.`;
+              executedActions.push(`update:${args.table}`);
+              break;
+            }
+            case "delete_record": {
+              if (!WRITABLE_TABLES.includes(args.table)) { result = `Tabela "${args.table}" não permitida para escrita.`; break; }
+              let dQuery = supabase.from(args.table).delete();
+              for (const f of args.filters) {
+                if (f.operator === "in") { dQuery = dQuery.in(f.column, JSON.parse(f.value)); }
+                else { dQuery = dQuery[f.operator as "eq"](f.column, f.value); }
+              }
+              const { error: dErr } = await dQuery;
+              if (dErr) throw dErr;
+              result = `Registro(s) removido(s) de ${args.table}.`;
+              executedActions.push(`delete:${args.table}`);
+              break;
+            }
+            case "count_records": {
+              if (!READABLE_TABLES.includes(args.table)) { result = `Tabela "${args.table}" não permitida.`; break; }
+              let cQuery = supabase.from(args.table).select("id", { count: "exact", head: true });
+              const tenantTables2 = READABLE_TABLES.filter(t => !["profiles", "behavioral_reports", "call_transcripts", "call_analyses", "otp_codes"].includes(t));
+              if (tenantTables2.includes(args.table)) cQuery = cQuery.eq("tenant_id", tenantId);
+              if (args.filters) {
+                for (const f of args.filters) {
+                  if (f.operator === "in") { cQuery = cQuery.in(f.column, JSON.parse(f.value)); }
+                  else if (f.operator === "is") { cQuery = cQuery.is(f.column, f.value === "null" ? null : f.value); }
+                  else { cQuery = cQuery[f.operator as "eq"](f.column, f.value); }
+                }
+              }
+              const { count: cnt, error: cErr } = await cQuery;
+              if (cErr) throw cErr;
+              result = `${cnt} registros em ${args.table}.`;
+              break;
+            }
+            // ===== SPECIFIC TOOLS =====
             case "toggle_automation": {
               const { error } = await supabase.from("tenant_automations").update({ is_enabled: args.enabled }).eq("tenant_id", tenantId).eq("automation_key", args.automation_key);
               if (error) throw error;
@@ -400,17 +618,27 @@ ${fullContext}
             case "get_mentee_details": {
               const { data: mm } = await supabase.from("memberships").select("user_id, created_at").eq("id", args.mentee_membership_id).single();
               if (!mm) { result = "Não encontrado."; break; }
-              const [{ data: prof }, { data: biz }, { data: tasks }, { data: prosp }, { data: trailProg, count: lc }, { data: certs }, { data: behav }, { data: act }] = await Promise.all([
+              const [{ data: prof }, { data: biz }, { data: tasks }, { data: prosp }, { data: trailProg, count: lc }, { data: certs }, { data: behav }, { data: act }, { data: mets }, { data: files }, { data: meetings }] = await Promise.all([
                 supabase.from("profiles").select("full_name, email, phone").eq("user_id", mm.user_id).maybeSingle(),
                 supabase.from("mentee_profiles").select("business_name, business_profile, pitch_context").eq("membership_id", args.mentee_membership_id).maybeSingle(),
                 supabase.from("campan_tasks").select("status_column, title, priority, due_date").eq("mentorado_membership_id", args.mentee_membership_id),
                 supabase.from("crm_prospections").select("status, temperature, contact_name, company").eq("membership_id", args.mentee_membership_id),
                 supabase.from("trail_progress").select("id", { count: "exact" }).eq("membership_id", args.mentee_membership_id).eq("completed", true),
-                supabase.from("certificates").select("id").eq("membership_id", args.mentee_membership_id),
-                supabase.from("behavioral_reports").select("disc_profile, enneagram_type, communication_style, strengths, challenges").eq("membership_id", args.mentee_membership_id).maybeSingle(),
-                supabase.from("activity_logs").select("action_type, action_description, created_at").eq("membership_id", args.mentee_membership_id).order("created_at", { ascending: false }).limit(10),
+                supabase.from("certificates").select("id, trail_id, issued_at").eq("membership_id", args.mentee_membership_id),
+                supabase.from("behavioral_reports").select("disc_profile, enneagram_type, communication_style, strengths, challenges, sales_recommendations").eq("membership_id", args.mentee_membership_id).maybeSingle(),
+                supabase.from("activity_logs").select("action_type, action_description, created_at").eq("membership_id", args.mentee_membership_id).order("created_at", { ascending: false }).limit(15),
+                supabase.from("metrics").select("metric_key, metric_value, period, created_at").eq("membership_id", args.mentee_membership_id).order("created_at", { ascending: false }).limit(20),
+                supabase.from("mentorado_files").select("file_name, created_at").eq("membership_id", args.mentee_membership_id).order("created_at", { ascending: false }).limit(10),
+                supabase.from("meeting_transcripts").select("title, meeting_date, status").eq("membership_id", args.mentee_membership_id).order("meeting_date", { ascending: false }).limit(5),
               ]);
-              result = JSON.stringify({ nome: prof?.full_name, email: prof?.email, telefone: prof?.phone, membro_desde: mm.created_at, negocio: biz?.business_name, perfil: biz?.business_profile, pitch: biz?.pitch_context, tarefas: { total: tasks?.length || 0, concluidas: tasks?.filter(t => t.status_column === "done").length || 0, pendentes: tasks?.filter(t => t.status_column === "todo").length || 0, atrasadas: tasks?.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status_column !== "done").length || 0 }, leads: { total: prosp?.length || 0, quentes: prosp?.filter(p => p.temperature === "hot").length || 0 }, trilhas: { licoes: lc || 0, certificados: certs?.length || 0 }, comportamental: behav || null, atividade: act?.map(a => `${a.action_type}: ${a.action_description}`) });
+              result = JSON.stringify({ nome: prof?.full_name, email: prof?.email, telefone: prof?.phone, membro_desde: mm.created_at, negocio: biz?.business_name, perfil: biz?.business_profile, pitch: biz?.pitch_context, tarefas: { total: tasks?.length || 0, concluidas: tasks?.filter(t => t.status_column === "done").length || 0, pendentes: tasks?.filter(t => t.status_column === "todo").length || 0, atrasadas: tasks?.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status_column !== "done").length || 0 }, leads: { total: prosp?.length || 0, quentes: prosp?.filter(p => p.temperature === "hot").length || 0 }, trilhas: { licoes: lc || 0, certificados: certs?.length || 0 }, comportamental: behav || null, metricas: mets || [], arquivos: files?.map(f => f.file_name) || [], reunioes: meetings || [], atividade: act?.map(a => `${a.action_type}: ${a.action_description}`) });
+              break;
+            }
+            case "assign_mentor": {
+              const { error } = await supabase.from("mentor_mentee_assignments").insert({ mentor_membership_id: args.mentor_membership_id, mentee_membership_id: args.mentee_membership_id, tenant_id: tenantId, status: "active" });
+              if (error) throw error;
+              result = "Mentor atribuído.";
+              executedActions.push(`assign_mentor`);
               break;
             }
             case "send_whatsapp_message": {
@@ -429,7 +657,6 @@ ${fullContext}
               break;
             }
             case "send_whatsapp_to_all": {
-              const results: string[] = [];
               let sent = 0, failed = 0;
               for (const m of (mentorados || [])) {
                 const p = menteeProfiles.find((x: any) => x.user_id === m.user_id);
@@ -544,6 +771,13 @@ ${fullContext}
               executedActions.push(`create_prospection:${args.contact_name}`);
               break;
             }
+            case "add_crm_interaction": {
+              const { error } = await supabase.from("crm_interactions").insert({ lead_id: args.lead_id || null, prospection_id: args.prospection_id || null, type: args.type, description: args.description, outcome: args.outcome || null });
+              if (error) throw error;
+              result = `Interação "${args.type}" registrada.`;
+              executedActions.push(`add_interaction:${args.type}`);
+              break;
+            }
             case "toggle_trail_publish": {
               await supabase.from("trails").update({ is_published: args.publish }).eq("id", args.trail_id).eq("tenant_id", tenantId);
               result = `Trilha ${args.publish ? "publicada" : "despublicada"}.`;
@@ -555,6 +789,34 @@ ${fullContext}
               const body = await r.json();
               result = r.ok ? `Trilha "${body.title || args.topic}" gerada com ${body.modules_count || "?"} módulos.` : `Erro: ${JSON.stringify(body)}`;
               executedActions.push(`generate_trail:${args.topic}`);
+              break;
+            }
+            case "create_trail": {
+              const { data: tr, error } = await supabase.from("trails").insert({ title: args.title, description: args.description || null, tenant_id: tenantId, owner_membership_id: membership_id, is_published: false }).select("id").single();
+              if (error) throw error;
+              result = `Trilha "${args.title}" criada (ID:${tr.id}).`;
+              executedActions.push(`create_trail:${args.title}`);
+              break;
+            }
+            case "create_trail_module": {
+              const { data: mod, error } = await supabase.from("trail_modules").insert({ trail_id: args.trail_id, title: args.title, position: args.position || 0 }).select("id").single();
+              if (error) throw error;
+              result = `Módulo "${args.title}" criado (ID:${mod.id}).`;
+              executedActions.push(`create_module:${args.title}`);
+              break;
+            }
+            case "create_lesson": {
+              const { error } = await supabase.from("trail_lessons").insert({ module_id: args.module_id, title: args.title, content: args.content || null, video_url: args.video_url || null, position: args.position || 0 });
+              if (error) throw error;
+              result = `Aula "${args.title}" criada.`;
+              executedActions.push(`create_lesson:${args.title}`);
+              break;
+            }
+            case "mark_lesson_complete": {
+              const { error } = await supabase.from("trail_progress").upsert({ membership_id: args.membership_id, lesson_id: args.lesson_id, completed: true, completed_at: new Date().toISOString() });
+              if (error) throw error;
+              result = "Aula marcada como concluída.";
+              executedActions.push(`complete_lesson`);
               break;
             }
             case "create_playbook": {
@@ -623,7 +885,9 @@ ${fullContext}
               const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
               const { count: act7 } = await supabase.from("activity_logs").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString());
               const overdueTasks = allTasks.filter((t: any) => t.due_date && new Date(t.due_date) < new Date() && t.status_column !== "done").length;
-              result = JSON.stringify({ mentorados: totalMentees, tarefas: { total: allTasks.length, concluidas: completedTasks, atrasadas: overdueTasks, taxa: allTasks.length > 0 ? Math.round(completedTasks / allTasks.length * 100) + "%" : "0%" }, leads: { total: allProspections.length, quentes: hotLeads }, trilhas: { licoes: lc2 || 0, certificados: cc || 0 }, atividade_7d: act7 || 0, automacoes_ativas: `${automations?.filter(a => a.is_enabled).length}/${automations?.length}` });
+              const { count: emailsSent } = await supabase.from("email_logs").select("id", { count: "exact" }).gte("sent_at", weekAgo.toISOString());
+              const { count: filesCount } = await supabase.from("mentorado_files").select("id", { count: "exact" }).eq("tenant_id", tenantId);
+              result = JSON.stringify({ mentorados: totalMentees, tarefas: { total: allTasks.length, concluidas: completedTasks, atrasadas: overdueTasks, taxa: allTasks.length > 0 ? Math.round(completedTasks / allTasks.length * 100) + "%" : "0%" }, leads: { total: allProspections.length, quentes: hotLeads }, trilhas: { licoes: lc2 || 0, certificados: cc || 0 }, atividade_7d: act7 || 0, emails_7d: emailsSent || 0, arquivos: filesCount || 0, automacoes_ativas: `${automations?.filter(a => a.is_enabled).length}/${automations?.length}`, alertas_abertos: smartAlerts?.length || 0 });
               break;
             }
             case "award_badge": {
@@ -637,6 +901,13 @@ ${fullContext}
               if (error) throw error;
               result = `Badge "${args.name}" criado.`;
               executedActions.push(`create_badge:${args.name}`);
+              break;
+            }
+            case "create_reward": {
+              const { error } = await supabase.from("reward_catalog").insert({ name: args.name, description: args.description || null, points_cost: args.points_cost, is_active: args.is_active !== false, tenant_id: tenantId });
+              if (error) throw error;
+              result = `Recompensa "${args.name}" criada.`;
+              executedActions.push(`create_reward:${args.name}`);
               break;
             }
             case "get_form_submissions": {
@@ -664,7 +935,7 @@ ${fullContext}
               break;
             }
             case "add_form_question": {
-              const opts = args.options ? args.options.map((o: string, i: number) => ({ label: o, value: o })) : null;
+              const opts = args.options ? args.options.map((o: string) => ({ label: o, value: o })) : null;
               const { error } = await supabase.from("form_questions").insert({ form_id: args.form_id, question_text: args.question_text, question_type: args.question_type || "text", options: opts, is_required: args.is_required !== false, order_index: args.order_index || 0 });
               if (error) throw error;
               result = `Pergunta adicionada: "${args.question_text}".`;
@@ -682,6 +953,13 @@ ${fullContext}
               if (error) throw error;
               result = `Popup "${args.title}" criado.`;
               executedActions.push(`create_popup:${args.title}`);
+              break;
+            }
+            case "create_email_template": {
+              const { error } = await supabase.from("email_templates").insert({ name: args.name, subject: args.subject, body_html: args.body_html, owner_membership_id: membership_id, tenant_id: tenantId });
+              if (error) throw error;
+              result = `Template "${args.name}" criado.`;
+              executedActions.push(`create_template:${args.name}`);
               break;
             }
             case "list_pending_invites": {
@@ -716,6 +994,20 @@ ${fullContext}
               result = JSON.stringify({ dias_no_programa: daysSinceJoin, etapa_atual: currentStage?.name || "Fora da jornada", jornada: stages.map(s => ({ nome: s.name, dia_inicio: s.day_start, dia_fim: s.day_end, atual: s === currentStage })) });
               break;
             }
+            case "create_journey": {
+              const { data: j, error } = await supabase.from("cs_journeys").insert({ name: args.name, total_days: args.total_days, is_default: args.is_default || false, tenant_id: tenantId }).select("id").single();
+              if (error) throw error;
+              result = `Jornada "${args.name}" criada (ID:${j.id}).`;
+              executedActions.push(`create_journey:${args.name}`);
+              break;
+            }
+            case "create_journey_stage": {
+              const { error } = await supabase.from("cs_journey_stages").insert({ journey_id: args.journey_id, name: args.name, stage_key: args.stage_key, day_start: args.day_start, day_end: args.day_end, color: args.color || "#6366f1", position: args.position || 0, tenant_id: tenantId });
+              if (error) throw error;
+              result = `Etapa "${args.name}" criada na jornada.`;
+              executedActions.push(`create_journey_stage:${args.name}`);
+              break;
+            }
             case "update_tenant_settings": {
               const { data: t } = await supabase.from("tenants").select("settings").eq("id", tenantId).single();
               const settings = (t?.settings || {}) as Record<string, any>;
@@ -748,6 +1040,13 @@ ${fullContext}
               executedActions.push(`create_stage:${args.name}`);
               break;
             }
+            case "create_stage_automation": {
+              const { error } = await supabase.from("crm_stage_automations").insert({ from_stage_key: args.from_stage_key, to_stage_key: args.to_stage_key, delay_days: args.delay_days, is_active: args.is_active !== false, tenant_id: tenantId, membership_id: membership_id });
+              if (error) throw error;
+              result = `Automação ${args.from_stage_key}→${args.to_stage_key} criada.`;
+              executedActions.push(`create_stage_automation`);
+              break;
+            }
             case "bulk_send_email": {
               let sent = 0, failed = 0;
               for (const mid of args.mentee_membership_ids) {
@@ -773,6 +1072,39 @@ ${fullContext}
               await supabase.from("activity_logs").insert({ membership_id: args.mentee_membership_id, tenant_id: tenantId, action_type: args.action_type, action_description: args.description, points_earned: args.points || 0 });
               result = `Atividade "${args.action_type}" registrada.`;
               executedActions.push(`log_activity:${args.action_type}`);
+              break;
+            }
+            case "resolve_alert": {
+              await supabase.from("smart_alerts").update({ is_resolved: true, resolved_at: new Date().toISOString() }).eq("id", args.alert_id).eq("tenant_id", tenantId);
+              result = "Alerta resolvido.";
+              executedActions.push(`resolve_alert:${args.alert_id}`);
+              break;
+            }
+            case "create_behavioral_question": {
+              const { error } = await supabase.from("behavioral_questions").insert({ question_text: args.question_text, question_type: args.question_type || "custom", options: args.options, order_index: args.order_index || 0, is_required: args.is_required !== false, is_active: true, tenant_id: tenantId, owner_membership_id: membership_id });
+              if (error) throw error;
+              result = `Pergunta comportamental criada.`;
+              executedActions.push(`create_behavioral_q`);
+              break;
+            }
+            case "toggle_wa_flow": {
+              await supabase.from("whatsapp_automation_flows").update({ is_active: args.is_active }).eq("id", args.flow_id).eq("tenant_id", tenantId);
+              result = `Fluxo WA ${args.is_active ? "ativado" : "desativado"}.`;
+              executedActions.push(`toggle_wa_flow:${args.flow_id}`);
+              break;
+            }
+            case "set_availability": {
+              await supabase.from("scheduling_availability").upsert({ membership_id, day_of_week: args.day_of_week, start_time: args.start_time, end_time: args.end_time, tenant_id: tenantId }, { onConflict: "membership_id,day_of_week" });
+              const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+              result = `Disponibilidade ${days[args.day_of_week]}: ${args.start_time}-${args.end_time}.`;
+              executedActions.push(`set_availability:${days[args.day_of_week]}`);
+              break;
+            }
+            case "call_edge_function": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/${args.function_name}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ ...args.payload, tenant_id: tenantId }) });
+              const body = await r.text();
+              result = r.ok ? `Função ${args.function_name} executada: ${body.substring(0, 500)}` : `Erro: ${body.substring(0, 300)}`;
+              executedActions.push(`edge_fn:${args.function_name}`);
               break;
             }
             default:
