@@ -43,7 +43,7 @@ export interface TenantContextType {
   switchMembership: (membershipId: string) => Promise<void>;
   endImpersonation: () => Promise<void>;
   refreshMemberships: () => Promise<void>;
-  refreshMembershipsAndWait: () => Promise<Membership[]>;
+  refreshMembershipsAndWait: (overrideUserId?: string) => Promise<Membership[]>;
   refreshTenant: () => Promise<void>;
   hasRole: (roles: MembershipRole | MembershipRole[]) => boolean;
   isAdmin: boolean;
@@ -264,8 +264,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Fetch memberships when user changes
-  const fetchMemberships = useCallback(async () => {
-     if (!user?.id) {
+  const fetchMemberships = useCallback(async (overrideUserId?: string) => {
+     const effectiveUserId = overrideUserId || user?.id;
+     if (!effectiveUserId) {
        setMemberships([]);
        setActiveMembership(null);
        setRealMembership(null);
@@ -276,7 +277,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     try {
       const { data: membershipData, error } = await supabase
-        .rpc('get_user_memberships', { _user_id: user.id });
+        .rpc('get_user_memberships', { _user_id: effectiveUserId });
 
       if (error) throw error;
 
@@ -302,7 +303,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         tenant_id: m.tenant_id,
         tenant_name: m.tenant_name,
         tenant_slug: m.tenant_slug,
-        user_id: user.id,
+        user_id: effectiveUserId,
         role: m.role,
         status: m.status,
         // Both admin and master_admin can impersonate
@@ -609,7 +610,7 @@ export function useTenant() {
       switchMembership: async () => {},
       endImpersonation: async () => {},
       refreshMemberships: async () => {},
-      refreshMembershipsAndWait: async () => [],
+      refreshMembershipsAndWait: async () => [] as Membership[],
       refreshTenant: async () => {},
       hasRole: () => false,
       isAdmin: false,

@@ -137,8 +137,8 @@ export default function TenantAuthPage() {
         return;
       }
       const targetPath = redirectHint || bootstrap.redirect_path || "/mentorado";
-      await new Promise(r => setTimeout(r, 500));
-      await refreshMembershipsAndWait();
+      // Pass userId directly to avoid race condition where useAuth hasn't updated yet
+      await refreshMembershipsAndWait(session.user.id);
       await new Promise(r => setTimeout(r, 100));
       navigate(targetPath, { replace: true });
     } catch {
