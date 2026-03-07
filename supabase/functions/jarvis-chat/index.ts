@@ -639,7 +639,7 @@ ${fullContext}
       const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: followUp, stream: true }),
+        body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: followUp, stream: true }),
       });
       if (!streamResp.ok) throw new Error(`Stream error: ${streamResp.status}`);
 
