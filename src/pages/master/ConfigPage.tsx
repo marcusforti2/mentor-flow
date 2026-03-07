@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Settings, Palette, ToggleLeft, Key,
   Save, Loader2, CheckCircle2, XCircle, Globe, Building2, MessageCircle,
+  Download, Database, FolderDown, RefreshCw, FileJson,
 } from 'lucide-react';
 
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
@@ -493,6 +494,150 @@ function WhatsAppConfigSection({ tenantId }: { tenantId: string }) {
   );
 }
 
+// ─── Backup Section ──────────────────────────────────────────
+
+function BackupSection() {
+  const [running, setRunning] = useState(false);
+  const [backups, setBackups] = useState<{ name: string; created_at: string }[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const fetchBackups = async () => {
+    setLoadingList(true);
+    const { data, error } = await supabase.storage
+      .from('data-backups')
+      .list('', { limit: 50, sortBy: { column: 'name', order: 'desc' } });
+    if (!error && data) {
+      setBackups(data.filter(f => f.name.startsWith('backup-')).map(f => ({
+        name: f.name,
+        created_at: f.name.replace('backup-', '').replace(/_/g, ' '),
+      })));
+    }
+    setLoadingList(false);
+  };
+
+  useEffect(() => { fetchBackups(); }, []);
+
+  const runBackup = async () => {
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('export-backup');
+      if (error) throw error;
+      toast.success(`Backup concluído! ${data.total_rows} registros em ${data.total_tables} tabelas.`);
+      fetchBackups();
+    } catch (err: any) {
+      toast.error('Erro ao executar backup: ' + (err.message || 'Erro'));
+    }
+    setRunning(false);
+  };
+
+  const downloadBackup = async (folderName: string) => {
+    setDownloading(folderName);
+    try {
+      // List files in the folder
+      const { data: files, error } = await supabase.storage
+        .from('data-backups')
+        .list(folderName, { limit: 100 });
+      if (error || !files) throw new Error('Erro ao listar arquivos');
+
+      // Download each file and create a combined JSON
+      const allData: Record<string, unknown> = {};
+      for (const file of files) {
+        const { data: blob, error: dlErr } = await supabase.storage
+          .from('data-backups')
+          .download(`${folderName}/${file.name}`);
+        if (!dlErr && blob) {
+          const text = await blob.text();
+          try {
+            allData[file.name.replace('.json', '')] = JSON.parse(text);
+          } catch { allData[file.name] = text; }
+        }
+      }
+
+      // Trigger browser download
+      const jsonStr = JSON.stringify(allData, null, 2);
+      const downloadBlob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(downloadBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${folderName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Download concluído!');
+    } catch (err: any) {
+      toast.error('Erro no download: ' + (err.message || 'Erro'));
+    }
+    setDownloading(null);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-primary" />
+          Backup de Dados
+        </CardTitle>
+        <CardDescription>
+          Exporte todas as tabelas críticas como JSON. Backups automáticos rodam todo domingo às 3h UTC.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button onClick={runBackup} disabled={running}>
+            {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FolderDown className="h-4 w-4 mr-2" />}
+            {running ? 'Executando backup...' : 'Executar Backup Agora'}
+          </Button>
+          <Button variant="outline" size="icon" onClick={fetchBackups} disabled={loadingList}>
+            <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Backups disponíveis</p>
+          {loadingList ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : backups.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum backup encontrado</p>
+          ) : (
+            <div className="space-y-1">
+              {backups.map((b) => (
+                <div
+                  key={b.name}
+                  className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileJson className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-mono text-foreground">{b.name}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => downloadBackup(b.name)}
+                    disabled={downloading === b.name}
+                  >
+                    {downloading === b.name ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Baixar tudo
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Config Page ────────────────────────────────────────
 
 export default function ConfigPage() {
@@ -566,6 +711,10 @@ export default function ConfigPage() {
               <MessageCircle className="h-4 w-4 mr-2" />
               WhatsApp
             </TabsTrigger>
+            <TabsTrigger value="backup" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+              <Database className="h-4 w-4 mr-2" />
+              Backup
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="platform" className="mt-6">
@@ -582,6 +731,10 @@ export default function ConfigPage() {
 
           <TabsContent value="whatsapp" className="mt-6">
             <WhatsAppConfigSection tenantId={selectedTenantId} />
+          </TabsContent>
+
+          <TabsContent value="backup" className="mt-6">
+            <BackupSection />
           </TabsContent>
         </Tabs>
       ) : (
