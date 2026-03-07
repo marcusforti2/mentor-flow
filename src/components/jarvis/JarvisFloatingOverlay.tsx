@@ -6,6 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useJarvis, type JarvisMessage } from '@/hooks/useJarvis';
+import { useScribe } from '@elevenlabs/react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
 // Strip markdown for TTS
@@ -29,7 +32,7 @@ export function JarvisFloatingOverlay() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Voice state
+  // Voice state (overlay mode)
   const [isListening, setIsListening] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -39,6 +42,165 @@ export function JarvisFloatingOverlay() {
   const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const [input, setInput] = useState('');
+
+  // ===== STEALTH VOICE MODE =====
+  const [stealthActive, setStealthActive] = useState(false);
+  const [stealthListening, setStealthListening] = useState(false);
+  const [stealthSttConnected, setStealthSttConnected] = useState(false);
+  const [stealthResponse, setStealthResponse] = useState<string | null>(null);
+  const [stealthPartial, setStealthPartial] = useState('');
+  const [stealthSpeaking, setStealthSpeaking] = useState(false);
+  const stealthAudioRef = useRef<HTMLAudioElement | null>(null);
+  const stealthLastSpokenRef = useRef<string | null>(null);
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stealthScribe = useScribe({
+    modelId: 'scribe_v2_realtime' as any,
+    commitStrategy: 'vad' as any,
+    onPartialTranscript: (data: any) => {
+      if (data.text) setStealthPartial(data.text);
+    },
+    onCommittedTranscript: (data: any) => {
+      if (data.text?.trim()) {
+        setStealthPartial('');
+        stealthStopListening();
+        jarvis.sendMessage(data.text.trim());
+      }
+    },
+  });
+
+  const stealthStartListening = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
+      if (error || !data?.token) { toast.error('Erro ao iniciar microfone'); return; }
+      await stealthScribe.connect({
+        token: data.token,
+        microphone: { echoCancellation: true, noiseSuppression: true },
+      });
+      setStealthListening(true);
+      setStealthSttConnected(true);
+    } catch (err) {
+      console.error('Stealth STT error:', err);
+      toast.error('Não foi possível acessar o microfone');
+      setStealthActive(false);
+    }
+  }, [stealthScribe]);
+
+  const stealthStopListening = useCallback(() => {
+    if (stealthSttConnected) {
+      stealthScribe.disconnect();
+      setStealthSttConnected(false);
+    }
+    setStealthListening(false);
+  }, [stealthScribe, stealthSttConnected]);
+
+  const deactivateStealth = useCallback(() => {
+    stealthStopListening();
+    if (stealthAudioRef.current) {
+      stealthAudioRef.current.pause();
+      stealthAudioRef.current = null;
+    }
+    setStealthActive(false);
+    setStealthResponse(null);
+    setStealthPartial('');
+    setStealthSpeaking(false);
+  }, [stealthStopListening]);
+
+  // Auto-start listening when stealth activates
+  useEffect(() => {
+    if (stealthActive && !stealthListening && !jarvis.isLoading && !stealthSpeaking) {
+      stealthStartListening();
+    }
+  }, [stealthActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Watch for Jarvis response in stealth mode
+  useEffect(() => {
+    if (!stealthActive) return;
+    const lastMsg = jarvis.messages[jarvis.messages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.isStreaming) return;
+    if (stealthLastSpokenRef.current === lastMsg.id) return;
+    stealthLastSpokenRef.current = lastMsg.id;
+
+    const text = stripMarkdown(lastMsg.content);
+    setStealthResponse(lastMsg.content);
+
+    // Auto-hide response after 8s
+    setTimeout(() => setStealthResponse(null), 8000);
+
+    // TTS
+    if (text && text.length >= 5) {
+      stealthSpeakTTS(text);
+    } else {
+      // No TTS, restart listening
+      setTimeout(() => stealthStartListening(), 500);
+    }
+  }, [jarvis.messages, stealthActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const stealthSpeakTTS = async (text: string) => {
+    setStealthSpeaking(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text }),
+        }
+      );
+      if (!response.ok) throw new Error('TTS failed');
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      stealthAudioRef.current = audio;
+      audio.onended = () => {
+        setStealthSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+        // Auto-restart listening
+        if (stealthActive) {
+          setTimeout(() => stealthStartListening(), 300);
+        }
+      };
+      audio.onerror = () => {
+        setStealthSpeaking(false);
+        if (stealthActive) setTimeout(() => stealthStartListening(), 300);
+      };
+      await audio.play();
+    } catch {
+      setStealthSpeaking(false);
+      if (stealthActive) setTimeout(() => stealthStartListening(), 300);
+    }
+  };
+
+  // Handle FAB clicks: double-click = stealth, single = open overlay
+  const handleFabClick = useCallback(() => {
+    if (stealthActive) {
+      deactivateStealth();
+      return;
+    }
+
+    clickCountRef.current += 1;
+
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+
+    if (clickCountRef.current >= 2) {
+      clickCountRef.current = 0;
+      // Double-click → stealth mode
+      setStealthActive(true);
+      toast('🎤 Modo voz ativado — fale com o Jarvis', { duration: 2000 });
+    } else {
+      clickTimerRef.current = setTimeout(() => {
+        if (clickCountRef.current === 1) {
+          setIsOpen(true);
+        }
+        clickCountRef.current = 0;
+      }, 300);
+    }
+  }, [stealthActive, deactivateStealth]);
 
   // Global hotkey: Ctrl+Alt+J or Cmd+Alt+J
   useEffect(() => {
@@ -50,10 +212,13 @@ export function JarvisFloatingOverlay() {
       if (e.key === 'Escape' && isOpen) {
         setIsOpen(false);
       }
+      if (e.key === 'Escape' && stealthActive) {
+        deactivateStealth();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isOpen]);
+  }, [isOpen, stealthActive, deactivateStealth]);
 
   // Focus input when opening
   useEffect(() => {
@@ -109,7 +274,7 @@ export function JarvisFloatingOverlay() {
     }
   }, [jarvis.messages, navigate]);
 
-  // TTS
+  // Overlay TTS (browser native, only when overlay is open)
   useEffect(() => {
     if (!ttsEnabled || !hasSpeechSynthesis) return;
     const lastMsg = jarvis.messages[jarvis.messages.length - 1];
@@ -131,7 +296,7 @@ export function JarvisFloatingOverlay() {
     window.speechSynthesis.speak(utterance);
   }, [jarvis.messages, ttsEnabled, hasSpeechSynthesis]);
 
-  // STT
+  // Overlay STT
   const toggleListening = useCallback(() => {
     if (!hasSpeechRecognition) return;
     if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return; }
@@ -180,23 +345,89 @@ export function JarvisFloatingOverlay() {
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 group"
-        title="Jarvis IA (Ctrl+Alt+J)"
-      >
-        {/* Neural network glow effect */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-violet-500 to-purple-700 blur-lg opacity-60 group-hover:opacity-90 transition-opacity scale-110 animate-pulse" />
-        <div className="relative h-14 w-14 rounded-full bg-gradient-to-br from-purple-600 via-violet-500 to-purple-800 flex items-center justify-center shadow-2xl shadow-purple-500/40 border border-purple-400/30 transition-transform group-hover:scale-110">
-          {/* Animated neural rings */}
-          <div className="absolute inset-0 rounded-full border border-purple-400/20 animate-ping" style={{ animationDuration: '3s' }} />
-          <div className="absolute -inset-1 rounded-full border border-purple-400/10 animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }} />
-          <Bot className="h-6 w-6 text-white drop-shadow-lg" />
-        </div>
-        <span className="absolute -top-8 right-0 bg-card/90 backdrop-blur-sm text-[10px] text-foreground px-2 py-1 rounded-lg border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
-          Ctrl+Alt+J
-        </span>
-      </button>
+      <>
+        {/* Stealth mode floating indicators */}
+        {stealthActive && (
+          <>
+            {/* Listening indicator */}
+            {stealthListening && (
+              <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
+                <div className="relative">
+                  <Mic className="h-4 w-4 text-purple-400" />
+                  <div className="absolute -inset-1 rounded-full border border-purple-400/40 animate-ping" />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {stealthPartial || 'Escutando...'}
+                </span>
+              </div>
+            )}
+
+            {/* Loading indicator */}
+            {jarvis.isLoading && !stealthListening && (
+              <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
+                <Bot className="h-4 w-4 text-purple-400 animate-pulse" />
+                <span className="text-xs text-muted-foreground">Processando...</span>
+              </div>
+            )}
+
+            {/* Speaking indicator */}
+            {stealthSpeaking && (
+              <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
+                <Volume2 className="h-4 w-4 text-purple-400" />
+                <span className="text-xs text-muted-foreground">Falando...</span>
+              </div>
+            )}
+
+            {/* Response bubble */}
+            {stealthResponse && (
+              <div className="fixed bottom-24 right-6 z-50 max-w-sm bg-card/95 backdrop-blur-xl border border-purple-500/20 rounded-2xl px-4 py-3 shadow-2xl shadow-purple-500/10 animate-in slide-in-from-right-5 fade-in-0 duration-300">
+                <div className="prose prose-sm prose-invert max-w-none text-foreground text-xs [&_p]:mb-1 [&_strong]:text-foreground">
+                  <ReactMarkdown>{stealthResponse}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* FAB button */}
+        <button
+          onClick={handleFabClick}
+          className="fixed bottom-6 right-6 z-50 group"
+          title="Jarvis IA — clique duplo para modo voz"
+        >
+          {/* Neural network glow effect */}
+          <div className={cn(
+            "absolute inset-0 rounded-full blur-lg transition-opacity scale-110",
+            stealthActive
+              ? "bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-600 opacity-80 animate-pulse"
+              : "bg-gradient-to-r from-purple-600 via-violet-500 to-purple-700 opacity-60 group-hover:opacity-90"
+          )} />
+          <div className={cn(
+            "relative h-14 w-14 rounded-full flex items-center justify-center shadow-2xl border transition-transform group-hover:scale-110",
+            stealthActive
+              ? "bg-gradient-to-br from-emerald-500 via-green-400 to-emerald-600 shadow-emerald-500/40 border-emerald-400/30"
+              : "bg-gradient-to-br from-purple-600 via-violet-500 to-purple-800 shadow-purple-500/40 border-purple-400/30"
+          )}>
+            {/* Animated neural rings */}
+            <div className={cn(
+              "absolute inset-0 rounded-full border animate-ping",
+              stealthActive ? "border-emerald-400/30" : "border-purple-400/20"
+            )} style={{ animationDuration: '3s' }} />
+            <div className={cn(
+              "absolute -inset-1 rounded-full border animate-ping",
+              stealthActive ? "border-emerald-400/15" : "border-purple-400/10"
+            )} style={{ animationDuration: '4s', animationDelay: '1s' }} />
+            {stealthActive ? (
+              <Mic className="h-6 w-6 text-white drop-shadow-lg" />
+            ) : (
+              <Bot className="h-6 w-6 text-white drop-shadow-lg" />
+            )}
+          </div>
+          <span className="absolute -top-8 right-0 bg-card/90 backdrop-blur-sm text-[10px] text-foreground px-2 py-1 rounded-lg border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+            {stealthActive ? 'Clique para desativar' : '2x clique = modo voz'}
+          </span>
+        </button>
+      </>
     );
   }
 
