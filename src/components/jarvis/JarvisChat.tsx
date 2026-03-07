@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Square, Trash2, Bot, User, Zap, CheckCircle2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Square, Trash2, Bot, User, CheckCircle2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { type JarvisMessage } from '@/hooks/useJarvis';
 import ReactMarkdown from 'react-markdown';
@@ -30,16 +29,127 @@ function getActionLabel(action: string) {
   return `${ACTION_LABELS[key] || key}${detail ? `: ${detail}` : ''}`;
 }
 
+// Strip markdown for TTS
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`{1,3}[^`]*`{1,3}/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[>\-•]/g, '')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, ' ')
+    .trim();
+}
+
 export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Props) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Voice state
+  const [isListening, setIsListening] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const lastSpokenMsgRef = useRef<string | null>(null);
+
+  // Check browser support
+  const hasSpeechRecognition = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   // Auto-scroll
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // TTS: speak new assistant messages
+  useEffect(() => {
+    if (!ttsEnabled || !hasSpeechSynthesis) return;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant' || lastMsg.isStreaming) return;
+    if (lastSpokenMsgRef.current === lastMsg.id) return;
+
+    lastSpokenMsgRef.current = lastMsg.id;
+    const text = stripMarkdown(lastMsg.content);
+    if (!text) return;
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 1.05;
+    utterance.pitch = 0.95;
+
+    // Try to find a good PT-BR voice
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find(v => v.lang.startsWith('pt') && v.name.toLowerCase().includes('google')) ||
+                    voices.find(v => v.lang.startsWith('pt-BR')) ||
+                    voices.find(v => v.lang.startsWith('pt'));
+    if (ptVoice) utterance.voice = ptVoice;
+
+    window.speechSynthesis.speak(utterance);
+  }, [messages, ttsEnabled, hasSpeechSynthesis]);
+
+  // Stop TTS when disabled
+  useEffect(() => {
+    if (!ttsEnabled && hasSpeechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }, [ttsEnabled, hasSpeechSynthesis]);
+
+  // STT: start/stop listening
+  const toggleListening = useCallback(() => {
+    if (!hasSpeechRecognition) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    let finalTranscript = '';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interim = transcript;
+        }
+      }
+      setInput(finalTranscript || interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      // Auto-send if we got a final transcript
+      if (finalTranscript.trim()) {
+        onSend(finalTranscript.trim());
+        setInput('');
+        finalTranscript = '';
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening, hasSpeechRecognition, onSend]);
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
@@ -71,6 +181,11 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               Seu centro de comando inteligente. Posso gerenciar automações, enviar mensagens,
               criar campanhas, agendar eventos e analisar seus mentorados. O que precisa?
             </p>
+            {hasSpeechRecognition && (
+              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <Mic className="h-3 w-3" /> Clique no microfone para falar comigo
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
                 '📊 Como estão meus mentorados?',
@@ -105,7 +220,6 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted/50 border border-border/30"
             )}>
-              {/* Executed actions */}
               {msg.actions && msg.actions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {msg.actions.map((action, i) => (
@@ -171,28 +285,69 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
+
+          {/* TTS toggle */}
+          {hasSpeechSynthesis && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-10 w-10 shrink-0 transition-colors",
+                ttsEnabled ? "text-primary bg-primary/10" : "text-muted-foreground"
+              )}
+              onClick={() => setTtsEnabled(!ttsEnabled)}
+              title={ttsEnabled ? "Desativar voz do Jarvis" : "Ativar voz do Jarvis"}
+            >
+              {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
+          )}
+
           <div className="flex-1 relative">
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Pergunte ao Jarvis... (Enter para enviar, Shift+Enter para nova linha)"
-              className="min-h-[44px] max-h-32 resize-none pr-12 bg-muted/30 border-border/50"
+              placeholder={isListening ? "🎤 Escutando..." : "Pergunte ao Jarvis... (Enter para enviar)"}
+              className={cn(
+                "min-h-[44px] max-h-32 resize-none pr-20 bg-muted/30 border-border/50",
+                isListening && "border-primary/50 ring-1 ring-primary/30"
+              )}
               rows={1}
             />
-            <Button
-              size="icon"
-              className="absolute right-2 bottom-2 h-7 w-7"
-              onClick={isLoading ? onStop : handleSubmit}
-              disabled={!isLoading && !input.trim()}
-            >
-              {isLoading ? <Square className="h-3 w-3" /> : <Send className="h-3 w-3" />}
-            </Button>
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              {/* Mic button */}
+              {hasSpeechRecognition && (
+                <Button
+                  size="icon"
+                  variant={isListening ? "default" : "ghost"}
+                  className={cn(
+                    "h-7 w-7",
+                    isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
+                  )}
+                  onClick={toggleListening}
+                  title={isListening ? "Parar de escutar" : "Falar com Jarvis"}
+                >
+                  {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                </Button>
+              )}
+              {/* Send / Stop button */}
+              <Button
+                size="icon"
+                className="h-7 w-7"
+                onClick={isLoading ? onStop : handleSubmit}
+                disabled={!isLoading && !input.trim()}
+              >
+                {isLoading ? <Square className="h-3 w-3" /> : <Send className="h-3 w-3" />}
+              </Button>
+            </div>
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Jarvis pode executar ações reais: automações, WhatsApp, email e calendário.
+          {isListening
+            ? "🎤 Fale agora — sua mensagem será enviada automaticamente ao parar"
+            : "Jarvis pode executar ações reais: automações, WhatsApp, email e calendário."
+          }
         </p>
       </div>
     </div>
