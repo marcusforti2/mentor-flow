@@ -431,6 +431,10 @@ export default function WhatsAppCampaigns() {
             <Clock className="h-4 w-4" />
             Histórico
           </TabsTrigger>
+          <TabsTrigger value="crm" className="gap-1.5">
+            <Contact className="h-4 w-4" />
+            CRM
+          </TabsTrigger>
         </TabsList>
 
         {/* ======= DASHBOARD TAB ======= */}
