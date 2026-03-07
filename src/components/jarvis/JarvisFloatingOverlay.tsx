@@ -157,7 +157,7 @@ export function JarvisFloatingOverlay() {
       stealthRetryCountRef.current += 1;
       if (stealthRetryCountRef.current >= STEALTH_MAX_RETRIES) {
         toast.error('Microfone indisponível. Clique duplo para tentar novamente.');
-        deactivateStealth();
+        setStealthActive(false);
       } else {
         toast.error('Erro no microfone, tentando novamente...');
       }
