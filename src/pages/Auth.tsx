@@ -31,6 +31,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
   const [countdown, setCountdown] = useState(0);
+  const [otpChannel, setOtpChannel] = useState<"email" | "whatsapp">("email");
   
   // Multi-tenant selection state
   const [availableTenants, setAvailableTenants] = useState<TenantOption[]>([]);
