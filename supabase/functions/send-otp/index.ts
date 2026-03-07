@@ -29,7 +29,6 @@ const DEFAULT_BRANDING: TenantBranding = {
 };
 
 function hslToHex(hslStr: string): string {
-  // Parse "330 80% 64%" or "260 80% 60%" format
   const parts = hslStr.trim().split(/\s+/);
   if (parts.length < 3) return "#d4af37";
   const h = parseFloat(parts[0]);
@@ -48,7 +47,6 @@ function resolveColor(raw: string | null | undefined): string {
   if (!raw) return "#d4af37";
   const trimmed = raw.trim();
   if (trimmed.startsWith('#')) return trimmed;
-  // Assume HSL space-separated
   return hslToHex(trimmed);
 }
 
@@ -61,7 +59,6 @@ async function getTenantBranding(supabase: any, tenantId: string | null): Promis
       .eq("id", tenantId)
       .maybeSingle();
     if (!tenant) return DEFAULT_BRANDING;
-    // Priority: tenant.primary_color > brand_attributes.primary_color > default
     const primaryColor = resolveColor(tenant.primary_color || tenant.brand_attributes?.primary_color);
     const brandName = tenant.name || DEFAULT_BRANDING.name;
     return {
@@ -112,13 +109,94 @@ function buildOtpEmailHtml(code: string, b: TenantBranding): string {
 </html>`;
 }
 
+// ── WhatsApp OTP sender ──
+async function sendOtpViaWhatsApp(
+  supabase: any,
+  tenantId: string,
+  phone: string,
+  code: string,
+  branding: TenantBranding,
+): Promise<{ success: boolean; error?: string }> {
+  // Get tenant WhatsApp config
+  const { data: whatsappConfig } = await supabase
+    .from("tenant_whatsapp_config")
+    .select("ultramsg_instance_id, ultramsg_token, is_active")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (!whatsappConfig?.ultramsg_instance_id || !whatsappConfig?.ultramsg_token) {
+    return { success: false, error: "WhatsApp não configurado para este programa" };
+  }
+
+  if (!whatsappConfig.is_active) {
+    return { success: false, error: "WhatsApp desativado para este programa" };
+  }
+
+  const cleanPhone = phone.replace(/\D/g, "");
+  const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+
+  const message = `🔐 *${branding.name}*\n\nSeu código de acesso:\n\n*${code}*\n\n⏱️ Expira em 10 minutos.\n\nSe você não solicitou, ignore esta mensagem.`;
+
+  const response = await fetch(
+    `https://api.ultramsg.com/${whatsappConfig.ultramsg_instance_id}/messages/chat`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: whatsappConfig.ultramsg_token,
+        to: formattedPhone,
+        body: message,
+      }),
+    },
+  );
+
+  const data = await response.json();
+  if (!response.ok || data.error) {
+    console.error("WhatsApp OTP send error:", data);
+    return { success: false, error: "Erro ao enviar WhatsApp" };
+  }
+
+  return { success: true };
+}
+
+// ── Resolve phone for a user ──
+async function resolvePhone(
+  supabase: any,
+  email: string,
+  tenantHint: string | null,
+): Promise<string | null> {
+  // 1. Try profile phone
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("phone")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (profile?.phone) return profile.phone;
+
+  // 2. Try invite metadata phone
+  const { data: invite } = await supabase
+    .from("invites")
+    .select("metadata")
+    .eq("email", email)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const invitePhone = invite?.metadata?.phone;
+  if (invitePhone) return invitePhone;
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { email, tenant_hint } = await req.json();
+    const { email, tenant_hint, channel, phone: providedPhone } = await req.json();
 
     if (!email) throw new Error("Email é obrigatório");
 
@@ -130,7 +208,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const normalizedEmail = email.toLowerCase().trim();
-    console.log("send-otp: Checking permission for:", normalizedEmail, "tenant_hint:", tenant_hint);
+    const otpChannel = channel || "email"; // "email" | "whatsapp"
+
+    console.log("send-otp: Checking permission for:", normalizedEmail, "tenant_hint:", tenant_hint, "channel:", otpChannel);
 
     const { data: permissionRows, error: permError } = await supabase
       .rpc('can_receive_otp', { _email: normalizedEmail, _tenant_hint: tenant_hint || null });
@@ -156,8 +236,8 @@ serve(async (req) => {
       );
     }
 
-    // Fetch tenant branding for white-label emails
-    const branding = await getTenantBranding(supabase, permission.tenant_id || tenant_hint || null);
+    const resolvedTenantId = permission.tenant_id || tenant_hint || null;
+    const branding = await getTenantBranding(supabase, resolvedTenantId);
 
     const code = generateOTPCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -169,6 +249,32 @@ serve(async (req) => {
     });
     if (insertError) throw new Error("Erro ao gerar código");
 
+    // ── Send via chosen channel ──
+    if (otpChannel === "whatsapp") {
+      if (!resolvedTenantId) {
+        throw new Error("Tenant não identificado para envio via WhatsApp");
+      }
+
+      // Resolve phone: use provided phone, or lookup from profile/invite
+      const phone = providedPhone || await resolvePhone(supabase, normalizedEmail, resolvedTenantId);
+      if (!phone) {
+        throw new Error("Número de WhatsApp não encontrado. Use o envio por email.");
+      }
+
+      console.log("send-otp: Sending OTP via WhatsApp to:", phone, "brand:", branding.name);
+      const whatsappResult = await sendOtpViaWhatsApp(supabase, resolvedTenantId, phone, code, branding);
+
+      if (!whatsappResult.success) {
+        throw new Error(whatsappResult.error || "Erro ao enviar código via WhatsApp");
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Código enviado para seu WhatsApp", channel: "whatsapp", tenant_id: permission.tenant_id, role: permission.role }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // ── Default: send via email ──
     if (!RESEND_API_KEY) throw new Error("Configuração de email não encontrada");
 
     console.log("send-otp: Sending branded email via Resend to:", normalizedEmail, "brand:", branding.name);
@@ -193,7 +299,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "Código enviado para seu email", tenant_id: permission.tenant_id, role: permission.role }),
+      JSON.stringify({ success: true, message: "Código enviado para seu email", channel: "email", tenant_id: permission.tenant_id, role: permission.role }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
