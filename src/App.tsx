@@ -23,6 +23,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ShowcasePage = lazy(() => import("./pages/ShowcasePage"));
 const TenantLandingPage = lazy(() => import("./pages/TenantLandingPage"));
+const TenantAuthPage = lazy(() => import("./pages/TenantAuthPage"));
 const PublicPlaybookPage = lazy(() => import("./pages/PublicPlaybookPage"));
 const PublicFormPage = lazy(() => import("./pages/PublicFormPage"));
 
@@ -126,6 +127,7 @@ function AppRoutes() {
         <Route path="/setup" element={<Navigate to="/auth" replace />} />
         <Route path="/showcase" element={<RouteFallback><ShowcasePage /></RouteFallback>} />
         <Route path="/t/:slug" element={<RouteFallback><TenantLandingPage /></RouteFallback>} />
+        <Route path="/login/:tenantSlug" element={<RouteFallback><TenantAuthPage /></RouteFallback>} />
         <Route path="/p/:slug" element={<RouteFallback><PublicPlaybookPage /></RouteFallback>} />
         <Route path="/f/:slug" element={<RouteFallback><PublicFormPage /></RouteFallback>} />
         <Route
