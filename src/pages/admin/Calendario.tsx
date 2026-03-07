@@ -726,7 +726,7 @@ export default function Calendario() {
                 </div>
               </Card>
 
-              <Card className="glass-card flex-1 min-h-0 flex flex-col overflow-hidden">
+              <Card className="glass-card flex flex-col overflow-hidden">
                 <ScrollArea className="flex-1 p-3">
                   {selectedDayEvents.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
