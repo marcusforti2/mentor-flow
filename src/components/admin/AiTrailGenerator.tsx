@@ -6,11 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Wand2, Loader2, BookOpen, Play, Trash2, Plus, ChevronDown, ChevronRight,
-  Check, RefreshCw, Edit2, Lightbulb
+  Check, RefreshCw, Edit2, Lightbulb, Link2, FileText
 } from 'lucide-react';
 import type { TrailInput } from '@/hooks/useTrails';
 
@@ -25,6 +26,9 @@ interface AiTrailGeneratorProps {
 export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
   const [open, setOpen] = useState(false);
   const [idea, setIdea] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceText, setSourceText] = useState('');
+  const [sourceTab, setSourceTab] = useState<'idea' | 'url' | 'text'>('idea');
   const [generating, setGenerating] = useState(false);
   const [structure, setStructure] = useState<AiTrailStructure | null>(null);
   const [creating, setCreating] = useState(false);
@@ -58,17 +62,23 @@ export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
     { value: 'longo', label: '🕐 Longo (10-20 min)' },
   ];
 
+  const canGenerate = sourceTab === 'idea' ? idea.trim() : sourceTab === 'url' ? sourceUrl.trim() : sourceText.trim();
+
   const handleGenerate = async () => {
-    if (!idea.trim()) return;
+    if (!canGenerate) return;
     setGenerating(true);
     setStructure(null);
     try {
-      const body: Record<string, unknown> = { idea: idea.trim(), equipment, recordStyle, videoFormat };
+      const body: Record<string, unknown> = { equipment, recordStyle, videoFormat };
       if (extraNotes.trim()) body.extraNotes = extraNotes.trim();
       if (structureMode === 'manual') {
         body.numModules = customModules;
         body.numLessonsPerModule = customLessons;
       }
+      if (sourceTab === 'idea') body.idea = idea.trim();
+      else if (sourceTab === 'url') { body.sourceUrl = sourceUrl.trim(); body.idea = `Criar trilha baseada no conteúdo da URL: ${sourceUrl.trim()}`; }
+      else { body.sourceText = sourceText.trim(); body.idea = 'Criar trilha baseada no conteúdo fornecido'; }
+
       const { data, error } = await supabase.functions.invoke('generate-trail', { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -84,15 +94,12 @@ export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
     if (!structure) return;
     setCreating(true);
     try {
-      // Search cover image
       let thumbnailUrl = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop';
       try {
         const { data: coverData } = await supabase.functions.invoke('search-covers', {
           body: { query: structure.title, per_page: 1 },
         });
-        if (coverData?.images?.[0]?.url) {
-          thumbnailUrl = coverData.images[0].url;
-        }
+        if (coverData?.images?.[0]?.url) thumbnailUrl = coverData.images[0].url;
       } catch { /* use default */ }
 
       const trailInput: TrailInput = {
@@ -120,7 +127,7 @@ export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
       toast.success(`Trilha "${structure.title}" criada com ${structure.modules.length} módulos! 🎉`);
       setOpen(false);
       setStructure(null);
-      setIdea('');
+      setIdea(''); setSourceUrl(''); setSourceText('');
     } catch (e: any) {
       toast.error(e.message || 'Erro ao criar trilha');
     }
@@ -176,7 +183,7 @@ export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
   const totalLessons = structure?.modules.reduce((sum, m) => sum + m.lessons.length, 0) || 0;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setStructure(null); setIdea(''); } }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setStructure(null); setIdea(''); setSourceUrl(''); setSourceText(''); } }}>
       <DialogTrigger asChild>
         <Button variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/10">
           <Wand2 className="h-4 w-4" /> IA Gerar Trilha
@@ -192,16 +199,42 @@ export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
         {!structure ? (
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-3 pt-1 pr-3">
-              <div>
-                <label className="text-[11px] font-medium text-foreground mb-1 block">Descreva a ideia da trilha</label>
-                <Textarea
-                  placeholder="Ex: Trilha de prospecção ativa para mentorados do nicho de coaching..."
-                  value={idea}
-                  onChange={e => setIdea(e.target.value)}
-                  rows={2}
-                  className="text-xs resize-none"
-                />
-              </div>
+              {/* Source Tabs */}
+              <Tabs value={sourceTab} onValueChange={(v) => setSourceTab(v as any)}>
+                <TabsList className="grid grid-cols-3 h-8">
+                  <TabsTrigger value="idea" className="text-[10px] gap-1"><Wand2 className="h-3 w-3" /> Ideia</TabsTrigger>
+                  <TabsTrigger value="url" className="text-[10px] gap-1"><Link2 className="h-3 w-3" /> URL</TabsTrigger>
+                  <TabsTrigger value="text" className="text-[10px] gap-1"><FileText className="h-3 w-3" /> Texto</TabsTrigger>
+                </TabsList>
+                <TabsContent value="idea" className="mt-2">
+                  <Textarea
+                    placeholder="Ex: Trilha de prospecção ativa para mentorados do nicho de coaching..."
+                    value={idea}
+                    onChange={e => setIdea(e.target.value)}
+                    rows={2}
+                    className="text-xs resize-none"
+                  />
+                </TabsContent>
+                <TabsContent value="url" className="mt-2 space-y-1.5">
+                  <Input
+                    placeholder="https://exemplo.com/artigo-ou-conteudo"
+                    value={sourceUrl}
+                    onChange={e => setSourceUrl(e.target.value)}
+                    className="text-xs h-8"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Cole a URL de um artigo, blog post ou página com o conteúdo base da trilha</p>
+                </TabsContent>
+                <TabsContent value="text" className="mt-2 space-y-1.5">
+                  <Textarea
+                    placeholder="Cole aqui a transcrição de uma aula, reunião, PDF ou qualquer texto de referência..."
+                    value={sourceText}
+                    onChange={e => setSourceText(e.target.value)}
+                    rows={4}
+                    className="text-xs resize-none"
+                  />
+                  <p className="text-[10px] text-muted-foreground">A IA vai extrair temas e organizar em módulos e aulas automaticamente</p>
+                </TabsContent>
+              </Tabs>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -284,7 +317,7 @@ export function AiTrailGenerator({ onTrailCreated }: AiTrailGeneratorProps) {
                 />
               </div>
 
-              <Button onClick={handleGenerate} disabled={generating || !idea.trim()} className="w-full gap-2 h-9 text-xs">
+              <Button onClick={handleGenerate} disabled={generating || !canGenerate} className="w-full gap-2 h-9 text-xs">
                 {generating ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando...</> : <><Wand2 className="h-3.5 w-3.5" /> Gerar Estrutura</>}
               </Button>
             </div>

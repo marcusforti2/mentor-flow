@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function AdminTrilhas() {
-  const { trails, isLoading, createTrail, updateTrail, deleteTrail, invalidate } = useTrails();
+  const { trails, isLoading, createTrail, updateTrail, deleteTrail, duplicateTrail, invalidate } = useTrails();
   const [editingTrail, setEditingTrail] = useState<Trail | null>(null);
   const [previewTrail, setPreviewTrail] = useState<Trail | null>(null);
   const [isCreating, setIsCreating] = useState(false);
