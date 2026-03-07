@@ -113,6 +113,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
                   <Link
                     key={child.path}
                     to={child.path!}
+                    {...getPrefetchHandlers(child.path!)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm",
                       childActive
