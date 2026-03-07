@@ -577,6 +577,16 @@ export default function WhatsAppCampaigns() {
           <WhatsAppIntelligence mentees={mentees} />
         </TabsContent>
 
+        {/* ======= AUTO REPLY TAB ======= */}
+        <TabsContent value="auto_reply">
+          <WhatsAppAutoReply />
+        </TabsContent>
+
+        {/* ======= DAILY SUMMARY TAB ======= */}
+        <TabsContent value="daily_summary">
+          <WhatsAppDailySummary />
+        </TabsContent>
+
         {/* ======= LOGS TAB ======= */}
         <TabsContent value="logs" className="space-y-4">
           {isLogsLoading ? (
