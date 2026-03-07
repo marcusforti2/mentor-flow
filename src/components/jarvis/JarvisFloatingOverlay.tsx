@@ -37,6 +37,8 @@ export function JarvisFloatingOverlay() {
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const recognitionRef = useRef<any>(null);
   const lastSpokenMsgRef = useRef<string | null>(null);
+  const stealthRetryCountRef = useRef(0);
+  const STEALTH_MAX_RETRIES = 2;
 
   const hasSpeechRecognition = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   const hasSpeechSynthesis = typeof window !== 'undefined' && 'speechSynthesis' in window;
