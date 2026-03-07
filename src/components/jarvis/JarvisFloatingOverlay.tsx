@@ -129,8 +129,9 @@ export function JarvisFloatingOverlay() {
 
       await stealthScribe.connect({
         token: data.token,
-        microphone: { echoCancellation: true, noiseSuppression: true },
-      });
+        languageCode: 'por',
+        microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      } as any);
 
       setStealthPartial('');
       setStealthListening(true);
