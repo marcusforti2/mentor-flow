@@ -799,7 +799,7 @@ export default function Calendario() {
                         })}
                     </div>
                   )}
-                </ScrollArea>
+                </div>
               </Card>
             </div>
           </div>
