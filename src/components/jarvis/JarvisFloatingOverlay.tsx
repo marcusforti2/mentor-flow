@@ -96,6 +96,7 @@ export function JarvisFloatingOverlay() {
           'propriedade-intelectual': '/mentor/propriedade-intelectual',
           'onboarding-builder': '/mentor/onboarding-builder',
           'dev-tools': '/mentor/dev-tools',
+          'ferramentas-ia': '/membro/ferramentas-ia',
         };
         const route = routeMap[page];
         if (route) {
