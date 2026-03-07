@@ -28,12 +28,49 @@ import { PageSpinner } from '@/components/PageSpinner';
    { icon: Settings, label: 'Config', path: '/master/config' },
  ];
  
+// ─── Backup Reminder Logic ────────────────────────────────────
+const BACKUP_REMINDER_KEY = 'mentorflow_last_backup_download';
+
+function useBackupReminder() {
+  const [showReminder, setShowReminder] = useState(false);
+
+  useEffect(() => {
+    const checkReminder = () => {
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon
+      if (dayOfWeek !== 1) { // Only show on Mondays
+        setShowReminder(false);
+        return;
+      }
+      const lastDownload = localStorage.getItem(BACKUP_REMINDER_KEY);
+      if (!lastDownload) {
+        setShowReminder(true);
+        return;
+      }
+      const lastDate = new Date(lastDownload);
+      const diffDays = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      setShowReminder(diffDays >= 6); // Show if last download was 6+ days ago
+    };
+    checkReminder();
+    const interval = setInterval(checkReminder, 60000); // Re-check every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const markDone = useCallback(() => {
+    localStorage.setItem(BACKUP_REMINDER_KEY, new Date().toISOString());
+    setShowReminder(false);
+  }, []);
+
+  return { showReminder, markDone };
+}
+
 export function MasterLayout() {
   const { profile, signOut } = useAuth();
   const { realMembership } = useTenant();
   const { isImpersonating } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
+  const { showReminder, markDone } = useBackupReminder();
 
   const isDashboard = location.pathname === '/master';
   const currentPage = menuItems.find(item => item.path === location.pathname);
