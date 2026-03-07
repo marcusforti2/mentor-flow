@@ -297,10 +297,12 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
              </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
-                '📊 Como estão meus mentorados?',
+                '📊 Gere meu relatório mensal',
                 '⚡ Ative todas as automações',
-                '📱 Mande um WhatsApp motivacional',
-                '📧 Crie uma campanha de email',
+                '👥 Convide 3 mentorados',
+                '📝 Crie um formulário de feedback',
+                '📱 Mande WhatsApp motivacional pra todos',
+                '📖 Gere um playbook de vendas',
               ].map(suggestion => (
                 <button
                   key={suggestion}
