@@ -126,6 +126,9 @@ export default function AdminTrilhas() {
                   <DriveSyncButton trailId={trail.id} trailTitle={trail.title} onDone={invalidate} />
                   <CoverSearchButton trailId={trail.id} currentTitle={trail.title} onDone={invalidate} />
                   <TrailScriptSender trail={trail} lessons={trail.modules.flatMap(m => m.lessons)} />
+                  <Button variant="ghost" size="icon" onClick={() => duplicateTrail.mutate(trail.id)} disabled={duplicateTrail.isPending} className="h-8 w-8 hover:bg-secondary" title="Duplicar trilha">
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => handlePreview(trail)} className="h-8 w-8 hover:bg-accent/20 hover:text-accent">
                     <Eye className="h-3.5 w-3.5" />
                   </Button>
