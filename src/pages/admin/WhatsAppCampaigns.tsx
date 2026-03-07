@@ -32,6 +32,7 @@ import { WhatsAppQuickSend } from "@/components/whatsapp/WhatsAppQuickSend";
 import { WhatsAppIntelligence } from "@/components/whatsapp/WhatsAppIntelligence";
 import { WhatsAppAutoReply } from "@/components/whatsapp/WhatsAppAutoReply";
 import { WhatsAppDailySummary } from "@/components/whatsapp/WhatsAppDailySummary";
+import { WhatsAppCRM } from "@/components/whatsapp/WhatsAppCRM";
 
 interface WhatsAppConfig {
   id: string;
