@@ -12,51 +12,54 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const { idea, numModules, numLessonsPerModule, equipment, recordStyle, videoFormat, extraNotes } = await req.json();
-    if (!idea) throw new Error("idea is required");
+    const {
+      idea, numModules, numLessonsPerModule, equipment, recordStyle, videoFormat,
+      extraNotes, sourceUrl, sourceText
+    } = await req.json();
+
+    if (!idea && !sourceUrl && !sourceText) throw new Error("idea, sourceUrl or sourceText is required");
 
     const hasCustomStructure = numModules && numLessonsPerModule;
     const structureRules = hasCustomStructure
-      ? `- Crie EXATAMENTE ${numModules} módulos
-- Cada módulo deve ter EXATAMENTE ${numLessonsPerModule} aulas
-- Total de aulas: ${numModules * numLessonsPerModule}`
-      : `- Máximo de 15 aulas no total (distribuídas entre os módulos)
-- Cada módulo deve ter 2-5 aulas
-- Máximo de 5 módulos`;
+      ? `- Crie EXATAMENTE ${numModules} módulos\n- Cada módulo deve ter EXATAMENTE ${numLessonsPerModule} aulas\n- Total de aulas: ${numModules * numLessonsPerModule}`
+      : `- Máximo de 15 aulas no total (distribuídas entre os módulos)\n- Cada módulo deve ter 2-5 aulas\n- Máximo de 5 módulos`;
 
     const equipmentMap: Record<string, string> = {
-      celular: "celular/smartphone",
-      webcam: "webcam ou câmera do notebook",
-      camera_pro: "câmera profissional (DSLR/mirrorless)",
-      tela: "gravação de tela (screencast)",
+      celular: "celular/smartphone", webcam: "webcam ou câmera do notebook",
+      camera_pro: "câmera profissional (DSLR/mirrorless)", tela: "gravação de tela (screencast)",
     };
     const styleMap: Record<string, string> = {
-      talking_head: "talking head (pessoa falando para câmera)",
-      tela_narrada: "gravação de tela com narração",
-      roleplay: "roleplay/simulação de cenários reais",
-      slides: "slides com narração em off",
+      talking_head: "talking head (pessoa falando para câmera)", tela_narrada: "gravação de tela com narração",
+      roleplay: "roleplay/simulação de cenários reais", slides: "slides com narração em off",
       misto: "formato misto (variar entre talking head, tela e simulação conforme a aula)",
     };
     const formatMap: Record<string, string> = {
-      curto: "3-5 minutos por aula",
-      medio: "5-10 minutos por aula",
-      longo: "10-20 minutos por aula",
+      curto: "3-5 minutos por aula", medio: "5-10 minutos por aula", longo: "10-20 minutos por aula",
     };
 
     const equipDesc = equipmentMap[equipment] || "celular/smartphone";
     const styleDesc = styleMap[recordStyle] || "talking head";
     const formatDesc = formatMap[videoFormat] || "5-10 minutos por aula";
-
     const extraSection = extraNotes ? `\n\nINSTRUÇÕES EXTRAS DO MENTOR:\n${extraNotes}` : "";
+
+    // Build source context
+    let sourceContext = "";
+    if (sourceUrl) {
+      sourceContext = `\n\nFONTE DE REFERÊNCIA (URL): ${sourceUrl}\nExtraia os temas, conceitos e tópicos desta URL para estruturar a trilha.`;
+    }
+    if (sourceText) {
+      const truncated = sourceText.length > 8000 ? sourceText.substring(0, 8000) + "..." : sourceText;
+      sourceContext = `\n\nCONTEÚDO DE REFERÊNCIA (transcrição/texto):\n---\n${truncated}\n---\nExtraia os temas, conceitos e tópicos deste conteúdo para estruturar a trilha. Organize de forma pedagógica progressiva.`;
+    }
 
     const systemPrompt = `Você é um especialista em design instrucional para mentorias de negócios e vendas.
 
-O usuário vai descrever uma ideia de trilha de conteúdo e você deve gerar a estrutura completa.
+O usuário vai descrever uma ideia de trilha de conteúdo (ou fornecer conteúdo de referência) e você deve gerar a estrutura completa.
 
 CONTEXTO DE GRAVAÇÃO:
 - Equipamento disponível: ${equipDesc}
 - Estilo de gravação preferido: ${styleDesc}
-- Duração ideal: ${formatDesc}${extraSection}
+- Duração ideal: ${formatDesc}${extraSection}${sourceContext}
 
 REGRAS IMPORTANTES:
 ${structureRules}
@@ -67,27 +70,13 @@ ${structureRules}
 - A trilha deve ser progressiva (do básico ao avançado)
 - Foque em conteúdo prático e aplicável para mentorados
 
-Retorne EXATAMENTE um JSON com esta estrutura:
-{
-  "title": "Título da Trilha",
-  "description": "Descrição breve da trilha",
-  "modules": [
-    {
-      "title": "Nome do Módulo",
-      "description": "Descrição do módulo",
-      "lessons": [
-        {
-          "title": "Nome da Aula",
-          "description": "O que será ensinado",
-          "dica_gravacao": "Dica prática considerando o equipamento e estilo escolhidos",
-          "duration_minutes": 5
-        }
-      ]
-    }
-  ]
-}
+RESPONDA usando a tool "create_trail_structure".`;
 
-Responda APENAS com o JSON, sem texto extra.`;
+    const userPrompt = idea
+      ? `Ideia da trilha: ${idea}`
+      : sourceText
+        ? "Crie uma trilha de conteúdo baseada no material de referência fornecido."
+        : `Crie uma trilha baseada no conteúdo da URL: ${sourceUrl}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -99,10 +88,53 @@ Responda APENAS com o JSON, sem texto extra.`;
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Ideia da trilha: ${idea}` },
+          { role: "user", content: userPrompt },
         ],
         temperature: 0.4,
         max_tokens: 6000,
+        tools: [{
+          type: "function",
+          function: {
+            name: "create_trail_structure",
+            description: "Create the full trail structure with modules and lessons",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Trail title (max 50 chars)" },
+                description: { type: "string", description: "Brief trail description (1-2 sentences)" },
+                modules: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      lessons: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            title: { type: "string" },
+                            description: { type: "string" },
+                            dica_gravacao: { type: "string" },
+                            duration_minutes: { type: "integer" },
+                          },
+                          required: ["title", "description", "dica_gravacao", "duration_minutes"],
+                          additionalProperties: false,
+                        },
+                      },
+                    },
+                    required: ["title", "description", "lessons"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["title", "description", "modules"],
+              additionalProperties: false,
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "create_trail_structure" } },
       }),
     });
 
@@ -122,9 +154,19 @@ Responda APENAS com o JSON, sem texto extra.`;
     }
 
     const data = await response.json();
+
+    // Extract from tool call
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      return new Response(JSON.stringify(parsed), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Fallback: try content as JSON
     let raw = data.choices?.[0]?.message?.content || "";
     raw = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
     const parsed = JSON.parse(raw);
 
     return new Response(JSON.stringify(parsed), {
