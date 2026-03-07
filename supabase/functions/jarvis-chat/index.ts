@@ -645,6 +645,125 @@ ${fullContext}
               executedActions.push(`toggle_email_flow:${args.flow_id}`);
               break;
             }
+            case "create_form": {
+              const { data: form, error } = await supabase.from("tenant_forms").insert({ title: args.title, form_type: args.form_type || "custom", is_active: args.is_active !== false, tenant_id: tenantId, owner_membership_id: membership_id }).select("id").single();
+              if (error) throw error;
+              result = `Formulário "${args.title}" criado (ID:${form.id}).`;
+              executedActions.push(`create_form:${args.title}`);
+              break;
+            }
+            case "add_form_question": {
+              const opts = args.options ? args.options.map((o: string, i: number) => ({ label: o, value: o })) : null;
+              const { error } = await supabase.from("form_questions").insert({ form_id: args.form_id, question_text: args.question_text, question_type: args.question_type || "text", options: opts, is_required: args.is_required !== false, order_index: args.order_index || 0 });
+              if (error) throw error;
+              result = `Pergunta adicionada: "${args.question_text}".`;
+              executedActions.push(`add_question:${args.question_text.substring(0, 30)}`);
+              break;
+            }
+            case "toggle_form": {
+              await supabase.from("tenant_forms").update({ is_active: args.is_active }).eq("id", args.form_id).eq("tenant_id", tenantId);
+              result = `Formulário ${args.is_active ? "ativado" : "desativado"}.`;
+              executedActions.push(`toggle_form:${args.form_id}`);
+              break;
+            }
+            case "create_popup": {
+              const { error } = await supabase.from("tenant_popups").insert({ title: args.title, popup_type: args.popup_type || "announcement", content: args.content || "", is_active: args.is_active !== false, tenant_id: tenantId });
+              if (error) throw error;
+              result = `Popup "${args.title}" criado.`;
+              executedActions.push(`create_popup:${args.title}`);
+              break;
+            }
+            case "list_pending_invites": {
+              const { data: invs } = await supabase.from("invites").select("id, email, role, created_at, expires_at").eq("tenant_id", tenantId).eq("status", "pending").order("created_at", { ascending: false }).limit(20);
+              result = JSON.stringify({ total: invs?.length || 0, invites: invs?.map(i => ({ id: i.id, email: i.email, role: i.role, criado: i.created_at, expira: i.expires_at })) });
+              break;
+            }
+            case "revoke_invite": {
+              await supabase.from("invites").update({ status: "revoked", revoked_at: new Date().toISOString() }).eq("id", args.invite_id).eq("tenant_id", tenantId);
+              result = "Convite revogado.";
+              executedActions.push(`revoke_invite:${args.invite_id}`);
+              break;
+            }
+            case "bulk_invite_mentorados": {
+              const results: string[] = [];
+              for (const inv of args.invites) {
+                try {
+                  const r = await fetch(`${supabaseUrl}/functions/v1/create-invite`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, email: inv.email, role: "mentee", full_name: inv.full_name, phone: inv.phone || null, invited_by_membership_id: membership_id }) });
+                  results.push(r.ok ? `${inv.full_name}: ✅` : `${inv.full_name}: ❌`);
+                } catch { results.push(`${inv.full_name}: ❌`); }
+              }
+              result = `${results.filter(r => r.includes("✅")).length}/${args.invites.length} convites enviados.`;
+              executedActions.push(`bulk_invite:${args.invites.length}`);
+              break;
+            }
+            case "get_mentee_journey_position": {
+              const { data: mm } = await supabase.from("memberships").select("created_at").eq("id", args.mentee_membership_id).single();
+              if (!mm) { result = "Não encontrado."; break; }
+              const daysSinceJoin = Math.floor((Date.now() - new Date(mm.created_at).getTime()) / 86400000);
+              const stages = journeyStages || [];
+              const currentStage = stages.find(s => daysSinceJoin >= s.day_start && daysSinceJoin <= s.day_end);
+              result = JSON.stringify({ dias_no_programa: daysSinceJoin, etapa_atual: currentStage?.name || "Fora da jornada", jornada: stages.map(s => ({ nome: s.name, dia_inicio: s.day_start, dia_fim: s.day_end, atual: s === currentStage })) });
+              break;
+            }
+            case "update_tenant_settings": {
+              const { data: t } = await supabase.from("tenants").select("settings").eq("id", tenantId).single();
+              const settings = (t?.settings || {}) as Record<string, any>;
+              settings[args.setting_key] = args.setting_value;
+              await supabase.from("tenants").update({ settings }).eq("id", tenantId);
+              result = `Configuração "${args.setting_key}" atualizada.`;
+              executedActions.push(`update_settings:${args.setting_key}`);
+              break;
+            }
+            case "generate_mentor_report": {
+              const period = args.period || "month";
+              const daysMap: Record<string, number> = { week: 7, month: 30, quarter: 90 };
+              const since = new Date(); since.setDate(since.getDate() - (daysMap[period] || 30));
+              const sinceStr = since.toISOString();
+              const [{ count: act }, { count: newMentees }, { count: tasksDone }, { count: lessonsDone }] = await Promise.all([
+                supabase.from("activity_logs").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", sinceStr),
+                supabase.from("memberships").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("role", "mentee").gte("created_at", sinceStr),
+                supabase.from("campan_tasks").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("status_column", "done").gte("updated_at", sinceStr),
+                supabase.from("trail_progress").select("id", { count: "exact" }).in("membership_id", menteeIds).eq("completed", true).gte("updated_at", sinceStr),
+              ]);
+              result = JSON.stringify({ periodo: period, mentorados_ativos: mentorados?.length || 0, novos: newMentees || 0, atividades: act || 0, tarefas_concluidas: tasksDone || 0, licoes_concluidas: lessonsDone || 0, automacoes_ativas: automations?.filter(a => a.is_enabled).length, leads_total: leads?.length || 0 });
+              executedActions.push(`report:${period}`);
+              break;
+            }
+            case "create_pipeline_stage": {
+              const maxPos = pipelineStages?.length || 0;
+              const { error } = await supabase.from("crm_pipeline_stages").insert({ name: args.name, status_key: args.status_key, color: args.color || "#6366f1", position: args.position ?? maxPos, tenant_id: tenantId, membership_id: membership_id });
+              if (error) throw error;
+              result = `Etapa "${args.name}" criada no pipeline.`;
+              executedActions.push(`create_stage:${args.name}`);
+              break;
+            }
+            case "bulk_send_email": {
+              let sent = 0, failed = 0;
+              for (const mid of args.mentee_membership_ids) {
+                const { data: mm } = await supabase.from("memberships").select("user_id").eq("id", mid).single();
+                if (!mm) { failed++; continue; }
+                const { data: p } = await supabase.from("profiles").select("email, full_name").eq("user_id", mm.user_id).maybeSingle();
+                if (!p?.email) { failed++; continue; }
+                const r = await fetch(`${supabaseUrl}/functions/v1/send-mentee-email`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, to: p.email, subject: args.subject, html: args.body_html, mentor_name: mentorProfile?.full_name || "Mentor" }) });
+                r.ok ? sent++ : failed++;
+              }
+              result = `${sent} emails enviados, ${failed} falhas.`;
+              executedActions.push(`bulk_email:${sent}`);
+              break;
+            }
+            case "bulk_update_lead_stage": {
+              const { error } = await supabase.from("crm_leads").update({ stage: args.stage }).in("id", args.lead_ids).eq("tenant_id", tenantId);
+              if (error) throw error;
+              result = `${args.lead_ids.length} leads movidos para "${args.stage}".`;
+              executedActions.push(`bulk_lead_stage:${args.lead_ids.length}`);
+              break;
+            }
+            case "log_custom_activity": {
+              await supabase.from("activity_logs").insert({ membership_id: args.mentee_membership_id, tenant_id: tenantId, action_type: args.action_type, action_description: args.description, points_earned: args.points || 0 });
+              result = `Atividade "${args.action_type}" registrada.`;
+              executedActions.push(`log_activity:${args.action_type}`);
+              break;
+            }
             default:
               result = `Ferramenta "${fn.name}" não reconhecida.`;
           }
