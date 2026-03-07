@@ -190,7 +190,7 @@ export function JarvisFloatingOverlay() {
           <Bot className="h-6 w-6 text-white drop-shadow-lg" />
         </div>
         <span className="absolute -top-8 right-0 bg-card/90 backdrop-blur-sm text-[10px] text-foreground px-2 py-1 rounded-lg border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
-          Ctrl+J
+          Ctrl+Alt+J
         </span>
       </button>
     );
