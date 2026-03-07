@@ -303,7 +303,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         tenant_id: m.tenant_id,
         tenant_name: m.tenant_name,
         tenant_slug: m.tenant_slug,
-        user_id: user.id,
+        user_id: effectiveUserId,
         role: m.role,
         status: m.status,
         // Both admin and master_admin can impersonate
