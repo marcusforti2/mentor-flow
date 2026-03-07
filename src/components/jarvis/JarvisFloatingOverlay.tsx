@@ -40,10 +40,10 @@ export function JarvisFloatingOverlay() {
 
   const [input, setInput] = useState('');
 
-  // Global hotkey: Ctrl+J or Cmd+J
+  // Global hotkey: Ctrl+Alt+J or Cmd+Alt+J
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'j') {
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
