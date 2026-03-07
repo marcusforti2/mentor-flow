@@ -625,6 +625,11 @@ export default function WhatsAppCampaigns() {
           <WhatsAppDailySummary />
         </TabsContent>
 
+        {/* ======= CRM TAB ======= */}
+        <TabsContent value="crm">
+          <WhatsAppCRM />
+        </TabsContent>
+
         {/* ======= LOGS TAB ======= */}
         <TabsContent value="logs" className="space-y-4">
           {isLogsLoading ? (
