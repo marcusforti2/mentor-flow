@@ -490,6 +490,39 @@ export default function WhatsAppCampaigns() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Second row of quick actions */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card
+              className="cursor-pointer hover:border-blue-500/30 transition-colors group"
+              onClick={() => setActiveTab("auto_reply")}
+            >
+              <CardContent className="pt-5 pb-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                  <Bot className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Pré-atendimento Automático</p>
+                  <p className="text-xs text-muted-foreground">IA responde clientes em tempo real</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:border-amber-500/30 transition-colors group"
+              onClick={() => setActiveTab("daily_summary")}
+            >
+              <CardContent className="pt-5 pb-5 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-amber-500/20 flex items-center justify-center group-hover:bg-amber-500/30 transition-colors">
+                  <FileText className="h-6 w-6 text-amber-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Resumo Diário</p>
+                  <p className="text-xs text-muted-foreground">IA resume conversas com destaques e pendências</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* ======= CAMPAIGNS TAB ======= */}
