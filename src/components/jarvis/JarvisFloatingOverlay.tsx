@@ -93,6 +93,9 @@ export function JarvisFloatingOverlay() {
           automacoes: '/mentor/automacoes',
           relatorios: '/mentor/relatorios',
           perfil: '/mentor/perfil',
+          'propriedade-intelectual': '/mentor/propriedade-intelectual',
+          'onboarding-builder': '/mentor/onboarding-builder',
+          'dev-tools': '/mentor/dev-tools',
         };
         const route = routeMap[page];
         if (route) {
