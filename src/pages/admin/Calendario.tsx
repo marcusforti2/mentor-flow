@@ -95,6 +95,10 @@ export default function Calendario() {
     audience_type: "all_mentees" as string,
     audience_membership_ids: [] as string[],
     notify_email: false,
+    notify_whatsapp: true,
+    push_to_google: true,
+    create_google_meet: false,
+    reminder_intervals: [] as string[],
     remind_before: "24h" as string,
     facilitator_name: "",
   });
