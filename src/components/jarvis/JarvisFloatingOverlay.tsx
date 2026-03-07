@@ -164,7 +164,7 @@ export function JarvisFloatingOverlay() {
     } finally {
       stealthConnectingRef.current = false;
     }
-  }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking, deactivateStealth]);
+  }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking]);
 
   const scheduleStealthRestart = useCallback((delay = 300) => {
     clearStealthRestartTimer();
