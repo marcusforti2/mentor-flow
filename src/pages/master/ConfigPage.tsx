@@ -715,6 +715,7 @@ export default function ConfigPage() {
               <Database className="h-4 w-4 mr-2" />
               Backup
             </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="platform" className="mt-6">
             <PlatformSection tenantId={selectedTenantId} />
@@ -730,6 +731,10 @@ export default function ConfigPage() {
 
           <TabsContent value="whatsapp" className="mt-6">
             <WhatsAppConfigSection tenantId={selectedTenantId} />
+          </TabsContent>
+
+          <TabsContent value="backup" className="mt-6">
+            <BackupSection />
           </TabsContent>
         </Tabs>
       ) : (
