@@ -174,7 +174,14 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
       audioRef.current = audio;
 
       audio.onplay = () => { setIsSpeaking(true); setTtsLoading(false); };
-      audio.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(audioUrl); };
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+        // Auto-restart listening after Jarvis finishes speaking
+        if (shouldAutoRelisten.current && ttsEnabled) {
+          setTimeout(() => startListening(), 300);
+        }
+      };
       audio.onerror = () => { setIsSpeaking(false); setTtsLoading(false); };
 
       await audio.play();
