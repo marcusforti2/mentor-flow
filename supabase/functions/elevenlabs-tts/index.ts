@@ -18,7 +18,7 @@ serve(async (req) => {
 
     // Truncate to 5000 chars for ElevenLabs limit
     const cleanText = text.slice(0, 5000);
-    const selectedVoice = voiceId || "onwK4e9ZLuTAKqWW03F9"; // Daniel - good PT-BR voice
+    const selectedVoice = voiceId || "SAz9YHcvj6GT2YYXdXww"; // River - natural multilingual voice
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}/stream?output_format=mp3_44100_128`,
