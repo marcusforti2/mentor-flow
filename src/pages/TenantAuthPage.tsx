@@ -242,7 +242,7 @@ export default function TenantAuthPage() {
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">{tenant.name}</CardTitle>
             <CardDescription className="text-muted-foreground">
-              {step === "email" ? "Digite seu email para acessar o programa" : "Digite o código enviado para seu email"}
+              {step === "email" ? "Digite seu email para acessar o programa" : otpChannel === "whatsapp" ? "Digite o código enviado para seu WhatsApp" : "Digite o código enviado para seu email"}
             </CardDescription>
           </CardHeader>
 
@@ -264,6 +264,37 @@ export default function TenantAuthPage() {
                     />
                   </div>
                   {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                </div>
+
+                {/* Channel selector */}
+                <div className="space-y-2">
+                  <Label className="text-foreground text-sm">Receber código por:</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("email")}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                        otpChannel === "email"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-secondary text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("whatsapp")}
+                      className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all ${
+                        otpChannel === "whatsapp"
+                          ? "border-green-500 bg-green-500/10 text-green-600"
+                          : "border-border bg-secondary text-muted-foreground hover:border-green-500/40"
+                      }`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </button>
+                  </div>
                 </div>
 
                 <Button
