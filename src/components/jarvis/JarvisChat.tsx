@@ -449,9 +449,11 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
           {isListening
-            ? "🎤 ElevenLabs Scribe ativo — fale agora, a mensagem será enviada ao detectar pausa"
+            ? "🎤 Escutando... fale agora, envio automático ao detectar pausa"
             : isSpeaking
-            ? "🔊 Jarvis falando via ElevenLabs..."
+            ? "🔊 Jarvis falando... voltarei a ouvir quando terminar"
+            : ttsEnabled
+            ? "🎙️ Modo conversação ativo — falo e ouço automaticamente"
             : "Jarvis com voz ElevenLabs — microfone para falar, alto-falante para ouvir respostas."
           }
         </p>
