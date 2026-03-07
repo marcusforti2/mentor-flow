@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { LazyErrorBoundary } from '@/components/LazyErrorBoundary';
 import { RouteTransition } from '@/components/RouteTransition';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe } from 'lucide-react';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe, Download, X } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
@@ -28,12 +28,49 @@ import { PageSpinner } from '@/components/PageSpinner';
    { icon: Settings, label: 'Config', path: '/master/config' },
  ];
  
+// ─── Backup Reminder Logic ────────────────────────────────────
+const BACKUP_REMINDER_KEY = 'mentorflow_last_backup_download';
+
+function useBackupReminder() {
+  const [showReminder, setShowReminder] = useState(false);
+
+  useEffect(() => {
+    const checkReminder = () => {
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon
+      if (dayOfWeek !== 1) { // Only show on Mondays
+        setShowReminder(false);
+        return;
+      }
+      const lastDownload = localStorage.getItem(BACKUP_REMINDER_KEY);
+      if (!lastDownload) {
+        setShowReminder(true);
+        return;
+      }
+      const lastDate = new Date(lastDownload);
+      const diffDays = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      setShowReminder(diffDays >= 6); // Show if last download was 6+ days ago
+    };
+    checkReminder();
+    const interval = setInterval(checkReminder, 60000); // Re-check every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const markDone = useCallback(() => {
+    localStorage.setItem(BACKUP_REMINDER_KEY, new Date().toISOString());
+    setShowReminder(false);
+  }, []);
+
+  return { showReminder, markDone };
+}
+
 export function MasterLayout() {
   const { profile, signOut } = useAuth();
   const { realMembership } = useTenant();
   const { isImpersonating } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
+  const { showReminder, markDone } = useBackupReminder();
 
   const isDashboard = location.pathname === '/master';
   const currentPage = menuItems.find(item => item.path === location.pathname);
@@ -138,6 +175,49 @@ export function MasterLayout() {
          </header>
        )}
  
+       {/* Backup Reminder Popup */}
+       {showReminder && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+           <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+             <div className="flex items-start justify-between">
+               <div className="flex items-center gap-3">
+                 <div className="h-12 w-12 rounded-full bg-amber-500/20 flex items-center justify-center">
+                   <Download className="h-6 w-6 text-amber-500" />
+                 </div>
+                 <div>
+                   <h3 className="font-display font-bold text-foreground text-lg">Hora do Backup! 🛡️</h3>
+                   <p className="text-sm text-muted-foreground">Segunda-feira — lembrete semanal</p>
+                 </div>
+               </div>
+             </div>
+             <p className="text-sm text-muted-foreground">
+               Faça o download do backup semanal dos seus dados. Vá em <strong className="text-foreground">Configurações → Backup</strong> e clique em "Baixar tudo".
+             </p>
+             <div className="flex items-center gap-3">
+               <Button
+                 className="flex-1"
+                 onClick={() => {
+                   navigate('/master/config');
+                   // Don't mark done — only mark when they actually download
+                 }}
+               >
+                 <Download className="h-4 w-4 mr-2" />
+                 Ir para Backup
+               </Button>
+               <Button
+                 variant="outline"
+                 onClick={markDone}
+               >
+                 Já baixei ✓
+               </Button>
+             </div>
+             <p className="text-[10px] text-muted-foreground text-center">
+               Este lembrete aparece toda segunda até você confirmar o download.
+             </p>
+           </div>
+         </div>
+       )}
+
        <main className={cn(
          "min-h-screen transition-all duration-300",
          isDashboard 
