@@ -1,4 +1,5 @@
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useTransition } from 'react';
+import { LazyErrorBoundary } from '@/components/LazyErrorBoundary';
 import { RouteTransition } from '@/components/RouteTransition';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { FloatingDock, type DockItem } from '@/components/FloatingDock';
