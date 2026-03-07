@@ -195,7 +195,9 @@ const Auth = () => {
 
       toast({
         title: "Código enviado!",
-        description: "Verifique seu email e digite o código recebido.",
+        description: otpChannel === "whatsapp" 
+          ? "Verifique seu WhatsApp e digite o código recebido." 
+          : "Verifique seu email e digite o código recebido.",
       });
       
       setStep("code");
