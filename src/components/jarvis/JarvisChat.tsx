@@ -86,12 +86,12 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
   const [sttConnected, setSttConnected] = useState(false);
 
   const scribe = useScribe({
-    modelId: 'scribe_v2_realtime',
-    commitStrategy: 'vad',
-    onPartialTranscript: (data) => {
+    modelId: 'scribe_v2_realtime' as any,
+    commitStrategy: 'vad' as any,
+    onPartialTranscript: (data: any) => {
       if (data.text) setInput(data.text);
     },
-    onCommittedTranscript: (data) => {
+    onCommittedTranscript: (data: any) => {
       if (data.text?.trim()) {
         onSend(data.text.trim());
         setInput('');
