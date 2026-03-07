@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LucideIcon, MoreHorizontal, X } from 'lucide-react';
+import { getPrefetchHandlers } from '@/lib/routePrefetch';
 import {
   Tooltip,
   TooltipContent,
@@ -112,6 +113,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
                   <Link
                     key={child.path}
                     to={child.path!}
+                    {...getPrefetchHandlers(child.path!)}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm",
                       childActive
@@ -148,6 +150,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
                       <Link
                         key={child.path}
                         to={child.path!}
+                        {...getPrefetchHandlers(child.path!)}
                         className={cn(
                           "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95",
                           childActive
@@ -177,6 +180,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
           key={item.path}
           to={item.path!}
           onClick={() => setMoreOpen(false)}
+          {...getPrefetchHandlers(item.path!)}
           className={cn(
             "flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all active:scale-95",
             isActive
@@ -197,6 +201,7 @@ export function FloatingDock({ items, position = 'left', collapsed = false }: Fl
         <TooltipTrigger asChild>
           <Link
             to={item.path!}
+            {...getPrefetchHandlers(item.path!)}
             className={cn('dock-item', isActive && 'active')}
             onClick={() => { setMoreOpen(false); setExpandedGroup(null); }}
           >
