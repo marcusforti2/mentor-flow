@@ -1,4 +1,5 @@
  import { Suspense } from 'react';
+import { LazyErrorBoundary } from '@/components/LazyErrorBoundary';
 import { RouteTransition } from '@/components/RouteTransition';
  import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
  import { FloatingDock } from '@/components/FloatingDock';
