@@ -129,7 +129,7 @@ export default function TenantAuthPage() {
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
-      toast({ title: "Código enviado!", description: "Verifique seu email e digite o código recebido." });
+      toast({ title: "Código enviado!", description: otpChannel === "whatsapp" ? "Verifique seu WhatsApp." : "Verifique seu email." });
       setStep("code");
       setCountdown(60);
     } catch (error: any) {
