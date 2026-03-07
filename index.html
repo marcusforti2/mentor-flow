@@ -39,6 +39,43 @@
 
   <body>
     <div id="root"></div>
+    <!-- Instant branding restore: prevents the "green flash" before React loads -->
+    <script>
+      try {
+        var b = localStorage.getItem('cached_tenant_branding');
+        if (b) {
+          var d = JSON.parse(b);
+          var hx = function(h) {
+            var r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+            if (!r) return null;
+            var rv=parseInt(r[1],16)/255, gv=parseInt(r[2],16)/255, bv=parseInt(r[3],16)/255;
+            var mx=Math.max(rv,gv,bv), mn=Math.min(rv,gv,bv), ht=0, s=0, l=(mx+mn)/2;
+            if(mx!==mn){var df=mx-mn;s=l>.5?df/(2-mx-mn):df/(mx+mn);switch(mx){case rv:ht=((gv-bv)/df+(gv<bv?6:0))/6;break;case gv:ht=((bv-rv)/df+2)/6;break;case bv:ht=((rv-gv)/df+4)/6;break;}}
+            return Math.round(ht*360)+' '+Math.round(s*100)+'% '+Math.round(l*100)+'%';
+          };
+          var sv = function(p, v) {
+            if (!v) return;
+            var c = v, m = v.match(/^hsl\(([^)]+)\)$/i);
+            if (m) c = m[1].trim();
+            var hsl = /^\d+\s+\d+%\s+\d+%$/.test(c.trim()) ? c : hx(c);
+            if (hsl) document.body.style.setProperty(p, hsl);
+          };
+          if (d.theme_mode === 'light') document.body.classList.add('theme-light');
+          sv('--primary', d.primary_color);
+          sv('--ring', d.primary_color);
+          sv('--secondary', d.secondary_color);
+          sv('--accent', d.accent_color);
+          var a = d.brand_attributes;
+          if (a) {
+            sv('--background', a.background); sv('--foreground', a.foreground);
+            sv('--card', a.card); sv('--card-foreground', a.card_foreground);
+            sv('--muted', a.muted); sv('--muted-foreground', a.muted_foreground);
+            sv('--border', a.border); sv('--input', a.border);
+            sv('--popover', a.card); sv('--popover-foreground', a.card_foreground);
+          }
+        }
+      } catch(e) {}
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
