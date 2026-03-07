@@ -111,6 +111,18 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // Auto-start listening when Jarvis opens
+  useEffect(() => {
+    if (!hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      // Small delay to let component mount
+      const timer = setTimeout(() => {
+        startListening();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ElevenLabs TTS: speak new assistant messages
   useEffect(() => {
     if (!ttsEnabled) return;
