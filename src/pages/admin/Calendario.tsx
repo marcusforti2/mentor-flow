@@ -324,7 +324,8 @@ export default function Calendario() {
         is_recurring: event.is_recurring, recurrence_type: "weekly",
         audience_type: event.audience_type || "all_mentees",
         audience_membership_ids: (event.audience_membership_ids || []) as string[],
-        notify_email: false, remind_before: "24h",
+        notify_email: false, notify_whatsapp: true, push_to_google: true,
+        create_google_meet: false, reminder_intervals: [], remind_before: "24h",
         facilitator_name: event.facilitator_name || "",
       });
     } else {
