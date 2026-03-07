@@ -1043,9 +1043,9 @@ const Index = () => {
               {PLATFORM.email.footer}
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Termos</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Privacidade</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contato</a>
+              <Link to="/termos" className="text-sm text-muted-foreground hover:text-primary transition-colors">Termos</Link>
+              <Link to="/privacidade" className="text-sm text-muted-foreground hover:text-primary transition-colors">Privacidade</Link>
+              <a href="mailto:contato@bymentorflow.com.br" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contato</a>
             </div>
           </div>
         </div>
