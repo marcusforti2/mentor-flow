@@ -264,8 +264,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Fetch memberships when user changes
-  const fetchMemberships = useCallback(async () => {
-     if (!user?.id) {
+  const fetchMemberships = useCallback(async (overrideUserId?: string) => {
+     const effectiveUserId = overrideUserId || user?.id;
+     if (!effectiveUserId) {
        setMemberships([]);
        setActiveMembership(null);
        setRealMembership(null);
