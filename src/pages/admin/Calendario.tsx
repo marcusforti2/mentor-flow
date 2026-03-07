@@ -80,6 +80,8 @@ export default function Calendario() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
 
   const [newEvent, setNewEvent] = useState({
     title: "",
