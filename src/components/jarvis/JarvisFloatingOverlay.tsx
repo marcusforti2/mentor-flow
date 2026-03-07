@@ -317,6 +317,7 @@ export function JarvisFloatingOverlay() {
     if (clickCountRef.current >= 2) {
       clickCountRef.current = 0;
       // Double-click → stealth mode
+      stealthRetryCountRef.current = 0;
       setStealthActive(true);
       toast('🎤 Modo voz ativado — fale com o Jarvis', { duration: 2000 });
     } else {
