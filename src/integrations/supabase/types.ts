@@ -4317,6 +4317,7 @@ export type Database = {
           content_url: string | null
           created_at: string | null
           description: string | null
+          drive_folder_id: string | null
           duration_minutes: number | null
           file_name: string | null
           file_url: string | null
@@ -4333,6 +4334,7 @@ export type Database = {
           content_url?: string | null
           created_at?: string | null
           description?: string | null
+          drive_folder_id?: string | null
           duration_minutes?: number | null
           file_name?: string | null
           file_url?: string | null
@@ -4349,6 +4351,7 @@ export type Database = {
           content_url?: string | null
           created_at?: string | null
           description?: string | null
+          drive_folder_id?: string | null
           duration_minutes?: number | null
           file_name?: string | null
           file_url?: string | null
@@ -4373,6 +4376,7 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          drive_folder_id: string | null
           id: string
           order_index: number | null
           title: string
@@ -4382,6 +4386,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description?: string | null
+          drive_folder_id?: string | null
           id?: string
           order_index?: number | null
           title: string
@@ -4391,6 +4396,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string | null
+          drive_folder_id?: string | null
           id?: string
           order_index?: number | null
           title?: string
@@ -4463,6 +4469,7 @@ export type Database = {
           created_at: string | null
           creator_membership_id: string | null
           description: string | null
+          drive_folder_id: string | null
           id: string
           is_featured: boolean | null
           is_published: boolean | null
@@ -4476,6 +4483,7 @@ export type Database = {
           created_at?: string | null
           creator_membership_id?: string | null
           description?: string | null
+          drive_folder_id?: string | null
           id?: string
           is_featured?: boolean | null
           is_published?: boolean | null
@@ -4489,6 +4497,7 @@ export type Database = {
           created_at?: string | null
           creator_membership_id?: string | null
           description?: string | null
+          drive_folder_id?: string | null
           id?: string
           is_featured?: boolean | null
           is_published?: boolean | null
