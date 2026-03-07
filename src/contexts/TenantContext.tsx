@@ -58,6 +58,7 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 const ACTIVE_MEMBERSHIP_KEY = 'active_membership_id';
 const IMPERSONATION_LOG_KEY = 'impersonation_log_id';
+const CACHED_BRANDING_KEY = 'cached_tenant_branding';
 
 // Role priority order (highest privilege first)
 const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'];
