@@ -144,7 +144,9 @@ export function MasterLayout() {
            : "pt-20 px-4 md:px-6 pb-6"
        )}>
           <Suspense fallback={<PageSpinner />}>
-            <Outlet />
+            <RouteTransition>
+              <Outlet />
+            </RouteTransition>
           </Suspense>
        </main>
      </div>

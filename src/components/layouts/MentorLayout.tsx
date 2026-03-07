@@ -196,7 +196,9 @@ const menuItems: DockItem[] = [
          </header>
 
           <Suspense fallback={<PageSpinner />}>
-            <Outlet />
+            <RouteTransition>
+              <Outlet />
+            </RouteTransition>
           </Suspense>
        </div>
  

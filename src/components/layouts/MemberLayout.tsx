@@ -145,7 +145,9 @@ export function MemberLayout() {
           : "pt-16 pb-6"
       )}>
         <Suspense fallback={<PageSpinner />}>
-          <Outlet />
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
         </Suspense>
       </main>
 
