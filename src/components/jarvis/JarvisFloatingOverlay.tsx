@@ -144,6 +144,14 @@ export function JarvisFloatingOverlay() {
     }
   }, [jarvis.isLoading, stealthActive, stealthListening, stealthScribe, stealthSpeaking]);
 
+  const scheduleStealthRestart = useCallback((delay = 300) => {
+    clearStealthRestartTimer();
+    stealthRestartTimerRef.current = setTimeout(() => {
+      if (!stealthActive || stealthSpeaking || jarvis.isLoading || stealthAwaitingReplyRef.current) return;
+      void stealthStartListening();
+    }, delay);
+  }, [clearStealthRestartTimer, jarvis.isLoading, stealthActive, stealthSpeaking, stealthStartListening]);
+
   const deactivateStealth = useCallback(() => {
     clearStealthRestartTimer();
     stealthStopListening();
