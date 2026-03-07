@@ -459,7 +459,7 @@ export default function Calendario() {
         </div>
       </div>
 
-      <Tabs defaultValue="programacao" className="flex-1 flex flex-col min-h-0 gap-3">
+      <Tabs defaultValue="programacao" className="flex flex-col gap-3">
         <TabsList className="w-fit">
           <TabsTrigger value="programacao" className="gap-2">
             <ListChecks className="h-4 w-4" /> Programação
