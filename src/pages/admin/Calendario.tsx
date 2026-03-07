@@ -18,7 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, CalendarIcon, Clock, Video, Trash2,
   ChevronLeft, ChevronRight, Repeat, Edit2, LayoutGrid, List,
-  ExternalLink, Sparkles, CalendarDays, Users, Lock, Bell, ListChecks, UserCircle
+  ExternalLink, Sparkles, CalendarDays, Users, Lock, Bell, ListChecks, UserCircle,
+  RefreshCw
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -79,6 +80,8 @@ export default function Calendario() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
 
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -101,16 +104,18 @@ export default function Calendario() {
   const { activeMembership } = useTenant();
   const { toast } = useToast();
 
-  const fetchData = async () => {
+    const fetchData = async () => {
     if (!user || !activeMembership?.tenant_id) { setEvents([]); setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      const [eventsRes, membersRes] = await Promise.all([
+      const [eventsRes, membersRes, gcalRes] = await Promise.all([
         supabase.from('calendar_events').select('*').eq('tenant_id', activeMembership.tenant_id).order('event_date', { ascending: true }),
         supabase.from('memberships').select('id, user_id, role').eq('tenant_id', activeMembership.tenant_id).eq('status', 'active').eq('role', 'mentee'),
+        supabase.from('google_calendar_tokens' as any).select('id').eq('membership_id', activeMembership.id).maybeSingle(),
       ]);
       if (eventsRes.error) throw eventsRes.error;
       setEvents(eventsRes.data || []);
+      setHasGoogleCalendar(!!gcalRes.data);
 
       const members = membersRes.data || [];
       if (members.length > 0) {
@@ -136,6 +141,27 @@ export default function Calendario() {
   };
 
   useEffect(() => { fetchData(); }, [user, activeMembership]);
+
+  const handleSyncGoogleCalendar = async () => {
+    if (!activeMembership) return;
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-google-calendar', {
+        body: {
+          membership_id: activeMembership.id,
+          tenant_id: activeMembership.tenant_id,
+          days_ahead: 60,
+        },
+      });
+      if (error) throw error;
+      toast({ title: "✅ Sincronizado!", description: data?.message || `${data?.synced} evento(s) importado(s)` });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const resetForm = () => {
     setNewEvent({ title: "", description: "", event_date: new Date(), event_time: "09:00", event_type: "geral", meeting_url: "", is_recurring: false, recurrence_type: "weekly", audience_type: "all_mentees", audience_membership_ids: [], notify_email: false, remind_before: "24h", facilitator_name: "" });
@@ -398,6 +424,12 @@ export default function Calendario() {
               <span className="text-xs text-muted-foreground">próximos</span>
             </div>
           </div>
+          {hasGoogleCalendar && (
+            <Button variant="outline" onClick={handleSyncGoogleCalendar} disabled={isSyncing} className="gap-2">
+              <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+              <span className="hidden sm:inline">Sincronizar Google</span>
+            </Button>
+          )}
           <Button onClick={() => openEventDialog(undefined, selectedDate)} className="gap-2 shadow-lg shadow-primary/20">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Novo Evento</span>
