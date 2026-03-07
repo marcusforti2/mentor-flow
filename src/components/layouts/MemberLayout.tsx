@@ -1,4 +1,5 @@
  import { Suspense } from 'react';
+import { LazyErrorBoundary } from '@/components/LazyErrorBoundary';
 import { RouteTransition } from '@/components/RouteTransition';
  import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
  import { FloatingDock } from '@/components/FloatingDock';
@@ -144,11 +145,13 @@ export function MemberLayout() {
           ? "ml-28 pt-20 px-6 pb-6" 
           : "pt-16 pb-6"
       )}>
-        <Suspense fallback={<PageSpinner />}>
-          <RouteTransition>
-            <Outlet />
-          </RouteTransition>
-        </Suspense>
+        <LazyErrorBoundary>
+          <Suspense fallback={<PageSpinner />}>
+            <RouteTransition>
+              <Outlet />
+            </RouteTransition>
+          </Suspense>
+        </LazyErrorBoundary>
       </main>
 
       {/* WhatsApp Group Modal - First Login */}

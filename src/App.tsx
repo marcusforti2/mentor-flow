@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode, type ComponentType } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,19 +13,46 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { Loader2 } from "lucide-react";
 
+/**
+ * Lazy import with automatic retry (up to 3 attempts).
+ * Prevents stuck pages when a chunk fails to load due to network issues.
+ */
+function lazyRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+  retries = 3,
+  interval = 1000
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    new Promise<{ default: T }>((resolve, reject) => {
+      const attempt = (remaining: number) => {
+        factory()
+          .then(resolve)
+          .catch((err: Error) => {
+            if (remaining <= 1) {
+              reject(err);
+              return;
+            }
+            setTimeout(() => attempt(remaining - 1), interval);
+          });
+      };
+      attempt(retries);
+    })
+  );
+}
+
 // Public Pages
 import Index from "./pages/Index";
-const Auth = lazy(() => import("./pages/Auth"));
+const Auth = lazyRetry(() => import("./pages/Auth"));
 
 // Lazy-loaded pages
 // Setup page removed — legacy initial configuration no longer needed
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const ShowcasePage = lazy(() => import("./pages/ShowcasePage"));
-const TenantLandingPage = lazy(() => import("./pages/TenantLandingPage"));
-const TenantAuthPage = lazy(() => import("./pages/TenantAuthPage"));
-const PublicPlaybookPage = lazy(() => import("./pages/PublicPlaybookPage"));
-const PublicFormPage = lazy(() => import("./pages/PublicFormPage"));
+const NotFound = lazyRetry(() => import("./pages/NotFound"));
+const Onboarding = lazyRetry(() => import("./pages/Onboarding"));
+const ShowcasePage = lazyRetry(() => import("./pages/ShowcasePage"));
+const TenantLandingPage = lazyRetry(() => import("./pages/TenantLandingPage"));
+const TenantAuthPage = lazyRetry(() => import("./pages/TenantAuthPage"));
+const PublicPlaybookPage = lazyRetry(() => import("./pages/PublicPlaybookPage"));
+const PublicFormPage = lazyRetry(() => import("./pages/PublicFormPage"));
 
 // Layouts (keep static - structural)
 import { MasterLayout } from "@/components/layouts/MasterLayout";
@@ -33,52 +60,52 @@ import { MentorLayout } from "@/components/layouts/MentorLayout";
 import { MentoradoLayout } from "@/components/layouts/MentoradoLayout";
 
 // Master Pages
-const MasterDashboard = lazy(() => import("./pages/master/MasterDashboard"));
-const PreviewPage = lazy(() => import("./pages/master/PreviewPage"));
-const TenantsPage = lazy(() => import("./pages/master/TenantsPage"));
-const UsersPage = lazy(() => import("./pages/master/UsersPage"));
+const MasterDashboard = lazyRetry(() => import("./pages/master/MasterDashboard"));
+const PreviewPage = lazyRetry(() => import("./pages/master/PreviewPage"));
+const TenantsPage = lazyRetry(() => import("./pages/master/TenantsPage"));
+const UsersPage = lazyRetry(() => import("./pages/master/UsersPage"));
 
-const ConfigPage = lazy(() => import("./pages/master/ConfigPage"));
-const BrandingPage = lazy(() => import("./pages/master/BrandingPage"));
-const DomainsPage = lazy(() => import("./pages/master/DomainsPage"));
+const ConfigPage = lazyRetry(() => import("./pages/master/ConfigPage"));
+const BrandingPage = lazyRetry(() => import("./pages/master/BrandingPage"));
+const DomainsPage = lazyRetry(() => import("./pages/master/DomainsPage"));
 
 // Admin/Mentor Pages
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const Mentorados = lazy(() => import("./pages/admin/Mentorados"));
-const JornadaCS = lazy(() => import("./pages/admin/JornadaCS"));
-const AdminTrilhas = lazy(() => import("./pages/admin/Trilhas"));
-const DevTools = lazy(() => import("./pages/admin/DevTools"));
-const PropriedadeIntelectual = lazy(() => import("./pages/admin/PropriedadeIntelectual"));
-const EmailMarketing = lazy(() => import("./pages/admin/EmailMarketing"));
-const Calendario = lazy(() => import("./pages/admin/Calendario"));
-const CRMMentorados = lazy(() => import("./pages/admin/CRMMentorados"));
-const Relatorios = lazy(() => import("./pages/admin/Relatorios"));
-const MentorPerfil = lazy(() => import("./pages/admin/MentorPerfil"));
-const AdminCentroSOS = lazy(() => import("./pages/admin/CentroSOS"));
+const AdminDashboard = lazyRetry(() => import("./pages/admin/AdminDashboard"));
+const Mentorados = lazyRetry(() => import("./pages/admin/Mentorados"));
+const JornadaCS = lazyRetry(() => import("./pages/admin/JornadaCS"));
+const AdminTrilhas = lazyRetry(() => import("./pages/admin/Trilhas"));
+const DevTools = lazyRetry(() => import("./pages/admin/DevTools"));
+const PropriedadeIntelectual = lazyRetry(() => import("./pages/admin/PropriedadeIntelectual"));
+const EmailMarketing = lazyRetry(() => import("./pages/admin/EmailMarketing"));
+const Calendario = lazyRetry(() => import("./pages/admin/Calendario"));
+const CRMMentorados = lazyRetry(() => import("./pages/admin/CRMMentorados"));
+const Relatorios = lazyRetry(() => import("./pages/admin/Relatorios"));
+const MentorPerfil = lazyRetry(() => import("./pages/admin/MentorPerfil"));
+const AdminCentroSOS = lazyRetry(() => import("./pages/admin/CentroSOS"));
 // Agendamento removed — merged into Calendario
-const PlaybooksHub = lazy(() => import("./pages/admin/PlaybooksHub"));
-const PlaybookEditorPage = lazy(() => import("./pages/admin/PlaybookEditorPage"));
-const MentoradoDetail = lazy(() => import("./pages/admin/MentoradoDetail"));
-const Automacoes = lazy(() => import("./pages/admin/Automacoes"));
-const Popups = lazy(() => import("./pages/admin/Popups"));
-const WhatsAppCampaigns = lazy(() => import("./pages/admin/WhatsAppCampaigns"));
-const FormulariosPage = lazy(() => import("./pages/admin/OnboardingBuilder"));
+const PlaybooksHub = lazyRetry(() => import("./pages/admin/PlaybooksHub"));
+const PlaybookEditorPage = lazyRetry(() => import("./pages/admin/PlaybookEditorPage"));
+const MentoradoDetail = lazyRetry(() => import("./pages/admin/MentoradoDetail"));
+const Automacoes = lazyRetry(() => import("./pages/admin/Automacoes"));
+const Popups = lazyRetry(() => import("./pages/admin/Popups"));
+const WhatsAppCampaigns = lazyRetry(() => import("./pages/admin/WhatsAppCampaigns"));
+const FormulariosPage = lazyRetry(() => import("./pages/admin/OnboardingBuilder"));
 
 
 // Member Pages
-const MemberDashboard = lazy(() => import("./pages/member/MemberDashboard"));
-const Trilhas = lazy(() => import("./pages/member/Trilhas"));
-const MeuCRM = lazy(() => import("./pages/member/MeuCRM"));
-const CentroSOS = lazy(() => import("./pages/member/CentroSOS"));
-const Perfil = lazy(() => import("./pages/member/Perfil"));
-const FerramentasIA = lazy(() => import("./pages/member/FerramentasIA"));
-const CalendarioMembro = lazy(() => import("./pages/member/Calendario"));
-const MeusArquivos = lazy(() => import("./pages/member/MeusArquivos"));
-const MinhasTarefas = lazy(() => import("./pages/member/MinhasTarefas"));
+const MemberDashboard = lazyRetry(() => import("./pages/member/MemberDashboard"));
+const Trilhas = lazyRetry(() => import("./pages/member/Trilhas"));
+const MeuCRM = lazyRetry(() => import("./pages/member/MeuCRM"));
+const CentroSOS = lazyRetry(() => import("./pages/member/CentroSOS"));
+const Perfil = lazyRetry(() => import("./pages/member/Perfil"));
+const FerramentasIA = lazyRetry(() => import("./pages/member/FerramentasIA"));
+const CalendarioMembro = lazyRetry(() => import("./pages/member/Calendario"));
+const MeusArquivos = lazyRetry(() => import("./pages/member/MeusArquivos"));
+const MinhasTarefas = lazyRetry(() => import("./pages/member/MinhasTarefas"));
 // AgendamentoMembro removed — merged into CalendarioMembro
-const MentoradoPlaybooks = lazy(() => import("./pages/member/Playbooks"));
-const MentoradoMetricas = lazy(() => import("./pages/member/Metricas"));
-const CRMMobile = lazy(() => import("./pages/member/CRMMobile"));
+const MentoradoPlaybooks = lazyRetry(() => import("./pages/member/Playbooks"));
+const MentoradoMetricas = lazyRetry(() => import("./pages/member/Metricas"));
+const CRMMobile = lazyRetry(() => import("./pages/member/CRMMobile"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
