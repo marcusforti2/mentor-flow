@@ -543,7 +543,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                     isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
                   )}
                   onClick={toggleListening}
-                  title={isListening ? "Parar de escutar" : "Falar com Jarvis"}
+                  title={isListening ? "Parar de escutar" : "Falar com a Elo"}
                 >
                   {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
                 </Button>
