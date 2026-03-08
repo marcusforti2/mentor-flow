@@ -98,10 +98,24 @@ serve(async (req) => {
       .eq("id", membership_id)
       .single();
     if (!membership) throw new Error("Membership not found");
+    
+    // Allow owner OR staff of same tenant (for impersonation scenarios)
     if (membership.user_id !== callerId) {
-      return new Response(JSON.stringify({ error: "Access denied" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const { data: callerMembership } = await supabase
+        .from("memberships")
+        .select("id, role")
+        .eq("user_id", callerId)
+        .eq("tenant_id", membership.tenant_id)
+        .in("role", ["admin", "ops", "mentor", "master_admin"])
+        .eq("status", "active")
+        .maybeSingle();
+      
+      if (!callerMembership) {
+        console.error("Access denied - callerId:", callerId, "membership.user_id:", membership.user_id, "membership_id:", membership_id);
+        return new Response(JSON.stringify({ error: "Access denied" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
     if (!["admin", "ops", "mentor", "master_admin"].includes(membership.role)) {
       return new Response(JSON.stringify({ error: "Only staff can use Jarvis" }), {
