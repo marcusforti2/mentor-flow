@@ -317,7 +317,7 @@ export function useMenteeDashboardStats() {
 
   const fetchStats = useCallback(async () => {
     if (!activeMembership?.id || !activeMembership?.tenant_id || !user?.id) {
-      // Don't set isLoading to false if we're still waiting for context
+      setIsLoading(false);
       return;
     }
 
