@@ -526,8 +526,8 @@ export function JarvisFloatingOverlay() {
                   <Bot className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-display font-bold text-foreground">Jarvis</h2>
-                  <p className="text-[10px] text-muted-foreground">Centro de Comando • Ctrl+Alt+J</p>
+                  <h2 className="text-sm font-display font-bold text-foreground">EloAi</h2>
+                  <p className="text-[10px] text-muted-foreground">Assistente Inteligente • Ctrl+Alt+J</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
