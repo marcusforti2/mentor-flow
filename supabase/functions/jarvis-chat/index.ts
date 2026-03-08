@@ -631,7 +631,11 @@ serve(async (req) => {
     ];
 
     // ====== AGENT ROUTING — Classify which agent should handle ======
-    const agentDescriptions = Object.entries(AGENTS).map(([k, a]) => `- ${k}: ${a.description}`).join("\n");
+    const callerRole = membership.role;
+
+    // Filter agents by caller role
+    const accessibleAgents = Object.entries(AGENTS).filter(([_, a]) => a.allowedRoles.includes(callerRole));
+    const agentDescriptions = accessibleAgents.map(([k, a]) => `- ${k}: ${a.description}`).join("\n");
     const routingPrompt = `Classifique a intenção do usuário para delegar ao agente correto. Contexto: programa "${tenantData?.name}" com ${mentorados?.length || 0} mentorados.
 
 Agentes:
@@ -643,7 +647,7 @@ ${agentDescriptions}
       ...(history || []).slice(-6).map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
-    const agentKeys = [...Object.keys(AGENTS), "jarvis"];
+    const agentKeys = [...accessibleAgents.map(([k]) => k), "jarvis"];
     const routingTools = [{
       type: "function",
       function: {
@@ -678,8 +682,16 @@ ${agentDescriptions}
         const routeCall = routingResult.choices?.[0]?.message?.tool_calls?.[0];
         if (routeCall) {
           const routeArgs = typeof routeCall.function.arguments === "string" ? JSON.parse(routeCall.function.arguments) : routeCall.function.arguments;
-          if (routeArgs.agent && (routeArgs.agent in AGENTS || routeArgs.agent === "jarvis")) {
-            selectedAgent = routeArgs.agent;
+          // Double-check role access even if routing somehow picks a restricted agent
+          if (routeArgs.agent && routeArgs.agent !== "jarvis") {
+            const agentDef = AGENTS[routeArgs.agent];
+            if (agentDef && agentDef.allowedRoles.includes(callerRole)) {
+              selectedAgent = routeArgs.agent;
+            } else {
+              console.warn(`Agent "${routeArgs.agent}" blocked for role "${callerRole}" — falling back to jarvis`);
+            }
+          } else if (routeArgs.agent === "jarvis") {
+            selectedAgent = "jarvis";
           }
         }
       }
@@ -687,10 +699,18 @@ ${agentDescriptions}
       console.warn("Routing fallback to jarvis:", e);
     }
 
-    // Filter tools based on selected agent
+    // Build list of tools BLOCKED for this role (from restricted agents)
+    const blockedTools = new Set<string>();
+    for (const [_, agent] of Object.entries(AGENTS)) {
+      if (!agent.allowedRoles.includes(callerRole)) {
+        agent.tools.forEach(t => blockedTools.add(t));
+      }
+    }
+
+    // Filter tools based on selected agent AND role restrictions
     const agentConfig = AGENTS[selectedAgent];
     const allowedToolNames = selectedAgent === "jarvis"
-      ? tools.map((t: any) => t.function.name) // Jarvis gets ALL tools
+      ? tools.map((t: any) => t.function.name).filter((name: string) => !blockedTools.has(name))
       : [...SHARED_TOOLS, ...(agentConfig?.tools || [])];
     const filteredTools = tools.filter((t: any) => allowedToolNames.includes(t.function.name));
 
