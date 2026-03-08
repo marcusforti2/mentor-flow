@@ -640,7 +640,7 @@ serve(async (req) => {
 
 Agentes:
 ${agentDescriptions}
-- jarvis: Conversa geral, cumprimentos, perguntas sobre o sistema, ou tarefas que envolvem múltiplos domínios simultaneamente`;
+- elo: Conversa geral, cumprimentos, perguntas sobre o sistema, ou tarefas que envolvem múltiplos domínios simultaneamente`;
 
     const routingMessages = [
       { role: "system", content: routingPrompt },
