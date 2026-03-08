@@ -526,7 +526,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? "🎤 Escutando... fale agora" : "Pergunte ao Jarvis... (Enter para enviar)"}
+              placeholder={isListening ? "🎤 Escutando... fale agora" : "Fale com a Elo... (Enter para enviar)"}
               className={cn(
                 "min-h-[44px] max-h-32 resize-none pr-20 bg-muted/30 border-border/50",
                 isListening && "border-primary/50 ring-1 ring-primary/30"
