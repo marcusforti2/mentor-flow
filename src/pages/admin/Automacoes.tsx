@@ -24,7 +24,7 @@ export default function Automacoes() {
       <div className="flex items-center justify-center h-[calc(100vh-120px)]">
         <div className="flex flex-col items-center gap-3">
           <Bot className="h-8 w-8 text-primary animate-pulse" />
-          <p className="text-sm text-muted-foreground">Carregando Jarvis...</p>
+          <p className="text-sm text-muted-foreground">Carregando EloAi...</p>
         </div>
       </div>
     );
