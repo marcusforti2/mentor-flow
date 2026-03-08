@@ -664,7 +664,7 @@ ${agentDescriptions}
       },
     }];
 
-    let selectedAgent = "jarvis";
+    let selectedAgent = "elo";
     try {
       const routingResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -682,21 +682,20 @@ ${agentDescriptions}
         const routeCall = routingResult.choices?.[0]?.message?.tool_calls?.[0];
         if (routeCall) {
           const routeArgs = typeof routeCall.function.arguments === "string" ? JSON.parse(routeCall.function.arguments) : routeCall.function.arguments;
-          // Double-check role access even if routing somehow picks a restricted agent
-          if (routeArgs.agent && routeArgs.agent !== "jarvis") {
+          if (routeArgs.agent && routeArgs.agent !== "elo") {
             const agentDef = AGENTS[routeArgs.agent];
             if (agentDef && agentDef.allowedRoles.includes(callerRole)) {
               selectedAgent = routeArgs.agent;
             } else {
-              console.warn(`Agent "${routeArgs.agent}" blocked for role "${callerRole}" — falling back to jarvis`);
+              console.warn(`Agent "${routeArgs.agent}" blocked for role "${callerRole}" — falling back to elo`);
             }
-          } else if (routeArgs.agent === "jarvis") {
-            selectedAgent = "jarvis";
+          } else if (routeArgs.agent === "elo") {
+            selectedAgent = "elo";
           }
         }
       }
     } catch (e) {
-      console.warn("Routing fallback to jarvis:", e);
+      console.warn("Routing fallback to elo:", e);
     }
 
     // Build list of tools BLOCKED for this role (from restricted agents)
