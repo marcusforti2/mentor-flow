@@ -111,6 +111,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Criar/editar trilhas, módulos, aulas, progresso de mentorados em trilhas, certificados",
     tools: ["create_trail", "create_trail_module", "create_lesson", "toggle_trail_publish", "generate_trail_ai", "mark_lesson_complete", "search_trail_content"],
     prompt: "Você está operando como o **Trails Agent** 🎓 — especialista em trilhas de aprendizado e conteúdo educacional. Crie trilhas estruturadas com módulos e aulas de alta qualidade pedagógica.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   playbooks: {
     name: "Playbooks Agent",
@@ -118,6 +119,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Criar/editar playbooks, páginas, visibilidade, geração IA de conteúdo de playbooks",
     tools: ["create_playbook", "update_playbook", "generate_playbook_ai", "search_playbook_content"],
     prompt: "Você está operando como o **Playbooks Agent** 📖 — especialista em criação de playbooks e materiais de referência. Gere conteúdo estratégico e bem estruturado para mentorados.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   calendar: {
     name: "Calendar Agent",
@@ -125,6 +127,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Eventos, disponibilidade de agenda, agendamentos e lembretes",
     tools: ["create_calendar_event", "update_calendar_event", "delete_calendar_event", "set_availability"],
     prompt: "Você está operando como o **Calendar Agent** 📅 — especialista em gestão de agenda e eventos. Organize eventos, horários e disponibilidade de forma eficiente.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   email: {
     name: "Email Agent",
@@ -132,6 +135,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Templates de email, campanhas, fluxos de email marketing, envio individual e em massa",
     tools: ["create_email_template", "create_email_campaign", "bulk_send_email", "send_individual_email", "toggle_email_flow"],
     prompt: "Você está operando como o **Email Agent** ✉️ — especialista em email marketing e comunicação por email. Crie templates, campanhas e fluxos que engajem e convertam.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   whatsapp: {
     name: "WhatsApp Agent",
@@ -139,6 +143,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Mensagens WhatsApp, campanhas, auto-reply, fluxos de automação, resumos diários",
     tools: ["send_whatsapp_message", "send_whatsapp_to_all", "toggle_wa_flow"],
     prompt: "Você está operando como o **WhatsApp Agent** 📱 — especialista em comunicação via WhatsApp. Envie mensagens, gerencie fluxos de automação e campanhas de WhatsApp.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   cs: {
     name: "CS Agent",
@@ -152,6 +157,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
       "list_pending_invites", "revoke_invite", "bulk_invite_mentorados",
     ],
     prompt: "Você está operando como o **CS Agent** 🎯 — especialista em Customer Success e gestão de mentorados. Garanta engajamento máximo, acompanhamento proativo e gestão eficaz de jornada.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   forms: {
     name: "Forms Agent",
@@ -159,6 +165,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Criar formulários, perguntas, onboarding, submissões, perguntas comportamentais",
     tools: ["create_form", "add_form_question", "toggle_form", "get_form_submissions", "create_behavioral_question"],
     prompt: "Você está operando como o **Forms Agent** 📋 — especialista em formulários e coleta de dados. Crie formulários estruturados para onboarding, feedback e pesquisas.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   popups: {
     name: "Popups Agent",
@@ -166,6 +173,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Criar e gerenciar popups do tenant (anúncios, promoções, boas-vindas)",
     tools: ["create_popup", "toggle_popup"],
     prompt: "Você está operando como o **Popups Agent** 🪧 — especialista em popups e notificações visuais. Crie popups impactantes para comunicação com mentorados.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   gamification: {
     name: "Gamification Agent",
@@ -173,6 +181,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Badges, recompensas, ranking, streaks, pontos, atividades customizadas",
     tools: ["award_badge", "create_badge", "create_reward", "log_custom_activity"],
     prompt: "Você está operando como o **Gamification Agent** 🏆 — especialista em gamificação e engajamento. Crie sistemas de recompensa que motivem e retenham mentorados.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   analytics: {
     name: "Analytics Agent",
@@ -180,6 +189,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Relatórios, métricas, auditoria do sistema, scores, performance, diagnósticos, alertas",
     tools: ["get_tenant_analytics", "full_system_audit", "generate_mentor_report", "resolve_alert"],
     prompt: "Você está operando como o **Analytics Agent** 📊 — especialista em inteligência de dados e análise de performance. Identifique padrões, riscos e oportunidades com recomendações data-driven.",
+    allowedRoles: ["admin", "ops", "master_admin"],
   },
   automation: {
     name: "Automation Agent",
@@ -187,6 +197,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Ativar/desativar automações do sistema, configurar schedules, executar manualmente, configurações do tenant",
     tools: ["toggle_automation", "run_automation_now", "update_tenant_settings"],
     prompt: "Você está operando como o **Automation Agent** ⚡ — especialista em automações e configurações do sistema. Gerencie automações para otimizar processos repetitivos.",
+    allowedRoles: ["admin", "master_admin"],
   },
   meetings: {
     name: "Meetings Agent",
@@ -194,6 +205,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Reuniões, transcrições, gravações, extração de tarefas de reuniões, histórico de calls",
     tools: ["list_meetings", "get_meeting_transcript", "extract_tasks_from_meeting", "analyze_call_transcript"],
     prompt: "Você está operando como o **Meetings Agent** 🎥 — especialista em reuniões e transcrições. Gerencie gravações, extraia tarefas e analise histórico de calls.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   files: {
     name: "Files Agent",
@@ -201,6 +213,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Biblioteca do mentor, arquivos dos mentorados, uploads, organização de documentos",
     tools: ["list_mentor_library", "list_mentee_files", "delete_mentee_file"],
     prompt: "Você está operando como o **Files Agent** 📁 — especialista em gestão de arquivos e documentos. Organize a biblioteca do mentor e arquivos dos mentorados.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   branding: {
     name: "Branding Agent",
@@ -208,6 +221,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Cores, logo, nome da empresa, domínios customizados, identidade visual do tenant",
     tools: ["update_branding", "list_domains", "update_tenant_name"],
     prompt: "Você está operando como o **Branding Agent** 🎨 — especialista em identidade visual e branding. Gerencie cores, logos, domínios e a marca do programa.",
+    allowedRoles: ["master_admin"],
   },
   community: {
     name: "Community Agent",
@@ -215,6 +229,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Posts da comunidade, comentários, likes, chat em tempo real entre mentorados",
     tools: ["create_community_post", "pin_community_post", "delete_community_post", "get_community_stats"],
     prompt: "Você está operando como o **Community Agent** 💬 — especialista em comunidade e engajamento social. Gerencie posts, interações e o chat da comunidade.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   onboarding: {
     name: "Onboarding Agent",
@@ -222,6 +237,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Configurar fluxo de onboarding, perguntas iniciais, welcome message, primeiro acesso",
     tools: ["generate_onboarding_form", "configure_welcome_message", "get_onboarding_stats"],
     prompt: "Você está operando como o **Onboarding Agent** 🚀 — especialista em onboarding e primeiro acesso. Configure fluxos de boas-vindas e integração de novos mentorados.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   ai_tools: {
     name: "AI Tools Agent",
@@ -229,6 +245,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Arsenal de vendas IA: bio generator, content creator, objection simulator, lead qualifier, análise de calls/pipeline, histórico de ferramentas IA",
     tools: ["generate_bio_ai", "generate_content_ai", "simulate_objection_ai", "qualify_lead_ai", "get_ai_tool_history"],
     prompt: "Você está operando como o **AI Tools Agent** 🧠 — especialista no arsenal de ferramentas de IA para vendas. Gere bios, conteúdo, simule objeções, qualifique leads e analise calls.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
 };
 
