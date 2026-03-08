@@ -271,7 +271,7 @@ export function JarvisFloatingOverlay() {
     if (clickCountRef.current >= 2) {
       clickCountRef.current = 0;
       setStealthActive(true);
-      toast('🎤 Modo voz ativado — fale com o Jarvis', { duration: 2000 });
+      // Stealth mode activated silently
     } else {
       clickTimerRef.current = setTimeout(() => {
         if (clickCountRef.current === 1) setIsOpen(true);
