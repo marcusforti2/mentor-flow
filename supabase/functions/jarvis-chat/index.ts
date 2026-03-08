@@ -101,17 +101,20 @@ serve(async (req) => {
     
     // Allow owner OR staff of same tenant (for impersonation scenarios)
     if (membership.user_id !== callerId) {
-      const { data: callerMembership } = await supabase
+      // Check if caller is staff in same tenant OR master_admin in any tenant
+      const { data: callerMemberships } = await supabase
         .from("memberships")
-        .select("id, role")
+        .select("id, role, tenant_id")
         .eq("user_id", callerId)
-        .eq("tenant_id", membership.tenant_id)
         .in("role", ["admin", "ops", "mentor", "master_admin"])
-        .eq("status", "active")
-        .maybeSingle();
+        .eq("status", "active");
       
-      if (!callerMembership) {
-        console.error("Access denied - callerId:", callerId, "membership.user_id:", membership.user_id, "membership_id:", membership_id);
+      const isAllowed = callerMemberships?.some(m => 
+        m.role === "master_admin" || m.tenant_id === membership.tenant_id
+      );
+      
+      if (!isAllowed) {
+        console.error("Access denied - callerId:", callerId, "membership.user_id:", membership.user_id);
         return new Response(JSON.stringify({ error: "Access denied" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
