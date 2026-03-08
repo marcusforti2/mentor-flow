@@ -231,7 +231,38 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     }
   }, [isLoading, isSpeaking, stopListening]);
 
-  // ====== ELEVENLABS TTS ======
+  // ====== NATIVE TTS (best free voice) ======
+  const getBestVoice = useCallback((): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis?.getVoices() || [];
+    // Priority list: best quality male voices across browsers
+    const preferred = [
+      'Microsoft Mark',        // Edge/Windows - excellent
+      'Google UK English Male', // Chrome - deep, good
+      'Daniel',                 // Safari/macOS - premium
+      'Google US English',      // Chrome fallback
+      'Microsoft David',        // Windows fallback
+      'Alex',                   // macOS fallback
+    ];
+    
+    for (const name of preferred) {
+      const match = voices.find(v => v.name.includes(name));
+      if (match) return match;
+    }
+    
+    // Fallback: any English male voice, or first English voice
+    const enVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('male'))
+      || voices.find(v => v.lang.startsWith('en'))
+      || voices[0];
+    return enVoice || null;
+  }, []);
+
+  // Preload voices (Chrome loads async)
+  useEffect(() => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }, []);
+
   useEffect(() => {
     if (!ttsEnabled) return;
     const lastMsg = messages[messages.length - 1];
@@ -241,71 +272,51 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     lastSpokenMsgRef.current = lastMsg.id;
     const text = stripMarkdown(lastMsg.content);
     if (!text || text.length < 5) {
-      // No TTS needed, restart mic
       if (autoRelistenRef.current) setTimeout(() => startListening(), 200);
       return;
     }
-    speakWithElevenLabs(text);
+    speakNative(text);
   }, [messages, ttsEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!ttsEnabled) stopAudio();
   }, [ttsEnabled]);
 
-  const speakWithElevenLabs = async (text: string) => {
+  const speakNative = (text: string) => {
     stopAudio();
     stopListening();
     setTtsLoading(true);
     setIsSpeaking(false);
 
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text }),
-        }
-      );
-
-      if (!response.ok) throw new Error('TTS failed');
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onplay = () => { setIsSpeaking(true); setTtsLoading(false); };
-      audio.onended = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        // Auto-restart listening after TTS finishes
-        if (autoRelistenRef.current && ttsEnabled) {
-          setTimeout(() => startListening(), 250);
-        }
-      };
-      audio.onerror = () => {
-        setIsSpeaking(false);
-        setTtsLoading(false);
-        audioRef.current = null;
-        if (autoRelistenRef.current && ttsEnabled) {
-          setTimeout(() => startListening(), 250);
-        }
-      };
-
-      await audio.play();
-    } catch {
+    if (!window.speechSynthesis) {
       setTtsLoading(false);
-      setIsSpeaking(false);
-      if (autoRelistenRef.current && ttsEnabled) {
-        setTimeout(() => startListening(), 250);
-      }
+      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 250);
+      return;
     }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text.slice(0, 3000));
+    const voice = getBestVoice();
+    if (voice) utterance.voice = voice;
+    utterance.rate = 1.0;
+    utterance.pitch = 0.85; // Slightly deeper
+    utterance.volume = 1;
+    utterance.lang = voice?.lang || 'en-US';
+
+    utterance.onstart = () => { setIsSpeaking(true); setTtsLoading(false); };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 250);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setTtsLoading(false);
+      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 250);
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
   const stopAudio = () => {
@@ -313,6 +324,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current = null;
+    }
+    // Also cancel native speech
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
     setTtsLoading(false);
