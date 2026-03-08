@@ -197,7 +197,7 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     description: "Ativar/desativar automações do sistema, configurar schedules, executar manualmente, configurações do tenant",
     tools: ["toggle_automation", "run_automation_now", "update_tenant_settings"],
     prompt: "Você está operando como o **Automation Agent** ⚡ — especialista em automações e configurações do sistema. Gerencie automações para otimizar processos repetitivos.",
-    allowedRoles: ["admin", "master_admin"],
+    allowedRoles: ALL_STAFF_ROLES,
   },
   meetings: {
     name: "Meetings Agent",
