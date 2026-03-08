@@ -425,7 +425,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                 <div className="flex items-center gap-1.5 mb-2">
                   <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1">
                     <Bot className="h-2.5 w-2.5" />
-                    {({'crm':'💼 CRM','trails':'🎓 Trails','playbooks':'📖 Playbooks','calendar':'📅 Calendar','email':'✉️ Email','whatsapp':'📱 WhatsApp','cs':'🎯 CS','forms':'📋 Forms','popups':'🪧 Popups','gamification':'🏆 Gamification','analytics':'📊 Analytics','automation':'⚡ Automation'} as Record<string,string>)[msg.agent] || msg.agent} Agent
+                    {({'crm':'💼 CRM','trails':'🎓 Trails','playbooks':'📖 Playbooks','calendar':'📅 Calendar','email':'✉️ Email','whatsapp':'📱 WhatsApp','cs':'🎯 CS','forms':'📋 Forms','popups':'🪧 Popups','gamification':'🏆 Gamification','analytics':'📊 Analytics','automation':'⚡ Automation','meetings':'🎥 Meetings','files':'📁 Files','branding':'🎨 Branding','community':'💬 Community','onboarding':'🚀 Onboarding','ai_tools':'🧠 AI Tools'} as Record<string,string>)[msg.agent] || msg.agent} Agent
                   </Badge>
                 </div>
               )}

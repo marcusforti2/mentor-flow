@@ -181,6 +181,48 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     tools: ["toggle_automation", "run_automation_now", "update_tenant_settings"],
     prompt: "Você está operando como o **Automation Agent** ⚡ — especialista em automações e configurações do sistema. Gerencie automações para otimizar processos repetitivos.",
   },
+  meetings: {
+    name: "Meetings Agent",
+    emoji: "🎥",
+    description: "Reuniões, transcrições, gravações, extração de tarefas de reuniões, histórico de calls",
+    tools: [],
+    prompt: "Você está operando como o **Meetings Agent** 🎥 — especialista em reuniões e transcrições. Gerencie gravações, extraia tarefas e analise histórico de calls.",
+  },
+  files: {
+    name: "Files Agent",
+    emoji: "📁",
+    description: "Biblioteca do mentor, arquivos dos mentorados, uploads, organização de documentos",
+    tools: [],
+    prompt: "Você está operando como o **Files Agent** 📁 — especialista em gestão de arquivos e documentos. Organize a biblioteca do mentor e arquivos dos mentorados.",
+  },
+  branding: {
+    name: "Branding Agent",
+    emoji: "🎨",
+    description: "Cores, logo, nome da empresa, domínios customizados, identidade visual do tenant",
+    tools: [],
+    prompt: "Você está operando como o **Branding Agent** 🎨 — especialista em identidade visual e branding. Gerencie cores, logos, domínios e a marca do programa.",
+  },
+  community: {
+    name: "Community Agent",
+    emoji: "💬",
+    description: "Posts da comunidade, comentários, likes, chat em tempo real entre mentorados",
+    tools: [],
+    prompt: "Você está operando como o **Community Agent** 💬 — especialista em comunidade e engajamento social. Gerencie posts, interações e o chat da comunidade.",
+  },
+  onboarding: {
+    name: "Onboarding Agent",
+    emoji: "🚀",
+    description: "Configurar fluxo de onboarding, perguntas iniciais, welcome message, primeiro acesso",
+    tools: [],
+    prompt: "Você está operando como o **Onboarding Agent** 🚀 — especialista em onboarding e primeiro acesso. Configure fluxos de boas-vindas e integração de novos mentorados.",
+  },
+  ai_tools: {
+    name: "AI Tools Agent",
+    emoji: "🧠",
+    description: "Arsenal de vendas IA: bio generator, content creator, objection simulator, lead qualifier, análise de calls/pipeline, histórico de ferramentas IA",
+    tools: [],
+    prompt: "Você está operando como o **AI Tools Agent** 🧠 — especialista no arsenal de ferramentas de IA para vendas. Gere bios, conteúdo, simule objeções, qualifique leads e analise calls.",
+  },
 };
 
 const SHARED_TOOLS = ["query_database", "insert_record", "update_record", "delete_record", "count_records", "navigate_to_page", "call_edge_function"];
