@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { type JarvisMessage } from '@/hooks/useJarvis';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { JarvisOrb, type OrbState } from './JarvisOrb';
 
 interface Props {
   messages: JarvisMessage[];
