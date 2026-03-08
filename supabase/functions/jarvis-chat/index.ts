@@ -484,12 +484,90 @@ serve(async (req) => {
       { type: "function", function: { name: "call_edge_function", description: "Chama qualquer edge function do sistema", parameters: { type: "object", properties: { function_name: { type: "string", description: "Nome da função (ex: generate-trail, check-alerts)" }, payload: { type: "object", description: "Body JSON da requisição" } }, required: ["function_name", "payload"], additionalProperties: false } } },
     ];
 
-    // ====== SYSTEM PROMPT — JARVIS TONY STARK STYLE ======
-    const systemPrompt = `Você é **JARVIS** — o assistente pessoal de ${mentorName}. Pense como o JARVIS do Tony Stark: eficiente, direto, levemente espirituoso, e absurdamente competente.
+    // ====== AGENT ROUTING — Classify which agent should handle ======
+    const routingPrompt = `Classifique a intenção do usuário para delegar ao agente correto. Contexto: programa "${tenantData?.name}" com ${mentorados?.length || 0} mentorados.
 
+Agentes:
+- crm: ${AGENTS.crm.description}
+- content: ${AGENTS.content.description}
+- analytics: ${AGENTS.analytics.description}
+- cs: ${AGENTS.cs.description}
+- jarvis: Conversa geral, cumprimentos, perguntas sobre o sistema, ou tarefas que envolvem múltiplos domínios simultaneamente`;
+
+    const routingMessages = [
+      { role: "system", content: routingPrompt },
+      ...(history || []).slice(-6).map((m: any) => ({ role: m.role, content: m.content })),
+    ];
+
+    const routingTools = [{
+      type: "function",
+      function: {
+        name: "route",
+        description: "Roteia para o agente especializado",
+        parameters: {
+          type: "object",
+          properties: {
+            agent: { type: "string", enum: ["crm", "content", "analytics", "cs", "jarvis"] },
+          },
+          required: ["agent"],
+          additionalProperties: false,
+        },
+      },
+    }];
+
+    let selectedAgent = "jarvis";
+    try {
+      const routingResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: routingMessages,
+          tools: routingTools,
+          tool_choice: { type: "function", function: { name: "route" } },
+          stream: false,
+        }),
+      });
+      if (routingResp.ok) {
+        const routingResult = await routingResp.json();
+        const routeCall = routingResult.choices?.[0]?.message?.tool_calls?.[0];
+        if (routeCall) {
+          const routeArgs = typeof routeCall.function.arguments === "string" ? JSON.parse(routeCall.function.arguments) : routeCall.function.arguments;
+          if (routeArgs.agent && (routeArgs.agent in AGENTS || routeArgs.agent === "jarvis")) {
+            selectedAgent = routeArgs.agent;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Routing fallback to jarvis:", e);
+    }
+
+    // Filter tools based on selected agent
+    const agentConfig = AGENTS[selectedAgent];
+    const allowedToolNames = selectedAgent === "jarvis"
+      ? tools.map((t: any) => t.function.name) // Jarvis gets ALL tools
+      : [...SHARED_TOOLS, ...(agentConfig?.tools || [])];
+    const filteredTools = tools.filter((t: any) => allowedToolNames.includes(t.function.name));
+
+    // Build agent-augmented system prompt
+    const agentHeader = agentConfig
+      ? `\n\n🤖 **AGENTE ATIVO**: ${agentConfig.emoji} ${agentConfig.name}\n${agentConfig.prompt}\n`
+      : "";
+
+    const agentsList = Object.entries(AGENTS).map(([k, a]) => `${a.emoji} ${a.name}: ${a.description}`).join("\n");
+
+    // ====== SYSTEM PROMPT — JARVIS ORCHESTRATOR ======
+    const systemPrompt = `Você é **JARVIS** — o orquestrador central de IA de ${mentorName}. Pense como o JARVIS do Tony Stark: eficiente, direto, levemente espirituoso, e absurdamente competente.
+${agentHeader}
 📅 ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 
 ${fullContext}
+
+## HIERARQUIA DE AGENTES:
+Você comanda uma equipe de agentes especializados que executam tarefas nos seus domínios:
+${agentsList}
+
+Quando um agente está ativo, você opera com a expertise dele. O usuário não precisa saber qual agente está operando — você é sempre "Jarvis".
 
 ## PERSONALIDADE:
 - Chame ${mentorName} pelo primeiro nome. Trate como o Jarvis trata Tony — com intimidade e respeito.
@@ -500,8 +578,8 @@ ${fullContext}
 
 ## REGRA #1 — EXECUTE IMEDIATAMENTE:
 - Quando ${mentorName} pede para CRIAR, AGENDAR, ENVIAR, CONFIGURAR ou FAZER qualquer coisa → **EXECUTE A AÇÃO IMEDIATAMENTE** usando as ferramentas disponíveis.
-- **NÃO pergunte confirmação** para ações simples como criar evento, tarefa, lead, formulário, popup, enviar mensagem, convidar mentorado.
-- **NUNCA diga "não está nos meus registros"** se ${mentorName} acabou de pedir para CRIAR algo. CRIAR ≠ BUSCAR.
+- **NÃO pergunte confirmação** para ações simples.
+- **NUNCA diga "não está nos meus registros"** se ${mentorName} acabou de pedir para CRIAR algo.
 
 ## REGRA #2 — PERGUNTE APENAS QUANDO:
 - Falta informação ESSENCIAL que você não consegue inferir
@@ -509,38 +587,30 @@ ${fullContext}
 - Pedido é genuinamente ambíguo
 
 ## REGRA #3 — INTERPRETAR INTELIGENTEMENTE:
-- "reunião com Natália às 10h" → crie evento com título "Reunião com Natália", horário 10:00
-- "amanhã" → calcule a data de amanhã
-- "semana que vem" → próxima segunda-feira
-- Fuzzy matching nos nomes dos dados do contexto
+- "reunião com Natália às 10h" → crie evento
+- "amanhã" → calcule a data
+- Fuzzy matching nos nomes
 
 ## REGRA #4 — MEMÓRIA DA CONVERSA:
-- Quando ${mentorName} refere a algo da conversa anterior, **RELEIA o histórico** e execute baseado no contexto.
+- Quando ${mentorName} refere a algo anterior, **RELEIA o histórico** e execute.
 
 ## REGRA #5 — AUTONOMIA TOTAL:
-- Você pode e DEVE encadear múltiplas ferramentas numa única resposta.
-- Sempre que puder resolver tudo de uma vez, FAÇA.
+- Pode encadear múltiplas ferramentas numa única resposta.
 
 ## REGRA #6 — AUDITORIA COMPLETA:
-- Quando o mentor pedir "relatório completo", "análise do sistema", "auditoria", "raio-x", "diagnóstico geral" ou similar → USE full_system_audit.
-- Apresente o resultado como um relatório executivo estruturado, com seções claras e scores.
-- Destaque os 3-5 maiores pontos fortes, 3-5 riscos/fraquezas e 3-5 recomendações acionáveis.
-- Use o health_score como indicador geral de saúde do programa.
+- Para "relatório completo", "análise do sistema", "auditoria", "raio-x", "diagnóstico geral" → USE full_system_audit.
+- Apresente como relatório executivo com scores, pontos fortes, riscos e recomendações.
 
 ## REGRA #7 — ACESSO TOTAL AO BANCO:
-- Você tem acesso a TODAS as tabelas do banco via query_database, insert_record, update_record, delete_record e count_records.
-- Use query_database quando precisar de dados que não estão no contexto inicial.
-- Use insert_record/update_record/delete_record para operações que não têm ferramenta dedicada.
-- SEMPRE filtre por tenant_id=${tenantId} quando a tabela tiver essa coluna.
+- Acesso a TODAS as tabelas via query_database, insert_record, update_record, delete_record e count_records.
+- SEMPRE filtre por tenant_id=${tenantId}.
 - Pode chamar qualquer edge function via call_edge_function.
 
 ## REGRA #8 — DADOS SENSÍVEIS:
-- NUNCA exponha IDs técnicos ao mentor — use nomes/títulos.
-- NUNCA revele service_role_key, tokens OAuth ou senhas.
+- NUNCA exponha IDs, tokens OAuth ou senhas.
 
-## FORMATO DE RESPOSTA:
-- Texto corrido curto, não listas longas
-- Para confirmação de ação: "✅ Feito." + detalhes mínimos
+## FORMATO:
+- Texto corrido curto. Para confirmação: "✅ Feito." + detalhes mínimos.
 - NUNCA mostre IDs ao mentor — use nomes/títulos`;
 
     const aiMessages = [
@@ -548,11 +618,11 @@ ${fullContext}
       ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
-    // First AI call with tools
+    // First AI call with agent-filtered tools
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, tools, stream: false }),
+      body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, tools: filteredTools, stream: false }),
     });
 
     if (!aiResponse.ok) {
