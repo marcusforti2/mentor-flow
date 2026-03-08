@@ -808,6 +808,11 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
         let result = "";
 
         try {
+          // SERVER-SIDE: Block tools restricted by role
+          if (blockedTools.has(fn.name)) {
+            result = `🔒 Essa funcionalidade é restrita a administradores com permissão superior. Seu papel atual não permite executar "${fn.name}".`;
+            console.warn(`Tool "${fn.name}" blocked for role "${callerRole}"`);
+          } else
           switch (fn.name) {
             // ===== GENERIC DATABASE ACCESS =====
             case "query_database": {
