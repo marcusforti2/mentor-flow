@@ -16,7 +16,7 @@ serve(async (req) => {
     if (!text?.trim()) throw new Error("Text is required");
 
     const cleanText = text.slice(0, 5000);
-    const selectedVoice = voiceId || "SAz9YHcvj6GT2YYXdXww"; // River
+    const selectedVoice = voiceId || "JBFqnCBsd6RMkjVDRZzb"; // George – grave, autoritária
 
     // Use STREAMING endpoint for instant playback
     const response = await fetch(
