@@ -1246,6 +1246,9 @@ ${fullContext}
 
               result = JSON.stringify(audit);
               executedActions.push("full_system_audit");
+              break;
+            }
+            case "award_badge": {
               await supabase.from("membership_badges").insert({ membership_id: args.mentee_membership_id, badge_id: args.badge_id });
               result = "Badge concedido.";
               executedActions.push(`award_badge:${args.badge_id}`);
