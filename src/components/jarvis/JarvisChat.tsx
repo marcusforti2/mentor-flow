@@ -351,19 +351,25 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="p-4 rounded-2xl bg-primary/10 mb-4">
-              <Bot className="h-10 w-10 text-primary" />
+            {/* Animated Orb */}
+            <div className="mb-8">
+              <JarvisOrb
+                state={
+                  isListening ? 'listening' :
+                  isLoading ? 'processing' :
+                  isSpeaking ? 'speaking' :
+                  'idle' as OrbState
+                }
+                size="lg"
+                onClick={toggleListening}
+              />
             </div>
-            <h2 className="text-xl font-display font-bold text-foreground mb-2">
+            <h2 className="text-xl font-display font-bold text-foreground mb-2 mt-4">
               Olá, sou o Jarvis 🤖
             </h2>
             <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-              Seu centro de comando inteligente. Posso gerenciar automações, enviar mensagens,
-              criar campanhas, agendar eventos e analisar seus mentorados. O que precisa?
+              Seu centro de comando inteligente. Toque no orb ou fale diretamente.
             </p>
-             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-               <Mic className="h-3 w-3" /> Já estou ouvindo — pode falar!
-             </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
                 '📊 Gere meu relatório mensal',
