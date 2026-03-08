@@ -432,79 +432,58 @@ export function JarvisFloatingOverlay() {
   if (!isOpen) {
     return (
       <>
-        {/* Stealth mode floating indicators */}
+        {/* Stealth mode: Orb + floating response */}
         {stealthActive && (
-          <>
-            {stealthListening && (
-              <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
-                <div className="relative">
-                  <Mic className="h-4 w-4 text-purple-400" />
-                  <div className="absolute -inset-1 rounded-full border border-purple-400/40 animate-ping" />
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {stealthPartial || 'Escutando...'}
-                </span>
-              </div>
-            )}
-
-            {jarvis.isLoading && !stealthListening && (
-              <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
-                <Bot className="h-4 w-4 text-purple-400 animate-pulse" />
-                <span className="text-xs text-muted-foreground">Processando...</span>
-              </div>
-            )}
-
-            {stealthSpeaking && (
-              <div className="fixed bottom-24 right-6 z-50 flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2.5 shadow-2xl shadow-purple-500/20 animate-in slide-in-from-right-5 duration-300">
-                <Volume2 className="h-4 w-4 text-purple-400" />
-                <span className="text-xs text-muted-foreground">Falando...</span>
-              </div>
-            )}
-
+          <div className="fixed bottom-24 right-6 z-50 flex flex-col items-end gap-3 animate-in slide-in-from-right-5 duration-300">
+            {/* Response bubble */}
             {stealthResponse && (
-              <div className="fixed bottom-24 right-6 z-50 max-w-sm bg-card/95 backdrop-blur-xl border border-purple-500/20 rounded-2xl px-4 py-3 shadow-2xl shadow-purple-500/10 animate-in slide-in-from-right-5 fade-in-0 duration-300">
+              <div className="max-w-sm bg-card/95 backdrop-blur-xl border border-primary/20 rounded-2xl px-4 py-3 shadow-2xl animate-in fade-in-0 duration-300">
                 <div className="prose prose-sm prose-invert max-w-none text-foreground text-xs [&_p]:mb-1 [&_strong]:text-foreground">
                   <ReactMarkdown>{stealthResponse}</ReactMarkdown>
                 </div>
               </div>
             )}
-          </>
+
+            {/* Partial transcript */}
+            {stealthPartial && !stealthResponse && (
+              <div className="bg-card/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl px-4 py-2 shadow-2xl">
+                <span className="text-xs text-muted-foreground">{stealthPartial}</span>
+              </div>
+            )}
+
+            {/* Orb */}
+            <JarvisOrb
+              state={
+                stealthListening ? 'listening' :
+                jarvis.isLoading ? 'processing' :
+                stealthSpeaking ? 'speaking' :
+                'idle' as OrbState
+              }
+              size="sm"
+              onClick={deactivateStealth}
+            />
+          </div>
         )}
 
         {/* FAB button */}
         <button
           onClick={handleFabClick}
-          className="fixed bottom-6 right-6 z-50 group"
+          className={cn(
+            "fixed bottom-6 right-6 z-50 group",
+            stealthActive && "hidden"
+          )}
           title="Jarvis IA — clique duplo para modo voz"
         >
           <div className={cn(
             "absolute inset-0 rounded-full blur-lg transition-opacity scale-110",
-            stealthActive
-              ? "bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-600 opacity-80 animate-pulse"
-              : "bg-gradient-to-r from-purple-600 via-violet-500 to-purple-700 opacity-60 group-hover:opacity-90"
+            "bg-gradient-to-r from-purple-600 via-violet-500 to-purple-700 opacity-60 group-hover:opacity-90"
           )} />
-          <div className={cn(
-            "relative h-14 w-14 rounded-full flex items-center justify-center shadow-2xl border transition-transform group-hover:scale-110",
-            stealthActive
-              ? "bg-gradient-to-br from-emerald-500 via-green-400 to-emerald-600 shadow-emerald-500/40 border-emerald-400/30"
-              : "bg-gradient-to-br from-purple-600 via-violet-500 to-purple-800 shadow-purple-500/40 border-purple-400/30"
-          )}>
-            <div className={cn(
-              "absolute inset-0 rounded-full border animate-ping",
-              stealthActive ? "border-emerald-400/30" : "border-purple-400/20"
-            )} style={{ animationDuration: '3s' }} />
-            <div className={cn(
-              "absolute -inset-1 rounded-full border animate-ping",
-              stealthActive ? "border-emerald-400/15" : "border-purple-400/10"
-            )} style={{ animationDuration: '4s', animationDelay: '1s' }} />
-            {stealthActive ? (
-              <Mic className="h-6 w-6 text-white drop-shadow-lg" />
-            ) : (
-              <Bot className="h-6 w-6 text-white drop-shadow-lg" />
-            )}
+          <div className="relative h-14 w-14 rounded-full flex items-center justify-center shadow-2xl border bg-gradient-to-br from-purple-600 via-violet-500 to-purple-800 shadow-purple-500/40 border-purple-400/30 transition-transform group-hover:scale-110">
+            <div className="absolute inset-0 rounded-full border border-purple-400/20 animate-ping" style={{ animationDuration: '3s' }} />
+            <Bot className="h-6 w-6 text-white drop-shadow-lg" />
           </div>
           <span className="absolute -top-8 right-0 bg-card/90 backdrop-blur-sm text-[10px] text-foreground px-2 py-1 rounded-lg border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
-            {stealthActive ? 'Clique para desativar' : '2x clique = modo voz'}
+            2x clique = modo voz
           </span>
         </button>
       </>
