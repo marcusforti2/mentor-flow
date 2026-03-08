@@ -231,29 +231,28 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
     }
   }, [isLoading, isSpeaking, stopListening]);
 
-  // ====== NATIVE TTS (best free voice) ======
+  // ====== NATIVE TTS (pt-BR priority) ======
   const getBestVoice = useCallback((): SpeechSynthesisVoice | null => {
     const voices = window.speechSynthesis?.getVoices() || [];
-    // Priority list: best quality male voices across browsers
-    const preferred = [
-      'Microsoft Mark',        // Edge/Windows - excellent
-      'Google UK English Male', // Chrome - deep, good
-      'Daniel',                 // Safari/macOS - premium
-      'Google US English',      // Chrome fallback
-      'Microsoft David',        // Windows fallback
-      'Alex',                   // macOS fallback
-    ];
     
-    for (const name of preferred) {
-      const match = voices.find(v => v.name.includes(name));
-      if (match) return match;
+    // 1st: Portuguese Brazilian voices (best quality ones first)
+    const ptBrVoices = voices.filter(v => v.lang === 'pt-BR' || v.lang === 'pt_BR');
+    if (ptBrVoices.length > 0) {
+      // Prefer Google or Microsoft neural voices
+      const premium = ptBrVoices.find(v => 
+        v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Luciana')
+      );
+      return premium || ptBrVoices[0];
     }
     
-    // Fallback: any English male voice, or first English voice
-    const enVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('male'))
+    // 2nd: Any Portuguese voice
+    const ptVoice = voices.find(v => v.lang.startsWith('pt'));
+    if (ptVoice) return ptVoice;
+    
+    // 3rd: English fallback
+    return voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
       || voices.find(v => v.lang.startsWith('en'))
-      || voices[0];
-    return enVoice || null;
+      || voices[0] || null;
   }, []);
 
   // Preload voices (Chrome loads async)
@@ -285,37 +284,38 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
   const speakNative = (text: string) => {
     stopAudio();
     stopListening();
-    setTtsLoading(true);
     setIsSpeaking(false);
 
     if (!window.speechSynthesis) {
-      setTtsLoading(false);
       if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 250);
       return;
     }
 
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text.slice(0, 3000));
+    // Limit text for faster processing
+    const shortText = text.slice(0, 1500);
+    const utterance = new SpeechSynthesisUtterance(shortText);
     const voice = getBestVoice();
     if (voice) utterance.voice = voice;
-    utterance.rate = 1.0;
-    utterance.pitch = 0.85; // Slightly deeper
+    utterance.rate = 1.1; // Slightly faster for snappier feel
+    utterance.pitch = 0.9;
     utterance.volume = 1;
-    utterance.lang = voice?.lang || 'en-US';
+    utterance.lang = voice?.lang || 'pt-BR';
 
     utterance.onstart = () => { setIsSpeaking(true); setTtsLoading(false); };
     utterance.onend = () => {
       setIsSpeaking(false);
-      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 250);
+      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 200);
     };
     utterance.onerror = () => {
       setIsSpeaking(false);
       setTtsLoading(false);
-      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 250);
+      if (autoRelistenRef.current && ttsEnabled) setTimeout(() => startListening(), 200);
     };
 
+    // Start speaking immediately - set loading false right away since native is instant
+    setTtsLoading(false);
     window.speechSynthesis.speak(utterance);
   };
 
