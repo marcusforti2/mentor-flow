@@ -537,13 +537,11 @@ serve(async (req) => {
     ];
 
     // ====== AGENT ROUTING — Classify which agent should handle ======
+    const agentDescriptions = Object.entries(AGENTS).map(([k, a]) => `- ${k}: ${a.description}`).join("\n");
     const routingPrompt = `Classifique a intenção do usuário para delegar ao agente correto. Contexto: programa "${tenantData?.name}" com ${mentorados?.length || 0} mentorados.
 
 Agentes:
-- crm: ${AGENTS.crm.description}
-- content: ${AGENTS.content.description}
-- analytics: ${AGENTS.analytics.description}
-- cs: ${AGENTS.cs.description}
+${agentDescriptions}
 - jarvis: Conversa geral, cumprimentos, perguntas sobre o sistema, ou tarefas que envolvem múltiplos domínios simultaneamente`;
 
     const routingMessages = [
@@ -551,6 +549,7 @@ Agentes:
       ...(history || []).slice(-6).map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
+    const agentKeys = [...Object.keys(AGENTS), "jarvis"];
     const routingTools = [{
       type: "function",
       function: {
@@ -559,7 +558,7 @@ Agentes:
         parameters: {
           type: "object",
           properties: {
-            agent: { type: "string", enum: ["crm", "content", "analytics", "cs", "jarvis"] },
+            agent: { type: "string", enum: agentKeys },
           },
           required: ["agent"],
           additionalProperties: false,
