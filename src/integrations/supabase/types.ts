@@ -2616,10 +2616,12 @@ export type Database = {
           id: string
           link_title: string | null
           link_url: string | null
+          membership_id: string | null
           mime_type: string | null
           note_content: string | null
           note_title: string | null
           tags: string[] | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2633,10 +2635,12 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
+          membership_id?: string | null
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
           tags?: string[] | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2650,13 +2654,30 @@ export type Database = {
           id?: string
           link_title?: string | null
           link_url?: string | null
+          membership_id?: string | null
           mime_type?: string | null
           note_content?: string | null
           note_title?: string | null
           tags?: string[] | null
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mentor_library_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_library_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mentor_mentee_assignments: {
         Row: {
