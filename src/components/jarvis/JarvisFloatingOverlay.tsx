@@ -201,6 +201,19 @@ export function JarvisFloatingOverlay() {
     stealthAwaitingReplyRef.current = false;
   }, [jarvis.messages, stealthActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const getBestVoice = (): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis?.getVoices() || [];
+    const preferred = [
+      'Microsoft Mark', 'Google UK English Male', 'Daniel',
+      'Google US English', 'Microsoft David', 'Alex',
+    ];
+    for (const name of preferred) {
+      const match = voices.find(v => v.name.includes(name));
+      if (match) return match;
+    }
+    return voices.find(v => v.lang.startsWith('en')) || voices[0] || null;
+  };
+
   const stealthSpeakTTS = async (text: string) => {
     if (stealthAudioRef.current) {
       stealthAudioRef.current.onended = null;
@@ -210,7 +223,6 @@ export function JarvisFloatingOverlay() {
     }
 
     setStealthSpeaking(true);
-    let audioUrl = '';
     let finalized = false;
 
     const finishCycle = () => {
@@ -218,44 +230,23 @@ export function JarvisFloatingOverlay() {
       finalized = true;
       setStealthSpeaking(false);
       stealthAwaitingReplyRef.current = false;
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
     };
 
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text }),
-        }
-      );
+    if (!window.speechSynthesis) { finishCycle(); return; }
 
-      if (!response.ok) throw new Error('TTS failed');
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text.slice(0, 3000));
+    const voice = getBestVoice();
+    if (voice) utterance.voice = voice;
+    utterance.rate = 1.0;
+    utterance.pitch = 0.85;
+    utterance.volume = 1;
+    utterance.lang = voice?.lang || 'en-US';
 
-      const audioBlob = await response.blob();
-      audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      stealthAudioRef.current = audio;
+    utterance.onend = () => finishCycle();
+    utterance.onerror = () => finishCycle();
 
-      audio.onended = () => {
-        stealthAudioRef.current = null;
-        finishCycle();
-      };
-      audio.onerror = () => {
-        stealthAudioRef.current = null;
-        finishCycle();
-      };
-
-      await audio.play();
-    } catch {
-      stealthAudioRef.current = null;
-      finishCycle();
-    }
+    window.speechSynthesis.speak(utterance);
   };
 
   // Handle FAB clicks
