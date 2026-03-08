@@ -100,7 +100,7 @@ export function useMentorDashboardStats() {
 
   const fetchStats = useCallback(async () => {
     if (!activeMembership?.tenant_id || !user?.id) {
-      // Don't set isLoading to false if we're still waiting for context
+      setIsLoading(false);
       return;
     }
 
