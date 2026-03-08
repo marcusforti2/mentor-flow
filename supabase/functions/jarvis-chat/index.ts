@@ -312,7 +312,7 @@ serve(async (req) => {
       }
     }
     if (!["admin", "ops", "mentor", "master_admin"].includes(membership.role)) {
-      return new Response(JSON.stringify({ error: "Only staff can use Jarvis" }), {
+      return new Response(JSON.stringify({ error: "Only staff can use EloAi" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
