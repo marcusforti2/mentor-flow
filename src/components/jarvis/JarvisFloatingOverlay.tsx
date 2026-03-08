@@ -203,15 +203,14 @@ export function JarvisFloatingOverlay() {
 
   const getBestVoice = (): SpeechSynthesisVoice | null => {
     const voices = window.speechSynthesis?.getVoices() || [];
-    const preferred = [
-      'Microsoft Mark', 'Google UK English Male', 'Daniel',
-      'Google US English', 'Microsoft David', 'Alex',
-    ];
-    for (const name of preferred) {
-      const match = voices.find(v => v.name.includes(name));
-      if (match) return match;
+    // pt-BR first
+    const ptBr = voices.filter(v => v.lang === 'pt-BR' || v.lang === 'pt_BR');
+    if (ptBr.length > 0) {
+      return ptBr.find(v => v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Luciana')) || ptBr[0];
     }
-    return voices.find(v => v.lang.startsWith('en')) || voices[0] || null;
+    const pt = voices.find(v => v.lang.startsWith('pt'));
+    if (pt) return pt;
+    return voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en')) || voices[0] || null;
   };
 
   const stealthSpeakTTS = async (text: string) => {
@@ -235,13 +234,13 @@ export function JarvisFloatingOverlay() {
     if (!window.speechSynthesis) { finishCycle(); return; }
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text.slice(0, 3000));
+    const utterance = new SpeechSynthesisUtterance(text.slice(0, 1500));
     const voice = getBestVoice();
     if (voice) utterance.voice = voice;
-    utterance.rate = 1.0;
-    utterance.pitch = 0.85;
+    utterance.rate = 1.1;
+    utterance.pitch = 0.9;
     utterance.volume = 1;
-    utterance.lang = voice?.lang || 'en-US';
+    utterance.lang = voice?.lang || 'pt-BR';
 
     utterance.onend = () => finishCycle();
     utterance.onerror = () => finishCycle();
