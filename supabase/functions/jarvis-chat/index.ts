@@ -1603,7 +1603,7 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
       saveChatStream(supabase, ss, convId);
 
       return new Response(cs, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": JSON.stringify(executedActions) },
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": JSON.stringify(executedActions), "X-Agent": selectedAgent },
       });
     }
 
