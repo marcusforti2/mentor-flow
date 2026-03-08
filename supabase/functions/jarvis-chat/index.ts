@@ -708,7 +708,7 @@ ${agentDescriptions}
 
     // Filter tools based on selected agent AND role restrictions
     const agentConfig = AGENTS[selectedAgent];
-    const allowedToolNames = selectedAgent === "jarvis"
+    const allowedToolNames = selectedAgent === "elo"
       ? tools.map((t: any) => t.function.name).filter((name: string) => !blockedTools.has(name))
       : [...SHARED_TOOLS, ...(agentConfig?.tools || [])];
     const filteredTools = tools.filter((t: any) => allowedToolNames.includes(t.function.name));
