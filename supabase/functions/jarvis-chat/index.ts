@@ -647,7 +647,7 @@ ${agentDescriptions}
       ...(history || []).slice(-6).map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
-    const agentKeys = [...accessibleAgents.map(([k]) => k), "jarvis"];
+    const agentKeys = [...accessibleAgents.map(([k]) => k), "elo"];
     const routingTools = [{
       type: "function",
       function: {
