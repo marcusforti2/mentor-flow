@@ -325,6 +325,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
+    // Also cancel native speech
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     setIsSpeaking(false);
     setTtsLoading(false);
   };
