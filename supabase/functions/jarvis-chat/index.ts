@@ -185,42 +185,42 @@ const AGENTS: Record<string, { name: string; emoji: string; description: string;
     name: "Meetings Agent",
     emoji: "🎥",
     description: "Reuniões, transcrições, gravações, extração de tarefas de reuniões, histórico de calls",
-    tools: [],
+    tools: ["list_meetings", "get_meeting_transcript", "extract_tasks_from_meeting", "analyze_call_transcript"],
     prompt: "Você está operando como o **Meetings Agent** 🎥 — especialista em reuniões e transcrições. Gerencie gravações, extraia tarefas e analise histórico de calls.",
   },
   files: {
     name: "Files Agent",
     emoji: "📁",
     description: "Biblioteca do mentor, arquivos dos mentorados, uploads, organização de documentos",
-    tools: [],
+    tools: ["list_mentor_library", "list_mentee_files", "delete_mentee_file"],
     prompt: "Você está operando como o **Files Agent** 📁 — especialista em gestão de arquivos e documentos. Organize a biblioteca do mentor e arquivos dos mentorados.",
   },
   branding: {
     name: "Branding Agent",
     emoji: "🎨",
     description: "Cores, logo, nome da empresa, domínios customizados, identidade visual do tenant",
-    tools: [],
+    tools: ["update_branding", "list_domains", "update_tenant_name"],
     prompt: "Você está operando como o **Branding Agent** 🎨 — especialista em identidade visual e branding. Gerencie cores, logos, domínios e a marca do programa.",
   },
   community: {
     name: "Community Agent",
     emoji: "💬",
     description: "Posts da comunidade, comentários, likes, chat em tempo real entre mentorados",
-    tools: [],
+    tools: ["create_community_post", "pin_community_post", "delete_community_post", "get_community_stats"],
     prompt: "Você está operando como o **Community Agent** 💬 — especialista em comunidade e engajamento social. Gerencie posts, interações e o chat da comunidade.",
   },
   onboarding: {
     name: "Onboarding Agent",
     emoji: "🚀",
     description: "Configurar fluxo de onboarding, perguntas iniciais, welcome message, primeiro acesso",
-    tools: [],
+    tools: ["generate_onboarding_form", "configure_welcome_message", "get_onboarding_stats"],
     prompt: "Você está operando como o **Onboarding Agent** 🚀 — especialista em onboarding e primeiro acesso. Configure fluxos de boas-vindas e integração de novos mentorados.",
   },
   ai_tools: {
     name: "AI Tools Agent",
     emoji: "🧠",
     description: "Arsenal de vendas IA: bio generator, content creator, objection simulator, lead qualifier, análise de calls/pipeline, histórico de ferramentas IA",
-    tools: [],
+    tools: ["generate_bio_ai", "generate_content_ai", "simulate_objection_ai", "qualify_lead_ai", "get_ai_tool_history"],
     prompt: "Você está operando como o **AI Tools Agent** 🧠 — especialista no arsenal de ferramentas de IA para vendas. Gere bios, conteúdo, simule objeções, qualifique leads e analise calls.",
   },
 };
@@ -576,6 +576,34 @@ serve(async (req) => {
       { type: "function", function: { name: "set_availability", description: "Define disponibilidade de agenda", parameters: { type: "object", properties: { day_of_week: { type: "number", description: "0=Dom, 1=Seg...6=Sáb" }, start_time: { type: "string" }, end_time: { type: "string" } }, required: ["day_of_week", "start_time", "end_time"], additionalProperties: false } } },
       // CALL EDGE FUNCTIONS
       { type: "function", function: { name: "call_edge_function", description: "Chama qualquer edge function do sistema", parameters: { type: "object", properties: { function_name: { type: "string", description: "Nome da função (ex: generate-trail, check-alerts)" }, payload: { type: "object", description: "Body JSON da requisição" } }, required: ["function_name", "payload"], additionalProperties: false } } },
+      // MEETINGS
+      { type: "function", function: { name: "list_meetings", description: "Lista reuniões/transcrições recentes", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, limit: { type: "number" } }, required: [], additionalProperties: false } } },
+      { type: "function", function: { name: "get_meeting_transcript", description: "Busca transcrição completa de uma reunião", parameters: { type: "object", properties: { transcript_id: { type: "string" } }, required: ["transcript_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "extract_tasks_from_meeting", description: "Extrai tarefas de uma transcrição via IA", parameters: { type: "object", properties: { transcript_id: { type: "string" }, mentee_membership_id: { type: "string" } }, required: ["transcript_id", "mentee_membership_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "analyze_call_transcript", description: "Analisa transcrição de call com IA (score, pontos fortes/fracos)", parameters: { type: "object", properties: { transcript_id: { type: "string" } }, required: ["transcript_id"], additionalProperties: false } } },
+      // FILES
+      { type: "function", function: { name: "list_mentor_library", description: "Lista arquivos da biblioteca do mentor", parameters: { type: "object", properties: { limit: { type: "number" } }, required: [], additionalProperties: false } } },
+      { type: "function", function: { name: "list_mentee_files", description: "Lista arquivos de um mentorado", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "delete_mentee_file", description: "Remove arquivo de mentorado", parameters: { type: "object", properties: { file_id: { type: "string" } }, required: ["file_id"], additionalProperties: false } } },
+      // BRANDING
+      { type: "function", function: { name: "update_branding", description: "Atualiza branding do tenant (cores, nome da empresa)", parameters: { type: "object", properties: { primary_color: { type: "string" }, company_name: { type: "string" }, welcome_message: { type: "string" } }, required: [], additionalProperties: false } } },
+      { type: "function", function: { name: "list_domains", description: "Lista domínios customizados do tenant", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
+      { type: "function", function: { name: "update_tenant_name", description: "Atualiza nome do programa/tenant", parameters: { type: "object", properties: { name: { type: "string" } }, required: ["name"], additionalProperties: false } } },
+      // COMMUNITY
+      { type: "function", function: { name: "create_community_post", description: "Cria post na comunidade", parameters: { type: "object", properties: { content: { type: "string" }, tags: { type: "array", items: { type: "string" } } }, required: ["content"], additionalProperties: false } } },
+      { type: "function", function: { name: "pin_community_post", description: "Fixa/desfixa post na comunidade", parameters: { type: "object", properties: { post_id: { type: "string" }, pinned: { type: "boolean" } }, required: ["post_id", "pinned"], additionalProperties: false } } },
+      { type: "function", function: { name: "delete_community_post", description: "Remove post da comunidade", parameters: { type: "object", properties: { post_id: { type: "string" } }, required: ["post_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "get_community_stats", description: "Estatísticas da comunidade (posts, autores, engajamento)", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
+      // ONBOARDING
+      { type: "function", function: { name: "generate_onboarding_form", description: "Gera formulário de onboarding via IA", parameters: { type: "object", properties: { context: { type: "string", description: "Descrição do programa e público-alvo" } }, required: ["context"], additionalProperties: false } } },
+      { type: "function", function: { name: "configure_welcome_message", description: "Configura mensagem de boas-vindas para novos mentorados", parameters: { type: "object", properties: { message: { type: "string" }, is_active: { type: "boolean" } }, required: ["message"], additionalProperties: false } } },
+      { type: "function", function: { name: "get_onboarding_stats", description: "Estatísticas de onboarding (convites, taxa de conversão, tempo médio)", parameters: { type: "object", properties: {}, required: [], additionalProperties: false } } },
+      // AI TOOLS
+      { type: "function", function: { name: "generate_bio_ai", description: "Gera bio profissional para mentorado via IA", parameters: { type: "object", properties: { mentee_membership_id: { type: "string" }, context: { type: "string" } }, required: ["mentee_membership_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "generate_content_ai", description: "Gera conteúdo de vendas/marketing via IA", parameters: { type: "object", properties: { content_type: { type: "string", enum: ["post", "email", "script", "pitch"] }, topic: { type: "string" }, audience: { type: "string" } }, required: ["content_type", "topic"], additionalProperties: false } } },
+      { type: "function", function: { name: "simulate_objection_ai", description: "Simula objeções de vendas para treino", parameters: { type: "object", properties: { product_context: { type: "string" }, objection_type: { type: "string" } }, required: ["product_context"], additionalProperties: false } } },
+      { type: "function", function: { name: "qualify_lead_ai", description: "Qualifica lead com IA (score + recomendações)", parameters: { type: "object", properties: { lead_id: { type: "string" } }, required: ["lead_id"], additionalProperties: false } } },
+      { type: "function", function: { name: "get_ai_tool_history", description: "Histórico de uso das ferramentas de IA", parameters: { type: "object", properties: { tool_type: { type: "string" }, limit: { type: "number" } }, required: [], additionalProperties: false } } },
     ];
 
     // ====== AGENT ROUTING — Classify which agent should handle ======
@@ -1670,6 +1698,181 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
               const body = await r.text();
               result = r.ok ? `Função ${args.function_name} executada: ${body.substring(0, 500)}` : `Erro: ${body.substring(0, 300)}`;
               executedActions.push(`edge_fn:${args.function_name}`);
+              break;
+            }
+            // ===== MEETINGS AGENT TOOLS =====
+            case "list_meetings": {
+              let q = supabase.from("meeting_transcripts").select("id, title, meeting_date, membership_id, status, created_at").eq("tenant_id", tenantId).order("meeting_date", { ascending: false });
+              if (args.mentee_membership_id) q = q.eq("membership_id", args.mentee_membership_id);
+              const { data: mtgs } = await q.limit(args.limit || 20);
+              result = JSON.stringify({ total: mtgs?.length || 0, reunioes: mtgs });
+              break;
+            }
+            case "get_meeting_transcript": {
+              const { data: tr } = await supabase.from("meeting_transcripts").select("*").eq("id", args.transcript_id).eq("tenant_id", tenantId).single();
+              if (!tr) { result = "Transcrição não encontrada."; break; }
+              result = JSON.stringify(tr);
+              break;
+            }
+            case "extract_tasks_from_meeting": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/extract-tasks`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, transcript_id: args.transcript_id, mentee_membership_id: args.mentee_membership_id, mentor_membership_id: membership_id }) });
+              const body = await r.json();
+              result = r.ok ? `Tarefas extraídas: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`extract_tasks:${args.transcript_id}`);
+              break;
+            }
+            case "analyze_call_transcript": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/ai-analysis`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, transcript_id: args.transcript_id, membership_id }) });
+              const body = await r.json();
+              result = r.ok ? `Análise: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`analyze_call:${args.transcript_id}`);
+              break;
+            }
+            // ===== FILES AGENT TOOLS =====
+            case "list_mentor_library": {
+              const { data: lib } = await supabase.from("mentor_library").select("id, file_name, file_type, file_size, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(args.limit || 30);
+              result = JSON.stringify({ total: lib?.length || 0, arquivos: lib });
+              break;
+            }
+            case "list_mentee_files": {
+              const { data: files } = await supabase.from("mentorado_files").select("id, file_name, file_type, created_at").eq("membership_id", args.mentee_membership_id).eq("tenant_id", tenantId).order("created_at", { ascending: false });
+              result = JSON.stringify({ total: files?.length || 0, arquivos: files });
+              break;
+            }
+            case "delete_mentee_file": {
+              await supabase.from("mentorado_files").delete().eq("id", args.file_id).eq("tenant_id", tenantId);
+              result = "Arquivo removido.";
+              executedActions.push(`delete_file:${args.file_id}`);
+              break;
+            }
+            // ===== BRANDING AGENT TOOLS =====
+            case "update_branding": {
+              const upd: any = {};
+              if (args.primary_color) upd.primary_color = args.primary_color;
+              if (args.company_name) upd.company_name = args.company_name;
+              if (args.welcome_message) upd.welcome_message = args.welcome_message;
+              const { data: existing } = await supabase.from("tenant_branding").select("id").eq("tenant_id", tenantId).maybeSingle();
+              if (existing) {
+                await supabase.from("tenant_branding").update(upd).eq("tenant_id", tenantId);
+              } else {
+                await supabase.from("tenant_branding").insert({ ...upd, tenant_id: tenantId });
+              }
+              result = "Branding atualizado.";
+              executedActions.push("update_branding");
+              break;
+            }
+            case "list_domains": {
+              const { data: doms } = await supabase.from("tenant_domains").select("id, domain, is_verified, created_at").eq("tenant_id", tenantId);
+              result = JSON.stringify({ total: doms?.length || 0, dominios: doms });
+              break;
+            }
+            case "update_tenant_name": {
+              await supabase.from("tenants").update({ name: args.name }).eq("id", tenantId);
+              result = `Nome do programa atualizado para "${args.name}".`;
+              executedActions.push(`update_tenant_name:${args.name}`);
+              break;
+            }
+            // ===== COMMUNITY AGENT TOOLS =====
+            case "create_community_post": {
+              const { error } = await supabase.from("community_posts").insert({ content: args.content, tags: args.tags || null, author_membership_id: membership_id, tenant_id: tenantId });
+              if (error) throw error;
+              result = "Post publicado na comunidade.";
+              executedActions.push("create_post");
+              break;
+            }
+            case "pin_community_post": {
+              // Use tags to mark as pinned
+              const { data: post } = await supabase.from("community_posts").select("tags").eq("id", args.post_id).eq("tenant_id", tenantId).single();
+              if (!post) { result = "Post não encontrado."; break; }
+              let tags = post.tags || [];
+              if (args.pinned && !tags.includes("pinned")) tags = ["pinned", ...tags];
+              if (!args.pinned) tags = tags.filter((t: string) => t !== "pinned");
+              await supabase.from("community_posts").update({ tags }).eq("id", args.post_id);
+              result = args.pinned ? "Post fixado." : "Post desfixado.";
+              executedActions.push(`pin_post:${args.post_id}`);
+              break;
+            }
+            case "delete_community_post": {
+              await supabase.from("community_posts").delete().eq("id", args.post_id).eq("tenant_id", tenantId);
+              result = "Post removido.";
+              executedActions.push(`delete_post:${args.post_id}`);
+              break;
+            }
+            case "get_community_stats": {
+              const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+              const [{ count: totalPosts }, { count: posts7d }, { count: msgs7d }, { count: totalLikes }] = await Promise.all([
+                supabase.from("community_posts").select("id", { count: "exact" }).eq("tenant_id", tenantId),
+                supabase.from("community_posts").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
+                supabase.from("community_messages").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
+                supabase.from("community_likes").select("id", { count: "exact" }),
+              ]);
+              result = JSON.stringify({ posts_total: totalPosts, posts_7d: posts7d, msgs_chat_7d: msgs7d, likes_total: totalLikes });
+              break;
+            }
+            // ===== ONBOARDING AGENT TOOLS =====
+            case "generate_onboarding_form": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/generate-onboarding-form`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id, context: args.context }) });
+              const body = await r.json();
+              result = r.ok ? `Formulário de onboarding gerado: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push("generate_onboarding");
+              break;
+            }
+            case "configure_welcome_message": {
+              const { data: existing } = await supabase.from("tenant_branding").select("id").eq("tenant_id", tenantId).maybeSingle();
+              const upd = { welcome_message: args.message };
+              if (existing) {
+                await supabase.from("tenant_branding").update(upd).eq("tenant_id", tenantId);
+              } else {
+                await supabase.from("tenant_branding").insert({ ...upd, tenant_id: tenantId });
+              }
+              result = "Mensagem de boas-vindas configurada.";
+              executedActions.push("configure_welcome");
+              break;
+            }
+            case "get_onboarding_stats": {
+              const [{ data: allInv }, { count: onbForms }] = await Promise.all([
+                supabase.from("invites").select("status, created_at").eq("tenant_id", tenantId),
+                supabase.from("tenant_forms").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("form_type", "onboarding"),
+              ]);
+              const sent = allInv?.length || 0;
+              const accepted = allInv?.filter((i: any) => i.status === "accepted").length || 0;
+              result = JSON.stringify({ convites_enviados: sent, convites_aceitos: accepted, taxa_conversao: sent > 0 ? Math.round((accepted / sent) * 100) + "%" : "0%", forms_onboarding: onbForms || 0 });
+              break;
+            }
+            // ===== AI TOOLS AGENT =====
+            case "generate_bio_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/generate-bio`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id: args.mentee_membership_id || membership_id, context: args.context || "" }) });
+              const body = await r.json();
+              result = r.ok ? `Bio gerada: ${body.bio || JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push("generate_bio");
+              break;
+            }
+            case "generate_content_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/ai-tools`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id, tool_type: "content_generator", input: { content_type: args.content_type, topic: args.topic, audience: args.audience || "" } }) });
+              const body = await r.json();
+              result = r.ok ? `Conteúdo gerado: ${body.output_text || JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`generate_content:${args.content_type}`);
+              break;
+            }
+            case "simulate_objection_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/ai-tools`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id, tool_type: "objection_simulator", input: { product_context: args.product_context, objection_type: args.objection_type || "" } }) });
+              const body = await r.json();
+              result = r.ok ? `Simulação: ${body.output_text || JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push("simulate_objection");
+              break;
+            }
+            case "qualify_lead_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/auto-qualify-lead`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, lead_id: args.lead_id }) });
+              const body = await r.json();
+              result = r.ok ? `Qualificação: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`qualify_lead:${args.lead_id}`);
+              break;
+            }
+            case "get_ai_tool_history": {
+              let q = supabase.from("ai_tool_history").select("id, tool_type, title, created_at, output_text").eq("tenant_id", tenantId).order("created_at", { ascending: false });
+              if (args.tool_type) q = q.eq("tool_type", args.tool_type);
+              const { data: hist } = await q.limit(args.limit || 20);
+              result = JSON.stringify({ total: hist?.length || 0, historico: hist?.map((h: any) => ({ tipo: h.tool_type, titulo: h.title, data: h.created_at, preview: (h.output_text || "").substring(0, 200) })) });
               break;
             }
             default:
