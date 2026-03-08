@@ -89,6 +89,50 @@ const WRITABLE_TABLES = [
   "whatsapp_auto_reply_config",
 ];
 
+// ====== AGENT DEFINITIONS ======
+const AGENTS: Record<string, { name: string; emoji: string; description: string; tools: string[]; prompt: string }> = {
+  crm: {
+    name: "CRM Agent",
+    emoji: "💼",
+    description: "Gerencia leads, prospecções, pipeline, qualificação e interações comerciais",
+    tools: ["create_lead", "update_lead_stage", "delete_lead", "create_prospection", "add_crm_interaction", "create_pipeline_stage", "create_stage_automation", "bulk_update_lead_stage"],
+    prompt: "Você está operando como o **CRM Agent** 💼 — especialista em gestão comercial, pipeline e prospecções. Analise dados de CRM com profundidade estratégica e sugira ações que maximizem conversões.",
+  },
+  content: {
+    name: "Content Agent",
+    emoji: "📚",
+    description: "Cria e gerencia trilhas, playbooks, formulários, popups, templates de email e conteúdo educacional",
+    tools: ["create_trail", "create_trail_module", "create_lesson", "toggle_trail_publish", "generate_trail_ai", "create_playbook", "update_playbook", "generate_playbook_ai", "search_playbook_content", "search_trail_content", "mark_lesson_complete", "create_form", "add_form_question", "toggle_form", "create_popup", "toggle_popup", "create_email_template", "create_behavioral_question"],
+    prompt: "Você está operando como o **Content Agent** 📚 — especialista em criação de conteúdo educacional e materiais de mentoria. Crie trilhas, playbooks, formulários e materiais com qualidade pedagógica excepcional.",
+  },
+  analytics: {
+    name: "Analytics Agent",
+    emoji: "📊",
+    description: "Relatórios, métricas, auditoria do sistema, scores, análises de performance e dados",
+    tools: ["get_tenant_analytics", "full_system_audit", "generate_mentor_report", "get_mentee_details", "get_mentee_journey_position", "get_form_submissions"],
+    prompt: "Você está operando como o **Analytics Agent** 📊 — especialista em inteligência de dados e análise de performance. Identifique padrões, riscos e oportunidades com recomendações data-driven.",
+  },
+  cs: {
+    name: "CS Agent",
+    emoji: "🎯",
+    description: "Gestão de mentorados, tarefas, comunicação (WhatsApp/email/SOS), agenda, gamificação, jornada CS, automações e convites",
+    tools: [
+      "invite_mentorado", "update_mentorado", "suspend_mentorado", "assign_mentor",
+      "create_task", "bulk_create_tasks", "update_task_status", "delete_task",
+      "send_whatsapp_message", "send_whatsapp_to_all", "send_individual_email", "create_email_campaign", "bulk_send_email", "send_sos_to_mentee",
+      "create_calendar_event", "update_calendar_event", "delete_calendar_event",
+      "award_badge", "create_badge", "create_reward", "log_custom_activity", "resolve_alert",
+      "create_journey", "create_journey_stage",
+      "list_pending_invites", "revoke_invite", "bulk_invite_mentorados",
+      "toggle_automation", "run_automation_now", "update_tenant_settings", "set_availability",
+      "toggle_email_flow", "toggle_wa_flow",
+    ],
+    prompt: "Você está operando como o **CS Agent** 🎯 — especialista em Customer Success e gestão de mentorados. Garanta engajamento máximo, acompanhamento proativo e comunicação eficaz.",
+  },
+};
+
+const SHARED_TOOLS = ["query_database", "insert_record", "update_record", "delete_record", "count_records", "navigate_to_page", "call_edge_function"];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
