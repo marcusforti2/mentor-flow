@@ -89,14 +89,21 @@ const WRITABLE_TABLES = [
   "whatsapp_auto_reply_config",
 ];
 
+// ====== ROLE-BASED ACCESS ======
+const ALL_STAFF_ROLES = ["admin", "ops", "mentor", "master_admin"];
+const RESTRICTED_TOOLS: Record<string, string[]> = {
+  master_admin: ["update_branding", "list_domains", "update_tenant_name"],
+};
+
 // ====== AGENT DEFINITIONS ======
-const AGENTS: Record<string, { name: string; emoji: string; description: string; tools: string[]; prompt: string }> = {
+const AGENTS: Record<string, { name: string; emoji: string; description: string; tools: string[]; prompt: string; allowedRoles: string[] }> = {
   crm: {
     name: "CRM Agent",
     emoji: "💼",
     description: "Leads, pipeline, prospecções, qualificação, interações comerciais e automações de etapa",
     tools: ["create_lead", "update_lead_stage", "delete_lead", "create_prospection", "add_crm_interaction", "create_pipeline_stage", "create_stage_automation", "bulk_update_lead_stage"],
     prompt: "Você está operando como o **CRM Agent** 💼 — especialista em gestão comercial, pipeline e prospecções. Analise dados de CRM com profundidade estratégica e sugira ações que maximizem conversões.",
+    allowedRoles: ALL_STAFF_ROLES,
   },
   trails: {
     name: "Trails Agent",
