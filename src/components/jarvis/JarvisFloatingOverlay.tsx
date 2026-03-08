@@ -462,7 +462,7 @@ export function JarvisFloatingOverlay() {
             "fixed bottom-6 right-6 z-50 group",
             stealthActive && "hidden"
           )}
-          title="Jarvis IA — clique duplo para modo voz"
+          title="EloAi — clique duplo para modo voz"
         >
           <div className={cn(
             "absolute inset-0 rounded-full blur-lg transition-opacity scale-110",
@@ -526,8 +526,8 @@ export function JarvisFloatingOverlay() {
                   <Bot className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-display font-bold text-foreground">Jarvis</h2>
-                  <p className="text-[10px] text-muted-foreground">Centro de Comando • Ctrl+Alt+J</p>
+                  <h2 className="text-sm font-display font-bold text-foreground">EloAi</h2>
+                  <p className="text-[10px] text-muted-foreground">Assistente Inteligente • Ctrl+Alt+J</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -627,7 +627,7 @@ export function JarvisFloatingOverlay() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={isListening ? "🎤 Escutando..." : "Fale com o Jarvis..."}
+                    placeholder={isListening ? "🎤 Escutando..." : "Fale com a Elo..."}
                     className={cn(
                       "min-h-[40px] max-h-24 resize-none pr-20 bg-muted/30 border-border/50 text-sm rounded-xl",
                       isListening && "border-purple-500/50 ring-1 ring-purple-500/30"

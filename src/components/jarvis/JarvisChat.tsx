@@ -380,10 +380,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               />
             </div>
             <h2 className="text-xl font-display font-bold text-foreground mb-2 mt-4">
-              Olá, sou o Jarvis 🤖
+              Olá, sou a Elo ✨
             </h2>
             <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-              Seu centro de comando inteligente. Toque no orb ou fale diretamente.
+              Sua assistente inteligente. Toque no orb ou fale diretamente.
             </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
@@ -421,7 +421,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted/50 border border-border/30"
             )}>
-              {msg.agent && msg.agent !== 'jarvis' && (
+              {msg.agent && msg.agent !== 'elo' && msg.agent !== 'jarvis' && (
                 <div className="flex items-center gap-1.5 mb-2">
                   <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1">
                     <Bot className="h-2.5 w-2.5" />
@@ -526,7 +526,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? "🎤 Escutando... fale agora" : "Pergunte ao Jarvis... (Enter para enviar)"}
+              placeholder={isListening ? "🎤 Escutando... fale agora" : "Fale com a Elo... (Enter para enviar)"}
               className={cn(
                 "min-h-[44px] max-h-32 resize-none pr-20 bg-muted/30 border-border/50",
                 isListening && "border-primary/50 ring-1 ring-primary/30"
@@ -543,7 +543,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                     isListening && "bg-destructive hover:bg-destructive/90 animate-pulse"
                   )}
                   onClick={toggleListening}
-                  title={isListening ? "Parar de escutar" : "Falar com Jarvis"}
+                  title={isListening ? "Parar de escutar" : "Falar com a Elo"}
                 >
                   {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
                 </Button>
@@ -563,10 +563,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
           {isListening
             ? "🎤 Escutando... fale agora, envio automático ao detectar pausa"
             : isSpeaking
-            ? "🔊 Jarvis falando... voltarei a ouvir quando terminar"
+            ? "🔊 Elo falando... voltarei a ouvir quando terminar"
             : ttsEnabled
             ? "🎙️ Modo conversação ativo — falo e ouço automaticamente"
-            : "Jarvis pronto — microfone para falar, alto-falante para ouvir respostas."
+            : "Elo pronta — microfone para falar, alto-falante para ouvir respostas."
           }
         </p>
       </div>

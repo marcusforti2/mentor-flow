@@ -24,7 +24,7 @@ export default function Automacoes() {
       <div className="flex items-center justify-center h-[calc(100vh-120px)]">
         <div className="flex flex-col items-center gap-3">
           <Bot className="h-8 w-8 text-primary animate-pulse" />
-          <p className="text-sm text-muted-foreground">Carregando Jarvis...</p>
+          <p className="text-sm text-muted-foreground">Carregando EloAi...</p>
         </div>
       </div>
     );
@@ -39,8 +39,8 @@ export default function Automacoes() {
             <Bot className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-display font-bold text-foreground">Jarvis</h1>
-            <p className="text-xs text-muted-foreground">Centro de comando inteligente — automações, WhatsApp, email e mais.</p>
+            <h1 className="text-xl font-display font-bold text-foreground">EloAi</h1>
+            <p className="text-xs text-muted-foreground">Sua assistente inteligente — automações, WhatsApp, email e mais.</p>
           </div>
         </div>
         <Button

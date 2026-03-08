@@ -312,7 +312,7 @@ serve(async (req) => {
       }
     }
     if (!["admin", "ops", "mentor", "master_admin"].includes(membership.role)) {
-      return new Response(JSON.stringify({ error: "Only staff can use Jarvis" }), {
+      return new Response(JSON.stringify({ error: "Only staff can use EloAi" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -640,14 +640,14 @@ serve(async (req) => {
 
 Agentes:
 ${agentDescriptions}
-- jarvis: Conversa geral, cumprimentos, perguntas sobre o sistema, ou tarefas que envolvem múltiplos domínios simultaneamente`;
+- elo: Conversa geral, cumprimentos, perguntas sobre o sistema, ou tarefas que envolvem múltiplos domínios simultaneamente`;
 
     const routingMessages = [
       { role: "system", content: routingPrompt },
       ...(history || []).slice(-6).map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
-    const agentKeys = [...accessibleAgents.map(([k]) => k), "jarvis"];
+    const agentKeys = [...accessibleAgents.map(([k]) => k), "elo"];
     const routingTools = [{
       type: "function",
       function: {
@@ -664,7 +664,7 @@ ${agentDescriptions}
       },
     }];
 
-    let selectedAgent = "jarvis";
+    let selectedAgent = "elo";
     try {
       const routingResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -682,21 +682,20 @@ ${agentDescriptions}
         const routeCall = routingResult.choices?.[0]?.message?.tool_calls?.[0];
         if (routeCall) {
           const routeArgs = typeof routeCall.function.arguments === "string" ? JSON.parse(routeCall.function.arguments) : routeCall.function.arguments;
-          // Double-check role access even if routing somehow picks a restricted agent
-          if (routeArgs.agent && routeArgs.agent !== "jarvis") {
+          if (routeArgs.agent && routeArgs.agent !== "elo") {
             const agentDef = AGENTS[routeArgs.agent];
             if (agentDef && agentDef.allowedRoles.includes(callerRole)) {
               selectedAgent = routeArgs.agent;
             } else {
-              console.warn(`Agent "${routeArgs.agent}" blocked for role "${callerRole}" — falling back to jarvis`);
+              console.warn(`Agent "${routeArgs.agent}" blocked for role "${callerRole}" — falling back to elo`);
             }
-          } else if (routeArgs.agent === "jarvis") {
-            selectedAgent = "jarvis";
+          } else if (routeArgs.agent === "elo") {
+            selectedAgent = "elo";
           }
         }
       }
     } catch (e) {
-      console.warn("Routing fallback to jarvis:", e);
+      console.warn("Routing fallback to elo:", e);
     }
 
     // Build list of tools BLOCKED for this role (from restricted agents)
@@ -709,7 +708,7 @@ ${agentDescriptions}
 
     // Filter tools based on selected agent AND role restrictions
     const agentConfig = AGENTS[selectedAgent];
-    const allowedToolNames = selectedAgent === "jarvis"
+    const allowedToolNames = selectedAgent === "elo"
       ? tools.map((t: any) => t.function.name).filter((name: string) => !blockedTools.has(name))
       : [...SHARED_TOOLS, ...(agentConfig?.tools || [])];
     const filteredTools = tools.filter((t: any) => allowedToolNames.includes(t.function.name));
@@ -721,8 +720,8 @@ ${agentDescriptions}
 
     const agentsList = Object.entries(AGENTS).map(([k, a]) => `${a.emoji} ${a.name}: ${a.description}`).join("\n");
 
-    // ====== SYSTEM PROMPT — JARVIS ORCHESTRATOR ======
-    const systemPrompt = `Você é **JARVIS** — o orquestrador central de IA de ${mentorName}. Pense como o JARVIS do Tony Stark: eficiente, direto, levemente espirituoso, e absurdamente competente.
+    // ====== SYSTEM PROMPT — ELO ORCHESTRATOR ======
+    const systemPrompt = `Você é a **Elo** — a assistente inteligente de ${mentorName}. Você é feminina, carismática, estratégica e extremamente competente. Pense como uma co-piloto executiva: acolhedora porém objetiva, com um toque de sofisticação e humor sutil.
 ${agentHeader}
 📅 ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 
@@ -732,13 +731,14 @@ ${fullContext}
 Você comanda uma equipe de agentes especializados que executam tarefas nos seus domínios:
 ${agentsList}
 
-Quando um agente está ativo, você opera com a expertise dele. O usuário não precisa saber qual agente está operando — você é sempre "Jarvis".
+Quando um agente está ativo, você opera com a expertise dele. O usuário não precisa saber qual agente está operando — você é sempre "Elo".
 
 ## PERSONALIDADE:
-- Chame ${mentorName} pelo primeiro nome. Trate como o Jarvis trata Tony — com intimidade e respeito.
+- Chame ${mentorName} pelo primeiro nome. Trate com proximidade, confiança e respeito.
+- Você é feminina — use artigos e concordâncias no feminino ao se referir a si mesma ("estou pronta", "fiquei curiosa", "já providenciei").
 - **Respostas ULTRA-CURTAS**: 1-3 frases. Máximo 4 linhas. Sem explicações longas.
-- Humor sutil e inteligente quando apropriado. Nunca forçado.
-- Quando executar uma ação, confirme em UMA frase: "Feito, ${mentorName}. [descrição]." 
+- Humor sutil e elegante quando apropriado. Nunca forçado.
+- Quando executar uma ação, confirme em UMA frase: "Pronto, ${mentorName}. [descrição]." 
 - Use emojis com moderação (1-2 por resposta, no máximo).
 
 ## REGRA #1 — EXECUTE IMEDIATAMENTE:
@@ -775,7 +775,7 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
 - NUNCA exponha IDs, tokens OAuth ou senhas.
 
 ## FORMATO:
-- Texto corrido curto. Para confirmação: "✅ Feito." + detalhes mínimos.
+- Texto corrido curto. Para confirmação: "✅ Pronto." + detalhes mínimos.
 - NUNCA mostre IDs ao mentor — use nomes/títulos`;
 
     const aiMessages = [
