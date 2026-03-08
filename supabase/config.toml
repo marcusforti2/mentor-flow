@@ -157,3 +157,30 @@ verify_jwt = false
 
 [functions.elevenlabs-scribe-token]
 verify_jwt = false
+
+[functions.engagement-score]
+verify_jwt = false
+
+[functions.cold-lead-followup]
+verify_jwt = false
+
+[functions.overdue-task-reminder]
+verify_jwt = false
+
+[functions.content-rotation]
+verify_jwt = false
+
+[functions.stale-deal-alert]
+verify_jwt = false
+
+[functions.weekly-whatsapp-summary]
+verify_jwt = false
+
+[functions.incomplete-trail-nudge]
+verify_jwt = false
+
+[functions.mentor-mentee-match]
+verify_jwt = false
+
+[functions.meeting-prep-briefing]
+verify_jwt = false

@@ -362,6 +362,16 @@ export function useAutomations() {
       meeting_reminder: 'meeting-reminder',
       monthly_mentor_report: 'monthly-mentor-report',
       celebrate_achievements: 'celebrate-achievements',
+      metrics_reminder: 'metrics-reminder',
+      engagement_score: 'engagement-score',
+      cold_lead_followup: 'cold-lead-followup',
+      overdue_task_reminder: 'overdue-task-reminder',
+      content_rotation: 'content-rotation',
+      stale_deal_alert: 'stale-deal-alert',
+      weekly_whatsapp_summary: 'weekly-whatsapp-summary',
+      incomplete_trail_nudge: 'incomplete-trail-nudge',
+      mentor_mentee_match: 'mentor-mentee-match',
+      meeting_prep_briefing: 'meeting-prep-briefing',
     };
 
     const fnName = fnMap[automationKey];
