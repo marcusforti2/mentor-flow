@@ -380,10 +380,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
               />
             </div>
             <h2 className="text-xl font-display font-bold text-foreground mb-2 mt-4">
-              Olá, sou o Jarvis 🤖
+              Olá, sou a Elo ✨
             </h2>
             <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-              Seu centro de comando inteligente. Toque no orb ou fale diretamente.
+              Sua assistente inteligente. Toque no orb ou fale diretamente.
             </p>
             <div className="grid grid-cols-2 gap-2 mt-6 max-w-sm">
               {[
