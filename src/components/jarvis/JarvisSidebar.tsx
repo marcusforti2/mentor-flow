@@ -119,7 +119,7 @@ export function JarvisSidebar({
               </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Gerencie aqui ou peça ao Jarvis
+              Gerencie aqui ou peça à Elo
             </p>
           </div>
 

@@ -39,8 +39,8 @@ export default function Automacoes() {
             <Bot className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-display font-bold text-foreground">Jarvis</h1>
-            <p className="text-xs text-muted-foreground">Centro de comando inteligente — automações, WhatsApp, email e mais.</p>
+            <h1 className="text-xl font-display font-bold text-foreground">EloAi</h1>
+            <p className="text-xs text-muted-foreground">Sua assistente inteligente — automações, WhatsApp, email e mais.</p>
           </div>
         </div>
         <Button

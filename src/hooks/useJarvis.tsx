@@ -174,7 +174,7 @@ export function useJarvis() {
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Jarvis error:', err);
-      toast.error('Erro ao comunicar com Jarvis');
+      toast.error('Erro ao comunicar com a Elo');
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',

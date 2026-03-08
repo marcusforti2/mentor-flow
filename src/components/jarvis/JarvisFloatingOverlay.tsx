@@ -627,7 +627,7 @@ export function JarvisFloatingOverlay() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={isListening ? "🎤 Escutando..." : "Fale com o Jarvis..."}
+                    placeholder={isListening ? "🎤 Escutando..." : "Fale com a Elo..."}
                     className={cn(
                       "min-h-[40px] max-h-24 resize-none pr-20 bg-muted/30 border-border/50 text-sm rounded-xl",
                       isListening && "border-purple-500/50 ring-1 ring-purple-500/30"

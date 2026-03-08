@@ -563,10 +563,10 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
           {isListening
             ? "🎤 Escutando... fale agora, envio automático ao detectar pausa"
             : isSpeaking
-            ? "🔊 Jarvis falando... voltarei a ouvir quando terminar"
+            ? "🔊 Elo falando... voltarei a ouvir quando terminar"
             : ttsEnabled
             ? "🎙️ Modo conversação ativo — falo e ouço automaticamente"
-            : "Jarvis pronto — microfone para falar, alto-falante para ouvir respostas."
+            : "Elo pronta — microfone para falar, alto-falante para ouvir respostas."
           }
         </p>
       </div>
