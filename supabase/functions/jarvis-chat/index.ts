@@ -937,7 +937,309 @@ ${fullContext}
               result = JSON.stringify({ mentorados: totalMentees, tarefas: { total: allTasks.length, concluidas: completedTasks, atrasadas: overdueTasks, taxa: allTasks.length > 0 ? Math.round(completedTasks / allTasks.length * 100) + "%" : "0%" }, leads: { total: allProspections.length, quentes: hotLeads }, trilhas: { licoes: lc2 || 0, certificados: cc || 0 }, atividade_7d: act7 || 0, emails_7d: emailsSent || 0, arquivos: filesCount || 0, automacoes_ativas: `${automations?.filter(a => a.is_enabled).length}/${automations?.length}`, alertas_abertos: smartAlerts?.length || 0 });
               break;
             }
-            case "award_badge": {
+            case "full_system_audit": {
+              // ========== FULL SYSTEM AUDIT — Deep Analysis ==========
+              const now = new Date();
+              const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+              const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+              const weekAgoStr = weekAgo.toISOString();
+              const monthAgoStr = monthAgo.toISOString();
+
+              // Parallel deep fetch of ALL data dimensions
+              const [
+                { count: totalActivity7d },
+                { count: totalActivity30d },
+                { data: sosRequests },
+                { data: sosResponses },
+                { count: emailsSent7d },
+                { count: emailsSent30d },
+                { data: emailLogRecent },
+                { data: waMessages },
+                { data: waCampaigns },
+                { count: filesTotal },
+                { data: recentFiles },
+                { data: allProsp },
+                { data: allDeals },
+                { data: allPayments },
+                { data: allProgInvest },
+                { data: trailProgressAll },
+                { count: certsTotal },
+                { data: allBehavReports },
+                { data: allBehavAnalyses },
+                { data: rankingEntries },
+                { data: userStreaks },
+                { data: membershipBadges },
+                { data: bookings },
+                { data: commPosts },
+                { data: commMsgs },
+                { data: rewardRedemptions },
+                { data: trainingAnalyses },
+                { data: formSubsRecent },
+                { data: allInvites },
+                { data: libraryItems },
+                { data: domains },
+                { data: fingerprints },
+                { data: popupDismissals },
+                { data: playbookViews },
+              ] = await Promise.all([
+                supabase.from("activity_logs").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", weekAgoStr),
+                supabase.from("activity_logs").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", monthAgoStr),
+                supabase.from("sos_requests").select("id, status, created_at, membership_id").eq("tenant_id", tenantId),
+                supabase.from("sos_responses").select("id, created_at").eq("tenant_id", tenantId),
+                supabase.from("email_logs").select("id", { count: "exact" }).gte("sent_at", weekAgoStr),
+                supabase.from("email_logs").select("id", { count: "exact" }).gte("sent_at", monthAgoStr),
+                supabase.from("email_logs").select("status, opened_at, clicked_at").order("sent_at", { ascending: false }).limit(200),
+                supabase.from("whatsapp_messages").select("id, direction, status, created_at").eq("tenant_id", tenantId).gte("created_at", monthAgoStr),
+                supabase.from("whatsapp_campaigns").select("id, status, sent_count, created_at").eq("tenant_id", tenantId),
+                supabase.from("mentorado_files").select("id", { count: "exact" }).eq("tenant_id", tenantId),
+                supabase.from("mentorado_files").select("membership_id, created_at").eq("tenant_id", tenantId).gte("created_at", monthAgoStr),
+                supabase.from("crm_prospections").select("id, status, temperature, membership_id, points, created_at, updated_at").eq("tenant_id", tenantId),
+                supabase.from("mentee_deals").select("id, membership_id, stage, value, created_at").eq("tenant_id", tenantId),
+                supabase.from("mentee_payments").select("id, membership_id, amount, paid_at, status").eq("tenant_id", tenantId),
+                supabase.from("program_investments").select("membership_id, total_value, monthly_value, installments").eq("tenant_id", tenantId),
+                supabase.from("trail_progress").select("membership_id, completed, updated_at").in("membership_id", menteeIds),
+                supabase.from("certificates").select("id", { count: "exact" }).in("membership_id", menteeIds),
+                supabase.from("behavioral_reports").select("membership_id, disc_profile, enneagram_type, communication_style").in("membership_id", menteeIds),
+                supabase.from("mentee_behavioral_analyses").select("membership_id, created_at").in("membership_id", menteeIds),
+                supabase.from("ranking_entries").select("membership_id, points, period").eq("tenant_id", tenantId),
+                supabase.from("user_streaks").select("membership_id, current_streak, longest_streak").in("membership_id", menteeIds),
+                supabase.from("membership_badges").select("membership_id, badge_id").in("membership_id", menteeIds),
+                supabase.from("scheduling_bookings").select("id, status, booking_date, created_at").eq("tenant_id", tenantId),
+                supabase.from("community_posts").select("id, author_membership_id, likes_count, comments_count, created_at").eq("tenant_id", tenantId),
+                supabase.from("community_messages").select("id, author_membership_id, created_at").eq("tenant_id", tenantId).gte("created_at", monthAgoStr),
+                supabase.from("reward_redemptions").select("id, membership_id, status, created_at").eq("tenant_id", tenantId),
+                supabase.from("training_analyses").select("membership_id, nota_geral, created_at").in("membership_id", menteeIds),
+                supabase.from("form_submissions").select("id, form_id, created_at").eq("tenant_id", tenantId).gte("created_at", monthAgoStr),
+                supabase.from("invites").select("id, status, role, created_at").eq("tenant_id", tenantId),
+                supabase.from("mentor_library").select("id, file_type").eq("tenant_id", tenantId),
+                supabase.from("tenant_domains").select("domain, is_verified").eq("tenant_id", tenantId),
+                supabase.from("system_fingerprints").select("id").eq("tenant_id", tenantId),
+                supabase.from("popup_dismissals").select("id, popup_id").limit(500),
+                supabase.from("playbook_views").select("playbook_id, membership_id").limit(500),
+              ]);
+
+              // ===== COMPUTE SCORES =====
+              const totalMentees = mentorados?.length || 0;
+
+              // 1. ENGAJAMENTO
+              const activeLast7d = new Set<string>();
+              recentActivity?.forEach((a: any) => { if (a.membership_id) activeLast7d.add(a.membership_id); });
+              const engagementRate = totalMentees > 0 ? Math.round((activeLast7d.size / totalMentees) * 100) : 0;
+              const inactiveMentees = totalMentees - activeLast7d.size;
+
+              // 2. TAREFAS
+              const tasksDone = allTasks.filter((t: any) => t.status_column === "done").length;
+              const tasksOverdue = allTasks.filter((t: any) => t.due_date && new Date(t.due_date) < now && t.status_column !== "done").length;
+              const taskCompletionRate = allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
+
+              // 3. CRM/PIPELINE
+              const totalLeads = leads?.length || 0;
+              const totalProsp = allProsp?.length || 0;
+              const hotProsp = allProsp?.filter((p: any) => p.temperature === "hot").length || 0;
+              const warmProsp = allProsp?.filter((p: any) => p.temperature === "warm").length || 0;
+              const totalLeadValue = leads?.reduce((sum: number, l: any) => sum + (l.value || 0), 0) || 0;
+              const totalDealValue = allDeals?.reduce((sum: number, d: any) => sum + (d.value || 0), 0) || 0;
+
+              // 4. TRILHAS
+              const lessonsCompleted = trailProgressAll?.filter((tp: any) => tp.completed).length || 0;
+              const totalTrails = trails?.length || 0;
+              const publishedTrails = trails?.filter((t: any) => t.is_published).length || 0;
+
+              // 5. PLAYBOOKS
+              const totalPlaybooks = playbooks?.length || 0;
+              const publicPlaybooks = playbooks?.filter((p: any) => p.visibility === "public" || p.visibility === "all_mentees").length || 0;
+              const pbViewCount = playbookViews?.length || 0;
+
+              // 6. AUTOMAÇÕES
+              const totalAutomations = automations?.length || 0;
+              const activeAutomations = automations?.filter((a: any) => a.is_enabled).length || 0;
+              const failedAutomations = automations?.filter((a: any) => a.last_run_status === "error").length || 0;
+
+              // 7. EMAIL
+              const emailsOpened = emailLogRecent?.filter((e: any) => e.opened_at).length || 0;
+              const emailsClicked = emailLogRecent?.filter((e: any) => e.clicked_at).length || 0;
+              const emailOpenRate = emailLogRecent?.length ? Math.round((emailsOpened / emailLogRecent.length) * 100) : 0;
+              const emailClickRate = emailLogRecent?.length ? Math.round((emailsClicked / emailLogRecent.length) * 100) : 0;
+              const activeFlows = emailFlows?.filter((f: any) => f.is_active).length || 0;
+
+              // 8. WHATSAPP
+              const waMsgsSent = waMessages?.filter((m: any) => m.direction === "outbound").length || 0;
+              const waMsgsReceived = waMessages?.filter((m: any) => m.direction === "inbound").length || 0;
+              const activeWaFlows = waFlows?.filter((f: any) => f.is_active).length || 0;
+
+              // 9. SOS
+              const totalSOS = sosRequests?.length || 0;
+              const pendingSOS = sosRequests?.filter((s: any) => s.status === "pending" || s.status === "open").length || 0;
+              const resolvedSOS = sosRequests?.filter((s: any) => s.status === "resolved" || s.status === "closed").length || 0;
+
+              // 10. GAMIFICAÇÃO
+              const totalBadgesAwarded = membershipBadges?.length || 0;
+              const menteesWithBadges = new Set(membershipBadges?.map((b: any) => b.membership_id)).size;
+              const avgStreak = userStreaks?.length ? Math.round(userStreaks.reduce((s: number, u: any) => s + (u.current_streak || 0), 0) / userStreaks.length) : 0;
+              const maxStreak = userStreaks?.reduce((max: number, u: any) => Math.max(max, u.longest_streak || 0), 0) || 0;
+
+              // 11. JORNADA CS
+              const totalJourneys = journeys?.length || 0;
+              const totalJourneyStages = journeyStages?.length || 0;
+
+              // 12. FINANCEIRO
+              const totalPaid = allPayments?.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + (p.amount || 0), 0) || 0;
+              const totalInvestment = allProgInvest?.reduce((s: number, p: any) => s + (p.total_value || 0), 0) || 0;
+
+              // 13. BEHAVIORAL
+              const menteesWithBehavioral = new Set(allBehavReports?.map((b: any) => b.membership_id)).size;
+              const menteesWithAnalysis = new Set(allBehavAnalyses?.map((b: any) => b.membership_id)).size;
+
+              // 14. TRAINING/IA SCORES
+              const avgIAScore = trainingAnalyses?.length ? (trainingAnalyses.reduce((s: number, t: any) => s + (t.nota_geral || 0), 0) / trainingAnalyses.length).toFixed(1) : null;
+
+              // 15. COMMUNITY
+              const totalPosts = commPosts?.length || 0;
+              const totalChatMsgs30d = commMsgs?.length || 0;
+              const postAuthors = new Set(commPosts?.map((p: any) => p.author_membership_id)).size;
+
+              // 16. FORMULÁRIOS
+              const totalForms = forms?.length || 0;
+              const activeForms = forms?.filter((f: any) => f.is_active).length || 0;
+              const formSubs30d = formSubsRecent?.length || 0;
+
+              // 17. REUNIÕES
+              const totalMeetings = allMeetings?.length || 0;
+
+              // 18. CONVITES
+              const totalInvitesSent = allInvites?.length || 0;
+              const invitesAccepted = allInvites?.filter((i: any) => i.status === "accepted").length || 0;
+              const inviteConversionRate = totalInvitesSent > 0 ? Math.round((invitesAccepted / totalInvitesSent) * 100) : 0;
+
+              // 19. BIBLIOTECA
+              const librarySize = libraryItems?.length || 0;
+
+              // 20. POPUPS
+              const activePopups = popups?.filter((p: any) => p.is_active).length || 0;
+
+              // ===== OVERALL HEALTH SCORE (0-100) =====
+              let healthScore = 50; // base
+              if (engagementRate >= 70) healthScore += 15; else if (engagementRate >= 40) healthScore += 8; else healthScore -= 10;
+              if (taskCompletionRate >= 60) healthScore += 10; else if (taskCompletionRate >= 30) healthScore += 3; else healthScore -= 5;
+              if (tasksOverdue > totalMentees) healthScore -= 8;
+              if (activeAutomations >= 5) healthScore += 8; else if (activeAutomations >= 2) healthScore += 4;
+              if (failedAutomations > 0) healthScore -= 5;
+              if (publishedTrails >= 3) healthScore += 5; else if (publishedTrails >= 1) healthScore += 2;
+              if (totalPlaybooks >= 3) healthScore += 5;
+              if (pendingSOS > 3) healthScore -= 10; else if (pendingSOS > 0) healthScore -= 3;
+              if (emailOpenRate >= 40) healthScore += 5;
+              if (totalJourneyStages > 0) healthScore += 3;
+              if (menteesWithBehavioral > totalMentees * 0.5) healthScore += 5;
+              healthScore = Math.max(0, Math.min(100, healthScore));
+
+              const audit = {
+                _titulo: "📊 AUDITORIA COMPLETA DO SISTEMA",
+                _data: now.toLocaleDateString("pt-BR"),
+                _health_score: `${healthScore}/100`,
+                _programa: tenantData?.name,
+                visao_geral: {
+                  mentorados_ativos: totalMentees,
+                  inativos_7d: inactiveMentees,
+                  taxa_engajamento_7d: `${engagementRate}%`,
+                  atividades_7d: totalActivity7d || 0,
+                  atividades_30d: totalActivity30d || 0,
+                },
+                tarefas: {
+                  total: allTasks.length,
+                  concluidas: tasksDone,
+                  atrasadas: tasksOverdue,
+                  taxa_conclusao: `${taskCompletionRate}%`,
+                },
+                crm_pipeline: {
+                  leads: totalLeads,
+                  valor_leads: `R$${totalLeadValue.toLocaleString()}`,
+                  prospeccoes: totalProsp,
+                  quentes: hotProsp,
+                  mornas: warmProsp,
+                  deals_valor: `R$${totalDealValue.toLocaleString()}`,
+                  etapas_pipeline: pipelineStages?.length || 0,
+                  automacoes_pipeline: stageAutomations?.length || 0,
+                },
+                conteudo: {
+                  trilhas: `${publishedTrails} publicadas / ${totalTrails} total`,
+                  licoes_concluidas: lessonsCompleted,
+                  certificados: certsTotal || 0,
+                  playbooks: `${publicPlaybooks} acessíveis / ${totalPlaybooks} total`,
+                  visualizacoes_playbooks: pbViewCount,
+                  biblioteca_mentor: librarySize,
+                },
+                automacoes: {
+                  ativas: `${activeAutomations}/${totalAutomations}`,
+                  com_erro: failedAutomations,
+                  detalhes: automations?.map((a: any) => `${a.automation_key}: ${a.is_enabled ? "✅" : "⏸"} último:${a.last_run_status || "—"}`),
+                },
+                comunicacao: {
+                  emails_7d: emailsSent7d || 0,
+                  emails_30d: emailsSent30d || 0,
+                  taxa_abertura: `${emailOpenRate}%`,
+                  taxa_clique: `${emailClickRate}%`,
+                  fluxos_email_ativos: activeFlows,
+                  templates_email: emailTemplates?.length || 0,
+                  whatsapp_conectado: !!waConfig?.instance_id,
+                  wa_msgs_enviadas_30d: waMsgsSent,
+                  wa_msgs_recebidas_30d: waMsgsReceived,
+                  wa_fluxos_ativos: activeWaFlows,
+                  wa_campanhas: waCampaigns?.length || 0,
+                },
+                sos: {
+                  total: totalSOS,
+                  pendentes: pendingSOS,
+                  resolvidos: resolvedSOS,
+                },
+                gamificacao: {
+                  badges_concedidos: totalBadgesAwarded,
+                  mentorados_com_badges: menteesWithBadges,
+                  badges_disponiveis: badges?.length || 0,
+                  recompensas_catalogo: rewards?.length || 0,
+                  resgates: rewardRedemptions?.length || 0,
+                  streak_medio: avgStreak,
+                  streak_recorde: maxStreak,
+                },
+                jornada_cs: {
+                  jornadas: totalJourneys,
+                  etapas: totalJourneyStages,
+                },
+                comportamental: {
+                  mentorados_com_perfil_disc: menteesWithBehavioral,
+                  mentorados_analisados_ia: menteesWithAnalysis,
+                  nota_media_ia: avgIAScore || "sem dados",
+                },
+                financeiro: {
+                  investimento_total_programa: `R$${totalInvestment.toLocaleString()}`,
+                  total_recebido: `R$${totalPaid.toLocaleString()}`,
+                },
+                comunidade: {
+                  posts: totalPosts,
+                  autores_unicos: postAuthors,
+                  msgs_chat_30d: totalChatMsgs30d,
+                },
+                formularios: {
+                  total: totalForms,
+                  ativos: activeForms,
+                  respostas_30d: formSubs30d,
+                },
+                reunioes: {
+                  gravacoes_recentes: totalMeetings,
+                },
+                infraestrutura: {
+                  convites_enviados: totalInvitesSent,
+                  convites_aceitos: invitesAccepted,
+                  taxa_conversao_convites: `${inviteConversionRate}%`,
+                  convites_pendentes: invitesPending?.length || 0,
+                  dominios: domains?.map((d: any) => `${d.domain}(${d.is_verified ? "✅" : "⏳"})`) || [],
+                  popups_ativos: activePopups,
+                  branding: branding ? "✅ Configurado" : "❌ Não configurado",
+                  alertas_abertos: smartAlerts?.length || 0,
+                },
+              };
+
+              result = JSON.stringify(audit);
+              executedActions.push("full_system_audit");
               await supabase.from("membership_badges").insert({ membership_id: args.mentee_membership_id, badge_id: args.badge_id });
               result = "Badge concedido.";
               executedActions.push(`award_badge:${args.badge_id}`);
