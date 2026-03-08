@@ -13,13 +13,12 @@ serve(async (req) => {
     const { text, voiceId } = await req.json();
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     if (!ELEVENLABS_API_KEY) throw new Error("ELEVENLABS_API_KEY is not configured");
-
     if (!text?.trim()) throw new Error("Text is required");
 
-    // Truncate to 5000 chars for ElevenLabs limit
     const cleanText = text.slice(0, 5000);
-    const selectedVoice = voiceId || "SAz9YHcvj6GT2YYXdXww"; // River - natural multilingual voice
+    const selectedVoice = voiceId || "SAz9YHcvj6GT2YYXdXww"; // River
 
+    // Use STREAMING endpoint for instant playback
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}/stream?output_format=mp3_44100_128`,
       {
@@ -30,7 +29,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           text: cleanText,
-          model_id: "eleven_flash_v2_5",
+          model_id: "eleven_turbo_v2_5", // Lowest latency model
           voice_settings: {
             stability: 0.35,
             similarity_boost: 0.8,
@@ -60,6 +59,7 @@ serve(async (req) => {
       });
     }
 
+    // Stream the audio directly to the client
     return new Response(response.body, {
       headers: {
         ...corsHeaders,
