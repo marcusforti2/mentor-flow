@@ -8,6 +8,7 @@ export interface JarvisMessage {
   role: 'user' | 'assistant';
   content: string;
   actions?: string[];
+  agent?: string;
   isStreaming?: boolean;
 }
 
@@ -114,6 +115,7 @@ export function useJarvis() {
       }
 
       const actionsHeader = resp.headers.get('X-Actions-Executed');
+      const agentHeader = resp.headers.get('X-Agent');
       let executedActions: string[] = [];
       try { executedActions = actionsHeader ? JSON.parse(actionsHeader) : []; } catch {}
 
@@ -130,6 +132,7 @@ export function useJarvis() {
         role: 'assistant',
         content: '',
         actions: executedActions,
+        agent: agentHeader || undefined,
         isStreaming: true,
       }]);
 
