@@ -421,7 +421,7 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted/50 border border-border/30"
             )}>
-              {msg.agent && msg.agent !== 'jarvis' && (
+              {msg.agent && msg.agent !== 'elo' && msg.agent !== 'jarvis' && (
                 <div className="flex items-center gap-1.5 mb-2">
                   <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1">
                     <Bot className="h-2.5 w-2.5" />
