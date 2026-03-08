@@ -8,6 +8,7 @@ export interface JarvisMessage {
   role: 'user' | 'assistant';
   content: string;
   actions?: string[];
+  agent?: string;
   isStreaming?: boolean;
 }
 
