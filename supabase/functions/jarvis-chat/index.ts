@@ -1621,7 +1621,7 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
     try { await supabase.from("ai_tool_usage").insert({ tool_type: "jarvis_chat", membership_id, tenant_id: tenantId }); } catch {}
 
     return new Response(cs, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": "[]" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": "[]", "X-Agent": selectedAgent },
     });
   } catch (error) {
     console.error("Jarvis error:", error);
