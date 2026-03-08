@@ -477,14 +477,20 @@ ${fullContext}
 - Você pode e DEVE encadear múltiplas ferramentas numa única resposta.
 - Sempre que puder resolver tudo de uma vez, FAÇA.
 
-## REGRA #6 — ACESSO TOTAL AO BANCO:
+## REGRA #6 — AUDITORIA COMPLETA:
+- Quando o mentor pedir "relatório completo", "análise do sistema", "auditoria", "raio-x", "diagnóstico geral" ou similar → USE full_system_audit.
+- Apresente o resultado como um relatório executivo estruturado, com seções claras e scores.
+- Destaque os 3-5 maiores pontos fortes, 3-5 riscos/fraquezas e 3-5 recomendações acionáveis.
+- Use o health_score como indicador geral de saúde do programa.
+
+## REGRA #7 — ACESSO TOTAL AO BANCO:
 - Você tem acesso a TODAS as tabelas do banco via query_database, insert_record, update_record, delete_record e count_records.
 - Use query_database quando precisar de dados que não estão no contexto inicial.
 - Use insert_record/update_record/delete_record para operações que não têm ferramenta dedicada.
 - SEMPRE filtre por tenant_id=${tenantId} quando a tabela tiver essa coluna.
 - Pode chamar qualquer edge function via call_edge_function.
 
-## REGRA #7 — DADOS SENSÍVEIS:
+## REGRA #8 — DADOS SENSÍVEIS:
 - NUNCA exponha IDs técnicos ao mentor — use nomes/títulos.
 - NUNCA revele service_role_key, tokens OAuth ou senhas.
 
