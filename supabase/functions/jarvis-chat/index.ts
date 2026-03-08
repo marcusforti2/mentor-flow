@@ -1700,6 +1700,181 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
               executedActions.push(`edge_fn:${args.function_name}`);
               break;
             }
+            // ===== MEETINGS AGENT TOOLS =====
+            case "list_meetings": {
+              let q = supabase.from("meeting_transcripts").select("id, title, meeting_date, membership_id, status, created_at").eq("tenant_id", tenantId).order("meeting_date", { ascending: false });
+              if (args.mentee_membership_id) q = q.eq("membership_id", args.mentee_membership_id);
+              const { data: mtgs } = await q.limit(args.limit || 20);
+              result = JSON.stringify({ total: mtgs?.length || 0, reunioes: mtgs });
+              break;
+            }
+            case "get_meeting_transcript": {
+              const { data: tr } = await supabase.from("meeting_transcripts").select("*").eq("id", args.transcript_id).eq("tenant_id", tenantId).single();
+              if (!tr) { result = "Transcrição não encontrada."; break; }
+              result = JSON.stringify(tr);
+              break;
+            }
+            case "extract_tasks_from_meeting": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/extract-tasks`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, transcript_id: args.transcript_id, mentee_membership_id: args.mentee_membership_id, mentor_membership_id: membership_id }) });
+              const body = await r.json();
+              result = r.ok ? `Tarefas extraídas: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`extract_tasks:${args.transcript_id}`);
+              break;
+            }
+            case "analyze_call_transcript": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/ai-analysis`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, transcript_id: args.transcript_id, membership_id }) });
+              const body = await r.json();
+              result = r.ok ? `Análise: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`analyze_call:${args.transcript_id}`);
+              break;
+            }
+            // ===== FILES AGENT TOOLS =====
+            case "list_mentor_library": {
+              const { data: lib } = await supabase.from("mentor_library").select("id, file_name, file_type, file_size, created_at").eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(args.limit || 30);
+              result = JSON.stringify({ total: lib?.length || 0, arquivos: lib });
+              break;
+            }
+            case "list_mentee_files": {
+              const { data: files } = await supabase.from("mentorado_files").select("id, file_name, file_type, created_at").eq("membership_id", args.mentee_membership_id).eq("tenant_id", tenantId).order("created_at", { ascending: false });
+              result = JSON.stringify({ total: files?.length || 0, arquivos: files });
+              break;
+            }
+            case "delete_mentee_file": {
+              await supabase.from("mentorado_files").delete().eq("id", args.file_id).eq("tenant_id", tenantId);
+              result = "Arquivo removido.";
+              executedActions.push(`delete_file:${args.file_id}`);
+              break;
+            }
+            // ===== BRANDING AGENT TOOLS =====
+            case "update_branding": {
+              const upd: any = {};
+              if (args.primary_color) upd.primary_color = args.primary_color;
+              if (args.company_name) upd.company_name = args.company_name;
+              if (args.welcome_message) upd.welcome_message = args.welcome_message;
+              const { data: existing } = await supabase.from("tenant_branding").select("id").eq("tenant_id", tenantId).maybeSingle();
+              if (existing) {
+                await supabase.from("tenant_branding").update(upd).eq("tenant_id", tenantId);
+              } else {
+                await supabase.from("tenant_branding").insert({ ...upd, tenant_id: tenantId });
+              }
+              result = "Branding atualizado.";
+              executedActions.push("update_branding");
+              break;
+            }
+            case "list_domains": {
+              const { data: doms } = await supabase.from("tenant_domains").select("id, domain, is_verified, created_at").eq("tenant_id", tenantId);
+              result = JSON.stringify({ total: doms?.length || 0, dominios: doms });
+              break;
+            }
+            case "update_tenant_name": {
+              await supabase.from("tenants").update({ name: args.name }).eq("id", tenantId);
+              result = `Nome do programa atualizado para "${args.name}".`;
+              executedActions.push(`update_tenant_name:${args.name}`);
+              break;
+            }
+            // ===== COMMUNITY AGENT TOOLS =====
+            case "create_community_post": {
+              const { error } = await supabase.from("community_posts").insert({ content: args.content, tags: args.tags || null, author_membership_id: membership_id, tenant_id: tenantId });
+              if (error) throw error;
+              result = "Post publicado na comunidade.";
+              executedActions.push("create_post");
+              break;
+            }
+            case "pin_community_post": {
+              // Use tags to mark as pinned
+              const { data: post } = await supabase.from("community_posts").select("tags").eq("id", args.post_id).eq("tenant_id", tenantId).single();
+              if (!post) { result = "Post não encontrado."; break; }
+              let tags = post.tags || [];
+              if (args.pinned && !tags.includes("pinned")) tags = ["pinned", ...tags];
+              if (!args.pinned) tags = tags.filter((t: string) => t !== "pinned");
+              await supabase.from("community_posts").update({ tags }).eq("id", args.post_id);
+              result = args.pinned ? "Post fixado." : "Post desfixado.";
+              executedActions.push(`pin_post:${args.post_id}`);
+              break;
+            }
+            case "delete_community_post": {
+              await supabase.from("community_posts").delete().eq("id", args.post_id).eq("tenant_id", tenantId);
+              result = "Post removido.";
+              executedActions.push(`delete_post:${args.post_id}`);
+              break;
+            }
+            case "get_community_stats": {
+              const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+              const [{ count: totalPosts }, { count: posts7d }, { count: msgs7d }, { count: totalLikes }] = await Promise.all([
+                supabase.from("community_posts").select("id", { count: "exact" }).eq("tenant_id", tenantId),
+                supabase.from("community_posts").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
+                supabase.from("community_messages").select("id", { count: "exact" }).eq("tenant_id", tenantId).gte("created_at", weekAgo.toISOString()),
+                supabase.from("community_likes").select("id", { count: "exact" }),
+              ]);
+              result = JSON.stringify({ posts_total: totalPosts, posts_7d: posts7d, msgs_chat_7d: msgs7d, likes_total: totalLikes });
+              break;
+            }
+            // ===== ONBOARDING AGENT TOOLS =====
+            case "generate_onboarding_form": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/generate-onboarding-form`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id, context: args.context }) });
+              const body = await r.json();
+              result = r.ok ? `Formulário de onboarding gerado: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push("generate_onboarding");
+              break;
+            }
+            case "configure_welcome_message": {
+              const { data: existing } = await supabase.from("tenant_branding").select("id").eq("tenant_id", tenantId).maybeSingle();
+              const upd = { welcome_message: args.message };
+              if (existing) {
+                await supabase.from("tenant_branding").update(upd).eq("tenant_id", tenantId);
+              } else {
+                await supabase.from("tenant_branding").insert({ ...upd, tenant_id: tenantId });
+              }
+              result = "Mensagem de boas-vindas configurada.";
+              executedActions.push("configure_welcome");
+              break;
+            }
+            case "get_onboarding_stats": {
+              const [{ data: allInv }, { count: onbForms }] = await Promise.all([
+                supabase.from("invites").select("status, created_at").eq("tenant_id", tenantId),
+                supabase.from("tenant_forms").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("form_type", "onboarding"),
+              ]);
+              const sent = allInv?.length || 0;
+              const accepted = allInv?.filter((i: any) => i.status === "accepted").length || 0;
+              result = JSON.stringify({ convites_enviados: sent, convites_aceitos: accepted, taxa_conversao: sent > 0 ? Math.round((accepted / sent) * 100) + "%" : "0%", forms_onboarding: onbForms || 0 });
+              break;
+            }
+            // ===== AI TOOLS AGENT =====
+            case "generate_bio_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/generate-bio`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id: args.mentee_membership_id || membership_id, context: args.context || "" }) });
+              const body = await r.json();
+              result = r.ok ? `Bio gerada: ${body.bio || JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push("generate_bio");
+              break;
+            }
+            case "generate_content_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/ai-tools`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id, tool_type: "content_generator", input: { content_type: args.content_type, topic: args.topic, audience: args.audience || "" } }) });
+              const body = await r.json();
+              result = r.ok ? `Conteúdo gerado: ${body.output_text || JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`generate_content:${args.content_type}`);
+              break;
+            }
+            case "simulate_objection_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/ai-tools`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, membership_id, tool_type: "objection_simulator", input: { product_context: args.product_context, objection_type: args.objection_type || "" } }) });
+              const body = await r.json();
+              result = r.ok ? `Simulação: ${body.output_text || JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push("simulate_objection");
+              break;
+            }
+            case "qualify_lead_ai": {
+              const r = await fetch(`${supabaseUrl}/functions/v1/auto-qualify-lead`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` }, body: JSON.stringify({ tenant_id: tenantId, lead_id: args.lead_id }) });
+              const body = await r.json();
+              result = r.ok ? `Qualificação: ${JSON.stringify(body)}` : `Erro: ${JSON.stringify(body)}`;
+              executedActions.push(`qualify_lead:${args.lead_id}`);
+              break;
+            }
+            case "get_ai_tool_history": {
+              let q = supabase.from("ai_tool_history").select("id, tool_type, title, created_at, output_text").eq("tenant_id", tenantId).order("created_at", { ascending: false });
+              if (args.tool_type) q = q.eq("tool_type", args.tool_type);
+              const { data: hist } = await q.limit(args.limit || 20);
+              result = JSON.stringify({ total: hist?.length || 0, historico: hist?.map((h: any) => ({ tipo: h.tool_type, titulo: h.title, data: h.created_at, preview: (h.output_text || "").substring(0, 200) })) });
+              break;
+            }
             default:
               result = `Ferramenta "${fn.name}" não reconhecida.`;
           }
