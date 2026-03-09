@@ -9,6 +9,7 @@ import { BusinessProfileForm } from "@/components/crm/BusinessProfileForm";
 import { ManualLeadModal } from "@/components/crm/ManualLeadModal";
 import { PipelineStageEditor } from "@/components/crm/PipelineStageEditor";
 import { StageAutomationEditor } from "@/components/crm/StageAutomationEditor";
+import { SpreadsheetImportModal } from "@/components/crm/SpreadsheetImportModal";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
