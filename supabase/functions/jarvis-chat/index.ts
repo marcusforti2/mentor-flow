@@ -2064,7 +2064,15 @@ Se houver ERRO CRÍTICO: retorne "erro: [descrição breve]"`;
     try { await supabase.from("ai_tool_usage").insert({ tool_type: "jarvis_chat", membership_id, tenant_id: tenantId }); } catch {}
 
     return new Response(cs, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": "[]", "X-Agent": selectedAgent },
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "text/event-stream", 
+        "X-Conversation-Id": convId, 
+        "X-Actions-Executed": "[]", 
+        "X-Agent": selectedAgent,
+        "X-Steps": "[]",
+        "X-Plan": "",
+      },
     });
   } catch (error) {
     console.error("Jarvis error:", error);
