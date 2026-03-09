@@ -2038,7 +2038,15 @@ Se houver ERRO CRÍTICO: retorne "erro: [descrição breve]"`;
       saveChatStream(supabase, ss, convId);
 
       return new Response(cs, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": JSON.stringify(executedActions), "X-Agent": selectedAgent },
+        headers: { 
+          ...corsHeaders, 
+          "Content-Type": "text/event-stream", 
+          "X-Conversation-Id": convId, 
+          "X-Actions-Executed": JSON.stringify(executedActions), 
+          "X-Agent": selectedAgent,
+          "X-Steps": JSON.stringify(executionSteps),
+          "X-Plan": planDescription || "",
+        },
       });
     }
 
