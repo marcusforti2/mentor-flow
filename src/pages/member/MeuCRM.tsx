@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Users,
   UserPlus,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export default function MeuCRM() {
