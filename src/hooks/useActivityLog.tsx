@@ -4,6 +4,7 @@ import type { Json } from "@/integrations/supabase/types";
 export type ActivityType = 
   | 'lead_created'
   | 'lead_status_changed'
+  | 'leads_imported'
   | 'lesson_completed'
   | 'trail_started'
   | 'trail_completed'
