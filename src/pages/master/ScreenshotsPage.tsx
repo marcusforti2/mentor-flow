@@ -1,11 +1,12 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Camera, Download, Loader2, CheckCircle2, Image, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Camera, Download, Loader2, CheckCircle2, Image, FileText, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTenants } from '@/hooks/useTenants';
 
 const MENTOR_SCREENS = [
   { label: 'Dashboard', path: '/mentor' },
@@ -32,47 +33,56 @@ interface ScreenCapture {
 }
 
 export default function ScreenshotsPage() {
+  const { tenants, isLoading: tenantsLoading } = useTenants();
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
   const [captures, setCaptures] = useState<ScreenCapture[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('');
   const [progress, setProgress] = useState(0);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const captureIframe = useCallback(
+  const selectedTenant = tenants.find(t => t.id === selectedTenantId);
+
+  const captureScreen = useCallback(
     (path: string): Promise<string> =>
       new Promise((resolve, reject) => {
-        const iframe = iframeRef.current;
-        if (!iframe) return reject('No iframe');
+        // Open a popup window with the route
+        const popup = window.open(
+          window.location.origin + path,
+          'screenshot_capture',
+          `width=1440,height=900,left=0,top=0,toolbar=no,menubar=no,scrollbars=no,resizable=no`
+        );
 
-        iframe.src = window.location.origin + path;
+        if (!popup) {
+          reject(new Error('Popup bloqueado pelo navegador. Permita popups para esta página.'));
+          return;
+        }
 
-        const onLoad = async () => {
-          iframe.removeEventListener('load', onLoad);
-          // Wait for rendering
-          await new Promise((r) => setTimeout(r, 3000));
-
-          try {
-            const doc = iframe.contentDocument;
-            if (!doc?.body) throw new Error('Cannot access iframe');
-
-            const canvas = await html2canvas(doc.body, {
-              width: 1440,
-              height: 900,
-              windowWidth: 1440,
-              windowHeight: 900,
-              scale: 1,
-              useCORS: true,
-              allowTaint: true,
-              logging: false,
-            });
-            resolve(canvas.toDataURL('image/png'));
-          } catch (err) {
-            console.error('Capture failed:', err);
-            reject(err);
-          }
+        const onLoad = () => {
+          // Wait for content to render
+          setTimeout(async () => {
+            try {
+              const canvas = await html2canvas(popup.document.body, {
+                width: 1440,
+                height: 900,
+                windowWidth: 1440,
+                windowHeight: 900,
+                scale: 1,
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+              });
+              const dataUrl = canvas.toDataURL('image/png');
+              popup.close();
+              resolve(dataUrl);
+            } catch (err) {
+              popup.close();
+              console.error('Capture failed:', err);
+              reject(err);
+            }
+          }, 4000);
         };
 
-        iframe.addEventListener('load', onLoad);
+        popup.addEventListener('load', onLoad);
       }),
     []
   );
@@ -89,50 +99,55 @@ export default function ScreenshotsPage() {
       setProgress(Math.round(((i + 1) / MENTOR_SCREENS.length) * 100));
 
       try {
-        const dataUrl = await captureIframe(screen.path);
+        const dataUrl = await captureScreen(screen.path);
         results.push({ label: screen.label, dataUrl });
         setCaptures([...results]);
-      } catch {
-        toast.error(`Falha ao capturar: ${screen.label}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+        toast.error(`Falha ao capturar ${screen.label}: ${msg}`);
+        // If popup blocked, stop the whole process
+        if (msg.includes('Popup')) break;
       }
     }
 
     setIsCapturing(false);
     setCurrentScreen('');
-    toast.success(`${results.length} telas capturadas!`);
-  }, [captureIframe]);
+    if (results.length > 0) {
+      toast.success(`${results.length} telas capturadas!`);
+    }
+  }, [captureScreen]);
 
   const downloadPNG = useCallback((capture: ScreenCapture) => {
     const a = document.createElement('a');
     a.href = capture.dataUrl;
-    a.download = `mentorflow-${capture.label.toLowerCase().replace(/\s+/g, '-')}.png`;
+    const prefix = selectedTenant?.slug || 'mentorflow';
+    a.download = `${prefix}-${capture.label.toLowerCase().replace(/\s+/g, '-')}.png`;
     a.click();
-  }, []);
+  }, [selectedTenant]);
 
   const downloadAllPDF = useCallback(() => {
     if (captures.length === 0) return;
-
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1440, 900] });
-
     captures.forEach((capture, i) => {
       if (i > 0) pdf.addPage([1440, 900], 'landscape');
       pdf.setFontSize(16);
       pdf.text(capture.label, 20, 30);
       pdf.addImage(capture.dataUrl, 'PNG', 0, 40, 1440, 860);
     });
-
-    pdf.save('mentorflow-screenshots.pdf');
+    const prefix = selectedTenant?.slug || 'mentorflow';
+    pdf.save(`${prefix}-screenshots.pdf`);
     toast.success('PDF baixado!');
-  }, [captures]);
+  }, [captures, selectedTenant]);
 
   const downloadAllPNG = useCallback(() => {
     captures.forEach((c) => {
       const a = document.createElement('a');
       a.href = c.dataUrl;
-      a.download = `mentorflow-${c.label.toLowerCase().replace(/\s+/g, '-')}.png`;
+      const prefix = selectedTenant?.slug || 'mentorflow';
+      a.download = `${prefix}-${c.label.toLowerCase().replace(/\s+/g, '-')}.png`;
       a.click();
     });
-  }, [captures]);
+  }, [captures, selectedTenant]);
 
   return (
     <div className="space-y-6">
@@ -144,7 +159,22 @@ export default function ScreenshotsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Tenant Selector */}
+          <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+            <SelectTrigger className="w-[220px]">
+              <Building2 className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder={tenantsLoading ? 'Carregando...' : 'Selecione o Tenant'} />
+            </SelectTrigger>
+            <SelectContent>
+              {tenants.map((tenant) => (
+                <SelectItem key={tenant.id} value={tenant.id}>
+                  {tenant.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Button onClick={captureAll} disabled={isCapturing}>
             {isCapturing ? (
               <>
@@ -154,7 +184,7 @@ export default function ScreenshotsPage() {
             ) : (
               <>
                 <Camera className="h-4 w-4 mr-2" />
-                Capturar Todas ({MENTOR_SCREENS.length} telas)
+                Capturar ({MENTOR_SCREENS.length} telas)
               </>
             )}
           </Button>
@@ -178,6 +208,9 @@ export default function ScreenshotsPage() {
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
               {captures.length} telas capturadas
+              {selectedTenant && (
+                <span className="text-muted-foreground font-normal">— {selectedTenant.name}</span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex gap-3">
@@ -220,13 +253,20 @@ export default function ScreenshotsPage() {
         </div>
       )}
 
-      {/* Hidden iframe for capturing */}
-      <iframe
-        ref={iframeRef}
-        className="fixed -left-[9999px] -top-[9999px]"
-        style={{ width: 1440, height: 900, border: 'none' }}
-        title="Screenshot Capture"
-      />
+      {/* Empty state */}
+      {captures.length === 0 && !isCapturing && (
+        <Card className="border-dashed">
+          <CardContent className="py-16 text-center">
+            <Camera className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              Selecione um tenant e clique em <strong>Capturar</strong> para gerar os prints.
+            </p>
+            <p className="text-muted-foreground/70 text-sm mt-1">
+              Certifique-se de permitir popups no navegador.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
