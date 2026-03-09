@@ -211,7 +211,7 @@ export default function MeuCRM() {
 
         <TabsContent value="stages">
           {tenantId && membershipId && (
-            <PipelineStageEditor tenantId={tenantId} fixedMembershipId={membershipId} />
+            <PipelineStageEditor tenantId={tenantId} fixedMembershipId={membershipId} onSave={reloadStages} />
           )}
         </TabsContent>
 

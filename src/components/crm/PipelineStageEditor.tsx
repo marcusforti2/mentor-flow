@@ -149,6 +149,7 @@ export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembership
       }
 
       await reload();
+      onSave?.();
       toast({ title: "Pipeline salvo com sucesso!" });
     } catch (error: any) {
       console.error("Error saving pipeline:", error);
