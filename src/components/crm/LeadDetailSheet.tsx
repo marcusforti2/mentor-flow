@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -26,11 +25,11 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Lead } from "./LeadCard";
+import type { PipelineStage } from "@/hooks/usePipelineStages";
 import {
   Building2,
   Calendar,
   Image as ImageIcon,
-  Lightbulb,
   Mail,
   MessageSquare,
   Phone,
@@ -46,10 +45,10 @@ import {
   MapPin,
   Users,
   Zap,
-  Shield,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,53 +58,69 @@ interface LeadDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
+  stages?: PipelineStage[];
 }
 
-const defaultStatusOptions = [
-  { value: "new", label: "Novo", color: "bg-slate-500" },
-  { value: "contacted", label: "Contato", color: "bg-blue-500" },
-  { value: "meeting_scheduled", label: "Reunião", color: "bg-amber-500" },
-  { value: "proposal_sent", label: "Proposta", color: "bg-purple-500" },
-  { value: "closed_won", label: "Fechado", color: "bg-green-500" },
-  { value: "closed_lost", label: "Perdido", color: "bg-red-500" },
-];
-
 const temperatureConfig = {
-  hot: { label: "Quente", color: "bg-red-500/20 text-red-400" },
-  warm: { label: "Morno", color: "bg-amber-500/20 text-amber-400" },
-  cold: { label: "Frio", color: "bg-blue-500/20 text-blue-400" },
+  hot: { label: "Quente", emoji: "🔥", color: "text-red-400 border-red-500/30 bg-red-500/10" },
+  warm: { label: "Morno", emoji: "🌤️", color: "text-amber-400 border-amber-500/30 bg-amber-500/10" },
+  cold: { label: "Frio", emoji: "❄️", color: "text-blue-400 border-blue-500/30 bg-blue-500/10" },
 };
+
+const fallbackStages: PipelineStage[] = [
+  { name: "Novos", status_key: "new", color: "bg-slate-500", position: 0 },
+  { name: "Contato", status_key: "contacted", color: "bg-blue-500", position: 1 },
+  { name: "Reunião", status_key: "meeting_scheduled", color: "bg-amber-500", position: 2 },
+  { name: "Proposta", status_key: "proposal_sent", color: "bg-purple-500", position: 3 },
+  { name: "Fechados", status_key: "closed_won", color: "bg-green-500", position: 4 },
+  { name: "Perdidos", status_key: "closed_lost", color: "bg-red-500", position: 5 },
+];
 
 export function LeadDetailSheet({
   lead,
   open,
   onOpenChange,
   onUpdate,
+  stages,
 }: LeadDetailSheetProps) {
   const { toast } = useToast();
-  const [notes, setNotes] = useState(lead?.notes || "");
+  const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [changingStatus, setChangingStatus] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Sync notes when lead changes
+  useEffect(() => {
+    setNotes(lead?.notes || "");
+  }, [lead?.id, lead?.notes]);
 
   if (!lead) return null;
 
   const temp = temperatureConfig[lead.temperature as keyof typeof temperatureConfig] || temperatureConfig.cold;
-  const statusOptions = defaultStatusOptions;
-  const currentStatus = statusOptions.find((s) => s.value === lead.status) || statusOptions[0];
+  const statusOptions = (stages && stages.length > 0 ? stages : fallbackStages)
+    .sort((a, b) => a.position - b.position);
+
+  const currentStage = statusOptions.find((s) => s.status_key === lead.status);
+  const currentStageIndex = statusOptions.findIndex((s) => s.status_key === lead.status);
 
   const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === lead.status) return;
+    setChangingStatus(newStatus);
     try {
       const { error } = await supabase
         .from("crm_prospections")
-        .update({ status: newStatus })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", lead.id);
 
       if (error) throw error;
       onUpdate();
       toast({ title: "Status atualizado!" });
     } catch (error) {
+      console.error("Error updating status:", error);
       toast({ title: "Erro ao atualizar", variant: "destructive" });
+    } finally {
+      setChangingStatus(null);
     }
   };
 
@@ -149,108 +164,151 @@ export function LeadDetailSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-3">
-              {/* Avatar */}
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-lg font-medium text-primary">
-                {lead.contact_name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span>{lead.contact_name}</span>
-                  <Badge variant="outline" className={cn("text-xs", temp.color)}>
-                    {temp.label}
-                  </Badge>
+        <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
+          {/* Header with gradient */}
+          <div className="p-6 pb-4 border-b border-border/50 bg-gradient-to-b from-primary/5 to-transparent">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center text-lg font-bold text-primary shrink-0">
+                  {lead.contact_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
                 </div>
-                {lead.company && (
-                  <p className="text-sm font-normal text-muted-foreground">{lead.company}</p>
-                )}
-              </div>
-            </SheetTitle>
-          </SheetHeader>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="truncate">{lead.contact_name}</span>
+                    <Badge variant="outline" className={cn("text-[10px] px-1.5 shrink-0", temp.color)}>
+                      {temp.emoji} {temp.label}
+                    </Badge>
+                  </div>
+                  {lead.company && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Building2 className="w-3 h-3 text-muted-foreground" />
+                      <p className="text-sm font-normal text-muted-foreground truncate">{lead.company}</p>
+                    </div>
+                  )}
+                </div>
+              </SheetTitle>
+            </SheetHeader>
+          </div>
 
-          <div className="mt-6 space-y-6">
-            {/* Status selector */}
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Status Pipeline - Visual stepper */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">STATUS</Label>
-              <div className="flex flex-wrap gap-2">
-                {statusOptions.map((status) => (
-                  <button
-                    key={status.value}
-                    onClick={() => handleStatusChange(status.value)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                      lead.status === status.value
-                        ? `${status.color} text-white`
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
-                    )}
-                  >
-                    {status.label}
-                  </button>
-                ))}
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold">
+                Status
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {statusOptions.map((stage, idx) => {
+                  const isActive = lead.status === stage.status_key;
+                  const isPast = idx < currentStageIndex;
+                  const isChanging = changingStatus === stage.status_key;
+
+                  return (
+                    <button
+                      key={stage.status_key}
+                      onClick={() => handleStatusChange(stage.status_key)}
+                      disabled={isChanging}
+                      className={cn(
+                        "relative px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
+                        "border focus:outline-none focus:ring-2 focus:ring-primary/30",
+                        isActive
+                          ? `${stage.color} text-white border-transparent shadow-md scale-105`
+                          : isPast
+                          ? "bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted"
+                          : "bg-background text-muted-foreground border-border/40 hover:border-border hover:bg-muted/40"
+                      )}
+                    >
+                      <span className="flex items-center gap-1">
+                        {isChanging ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : isActive ? (
+                          <CheckCircle2 className="w-3 h-3" />
+                        ) : isPast ? (
+                          <CheckCircle2 className="w-3 h-3 opacity-50" />
+                        ) : null}
+                        {stage.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <Separator />
 
-            {/* Contact info */}
-            <div className="space-y-3">
-              <Label className="text-xs text-muted-foreground">CONTATO</Label>
-              {lead.contact_phone && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <a href={`tel:${lead.contact_phone}`} className="hover:text-primary">
-                    {lead.contact_phone}
+            {/* Contact info - compact cards */}
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Contato
+              </Label>
+              <div className="grid gap-2">
+                {lead.contact_phone && (
+                  <a
+                    href={`tel:${lead.contact_phone}`}
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <Phone className="w-4 h-4 text-green-500" />
+                    </div>
+                    <span>{lead.contact_phone}</span>
                   </a>
-                </div>
-              )}
-              {lead.contact_email && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <a href={`mailto:${lead.contact_email}`} className="hover:text-primary">
-                    {lead.contact_email}
+                )}
+                {lead.contact_email && (
+                  <a
+                    href={`mailto:${lead.contact_email}`}
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Mail className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <span className="truncate">{lead.contact_email}</span>
                   </a>
-                </div>
-              )}
-              {lead.created_at && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  <span>Criado em {format(new Date(lead.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-                </div>
-              )}
+                )}
+                {lead.created_at && (
+                  <div className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30">
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Criado em</span>
+                      <p className="text-sm">{format(new Date(lead.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* AI Insights - Full Qualification Report */}
+            {/* AI Insights */}
             {lead.ai_insights && (
               <>
                 <Separator />
                 <div className="space-y-4">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    QUALIFICAÇÃO IA
+                    Qualificação IA
                   </Label>
 
-                  {/* Score and Recommendation - Only show if has qualifier data */}
+                  {/* Score */}
                   {lead.ai_insights.score !== undefined && (
                     <div className="p-4 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent">
                       <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold ${
-                            lead.ai_insights.score >= 75 ? 'bg-green-500/20 text-green-500' :
-                            lead.ai_insights.score >= 50 ? 'bg-yellow-500/20 text-yellow-500' :
-                            lead.ai_insights.score >= 25 ? 'bg-orange-500/20 text-orange-500' :
-                            'bg-red-500/20 text-red-500'
-                          }`}>
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold",
+                            lead.ai_insights.score >= 75 ? 'bg-green-500/15 text-green-500' :
+                            lead.ai_insights.score >= 50 ? 'bg-yellow-500/15 text-yellow-500' :
+                            lead.ai_insights.score >= 25 ? 'bg-orange-500/15 text-orange-500' :
+                            'bg-red-500/15 text-red-500'
+                          )}>
                             {lead.ai_insights.score}
                           </div>
                           <div>
-                            <p className="font-medium">Score de Qualificação</p>
+                            <p className="font-medium text-sm">Score de Qualificação</p>
                             <p className="text-xs text-muted-foreground">
                               {lead.ai_insights.score >= 75 ? 'Excelente fit!' :
                                lead.ai_insights.score >= 50 ? 'Bom potencial' :
@@ -260,12 +318,12 @@ export function LeadDetailSheet({
                           </div>
                         </div>
                         {lead.ai_insights.recommendation && (
-                          <Badge className={`${
+                          <Badge className={cn("text-[10px]",
                             lead.ai_insights.recommendation === 'pursue_hot' ? 'bg-green-500 hover:bg-green-600' :
                             lead.ai_insights.recommendation === 'nurture' ? 'bg-yellow-500 hover:bg-yellow-600' :
                             lead.ai_insights.recommendation === 'low_priority' ? 'bg-orange-500 hover:bg-orange-600' :
                             'bg-red-500 hover:bg-red-600'
-                          }`}>
+                          )}>
                             {lead.ai_insights.recommendation === 'pursue_hot' ? '🔥 Prioridade' :
                              lead.ai_insights.recommendation === 'nurture' ? '🌱 Nutrir' :
                              lead.ai_insights.recommendation === 'low_priority' ? '⏳ Baixa' :
@@ -273,40 +331,40 @@ export function LeadDetailSheet({
                           </Badge>
                         )}
                       </div>
-                      <Progress value={lead.ai_insights.score} className="h-2" />
+                      <Progress value={lead.ai_insights.score} className="h-1.5" />
                     </div>
                   )}
 
                   {/* Summary */}
                   {lead.ai_insights.summary && (
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="text-sm">{lead.ai_insights.summary}</p>
+                    <div className="p-3 bg-muted/40 rounded-lg">
+                      <p className="text-sm leading-relaxed">{lead.ai_insights.summary}</p>
                     </div>
                   )}
 
-                  {/* Tabs for detailed info */}
+                  {/* Tabs */}
                   {(lead.ai_insights.pain_points || lead.ai_insights.opportunities || lead.ai_insights.approach_strategy) && (
                     <Tabs defaultValue="opportunities" className="w-full">
-                      <TabsList className="w-full grid grid-cols-3">
-                        <TabsTrigger value="opportunities" className="text-xs">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          Oportunidades
+                      <TabsList className="w-full grid grid-cols-3 h-9">
+                        <TabsTrigger value="opportunities" className="text-[11px] gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          Oport.
                         </TabsTrigger>
-                        <TabsTrigger value="pain_points" className="text-xs">
-                          <AlertTriangle className="w-3 h-3 mr-1" />
+                        <TabsTrigger value="pain_points" className="text-[11px] gap-1">
+                          <AlertTriangle className="w-3 h-3" />
                           Dores
                         </TabsTrigger>
-                        <TabsTrigger value="approach" className="text-xs">
-                          <Target className="w-3 h-3 mr-1" />
+                        <TabsTrigger value="approach" className="text-[11px] gap-1">
+                          <Target className="w-3 h-3" />
                           Abordagem
                         </TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="opportunities" className="mt-3">
-                        {lead.ai_insights.opportunities && lead.ai_insights.opportunities.length > 0 ? (
+                        {lead.ai_insights.opportunities?.length ? (
                           <ul className="space-y-2">
                             {lead.ai_insights.opportunities.map((opp, idx) => (
-                              <li key={idx} className="flex items-start gap-2 text-sm">
+                              <li key={idx} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-green-500/5">
                                 <Zap className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                                 <span>{opp}</span>
                               </li>
@@ -318,10 +376,10 @@ export function LeadDetailSheet({
                       </TabsContent>
 
                       <TabsContent value="pain_points" className="mt-3">
-                        {lead.ai_insights.pain_points && lead.ai_insights.pain_points.length > 0 ? (
+                        {lead.ai_insights.pain_points?.length ? (
                           <ul className="space-y-2">
                             {lead.ai_insights.pain_points.map((pain, idx) => (
-                              <li key={idx} className="flex items-start gap-2 text-sm">
+                              <li key={idx} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-orange-500/5">
                                 <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                                 <span>{pain}</span>
                               </li>
@@ -336,27 +394,27 @@ export function LeadDetailSheet({
                         {lead.ai_insights.approach_strategy ? (
                           <>
                             {lead.ai_insights.approach_strategy.opening_hook && (
-                              <div className="p-2 bg-primary/5 rounded-lg border border-primary/20">
-                                <p className="text-xs text-primary font-medium mb-1">🎯 Gancho de Abertura</p>
+                              <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                                <p className="text-[10px] text-primary font-semibold uppercase tracking-wider mb-1">🎯 Gancho de Abertura</p>
                                 <p className="text-sm">{lead.ai_insights.approach_strategy.opening_hook}</p>
                               </div>
                             )}
                             {lead.ai_insights.approach_strategy.value_proposition && (
-                              <div className="p-2 bg-green-500/5 rounded-lg border border-green-500/20">
-                                <p className="text-xs text-green-600 font-medium mb-1">💎 Proposta de Valor</p>
+                              <div className="p-3 bg-green-500/5 rounded-lg border border-green-500/20">
+                                <p className="text-[10px] text-green-600 font-semibold uppercase tracking-wider mb-1">💎 Proposta de Valor</p>
                                 <p className="text-sm">{lead.ai_insights.approach_strategy.value_proposition}</p>
                               </div>
                             )}
-                            {lead.ai_insights.approach_strategy.conversation_starters && lead.ai_insights.approach_strategy.conversation_starters.length > 0 && (
+                            {lead.ai_insights.approach_strategy.conversation_starters?.length ? (
                               <div>
-                                <p className="text-xs text-muted-foreground mb-2">💬 Iniciadores de Conversa</p>
-                                <ul className="space-y-1">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">💬 Iniciadores de Conversa</p>
+                                <ul className="space-y-1.5">
                                   {lead.ai_insights.approach_strategy.conversation_starters.map((starter, idx) => (
-                                    <li key={idx} className="text-sm p-2 bg-muted/30 rounded">"{starter}"</li>
+                                    <li key={idx} className="text-sm p-2.5 bg-muted/30 rounded-lg italic">"{starter}"</li>
                                   ))}
                                 </ul>
                               </div>
-                            )}
+                            ) : null}
                           </>
                         ) : (
                           <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
@@ -368,30 +426,30 @@ export function LeadDetailSheet({
                   {/* Extracted Profile Data */}
                   {lead.ai_insights.extracted_data && (
                     <div className="p-3 bg-muted/30 rounded-lg space-y-2">
-                      <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                        <User className="w-3 h-3" /> PERFIL EXTRAÍDO
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <User className="w-3 h-3" /> Perfil Extraído
                       </p>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         {lead.ai_insights.extracted_data.platform && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <Globe className="w-3 h-3 text-muted-foreground" />
                             <span className="capitalize">{lead.ai_insights.extracted_data.platform}</span>
                           </div>
                         )}
                         {lead.ai_insights.extracted_data.location && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <MapPin className="w-3 h-3 text-muted-foreground" />
                             <span>{lead.ai_insights.extracted_data.location}</span>
                           </div>
                         )}
                         {lead.ai_insights.extracted_data.followers && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <Users className="w-3 h-3 text-muted-foreground" />
                             <span>{lead.ai_insights.extracted_data.followers} seguidores</span>
                           </div>
                         )}
                         {lead.ai_insights.extracted_data.website && (
-                          <div className="flex items-center gap-1 col-span-2">
+                          <div className="flex items-center gap-1.5 col-span-2">
                             <Globe className="w-3 h-3 text-muted-foreground" />
                             <a href={lead.ai_insights.extracted_data.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
                               {lead.ai_insights.extracted_data.website}
@@ -400,13 +458,13 @@ export function LeadDetailSheet({
                         )}
                       </div>
                       {lead.ai_insights.extracted_data.bio && (
-                        <p className="text-xs text-muted-foreground mt-2 italic">"{lead.ai_insights.extracted_data.bio}"</p>
+                        <p className="text-xs text-muted-foreground mt-2 italic leading-relaxed">"{lead.ai_insights.extracted_data.bio}"</p>
                       )}
                     </div>
                   )}
 
-                  {/* Legacy insights - for screenshot-based leads */}
-                  {lead.ai_insights.insights && lead.ai_insights.insights.length > 0 && !lead.ai_insights.score && (
+                  {/* Legacy insights */}
+                  {lead.ai_insights.insights?.length && !lead.ai_insights.score ? (
                     <div className="flex flex-wrap gap-1.5">
                       {lead.ai_insights.insights.map((insight, idx) => (
                         <Badge key={idx} variant="secondary" className="text-xs">
@@ -414,11 +472,11 @@ export function LeadDetailSheet({
                         </Badge>
                       ))}
                     </div>
-                  )}
+                  ) : null}
 
                   {lead.ai_insights.suggested_approach && !lead.ai_insights.score && (
                     <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-                      <div className="flex items-center gap-1 text-xs text-primary mb-1">
+                      <div className="flex items-center gap-1 text-[10px] text-primary uppercase tracking-wider font-semibold mb-1">
                         <Target className="w-3 h-3" />
                         Sugestão de Abordagem
                       </div>
@@ -427,8 +485,8 @@ export function LeadDetailSheet({
                   )}
 
                   {lead.ai_insights.conversation_summary && (
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                    <div className="p-3 bg-muted/40 rounded-lg">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">
                         <MessageSquare className="w-3 h-3" />
                         Resumo da Conversa
                       </div>
@@ -444,9 +502,9 @@ export function LeadDetailSheet({
               <>
                 <Separator />
                 <div className="space-y-3">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
                     <ImageIcon className="w-3 h-3" />
-                    SCREENSHOTS ({lead.screenshot_urls.length})
+                    Screenshots ({lead.screenshot_urls.length})
                   </Label>
                   <div className="grid grid-cols-3 gap-2">
                     {lead.screenshot_urls.map((url, idx) => {
@@ -470,15 +528,18 @@ export function LeadDetailSheet({
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">ANOTAÇÕES</Label>
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Anotações
+              </Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Adicione observações sobre este lead..."
                 rows={4}
+                className="resize-none"
               />
               <Button size="sm" onClick={handleSaveNotes} disabled={isSaving}>
-                <Save className="w-3 h-3 mr-1" />
+                {isSaving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
                 Salvar
               </Button>
             </div>
@@ -488,12 +549,7 @@ export function LeadDetailSheet({
             {/* Delete */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full"
-                  disabled={isDeleting}
-                >
+                <Button variant="destructive" size="sm" className="w-full" disabled={isDeleting}>
                   <Trash2 className="w-3 h-3 mr-1" />
                   Excluir Lead
                 </Button>
@@ -503,7 +559,7 @@ export function LeadDetailSheet({
                   <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
                   <AlertDialogDescription>
                     Tem certeza que deseja excluir <strong>{lead.contact_name}</strong>? 
-                    Esta ação não pode ser desfeita e todos os dados serão perdidos.
+                    Esta ação não pode ser desfeita.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -524,10 +580,7 @@ export function LeadDetailSheet({
           className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
         >
-          <button
-            className="absolute top-4 right-4 text-white"
-            onClick={() => setSelectedImage(null)}
-          >
+          <button className="absolute top-4 right-4 text-white" onClick={() => setSelectedImage(null)}>
             <X className="w-6 h-6" />
           </button>
           <img src={selectedImage} alt="" className="max-w-full max-h-full object-contain" />

@@ -286,6 +286,7 @@ export default function MeuCRM() {
         open={detailSheetOpen}
         onOpenChange={setDetailSheetOpen}
         onUpdate={loadLeads}
+        stages={stages}
       />
     </div>
   );
