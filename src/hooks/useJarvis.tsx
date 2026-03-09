@@ -148,6 +148,8 @@ export function useJarvis() {
         content: '',
         actions: executedActions,
         agent: agentHeader || undefined,
+        steps,
+        plan,
         isStreaming: true,
       }]);
 
