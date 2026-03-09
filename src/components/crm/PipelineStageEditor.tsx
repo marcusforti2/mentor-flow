@@ -50,9 +50,11 @@ interface PipelineStageEditorProps {
   mentorados?: MenteeOption[];
   /** If set, hides scope selector and locks to this membership */
   fixedMembershipId?: string;
+  /** Called after stages are saved successfully */
+  onSave?: () => void;
 }
 
-export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembershipId }: PipelineStageEditorProps) {
+export function PipelineStageEditor({ tenantId, mentorados = [], fixedMembershipId, onSave }: PipelineStageEditorProps) {
   const { toast } = useToast();
   const [selectedScope, setSelectedScope] = useState<string>(fixedMembershipId || "tenant");
   const membershipId = fixedMembershipId || (selectedScope === "tenant" ? undefined : selectedScope);
