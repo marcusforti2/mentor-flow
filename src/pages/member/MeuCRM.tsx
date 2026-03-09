@@ -151,7 +151,11 @@ export default function MeuCRM() {
           <h1 className="text-2xl font-display font-bold">Meu CRM</h1>
           <p className="text-muted-foreground">Gerencie seus leads com inteligência</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Importar Planilha
+          </Button>
           <Button variant="outline" onClick={() => setManualModalOpen(true)}>
             <UserPlus className="w-4 h-4 mr-2" />
             Cadastro Manual
