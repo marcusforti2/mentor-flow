@@ -288,6 +288,27 @@ export default function MeuCRM() {
         />
       )}
 
+      {membershipId && (
+        <SpreadsheetImportModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          onImported={() => {
+            loadLeads();
+            logActivity({
+              membershipId,
+              tenantId,
+              actionType: 'leads_imported',
+              description: 'Leads importados via planilha',
+              pointsEarned: 15,
+            });
+          }}
+          membershipId={membershipId}
+          tenantId={tenantId}
+          stages={stages}
+          onStagesChanged={reloadStages}
+        />
+      )}
+
       <LeadDetailSheet
         lead={selectedLead}
         open={detailSheetOpen}
