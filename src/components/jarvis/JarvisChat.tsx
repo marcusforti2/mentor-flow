@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { type JarvisMessage } from '@/hooks/useJarvis';
+import { type JarvisMessage, type JarvisStep } from '@/hooks/useJarvis';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { JarvisOrb, type OrbState } from './JarvisOrb';
+import { Progress } from '@/components/ui/progress';
 
 interface Props {
   messages: JarvisMessage[];
