@@ -60,6 +60,26 @@ serve(async (req) => {
 
     const normalizedCode = code.replace(/\D/g, '');
     const normalizedEmail = email.toLowerCase().trim();
+
+    // ── RATE LIMIT: max 5 failed verifications per email in 15 minutes ──
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { count: failCount } = await supabase
+      .from('otp_rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('email', normalizedEmail)
+      .eq('attempt_type', 'verify')
+      .gte('created_at', fifteenMinAgo);
+
+    if ((failCount ?? 0) >= 5) {
+      console.log("verify-otp: RATE LIMITED -", normalizedEmail, "failed attempts:", failCount);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Conta temporariamente bloqueada por excesso de tentativas. Aguarde 15 minutos.',
+          error_type: 'rate_limited'
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     
     console.log("verify-otp: Verifying for:", normalizedEmail, "tenant_id:", tenant_id, "devMode:", devMode);
     
