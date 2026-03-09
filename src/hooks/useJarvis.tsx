@@ -3,6 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
+export interface JarvisStep {
+  id: string;
+  description: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  result?: string;
+}
+
 export interface JarvisMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -10,6 +17,8 @@ export interface JarvisMessage {
   actions?: string[];
   agent?: string;
   isStreaming?: boolean;
+  steps?: JarvisStep[]; // Multi-step progress
+  plan?: string; // Planning phase description
 }
 
 export interface JarvisConversation {
