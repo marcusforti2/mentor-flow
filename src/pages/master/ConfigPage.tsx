@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useTenants } from '@/hooks/useTenants';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,10 +12,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp';
 import {
   Settings, Palette, ToggleLeft, Key,
   Save, Loader2, CheckCircle2, XCircle, Globe, Building2, MessageCircle,
-  Download, Database, FolderDown, RefreshCw, FileJson,
+  Download, Database, FolderDown, RefreshCw, FileJson, ShieldCheck, Lock,
 } from 'lucide-react';
 
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
