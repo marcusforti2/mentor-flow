@@ -7,7 +7,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe, Download, X } from 'lucide-react';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe, Download, X, Camera } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
@@ -26,6 +26,7 @@ import { PageSpinner } from '@/components/PageSpinner';
    { icon: Palette, label: 'Branding', path: '/master/branding' },
    { icon: Eye, label: 'Preview', path: '/master/preview' },
    { icon: Settings, label: 'Config', path: '/master/config' },
+   { icon: Camera, label: 'Screenshots', path: '/master/screenshots' },
  ];
  
 // ─── Backup Reminder Logic ────────────────────────────────────

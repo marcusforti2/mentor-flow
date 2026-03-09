@@ -70,6 +70,7 @@ const UsersPage = lazyRetry(() => import("./pages/master/UsersPage"));
 const ConfigPage = lazyRetry(() => import("./pages/master/ConfigPage"));
 const BrandingPage = lazyRetry(() => import("./pages/master/BrandingPage"));
 const DomainsPage = lazyRetry(() => import("./pages/master/DomainsPage"));
+const ScreenshotsPage = lazyRetry(() => import("./pages/master/ScreenshotsPage"));
 
 // Admin/Mentor Pages
 const AdminDashboard = lazyRetry(() => import("./pages/admin/AdminDashboard"));
@@ -190,6 +191,7 @@ function AppRoutes() {
           <Route path="config" element={<ConfigPage />} />
           <Route path="branding" element={<BrandingPage />} />
           <Route path="domains" element={<DomainsPage />} />
+          <Route path="screenshots" element={<ScreenshotsPage />} />
         </Route>
 
         {/* Mentor Routes */}
