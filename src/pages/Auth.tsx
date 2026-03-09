@@ -646,6 +646,21 @@ const Auth = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Security Notice */}
+        <div className="mt-6 max-w-md w-full text-center space-y-2">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+            <p className="text-[11px] text-destructive font-semibold uppercase tracking-wide mb-1">
+              ⚠️ Sistema Monitorado
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Acesso não autorizado é crime conforme a <strong>Lei 12.737/2013 (Lei Carolina Dieckmann)</strong> e <strong>Art. 154-A do Código Penal</strong>, com pena de 1 a 4 anos de reclusão. Todos os acessos, IPs, fingerprints e tentativas são registrados automaticamente e encaminhados às autoridades competentes.
+            </p>
+          </div>
+          <p className="text-[10px] text-muted-foreground/60 italic">
+            🍕 Se você veio tentar invadir, relaxa — o máximo que vai conseguir é fome. A gente recomenda pedir uma pizza.
+          </p>
+        </div>
       </div>
     </div>
   );
