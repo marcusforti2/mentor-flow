@@ -122,8 +122,8 @@ const Auth = () => {
       // This ensures activeMembership is populated before navigation
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Force refresh memberships in context to ensure it has latest data
-      await refreshMembershipsAndWait();
+      // Force refresh memberships in context — pass userId to avoid race condition
+      await refreshMembershipsAndWait(session.user.id);
       
       // Small additional delay for React state to settle
       await new Promise(resolve => setTimeout(resolve, 100));

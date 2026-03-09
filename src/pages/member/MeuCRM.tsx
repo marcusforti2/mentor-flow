@@ -38,7 +38,7 @@ export default function MeuCRM() {
 
   const membershipId = activeMembership?.id;
   const tenantId = activeMembership?.tenant_id;
-  const { stages } = usePipelineStages(tenantId, membershipId);
+  const { stages, reload: reloadStages } = usePipelineStages(tenantId, membershipId);
   const columns = stages.map((s) => ({ status: s.status_key, title: s.name, color: s.color }));
 
 
@@ -211,7 +211,7 @@ export default function MeuCRM() {
 
         <TabsContent value="stages">
           {tenantId && membershipId && (
-            <PipelineStageEditor tenantId={tenantId} fixedMembershipId={membershipId} />
+            <PipelineStageEditor tenantId={tenantId} fixedMembershipId={membershipId} onSave={reloadStages} />
           )}
         </TabsContent>
 
