@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Building2, Calendar, Image, Phone } from "lucide-react";
+import { Building2, Calendar, Image, MessageCircle, Phone } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -11,18 +11,21 @@ export interface Lead {
   contact_email: string | null;
   contact_phone: string | null;
   company: string | null;
+  position: string | null;
   notes: string | null;
   status: string | null;
   temperature: string | null;
+  whatsapp: string | null;
+  instagram_url: string | null;
+  linkedin_url: string | null;
+  website_url: string | null;
   ai_insights: {
-    // Legacy fields from screenshot analysis
     interests?: string[];
     objections?: string[];
     insights?: string[];
     suggested_approach?: string;
     conversation_summary?: string;
     source_type?: string;
-    // Lead Qualifier fields
     score?: number;
     recommendation?: string;
     summary?: string;
@@ -62,6 +65,15 @@ const temperatureConfig = {
   cold: { label: "Frio", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
 };
 
+function getWhatsAppLink(lead: Lead): string | null {
+  const raw = lead.whatsapp || lead.contact_phone;
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const number = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${number}`;
+}
+
 export function LeadCard({ lead, onClick }: LeadCardProps) {
   const temp = temperatureConfig[lead.temperature as keyof typeof temperatureConfig] || temperatureConfig.cold;
   const initials = lead.contact_name
@@ -75,6 +87,8 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
     e.dataTransfer.setData("leadId", lead.id);
     e.dataTransfer.effectAllowed = "move";
   };
+
+  const whatsappLink = getWhatsAppLink(lead);
 
   return (
     <Card
@@ -106,13 +120,27 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
             </div>
           )}
 
-          {/* Phone */}
-          {lead.contact_phone && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              <Phone className="w-3 h-3" />
-              <span>{lead.contact_phone}</span>
-            </div>
-          )}
+          {/* Phone + WhatsApp */}
+          <div className="flex items-center gap-2 mt-1">
+            {lead.contact_phone && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Phone className="w-3 h-3" />
+                <span>{lead.contact_phone}</span>
+              </div>
+            )}
+            {whatsappLink && (
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-xs text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 px-1.5 py-0.5 rounded-full"
+              >
+                <MessageCircle className="w-3 h-3" />
+                <span>WhatsApp</span>
+              </a>
+            )}
+          </div>
 
           {/* Footer */}
           <div className="flex items-center gap-2 mt-2">
