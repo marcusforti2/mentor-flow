@@ -184,3 +184,6 @@ verify_jwt = false
 
 [functions.meeting-prep-briefing]
 verify_jwt = false
+
+[functions.import-leads-spreadsheet]
+verify_jwt = false

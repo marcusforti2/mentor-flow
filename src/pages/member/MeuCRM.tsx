@@ -9,6 +9,7 @@ import { BusinessProfileForm } from "@/components/crm/BusinessProfileForm";
 import { ManualLeadModal } from "@/components/crm/ManualLeadModal";
 import { PipelineStageEditor } from "@/components/crm/PipelineStageEditor";
 import { StageAutomationEditor } from "@/components/crm/StageAutomationEditor";
+import { SpreadsheetImportModal } from "@/components/crm/SpreadsheetImportModal";
 import { usePipelineStages } from "@/hooks/usePipelineStages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ import {
   TrendingUp,
   Users,
   UserPlus,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export default function MeuCRM() {
@@ -33,6 +35,7 @@ export default function MeuCRM() {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
@@ -148,7 +151,11 @@ export default function MeuCRM() {
           <h1 className="text-2xl font-display font-bold">Meu CRM</h1>
           <p className="text-muted-foreground">Gerencie seus leads com inteligência</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setImportModalOpen(true)}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Importar Planilha
+          </Button>
           <Button variant="outline" onClick={() => setManualModalOpen(true)}>
             <UserPlus className="w-4 h-4 mr-2" />
             Cadastro Manual
@@ -278,6 +285,27 @@ export default function MeuCRM() {
           }}
           membershipId={membershipId}
           tenantId={tenantId}
+        />
+      )}
+
+      {membershipId && (
+        <SpreadsheetImportModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          onImported={() => {
+            loadLeads();
+            logActivity({
+              membershipId,
+              tenantId,
+              actionType: 'leads_imported',
+              description: 'Leads importados via planilha',
+              pointsEarned: 15,
+            });
+          }}
+          membershipId={membershipId}
+          tenantId={tenantId}
+          stages={stages}
+          onStagesChanged={reloadStages}
         />
       )}
 
