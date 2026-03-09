@@ -112,6 +112,12 @@ serve(async (req) => {
 
       if (!foundOtp) {
         console.log("verify-otp: No OTP found for code");
+        // Log failed attempt for rate limiting
+        const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+        void supabase.from('otp_rate_limits').insert({
+          email: normalizedEmail, attempt_type: 'verify',
+          ip_address: clientIp, user_agent: req.headers.get('user-agent') || 'unknown',
+        });
         return errorResponse("Código inválido", "otp_invalid");
       }
       
@@ -119,6 +125,11 @@ serve(async (req) => {
       const expiresAt = new Date(foundOtp.expires_at);
       if (expiresAt < new Date()) {
         console.log("verify-otp: OTP expired at:", foundOtp.expires_at);
+        const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+        void supabase.from('otp_rate_limits').insert({
+          email: normalizedEmail, attempt_type: 'verify',
+          ip_address: clientIp, user_agent: req.headers.get('user-agent') || 'unknown',
+        });
         return errorResponse("Código expirado. Solicite um novo código.", "otp_expired");
       }
       
