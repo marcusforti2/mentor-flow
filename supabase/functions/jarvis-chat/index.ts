@@ -800,6 +800,38 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
     const assistantMessage = aiResult.choices?.[0]?.message;
     const toolResults: any[] = [];
     const executedActions: string[] = [];
+    const executionSteps: any[] = [];
+    let planDescription: string | undefined;
+
+    // ====== PLANNING AGENT — Detect complex tasks ======
+    const isComplexTask = (toolCalls: any[]): boolean => {
+      if (!toolCalls || toolCalls.length === 0) return false;
+      // Complex if: multiple tools, or bulk operations, or creates+assigns, or generates AI content
+      const complexTools = ["bulk_invite_mentorados", "bulk_send_email", "bulk_create_tasks", "generate_trail_ai", "generate_playbook_ai", "bulk_update_lead_stage", "full_system_audit"];
+      return toolCalls.length >= 3 || toolCalls.some(tc => complexTools.includes(tc.function.name));
+    };
+
+    const createPlan = async (userMessage: string, toolCalls: any[]): Promise<string> => {
+      const planPrompt = `Analise a solicitação do usuário e os tools que serão executados. Crie um plano BREVE (1 frase) descrevendo a sequência de ações. Seja específica e executiva.
+
+Solicitação: "${userMessage}"
+Tools a executar: ${toolCalls.map(tc => tc.function.name).join(", ")}
+
+Retorne APENAS o plano em 1 frase (máximo 15 palavras), sem explicações adicionais. Exemplo: "Vou criar 3 trilhas, gerar conteúdo IA e atribuir aos mentorados."`;
+
+      const planResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          model: "google/gemini-2.5-flash", 
+          messages: [{ role: "user", content: planPrompt }],
+          max_tokens: 50 
+        }),
+      });
+      if (!planResp.ok) return "";
+      const planData = await planResp.json();
+      return planData.choices?.[0]?.message?.content?.trim() || "";
+    };
 
     if (assistantMessage?.tool_calls?.length > 0) {
       for (const toolCall of assistantMessage.tool_calls) {
