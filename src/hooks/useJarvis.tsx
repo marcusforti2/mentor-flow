@@ -125,8 +125,14 @@ export function useJarvis() {
 
       const actionsHeader = resp.headers.get('X-Actions-Executed');
       const agentHeader = resp.headers.get('X-Agent');
+      const stepsHeader = resp.headers.get('X-Steps');
+      const planHeader = resp.headers.get('X-Plan');
       let executedActions: string[] = [];
+      let steps: JarvisStep[] = [];
+      let plan: string | undefined;
       try { executedActions = actionsHeader ? JSON.parse(actionsHeader) : []; } catch {}
+      try { steps = stepsHeader ? JSON.parse(stepsHeader) : []; } catch {}
+      plan = planHeader || undefined;
 
       if (!resp.body) throw new Error('No response body');
 
