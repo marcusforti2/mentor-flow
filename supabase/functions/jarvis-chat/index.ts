@@ -834,10 +834,31 @@ Retorne APENAS o plano em 1 frase (máximo 15 palavras), sem explicações adici
     };
 
     if (assistantMessage?.tool_calls?.length > 0) {
-      for (const toolCall of assistantMessage.tool_calls) {
+      // Generate plan if complex task
+      if (isComplexTask(assistantMessage.tool_calls)) {
+        planDescription = await createPlan(message, assistantMessage.tool_calls);
+        // Initialize steps
+        for (let i = 0; i < assistantMessage.tool_calls.length; i++) {
+          const tc = assistantMessage.tool_calls[i];
+          const toolName = tc.function.name;
+          const toolLabel = toolName.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
+          executionSteps.push({
+            id: `step-${i}`,
+            description: toolLabel,
+            status: "pending",
+          });
+        }
+      }
+
+      // Execute tools sequentially with progress tracking
+      for (let idx = 0; idx < assistantMessage.tool_calls.length; idx++) {
+        const toolCall = assistantMessage.tool_calls[idx];
         const fn = toolCall.function;
         const args = typeof fn.arguments === "string" ? JSON.parse(fn.arguments) : fn.arguments;
         let result = "";
+
+        // Mark step as running
+        if (executionSteps[idx]) executionSteps[idx].status = "running";
 
         try {
           // SERVER-SIDE: Block tools restricted by role
