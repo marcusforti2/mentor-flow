@@ -7,7 +7,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe, Download, X } from 'lucide-react';
+import { LogOut, ArrowLeft, Shield, Eye, Users, Building2, Settings, Palette, Globe, Download, X, Camera } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import {
   Tooltip,
