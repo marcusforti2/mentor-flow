@@ -3,6 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
+export interface JarvisStep {
+  id: string;
+  description: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  result?: string;
+}
+
 export interface JarvisMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -10,6 +17,8 @@ export interface JarvisMessage {
   actions?: string[];
   agent?: string;
   isStreaming?: boolean;
+  steps?: JarvisStep[]; // Multi-step progress
+  plan?: string; // Planning phase description
 }
 
 export interface JarvisConversation {
@@ -116,8 +125,14 @@ export function useJarvis() {
 
       const actionsHeader = resp.headers.get('X-Actions-Executed');
       const agentHeader = resp.headers.get('X-Agent');
+      const stepsHeader = resp.headers.get('X-Steps');
+      const planHeader = resp.headers.get('X-Plan');
       let executedActions: string[] = [];
+      let steps: JarvisStep[] = [];
+      let plan: string | undefined;
       try { executedActions = actionsHeader ? JSON.parse(actionsHeader) : []; } catch {}
+      try { steps = stepsHeader ? JSON.parse(stepsHeader) : []; } catch {}
+      plan = planHeader || undefined;
 
       if (!resp.body) throw new Error('No response body');
 
@@ -133,6 +148,8 @@ export function useJarvis() {
         content: '',
         actions: executedActions,
         agent: agentHeader || undefined,
+        steps,
+        plan,
         isStreaming: true,
       }]);
 

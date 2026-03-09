@@ -800,12 +800,65 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
     const assistantMessage = aiResult.choices?.[0]?.message;
     const toolResults: any[] = [];
     const executedActions: string[] = [];
+    const executionSteps: any[] = [];
+    let planDescription: string | undefined;
+
+    // ====== PLANNING AGENT — Detect complex tasks ======
+    const isComplexTask = (toolCalls: any[]): boolean => {
+      if (!toolCalls || toolCalls.length === 0) return false;
+      // Complex if: multiple tools, or bulk operations, or creates+assigns, or generates AI content
+      const complexTools = ["bulk_invite_mentorados", "bulk_send_email", "bulk_create_tasks", "generate_trail_ai", "generate_playbook_ai", "bulk_update_lead_stage", "full_system_audit"];
+      return toolCalls.length >= 3 || toolCalls.some(tc => complexTools.includes(tc.function.name));
+    };
+
+    const createPlan = async (userMessage: string, toolCalls: any[]): Promise<string> => {
+      const planPrompt = `Analise a solicitação do usuário e os tools que serão executados. Crie um plano BREVE (1 frase) descrevendo a sequência de ações. Seja específica e executiva.
+
+Solicitação: "${userMessage}"
+Tools a executar: ${toolCalls.map(tc => tc.function.name).join(", ")}
+
+Retorne APENAS o plano em 1 frase (máximo 15 palavras), sem explicações adicionais. Exemplo: "Vou criar 3 trilhas, gerar conteúdo IA e atribuir aos mentorados."`;
+
+      const planResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          model: "google/gemini-2.5-flash", 
+          messages: [{ role: "user", content: planPrompt }],
+          max_tokens: 50 
+        }),
+      });
+      if (!planResp.ok) return "";
+      const planData = await planResp.json();
+      return planData.choices?.[0]?.message?.content?.trim() || "";
+    };
 
     if (assistantMessage?.tool_calls?.length > 0) {
-      for (const toolCall of assistantMessage.tool_calls) {
+      // Generate plan if complex task
+      if (isComplexTask(assistantMessage.tool_calls)) {
+        planDescription = await createPlan(message, assistantMessage.tool_calls);
+        // Initialize steps
+        for (let i = 0; i < assistantMessage.tool_calls.length; i++) {
+          const tc = assistantMessage.tool_calls[i];
+          const toolName = tc.function.name;
+          const toolLabel = toolName.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
+          executionSteps.push({
+            id: `step-${i}`,
+            description: toolLabel,
+            status: "pending",
+          });
+        }
+      }
+
+      // Execute tools sequentially with progress tracking
+      for (let idx = 0; idx < assistantMessage.tool_calls.length; idx++) {
+        const toolCall = assistantMessage.tool_calls[idx];
         const fn = toolCall.function;
         const args = typeof fn.arguments === "string" ? JSON.parse(fn.arguments) : fn.arguments;
         let result = "";
+
+        // Mark step as running
+        if (executionSteps[idx]) executionSteps[idx].status = "running";
 
         try {
           // SERVER-SIDE: Block tools restricted by role
@@ -1933,6 +1986,43 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
         }
 
         toolResults.push({ role: "tool", tool_call_id: toolCall.id, content: result });
+
+        // Mark step as done/failed
+        if (executionSteps[idx]) {
+          executionSteps[idx].status = result.startsWith("Erro") || result.includes("🔒") ? "failed" : "done";
+          executionSteps[idx].result = result.length > 80 ? result.substring(0, 77) + "..." : result;
+        }
+      }
+
+      // ====== SELF-REFLECTION — Validate outputs before finalizing ======
+      if (executionSteps.length > 0 && executionSteps.some(s => s.status === "done")) {
+        const reflectionPrompt = `Você executou ${executionSteps.length} ações. Revise rapidamente se tudo foi concluído com sucesso ou se há algum erro crítico que ${mentorName} precisa saber. 
+
+Ações executadas:
+${executionSteps.map((s: any, i: number) => `${i+1}. ${s.description}: ${s.status === "done" ? "✅" : "❌"} ${s.result || ""}`).join("\n")}
+
+Se TUDO OK: retorne apenas "ok"
+Se houver ERRO CRÍTICO: retorne "erro: [descrição breve]"`;
+
+        const reflectResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            model: "google/gemini-2.5-flash", 
+            messages: [{ role: "user", content: reflectionPrompt }],
+            max_tokens: 100 
+          }),
+        });
+        if (reflectResp.ok) {
+          const reflectData = await reflectResp.json();
+          const reflection = reflectData.choices?.[0]?.message?.content?.trim().toLowerCase() || "";
+          if (reflection.startsWith("erro")) {
+            console.warn("Self-reflection detected error:", reflection);
+            // Add error note to last step
+            const lastStep = executionSteps[executionSteps.length - 1];
+            if (lastStep) lastStep.result = `⚠️ ${reflection.replace("erro:", "").trim()}`;
+          }
+        }
       }
 
       // Stream final response with tool results
@@ -1948,7 +2038,15 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
       saveChatStream(supabase, ss, convId);
 
       return new Response(cs, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": JSON.stringify(executedActions), "X-Agent": selectedAgent },
+        headers: { 
+          ...corsHeaders, 
+          "Content-Type": "text/event-stream", 
+          "X-Conversation-Id": convId, 
+          "X-Actions-Executed": JSON.stringify(executedActions), 
+          "X-Agent": selectedAgent,
+          "X-Steps": JSON.stringify(executionSteps),
+          "X-Plan": planDescription || "",
+        },
       });
     }
 
@@ -1966,7 +2064,15 @@ Quando um agente está ativo, você opera com a expertise dele. O usuário não 
     try { await supabase.from("ai_tool_usage").insert({ tool_type: "jarvis_chat", membership_id, tenant_id: tenantId }); } catch {}
 
     return new Response(cs, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "X-Conversation-Id": convId, "X-Actions-Executed": "[]", "X-Agent": selectedAgent },
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "text/event-stream", 
+        "X-Conversation-Id": convId, 
+        "X-Actions-Executed": "[]", 
+        "X-Agent": selectedAgent,
+        "X-Steps": "[]",
+        "X-Plan": "",
+      },
     });
   } catch (error) {
     console.error("Jarvis error:", error);

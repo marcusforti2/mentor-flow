@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { type JarvisMessage } from '@/hooks/useJarvis';
+import { type JarvisMessage, type JarvisStep } from '@/hooks/useJarvis';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { JarvisOrb, type OrbState } from './JarvisOrb';
+import { Progress } from '@/components/ui/progress';
 
 interface Props {
   messages: JarvisMessage[];
@@ -421,6 +422,51 @@ export function JarvisChat({ messages, isLoading, onSend, onStop, onClear }: Pro
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted/50 border border-border/30"
             )}>
+              {msg.plan && (
+                <div className="mb-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Bot className="h-3.5 w-3.5 text-blue-400" />
+                    <span className="text-[11px] font-semibold text-blue-400 uppercase tracking-wide">Planejamento</span>
+                  </div>
+                  <p className="text-xs text-blue-300 leading-relaxed">{msg.plan}</p>
+                </div>
+              )}
+              {msg.steps && msg.steps.length > 0 && (
+                <div className="mb-3 space-y-1.5">
+                  {msg.steps.map((step) => (
+                    <div key={step.id} className={cn(
+                      "flex items-center gap-2 p-2.5 rounded-lg text-xs transition-all",
+                      step.status === 'done' && "bg-emerald-500/10 border border-emerald-500/20",
+                      step.status === 'running' && "bg-amber-500/10 border border-amber-500/20 animate-pulse",
+                      step.status === 'pending' && "bg-muted/30 border border-border/20 opacity-60",
+                      step.status === 'failed' && "bg-red-500/10 border border-red-500/20"
+                    )}>
+                      {step.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
+                      {step.status === 'running' && <Loader2 className="h-3.5 w-3.5 text-amber-400 shrink-0 animate-spin" />}
+                      {step.status === 'pending' && <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
+                      {step.status === 'failed' && <span className="text-red-400 shrink-0">✕</span>}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "font-medium leading-tight",
+                          step.status === 'done' && "text-emerald-300",
+                          step.status === 'running' && "text-amber-300",
+                          step.status === 'pending' && "text-muted-foreground",
+                          step.status === 'failed' && "text-red-300"
+                        )}>{step.description}</p>
+                        {step.result && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{step.result}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {msg.steps.some(s => s.status === 'running') && (
+                    <Progress 
+                      value={(msg.steps.filter(s => s.status === 'done').length / msg.steps.length) * 100} 
+                      className="h-1 mt-2"
+                    />
+                  )}
+                </div>
+              )}
               {msg.agent && msg.agent !== 'elo' && msg.agent !== 'jarvis' && (
                 <div className="flex items-center gap-1.5 mb-2">
                   <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/20 gap-1">
