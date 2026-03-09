@@ -1986,6 +1986,43 @@ Retorne APENAS o plano em 1 frase (máximo 15 palavras), sem explicações adici
         }
 
         toolResults.push({ role: "tool", tool_call_id: toolCall.id, content: result });
+
+        // Mark step as done/failed
+        if (executionSteps[idx]) {
+          executionSteps[idx].status = result.startsWith("Erro") || result.includes("🔒") ? "failed" : "done";
+          executionSteps[idx].result = result.length > 80 ? result.substring(0, 77) + "..." : result;
+        }
+      }
+
+      // ====== SELF-REFLECTION — Validate outputs before finalizing ======
+      if (executionSteps.length > 0 && executionSteps.some(s => s.status === "done")) {
+        const reflectionPrompt = `Você executou ${executionSteps.length} ações. Revise rapidamente se tudo foi concluído com sucesso ou se há algum erro crítico que ${mentorName} precisa saber. 
+
+Ações executadas:
+${executionSteps.map((s: any, i: number) => `${i+1}. ${s.description}: ${s.status === "done" ? "✅" : "❌"} ${s.result || ""}`).join("\n")}
+
+Se TUDO OK: retorne apenas "ok"
+Se houver ERRO CRÍTICO: retorne "erro: [descrição breve]"`;
+
+        const reflectResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            model: "google/gemini-2.5-flash", 
+            messages: [{ role: "user", content: reflectionPrompt }],
+            max_tokens: 100 
+          }),
+        });
+        if (reflectResp.ok) {
+          const reflectData = await reflectResp.json();
+          const reflection = reflectData.choices?.[0]?.message?.content?.trim().toLowerCase() || "";
+          if (reflection.startsWith("erro")) {
+            console.warn("Self-reflection detected error:", reflection);
+            // Add error note to last step
+            const lastStep = executionSteps[executionSteps.length - 1];
+            if (lastStep) lastStep.result = `⚠️ ${reflection.replace("erro:", "").trim()}`;
+          }
+        }
       }
 
       // Stream final response with tool results
