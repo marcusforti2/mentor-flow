@@ -21,6 +21,13 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -199,44 +206,31 @@ export function LeadDetailSheet({
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* Status Pipeline - Visual stepper */}
             <div>
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 block font-semibold">
                 Status
               </Label>
-              <div className="flex flex-wrap gap-1.5">
-                {statusOptions.map((stage, idx) => {
-                  const isActive = lead.status === stage.status_key;
-                  const isPast = idx < currentStageIndex;
-                  const isChanging = changingStatus === stage.status_key;
-
-                  return (
-                    <button
-                      key={stage.status_key}
-                      onClick={() => handleStatusChange(stage.status_key)}
-                      disabled={isChanging}
-                      className={cn(
-                        "relative px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
-                        "border focus:outline-none focus:ring-2 focus:ring-primary/30",
-                        isActive
-                          ? `${stage.color} text-white border-transparent shadow-md scale-105`
-                          : isPast
-                          ? "bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted"
-                          : "bg-background text-muted-foreground border-border/40 hover:border-border hover:bg-muted/40"
-                      )}
-                    >
-                      <span className="flex items-center gap-1">
-                        {isChanging ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : isActive ? (
-                          <CheckCircle2 className="w-3 h-3" />
-                        ) : isPast ? (
-                          <CheckCircle2 className="w-3 h-3 opacity-50" />
-                        ) : null}
+              <Select value={lead.status || ""} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione o status">
+                    {currentStage && (
+                      <span className="flex items-center gap-2">
+                        <span className={cn("w-2.5 h-2.5 rounded-full", currentStage.color)} />
+                        {currentStage.name}
+                      </span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {statusOptions.map((stage) => (
+                    <SelectItem key={stage.status_key} value={stage.status_key}>
+                      <span className="flex items-center gap-2">
+                        <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", stage.color)} />
                         {stage.name}
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <Separator />
