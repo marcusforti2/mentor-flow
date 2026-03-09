@@ -419,6 +419,7 @@ export default function CRMMentorados() {
         open={detailSheetOpen}
         onOpenChange={(open) => { if (!open) { setDetailSheetOpen(false); setSelectedLead(null); } }}
         onUpdate={loadData}
+        stages={stages}
       />
     </div>
   );
