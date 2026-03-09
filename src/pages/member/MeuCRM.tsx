@@ -35,6 +35,7 @@ export default function MeuCRM() {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
