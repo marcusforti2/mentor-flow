@@ -210,6 +210,33 @@ serve(async (req) => {
     const normalizedEmail = email.toLowerCase().trim();
     const otpChannel = channel || "email"; // "email" | "whatsapp"
 
+    // ── RATE LIMIT: max 5 sends per email in 15 minutes ──
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { count: sendCount } = await supabase
+      .from('otp_rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('email', normalizedEmail)
+      .eq('attempt_type', 'send')
+      .gte('created_at', fifteenMinAgo);
+
+    if ((sendCount ?? 0) >= 5) {
+      console.log("send-otp: RATE LIMITED -", normalizedEmail, "attempts:", sendCount);
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas. Aguarde 15 minutos antes de solicitar um novo código.' }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Log this send attempt
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    void supabase.from('otp_rate_limits').insert({
+      email: normalizedEmail,
+      attempt_type: 'send',
+      ip_address: clientIp,
+      user_agent: userAgent,
+    });
+
     console.log("send-otp: Checking permission for:", normalizedEmail, "tenant_hint:", tenant_hint, "channel:", otpChannel);
 
     const { data: permissionRows, error: permError } = await supabase

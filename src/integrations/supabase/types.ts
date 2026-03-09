@@ -3082,6 +3082,33 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_rate_limits: {
+        Row: {
+          attempt_type: string
+          created_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          attempt_type?: string
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       playbook_access_rules: {
         Row: {
           can_edit: boolean
@@ -5074,6 +5101,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_otp_codes: { Args: never; Returns: undefined }
+      cleanup_otp_rate_limits: { Args: never; Returns: undefined }
       end_impersonation: { Args: { _log_id: string }; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       get_effective_membership: {

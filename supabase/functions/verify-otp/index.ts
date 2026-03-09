@@ -60,6 +60,26 @@ serve(async (req) => {
 
     const normalizedCode = code.replace(/\D/g, '');
     const normalizedEmail = email.toLowerCase().trim();
+
+    // ── RATE LIMIT: max 5 failed verifications per email in 15 minutes ──
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { count: failCount } = await supabase
+      .from('otp_rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('email', normalizedEmail)
+      .eq('attempt_type', 'verify')
+      .gte('created_at', fifteenMinAgo);
+
+    if ((failCount ?? 0) >= 5) {
+      console.log("verify-otp: RATE LIMITED -", normalizedEmail, "failed attempts:", failCount);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Conta temporariamente bloqueada por excesso de tentativas. Aguarde 15 minutos.',
+          error_type: 'rate_limited'
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     
     console.log("verify-otp: Verifying for:", normalizedEmail, "tenant_id:", tenant_id, "devMode:", devMode);
     
@@ -92,6 +112,12 @@ serve(async (req) => {
 
       if (!foundOtp) {
         console.log("verify-otp: No OTP found for code");
+        // Log failed attempt for rate limiting
+        const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+        void supabase.from('otp_rate_limits').insert({
+          email: normalizedEmail, attempt_type: 'verify',
+          ip_address: clientIp, user_agent: req.headers.get('user-agent') || 'unknown',
+        });
         return errorResponse("Código inválido", "otp_invalid");
       }
       
@@ -99,6 +125,11 @@ serve(async (req) => {
       const expiresAt = new Date(foundOtp.expires_at);
       if (expiresAt < new Date()) {
         console.log("verify-otp: OTP expired at:", foundOtp.expires_at);
+        const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
+        void supabase.from('otp_rate_limits').insert({
+          email: normalizedEmail, attempt_type: 'verify',
+          ip_address: clientIp, user_agent: req.headers.get('user-agent') || 'unknown',
+        });
         return errorResponse("Código expirado. Solicite um novo código.", "otp_expired");
       }
       
