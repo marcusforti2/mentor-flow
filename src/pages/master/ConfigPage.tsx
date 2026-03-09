@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useTenants } from '@/hooks/useTenants';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,10 +12,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp';
 import {
   Settings, Palette, ToggleLeft, Key,
   Save, Loader2, CheckCircle2, XCircle, Globe, Building2, MessageCircle,
-  Download, Database, FolderDown, RefreshCw, FileJson,
+  Download, Database, FolderDown, RefreshCw, FileJson, ShieldCheck, Lock,
 } from 'lucide-react';
 
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
@@ -502,6 +504,17 @@ function BackupSection() {
   const [loadingList, setLoadingList] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
 
+  // Security gate
+  const [unlocked, setUnlocked] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [authStep, setAuthStep] = useState<'password' | 'otp'>('password');
+  const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  const BACKUP_PASSWORD = 'MentorFlow@2026!';
+
   const fetchBackups = async () => {
     setLoadingList(true);
     const { data, error } = await supabase.storage
@@ -517,6 +530,61 @@ function BackupSection() {
   };
 
   useEffect(() => { fetchBackups(); }, []);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    const timer = setTimeout(() => {
+      setUnlocked(false);
+      toast.info('Sessão de backup expirada. Re-autentique para continuar.');
+    }, 10 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [unlocked]);
+
+  const requestAuth = useCallback((action: () => void) => {
+    if (unlocked) { action(); return; }
+    setPendingAction(() => action);
+    setAuthStep('password');
+    setPassword('');
+    setOtpCode('');
+    setShowAuthDialog(true);
+  }, [unlocked]);
+
+  const handlePasswordSubmit = async () => {
+    if (password !== BACKUP_PASSWORD) { toast.error('Senha incorreta.'); return; }
+    setAuthLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) throw new Error('Sessão não encontrada');
+      const { error } = await supabase.functions.invoke('send-otp', {
+        body: { email: session.user.email, channel: 'email' },
+      });
+      if (error) throw error;
+      toast.success('Código enviado para seu email.');
+      setAuthStep('otp');
+    } catch (err: any) {
+      toast.error('Erro ao enviar OTP: ' + (err.message || 'Erro'));
+    }
+    setAuthLoading(false);
+  };
+
+  const handleOtpSubmit = async () => {
+    setAuthLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) throw new Error('Sessão não encontrada');
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { email: session.user.email, code: otpCode },
+      });
+      if (error || !data?.valid) { toast.error('Código inválido.'); setAuthLoading(false); return; }
+      setUnlocked(true);
+      setShowAuthDialog(false);
+      toast.success('Acesso ao backup liberado por 10 minutos.');
+      if (pendingAction) { pendingAction(); setPendingAction(null); }
+    } catch (err: any) {
+      toast.error('Erro na verificação: ' + (err.message || 'Erro'));
+    }
+    setAuthLoading(false);
+  };
 
   const runBackup = async () => {
     setRunning(true);
@@ -534,13 +602,10 @@ function BackupSection() {
   const downloadBackup = async (folderName: string) => {
     setDownloading(folderName);
     try {
-      // List files in the folder
       const { data: files, error } = await supabase.storage
         .from('data-backups')
         .list(folderName, { limit: 100 });
       if (error || !files) throw new Error('Erro ao listar arquivos');
-
-      // Download each file and create a combined JSON
       const allData: Record<string, unknown> = {};
       for (const file of files) {
         const { data: blob, error: dlErr } = await supabase.storage
@@ -548,13 +613,10 @@ function BackupSection() {
           .download(`${folderName}/${file.name}`);
         if (!dlErr && blob) {
           const text = await blob.text();
-          try {
-            allData[file.name.replace('.json', '')] = JSON.parse(text);
-          } catch { allData[file.name] = text; }
+          try { allData[file.name.replace('.json', '')] = JSON.parse(text); }
+          catch { allData[file.name] = text; }
         }
       }
-
-      // Trigger browser download
       const jsonStr = JSON.stringify(allData, null, 2);
       const downloadBlob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(downloadBlob);
@@ -573,68 +635,111 @@ function BackupSection() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5 text-primary" />
-          Backup de Dados
-        </CardTitle>
-        <CardDescription>
-          Exporte todas as tabelas críticas como JSON. Backups automáticos rodam todo domingo às 3h UTC.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Button onClick={runBackup} disabled={running}>
-            {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FolderDown className="h-4 w-4 mr-2" />}
-            {running ? 'Executando backup...' : 'Executar Backup Agora'}
-          </Button>
-          <Button variant="outline" size="icon" onClick={fetchBackups} disabled={loadingList}>
-            <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Backups disponíveis</p>
-          {loadingList ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : backups.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum backup encontrado</p>
-          ) : (
-            <div className="space-y-1">
-              {backups.map((b) => (
-                <div
-                  key={b.name}
-                  className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileJson className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-mono text-foreground">{b.name}</span>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Backup de Dados
+            {unlocked ? (
+              <Badge variant="outline" className="ml-2 text-green-600 border-green-600/30">
+                <ShieldCheck className="h-3 w-3 mr-1" /> Desbloqueado
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="ml-2 text-amber-600 border-amber-600/30">
+                <Lock className="h-3 w-3 mr-1" /> Protegido
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>
+            Protegido por senha + OTP. Backups automáticos rodam todo domingo às 3h UTC.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Button onClick={() => requestAuth(runBackup)} disabled={running}>
+              {running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FolderDown className="h-4 w-4 mr-2" />}
+              {running ? 'Executando backup...' : 'Executar Backup Agora'}
+            </Button>
+            <Button variant="outline" size="icon" onClick={fetchBackups} disabled={loadingList}>
+              <RefreshCw className={`h-4 w-4 ${loadingList ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Backups disponíveis</p>
+            {loadingList ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : backups.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum backup encontrado</p>
+            ) : (
+              <div className="space-y-1">
+                {backups.map((b) => (
+                  <div key={b.name} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <FileJson className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-mono text-foreground">{b.name}</span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => requestAuth(() => downloadBackup(b.name))} disabled={downloading === b.name}>
+                      {downloading === b.name ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                      Baixar tudo
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => downloadBackup(b.name)}
-                    disabled={downloading === b.name}
-                  >
-                    {downloading === b.name ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                    ) : (
-                      <Download className="h-3.5 w-3.5 mr-1.5" />
-                    )}
-                    Baixar tudo
-                  </Button>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              Autenticação de Segurança
+            </DialogTitle>
+            <DialogDescription>
+              {authStep === 'password' ? 'Digite a senha de acesso ao backup.' : 'Digite o código OTP enviado para seu email.'}
+            </DialogDescription>
+          </DialogHeader>
+          {authStep === 'password' ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="backup-password">Senha do Backup</Label>
+                <Input id="backup-password" type="password" placeholder="Digite a senha..." value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()} autoFocus />
+              </div>
+              <Button onClick={handlePasswordSubmit} disabled={authLoading || !password} className="w-full">
+                {authLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />}
+                Verificar Senha
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button onClick={handleOtpSubmit} disabled={authLoading || otpCode.length < 6} className="w-full">
+                {authLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                Confirmar Código
+              </Button>
             </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
