@@ -77,13 +77,26 @@ export default function MeuCRM() {
   };
 
   const handleStatusChange = async (leadId: string, newStatus: string) => {
+    if (!leadId || !newStatus) {
+      console.error("handleStatusChange: missing leadId or newStatus", { leadId, newStatus });
+      return;
+    }
+
+    // Optimistic update first
+    setLeads((prev) =>
+      prev.map((lead) => (lead.id === leadId ? { ...lead, status: newStatus } : lead))
+    );
+
     try {
       const { error } = await supabase
         .from("crm_prospections")
-        .update({ status: newStatus })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", leadId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating lead status:", error);
+        throw error;
+      }
 
       // Log activity
       if (membershipId) {
@@ -95,11 +108,10 @@ export default function MeuCRM() {
           metadata: { leadId, newStatus },
         });
       }
-
-      setLeads((prev) =>
-        prev.map((lead) => (lead.id === leadId ? { ...lead, status: newStatus } : lead))
-      );
     } catch (error) {
+      console.error("handleStatusChange error:", error);
+      // Revert optimistic update
+      loadLeads();
       toast({ title: "Erro ao mover lead", variant: "destructive" });
     }
   };
