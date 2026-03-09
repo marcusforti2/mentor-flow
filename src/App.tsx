@@ -191,6 +191,7 @@ function AppRoutes() {
           <Route path="config" element={<ConfigPage />} />
           <Route path="branding" element={<BrandingPage />} />
           <Route path="domains" element={<DomainsPage />} />
+          <Route path="screenshots" element={<ScreenshotsPage />} />
         </Route>
 
         {/* Mentor Routes */}
