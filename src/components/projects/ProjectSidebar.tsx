@@ -3,8 +3,9 @@ import { type MentorProject } from '@/hooks/useMentorProjects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Folder, FolderOpen } from 'lucide-react';
+import { Plus, Folder, FolderOpen, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProjectAgentDialog } from './ProjectAgentDialog';
 
 interface Props {
   projects: MentorProject[];

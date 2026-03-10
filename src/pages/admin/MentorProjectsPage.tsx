@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMentorProjects, type MentorProject } from '@/hooks/useMentorProjects';
 import { ProjectSidebar } from '@/components/projects/ProjectSidebar';
 import { ProjectWorkspace } from '@/components/projects/ProjectWorkspace';
+import { ProjectAgentDialog } from '@/components/projects/ProjectAgentDialog';
 import { Loader2 } from 'lucide-react';
 
 const MentorProjectsPage = () => {
@@ -30,9 +31,10 @@ const MentorProjectsPage = () => {
         <ProjectWorkspace project={selectedProject} />
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-4">
             <p className="text-lg font-medium">Crie seu primeiro projeto</p>
             <p className="text-sm">Organize suas tarefas como no ClickUp</p>
+            <ProjectAgentDialog onProjectCreated={setSelectedProjectId} />
           </div>
         </div>
       )}
