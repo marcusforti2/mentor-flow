@@ -492,31 +492,7 @@ export function LeadDetailSheet({
             )}
 
             {/* Screenshots */}
-            {lead.screenshot_urls && lead.screenshot_urls.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-                    <ImageIcon className="w-3 h-3" />
-                    Screenshots ({lead.screenshot_urls.length})
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {lead.screenshot_urls.map((url, idx) => {
-                      const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/authenticated/lead-screenshots/${url}`;
-                      return (
-                        <img
-                          key={idx}
-                          src={publicUrl}
-                          alt=""
-                          className="aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border"
-                          onClick={() => setSelectedImage(publicUrl)}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
+            <ScreenshotGallery urls={lead.screenshot_urls} onImageClick={setSelectedImage} />
 
             <Separator />
 
