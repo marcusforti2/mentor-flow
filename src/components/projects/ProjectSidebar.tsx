@@ -30,7 +30,7 @@ export function ProjectSidebar({ projects, selectedId, onSelect, onCreate }: Pro
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projetos</span>
         <div className="flex items-center gap-0.5">
-          <ProjectAgentDialog onProjectCreated={onSelect} />
+          <ProjectAgentDialog onProjectCreated={onSelect} compact />
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreating(!creating)}>
             <Plus className="h-3.5 w-3.5" />
           </Button>
