@@ -2604,6 +2604,155 @@ export type Database = {
           },
         ]
       }
+      mentor_custom_fields: {
+        Row: {
+          created_at: string
+          field_type: string
+          id: string
+          name: string
+          options: Json | null
+          position: number
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          field_type?: string
+          id?: string
+          name: string
+          options?: Json | null
+          position?: number
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          field_type?: string
+          id?: string
+          name?: string
+          options?: Json | null
+          position?: number
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_custom_fields_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_goals: {
+        Row: {
+          created_at: string
+          current_value: number | null
+          description: string | null
+          due_date: string | null
+          id: string
+          membership_id: string
+          name: string
+          project_id: string | null
+          status: string
+          target_value: number | null
+          tenant_id: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          membership_id: string
+          name: string
+          project_id?: string | null
+          status?: string
+          target_value?: number | null
+          tenant_id: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          membership_id?: string
+          name?: string
+          project_id?: string | null
+          status?: string
+          target_value?: number | null
+          tenant_id?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_goals_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_goals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_goals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_key_results: {
+        Row: {
+          created_at: string
+          current_value: number | null
+          goal_id: string
+          id: string
+          linked_task_ids: string[] | null
+          name: string
+          target_value: number | null
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number | null
+          goal_id: string
+          id?: string
+          linked_task_ids?: string[] | null
+          name: string
+          target_value?: number | null
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_value?: number | null
+          goal_id?: string
+          id?: string
+          linked_task_ids?: string[] | null
+          name?: string
+          target_value?: number | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_key_results_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_library: {
         Row: {
           category: string | null
@@ -2839,6 +2988,118 @@ export type Database = {
           },
         ]
       }
+      mentor_sprints: {
+        Row: {
+          created_at: string
+          end_date: string
+          goal: string | null
+          id: string
+          membership_id: string
+          name: string
+          project_id: string
+          start_date: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          goal?: string | null
+          id?: string
+          membership_id: string
+          name: string
+          project_id: string
+          start_date: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          goal?: string | null
+          id?: string
+          membership_id?: string
+          name?: string
+          project_id?: string
+          start_date?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_sprints_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_sprints_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_sprints_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          membership_id: string
+          mime_type: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          membership_id: string
+          mime_type?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          membership_id?: string
+          mime_type?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_attachments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_task_automations: {
         Row: {
           action_config: Json
@@ -3019,6 +3280,45 @@ export type Database = {
           },
         ]
       }
+      mentor_task_field_values: {
+        Row: {
+          created_at: string
+          field_id: string
+          id: string
+          task_id: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          field_id: string
+          id?: string
+          task_id: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          field_id?: string
+          id?: string
+          task_id?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_field_values_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_custom_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_field_values_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_task_statuses: {
         Row: {
           color: string
@@ -3060,6 +3360,58 @@ export type Database = {
           },
         ]
       }
+      mentor_task_templates: {
+        Row: {
+          created_at: string
+          id: string
+          membership_id: string
+          name: string
+          project_id: string
+          template_data: Json
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          membership_id: string
+          name: string
+          project_id: string
+          template_data?: Json
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          membership_id?: string
+          name?: string
+          project_id?: string
+          template_data?: Json
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_templates_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentor_tasks: {
         Row: {
           actual_minutes: number | null
@@ -3068,11 +3420,15 @@ export type Database = {
           due_date: string | null
           estimated_minutes: number | null
           id: string
+          is_recurring: boolean | null
           membership_id: string
           parent_task_id: string | null
           position: number
           priority: string
           project_id: string
+          recurrence_end: string | null
+          recurrence_rule: string | null
+          sprint_id: string | null
           start_date: string | null
           status_id: string | null
           tags: string[] | null
@@ -3087,11 +3443,15 @@ export type Database = {
           due_date?: string | null
           estimated_minutes?: number | null
           id?: string
+          is_recurring?: boolean | null
           membership_id: string
           parent_task_id?: string | null
           position?: number
           priority?: string
           project_id: string
+          recurrence_end?: string | null
+          recurrence_rule?: string | null
+          sprint_id?: string | null
           start_date?: string | null
           status_id?: string | null
           tags?: string[] | null
@@ -3106,11 +3466,15 @@ export type Database = {
           due_date?: string | null
           estimated_minutes?: number | null
           id?: string
+          is_recurring?: boolean | null
           membership_id?: string
           parent_task_id?: string | null
           position?: number
           priority?: string
           project_id?: string
+          recurrence_end?: string | null
+          recurrence_rule?: string | null
+          sprint_id?: string | null
           start_date?: string | null
           status_id?: string | null
           tags?: string[] | null
@@ -3138,6 +3502,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_tasks_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_sprints"
             referencedColumns: ["id"]
           },
           {

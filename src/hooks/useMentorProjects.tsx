@@ -42,12 +42,92 @@ export interface MentorTask {
   actual_minutes: number | null;
   tags: string[];
   position: number;
+  sprint_id: string | null;
+  recurrence_rule: string | null;
+  recurrence_end: string | null;
+  is_recurring: boolean;
   created_at: string;
   updated_at: string;
   // Joined
   status?: TaskStatus | null;
   subtasks?: MentorTask[];
   checklists?: ChecklistItem[];
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  membership_id: string;
+  file_name: string;
+  file_url: string;
+  file_size: number | null;
+  mime_type: string | null;
+  created_at: string;
+}
+
+export interface CustomField {
+  id: string;
+  project_id: string;
+  name: string;
+  field_type: string;
+  options: unknown[];
+  position: number;
+}
+
+export interface TaskFieldValue {
+  id: string;
+  task_id: string;
+  field_id: string;
+  value: string | null;
+}
+
+export interface TaskTemplate {
+  id: string;
+  project_id: string;
+  tenant_id: string;
+  membership_id: string;
+  name: string;
+  template_data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface MentorGoal {
+  id: string;
+  project_id: string | null;
+  tenant_id: string;
+  membership_id: string;
+  name: string;
+  description: string | null;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  due_date: string | null;
+  status: string;
+  created_at: string;
+  key_results?: KeyResult[];
+}
+
+export interface KeyResult {
+  id: string;
+  goal_id: string;
+  name: string;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  linked_task_ids: string[];
+}
+
+export interface MentorSprint {
+  id: string;
+  project_id: string;
+  tenant_id: string;
+  membership_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  goal: string | null;
+  created_at: string;
 }
 
 export interface ChecklistItem {
@@ -470,6 +550,311 @@ export function useMentorProjects() {
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['mentor-task-deps', vars.project_id] }),
   });
 
+  // ─── Attachments ───
+  const useAttachments = (taskId: string | undefined) =>
+    useQuery({
+      queryKey: ['mentor-task-attachments', taskId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('mentor_task_attachments')
+          .select('*')
+          .eq('task_id', taskId!)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data as TaskAttachment[];
+      },
+      enabled: !!taskId,
+    });
+
+  const uploadAttachment = useMutation({
+    mutationFn: async (input: { task_id: string; file: File; project_id: string }) => {
+      const path = `${tenantId}/${input.task_id}/${Date.now()}_${input.file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('task-attachments')
+        .upload(path, input.file);
+      if (uploadError) throw uploadError;
+
+      const { error } = await supabase.from('mentor_task_attachments').insert([{
+        task_id: input.task_id,
+        membership_id: membershipId!,
+        file_name: input.file.name,
+        file_url: path,
+        file_size: input.file.size,
+        mime_type: input.file.type,
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['mentor-task-attachments', vars.task_id] });
+      toast.success('Arquivo anexado!');
+    },
+    onError: () => toast.error('Erro ao anexar arquivo'),
+  });
+
+  const deleteAttachment = useMutation({
+    mutationFn: async (input: { id: string; file_url: string; task_id: string }) => {
+      await supabase.storage.from('task-attachments').remove([input.file_url]);
+      const { error } = await supabase.from('mentor_task_attachments').delete().eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['mentor-task-attachments', vars.task_id] }),
+  });
+
+  // ─── Custom Fields ───
+  const useCustomFields = (projectId: string | undefined) =>
+    useQuery({
+      queryKey: ['mentor-custom-fields', projectId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('mentor_custom_fields')
+          .select('*')
+          .eq('project_id', projectId!)
+          .order('position');
+        if (error) throw error;
+        return data as CustomField[];
+      },
+      enabled: !!projectId,
+    });
+
+  const createCustomField = useMutation({
+    mutationFn: async (input: { project_id: string; name: string; field_type: string; options?: unknown[] }) => {
+      const { error } = await supabase.from('mentor_custom_fields').insert([{
+        project_id: input.project_id,
+        name: input.name,
+        field_type: input.field_type,
+        options: (input.options || []) as any,
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['mentor-custom-fields', vars.project_id] });
+      toast.success('Campo criado!');
+    },
+  });
+
+  const deleteCustomField = useMutation({
+    mutationFn: async (input: { id: string; project_id: string }) => {
+      const { error } = await supabase.from('mentor_custom_fields').delete().eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['mentor-custom-fields', vars.project_id] }),
+  });
+
+  // ─── Field Values ───
+  const useFieldValues = (taskId: string | undefined) =>
+    useQuery({
+      queryKey: ['mentor-field-values', taskId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('mentor_task_field_values')
+          .select('*')
+          .eq('task_id', taskId!);
+        if (error) throw error;
+        return data as TaskFieldValue[];
+      },
+      enabled: !!taskId,
+    });
+
+  const setFieldValue = useMutation({
+    mutationFn: async (input: { task_id: string; field_id: string; value: string }) => {
+      const { error } = await supabase
+        .from('mentor_task_field_values')
+        .upsert({ task_id: input.task_id, field_id: input.field_id, value: input.value }, { onConflict: 'task_id,field_id' });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['mentor-field-values', vars.task_id] }),
+  });
+
+  // ─── Templates ───
+  const useTemplates = (projectId: string | undefined) =>
+    useQuery({
+      queryKey: ['mentor-task-templates', projectId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('mentor_task_templates')
+          .select('*')
+          .eq('project_id', projectId!)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data as TaskTemplate[];
+      },
+      enabled: !!projectId,
+    });
+
+  const createTemplate = useMutation({
+    mutationFn: async (input: { project_id: string; name: string; template_data: Record<string, unknown> }) => {
+      const { error } = await supabase.from('mentor_task_templates').insert([{
+        project_id: input.project_id,
+        tenant_id: tenantId!,
+        membership_id: membershipId!,
+        name: input.name,
+        template_data: input.template_data as any,
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['mentor-task-templates', vars.project_id] });
+      toast.success('Template salvo!');
+    },
+  });
+
+  const deleteTemplate = useMutation({
+    mutationFn: async (input: { id: string; project_id: string }) => {
+      const { error } = await supabase.from('mentor_task_templates').delete().eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['mentor-task-templates', vars.project_id] });
+      toast.success('Template removido');
+    },
+  });
+
+  const createTaskFromTemplate = useMutation({
+    mutationFn: async (input: { project_id: string; template: TaskTemplate; status_id?: string }) => {
+      const data = input.template.template_data as any;
+      const { error } = await supabase.from('mentor_tasks').insert([{
+        project_id: input.project_id,
+        tenant_id: tenantId!,
+        membership_id: membershipId!,
+        title: data.title || input.template.name,
+        description: data.description || null,
+        priority: data.priority || 'medium',
+        status_id: input.status_id || null,
+        tags: data.tags || [],
+        estimated_minutes: data.estimated_minutes || null,
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['mentor-tasks', vars.project_id] });
+      toast.success('Tarefa criada a partir do template!');
+    },
+  });
+
+  // ─── Goals / OKRs ───
+  const useGoals = () =>
+    useQuery({
+      queryKey: ['mentor-goals', tenantId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('mentor_goals')
+          .select('*, mentor_key_results(*)')
+          .eq('tenant_id', tenantId!)
+          .eq('membership_id', membershipId!)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []).map((g: any) => ({
+          ...g,
+          key_results: g.mentor_key_results || [],
+        })) as MentorGoal[];
+      },
+      enabled: !!tenantId && !!membershipId,
+    });
+
+  const createGoal = useMutation({
+    mutationFn: async (input: { name: string; description?: string; target_value?: number; unit?: string; due_date?: string; project_id?: string }) => {
+      const { error } = await supabase.from('mentor_goals').insert([{
+        tenant_id: tenantId!,
+        membership_id: membershipId!,
+        name: input.name,
+        description: input.description || null,
+        target_value: input.target_value || 100,
+        unit: input.unit || '%',
+        due_date: input.due_date || null,
+        project_id: input.project_id || null,
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['mentor-goals'] });
+      toast.success('Meta criada!');
+    },
+  });
+
+  const updateGoal = useMutation({
+    mutationFn: async (input: { id: string; updates: Partial<MentorGoal> }) => {
+      const { key_results, ...clean } = input.updates as any;
+      const { error } = await supabase.from('mentor_goals').update(clean).eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mentor-goals'] }),
+  });
+
+  const deleteGoal = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('mentor_goals').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['mentor-goals'] });
+      toast.success('Meta excluída');
+    },
+  });
+
+  const addKeyResult = useMutation({
+    mutationFn: async (input: { goal_id: string; name: string; target_value?: number; unit?: string }) => {
+      const { error } = await supabase.from('mentor_key_results').insert([{
+        goal_id: input.goal_id,
+        name: input.name,
+        target_value: input.target_value || 100,
+        unit: input.unit || '%',
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mentor-goals'] }),
+  });
+
+  const updateKeyResult = useMutation({
+    mutationFn: async (input: { id: string; current_value: number }) => {
+      const { error } = await supabase.from('mentor_key_results').update({ current_value: input.current_value }).eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mentor-goals'] }),
+  });
+
+  // ─── Sprints ───
+  const useSprints = (projectId: string | undefined) =>
+    useQuery({
+      queryKey: ['mentor-sprints', projectId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('mentor_sprints')
+          .select('*')
+          .eq('project_id', projectId!)
+          .order('start_date', { ascending: false });
+        if (error) throw error;
+        return data as MentorSprint[];
+      },
+      enabled: !!projectId,
+    });
+
+  const createSprint = useMutation({
+    mutationFn: async (input: { project_id: string; name: string; start_date: string; end_date: string; goal?: string }) => {
+      const { error } = await supabase.from('mentor_sprints').insert([{
+        project_id: input.project_id,
+        tenant_id: tenantId!,
+        membership_id: membershipId!,
+        name: input.name,
+        start_date: input.start_date,
+        end_date: input.end_date,
+        goal: input.goal || null,
+      }]);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['mentor-sprints', vars.project_id] });
+      toast.success('Sprint criada!');
+    },
+  });
+
+  const updateSprint = useMutation({
+    mutationFn: async (input: { id: string; updates: Partial<MentorSprint>; project_id: string }) => {
+      const { error } = await supabase.from('mentor_sprints').update(input.updates as any).eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['mentor-sprints', vars.project_id] }),
+  });
+
   return {
     projects: projectsQuery.data || [],
     isLoadingProjects: projectsQuery.isLoading,
@@ -494,5 +879,27 @@ export function useMentorProjects() {
     useDependencies,
     addDependency,
     removeDependency,
+    // New
+    useAttachments,
+    uploadAttachment,
+    deleteAttachment,
+    useCustomFields,
+    createCustomField,
+    deleteCustomField,
+    useFieldValues,
+    setFieldValue,
+    useTemplates,
+    createTemplate,
+    deleteTemplate,
+    createTaskFromTemplate,
+    useGoals,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    addKeyResult,
+    updateKeyResult,
+    useSprints,
+    createSprint,
+    updateSprint,
   };
 }
