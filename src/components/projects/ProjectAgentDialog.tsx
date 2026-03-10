@@ -18,6 +18,7 @@ interface Message {
 
 interface Props {
   onProjectCreated?: (projectId: string) => void;
+  compact?: boolean;
 }
 
 export function ProjectAgentDialog({ onProjectCreated }: Props) {
