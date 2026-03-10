@@ -21,7 +21,7 @@ interface Props {
   compact?: boolean;
 }
 
-export function ProjectAgentDialog({ onProjectCreated }: Props) {
+export function ProjectAgentDialog({ onProjectCreated, compact }: Props) {
   const { activeMembership } = useTenant();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
