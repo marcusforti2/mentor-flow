@@ -2785,6 +2785,422 @@ export type Database = {
           },
         ]
       }
+      mentor_projects: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          membership_id: string
+          name: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          membership_id: string
+          name: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          membership_id?: string
+          name?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_projects_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_task_automations: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          membership_id: string
+          name: string
+          project_id: string
+          tenant_id: string
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          membership_id: string
+          name: string
+          project_id: string
+          tenant_id: string
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          membership_id?: string
+          name?: string
+          project_id?: string
+          tenant_id?: string
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_automations_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_automations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_automations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_task_checklists: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          position: number
+          task_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          position?: number
+          task_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          position?: number
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_checklists_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          membership_id: string
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          membership_id: string
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          membership_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_comments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_task_dependencies: {
+        Row: {
+          created_at: string
+          dependency_type: string
+          depends_on_task_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          dependency_type?: string
+          depends_on_task_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          dependency_type?: string
+          depends_on_task_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_dependencies_depends_on_task_id_fkey"
+            columns: ["depends_on_task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_task_dependencies_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_task_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_done: boolean
+          name: string
+          position: number
+          project_id: string
+          status_key: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_done?: boolean
+          name: string
+          position?: number
+          project_id: string
+          status_key: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_done?: boolean
+          name?: string
+          position?: number
+          project_id?: string
+          status_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_task_statuses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_tasks: {
+        Row: {
+          actual_minutes: number | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_minutes: number | null
+          id: string
+          membership_id: string
+          parent_task_id: string | null
+          position: number
+          priority: string
+          project_id: string
+          start_date: string | null
+          status_id: string | null
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actual_minutes?: number | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_minutes?: number | null
+          id?: string
+          membership_id: string
+          parent_task_id?: string | null
+          position?: number
+          priority?: string
+          project_id: string
+          start_date?: string | null
+          status_id?: string | null
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          actual_minutes?: number | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_minutes?: number | null
+          id?: string
+          membership_id?: string
+          parent_task_id?: string | null
+          position?: number
+          priority?: string
+          project_id?: string
+          start_date?: string | null
+          status_id?: string | null
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_tasks_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_tasks_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_task_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_time_entries: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          membership_id: string
+          minutes: number
+          started_at: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          membership_id: string
+          minutes: number
+          started_at?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          membership_id?: string
+          minutes?: number
+          started_at?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_time_entries_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentor_time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mentorado_business_profiles: {
         Row: {
           average_ticket: string | null
