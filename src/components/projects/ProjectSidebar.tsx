@@ -3,8 +3,9 @@ import { type MentorProject } from '@/hooks/useMentorProjects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Folder, FolderOpen } from 'lucide-react';
+import { Plus, Folder, FolderOpen, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProjectAgentDialog } from './ProjectAgentDialog';
 
 interface Props {
   projects: MentorProject[];
@@ -28,9 +29,12 @@ export function ProjectSidebar({ projects, selectedId, onSelect, onCreate }: Pro
     <div className="w-56 shrink-0 flex flex-col gap-2 bg-card/50 rounded-xl border border-border/50 p-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Projetos</span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreating(!creating)}>
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <ProjectAgentDialog onProjectCreated={onSelect} compact />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreating(!creating)}>
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       {creating && (
