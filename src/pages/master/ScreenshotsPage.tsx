@@ -218,7 +218,7 @@ export default function ScreenshotsPage() {
             ) : (
               <>
                 <Camera className="h-4 w-4 mr-2" />
-                Capturar ({MENTOR_SCREENS.length} telas)
+                Capturar ({activeScreens.length} telas)
               </>
             )}
           </Button>
