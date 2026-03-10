@@ -63,6 +63,7 @@ const menuItems: DockItem[] = [
     ],
   },
   { icon: BarChart3, label: 'Relatórios', path: '/mentor/relatorios' },
+  { icon: FolderKanban, label: 'Projetos', path: '/mentor/projetos' },
   { icon: UserCircle, label: 'Meu Perfil', path: '/mentor/perfil' },
 ];
  
