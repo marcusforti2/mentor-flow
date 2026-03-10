@@ -116,10 +116,10 @@ export default function ScreenshotsPage() {
     setProgress(0);
     const results: ScreenCapture[] = [];
 
-    for (let i = 0; i < MENTOR_SCREENS.length; i++) {
-      const screen = MENTOR_SCREENS[i];
+    for (let i = 0; i < activeScreens.length; i++) {
+      const screen = activeScreens[i];
       setCurrentScreen(screen.label);
-      setProgress(Math.round(((i + 1) / MENTOR_SCREENS.length) * 100));
+      setProgress(Math.round(((i + 1) / activeScreens.length) * 100));
 
       try {
         const dataUrl = await captureScreen(screen.path);
@@ -128,7 +128,6 @@ export default function ScreenshotsPage() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erro desconhecido';
         toast.error(`Falha ao capturar ${screen.label}: ${msg}`);
-        // If popup blocked, stop the whole process
         if (msg.includes('Popup')) break;
       }
     }
@@ -138,7 +137,7 @@ export default function ScreenshotsPage() {
     if (results.length > 0) {
       toast.success(`${results.length} telas capturadas!`);
     }
-  }, [captureScreen]);
+  }, [captureScreen, activeScreens]);
 
   const downloadPNG = useCallback((capture: ScreenCapture) => {
     const a = document.createElement('a');
