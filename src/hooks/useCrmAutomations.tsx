@@ -79,7 +79,7 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
   const deleteAutomation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("crm_stage_automations" as any)
+        .from("crm_stage_automations")
         .delete()
         .eq("id", id);
 

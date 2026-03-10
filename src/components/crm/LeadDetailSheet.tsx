@@ -304,6 +304,58 @@ export function LeadDetailSheet({
                     <span className="truncate">{lead.contact_email}</span>
                   </a>
                 )}
+                {lead.whatsapp && (
+                  <a
+                    href={`https://wa.me/${lead.whatsapp.replace(/\D/g, "").replace(/^(?!55)/, "55")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <MessageSquare className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <span>WhatsApp: {lead.whatsapp}</span>
+                  </a>
+                )}
+                {lead.instagram_url && (
+                  <a
+                    href={lead.instagram_url.startsWith("http") ? lead.instagram_url : `https://instagram.com/${lead.instagram_url.replace("@", "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-pink-500" />
+                    </div>
+                    <span className="truncate">Instagram</span>
+                  </a>
+                )}
+                {lead.linkedin_url && (
+                  <a
+                    href={lead.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <span className="truncate">LinkedIn</span>
+                  </a>
+                )}
+                {lead.website_url && (
+                  <a
+                    href={lead.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="truncate">{lead.website_url}</span>
+                  </a>
+                )}
                 {lead.created_at && (
                   <div className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30">
                     <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
