@@ -395,12 +395,18 @@ export function useMentorProjects() {
     });
 
   const createAutomation = useMutation({
-    mutationFn: async (input: Omit<TaskAutomation, 'id' | 'tenant_id' | 'membership_id'> & { project_id: string }) => {
-      const { error } = await supabase.from('mentor_task_automations').insert({
-        ...input,
+    mutationFn: async (input: { project_id: string; name: string; trigger_type: string; trigger_config: Record<string, unknown>; action_type: string; action_config: Record<string, unknown>; is_active: boolean }) => {
+      const { error } = await supabase.from('mentor_task_automations').insert([{
+        project_id: input.project_id,
+        name: input.name,
+        trigger_type: input.trigger_type,
+        trigger_config: input.trigger_config,
+        action_type: input.action_type,
+        action_config: input.action_config,
+        is_active: input.is_active,
         tenant_id: tenantId!,
         membership_id: membershipId!,
-      });
+      }]);
       if (error) throw error;
     },
     onSuccess: (_, vars) => {
