@@ -42,12 +42,92 @@ export interface MentorTask {
   actual_minutes: number | null;
   tags: string[];
   position: number;
+  sprint_id: string | null;
+  recurrence_rule: string | null;
+  recurrence_end: string | null;
+  is_recurring: boolean;
   created_at: string;
   updated_at: string;
   // Joined
   status?: TaskStatus | null;
   subtasks?: MentorTask[];
   checklists?: ChecklistItem[];
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  membership_id: string;
+  file_name: string;
+  file_url: string;
+  file_size: number | null;
+  mime_type: string | null;
+  created_at: string;
+}
+
+export interface CustomField {
+  id: string;
+  project_id: string;
+  name: string;
+  field_type: string;
+  options: unknown[];
+  position: number;
+}
+
+export interface TaskFieldValue {
+  id: string;
+  task_id: string;
+  field_id: string;
+  value: string | null;
+}
+
+export interface TaskTemplate {
+  id: string;
+  project_id: string;
+  tenant_id: string;
+  membership_id: string;
+  name: string;
+  template_data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface MentorGoal {
+  id: string;
+  project_id: string | null;
+  tenant_id: string;
+  membership_id: string;
+  name: string;
+  description: string | null;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  due_date: string | null;
+  status: string;
+  created_at: string;
+  key_results?: KeyResult[];
+}
+
+export interface KeyResult {
+  id: string;
+  goal_id: string;
+  name: string;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  linked_task_ids: string[];
+}
+
+export interface MentorSprint {
+  id: string;
+  project_id: string;
+  tenant_id: string;
+  membership_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  goal: string | null;
+  created_at: string;
 }
 
 export interface ChecklistItem {
