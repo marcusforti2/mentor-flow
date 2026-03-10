@@ -60,6 +60,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// Screenshot gallery with signed URLs for private bucket
+function ScreenshotGallery({ urls, onImageClick }: { urls: string[] | null; onImageClick: (url: string) => void }) {
+  const [signedUrls, setSignedUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!urls || urls.length === 0) return;
+    const fetchSigned = async () => {
+      const { data } = await supabase.storage
+        .from("lead-screenshots")
+        .createSignedUrls(urls, 3600);
+      if (data) setSignedUrls(data.map((d) => d.signedUrl));
+    };
+    fetchSigned();
+  }, [urls]);
+
+  if (!urls || urls.length === 0 || signedUrls.length === 0) return null;
+
+  return (
+    <>
+      <Separator />
+      <div className="space-y-3">
+        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+          <ImageIcon className="w-3 h-3" />
+          Screenshots ({urls.length})
+        </Label>
+        <div className="grid grid-cols-3 gap-2">
+          {signedUrls.map((url, idx) => (
+            <img
+              key={idx}
+              src={url}
+              alt=""
+              className="aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border"
+              onClick={() => onImageClick(url)}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 interface LeadDetailSheetProps {
   lead: Lead | null;
   open: boolean;
@@ -261,6 +302,58 @@ export function LeadDetailSheet({
                       <Mail className="w-4 h-4 text-blue-500" />
                     </div>
                     <span className="truncate">{lead.contact_email}</span>
+                  </a>
+                )}
+                {lead.whatsapp && (
+                  <a
+                    href={`https://wa.me/${lead.whatsapp.replace(/\D/g, "").replace(/^(?!55)/, "55")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <MessageSquare className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <span>WhatsApp: {lead.whatsapp}</span>
+                  </a>
+                )}
+                {lead.instagram_url && (
+                  <a
+                    href={lead.instagram_url.startsWith("http") ? lead.instagram_url : `https://instagram.com/${lead.instagram_url.replace("@", "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-pink-500" />
+                    </div>
+                    <span className="truncate">Instagram</span>
+                  </a>
+                )}
+                {lead.linkedin_url && (
+                  <a
+                    href={lead.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <span className="truncate">LinkedIn</span>
+                  </a>
+                )}
+                {lead.website_url && (
+                  <a
+                    href={lead.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-sm p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Globe className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="truncate">{lead.website_url}</span>
                   </a>
                 )}
                 {lead.created_at && (
@@ -492,31 +585,7 @@ export function LeadDetailSheet({
             )}
 
             {/* Screenshots */}
-            {lead.screenshot_urls && lead.screenshot_urls.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-                    <ImageIcon className="w-3 h-3" />
-                    Screenshots ({lead.screenshot_urls.length})
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {lead.screenshot_urls.map((url, idx) => {
-                      const publicUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/authenticated/lead-screenshots/${url}`;
-                      return (
-                        <img
-                          key={idx}
-                          src={publicUrl}
-                          alt=""
-                          className="aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border"
-                          onClick={() => setSelectedImage(publicUrl)}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
+            <ScreenshotGallery urls={lead.screenshot_urls} onImageClick={setSelectedImage} />
 
             <Separator />
 

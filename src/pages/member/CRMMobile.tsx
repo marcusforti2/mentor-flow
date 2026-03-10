@@ -259,8 +259,9 @@ export default function CRMMobile() {
       if (error) throw error;
       const stageName = stages.find((s) => s.status_key === newStatus)?.name || newStatus;
       toast({ title: `Movido para ${stageName}` });
+      // Update selectedLead in place so detail view stays current
+      setSelectedLead((prev) => prev ? { ...prev, status: newStatus } : null);
       loadLeads();
-      setSelectedLead(null);
     } catch {
       toast({ title: "Erro ao mover", variant: "destructive" });
     }

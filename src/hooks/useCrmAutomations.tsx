@@ -22,13 +22,13 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
     queryKey: ["crm-stage-automations", membershipId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("crm_stage_automations" as any)
+        .from("crm_stage_automations")
         .select("*")
         .eq("membership_id", membershipId!)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return (data || []) as unknown as CrmStageAutomation[];
+      return (data || []) as CrmStageAutomation[];
     },
     enabled: !!membershipId,
   });
@@ -41,12 +41,12 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
     }) => {
       if (!membershipId || !tenantId) throw new Error("Missing IDs");
       const { data, error } = await supabase
-        .from("crm_stage_automations" as any)
+        .from("crm_stage_automations")
         .insert({
           tenant_id: tenantId,
           membership_id: membershipId,
           ...input,
-        } as any)
+        })
         .select()
         .single();
 
@@ -65,8 +65,8 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
   const updateAutomation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CrmStageAutomation> }) => {
       const { error } = await supabase
-        .from("crm_stage_automations" as any)
-        .update(updates as any)
+        .from("crm_stage_automations")
+        .update(updates)
         .eq("id", id);
 
       if (error) throw error;
@@ -79,7 +79,7 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
   const deleteAutomation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("crm_stage_automations" as any)
+        .from("crm_stage_automations")
         .delete()
         .eq("id", id);
 

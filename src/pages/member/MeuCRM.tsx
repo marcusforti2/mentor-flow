@@ -168,7 +168,7 @@ export default function MeuCRM() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-xl bg-muted/30 border">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Users className="w-4 h-4" />
@@ -226,6 +226,20 @@ export default function MeuCRM() {
               />
             ))}
           </div>
+          {/* Orphan leads warning */}
+          {(() => {
+            const knownStatuses = new Set(columns.map((c) => c.status));
+            const orphans = filteredLeads.filter((l) => !knownStatuses.has(l.status || ""));
+            if (orphans.length === 0) return null;
+            return (
+              <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/5 text-sm text-amber-400">
+                ⚠️ {orphans.length} lead(s) com etapa desconhecida: {orphans.map((o) => o.contact_name).join(", ")}.
+                <button className="underline ml-1" onClick={() => orphans.forEach((o) => handleStatusChange(o.id, columns[0]?.status || "new"))}>
+                  Mover para "{columns[0]?.title || "Novos"}"
+                </button>
+              </div>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="stages">
