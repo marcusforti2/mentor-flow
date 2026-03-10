@@ -27,6 +27,28 @@ const MENTOR_SCREENS = [
   { label: 'Propriedade Intelectual', path: '/mentor/propriedade-intelectual' },
 ];
 
+const MENTORADO_SCREENS = [
+  { label: 'Dashboard', path: '/mentorado' },
+  { label: 'Trilhas', path: '/mentorado/trilhas' },
+  { label: 'Meu CRM', path: '/mentorado/meu-crm' },
+  { label: 'Calendário', path: '/mentorado/calendario' },
+  { label: 'Centro SOS', path: '/mentorado/sos' },
+  { label: 'Perfil', path: '/mentorado/perfil' },
+  { label: 'Ferramentas IA', path: '/mentorado/ferramentas' },
+  { label: 'Meus Arquivos', path: '/mentorado/meus-arquivos' },
+  { label: 'Tarefas', path: '/mentorado/tarefas' },
+  { label: 'Playbooks', path: '/mentorado/playbooks' },
+  { label: 'Métricas', path: '/mentorado/metricas' },
+];
+
+type ScreenGroup = 'mentor' | 'mentorado' | 'all';
+
+const SCREEN_GROUPS: Record<ScreenGroup, { label: string; screens: typeof MENTOR_SCREENS }> = {
+  mentor: { label: 'Mentor', screens: MENTOR_SCREENS },
+  mentorado: { label: 'Mentorado', screens: MENTORADO_SCREENS },
+  all: { label: 'Todas', screens: [...MENTOR_SCREENS, ...MENTORADO_SCREENS] },
+};
+
 interface ScreenCapture {
   label: string;
   dataUrl: string;
@@ -39,8 +61,10 @@ export default function ScreenshotsPage() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('');
   const [progress, setProgress] = useState(0);
+  const [selectedGroup, setSelectedGroup] = useState<ScreenGroup>('all');
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
+  const activeScreens = SCREEN_GROUPS[selectedGroup].screens;
 
   const captureScreen = useCallback(
     (path: string): Promise<string> =>
@@ -93,10 +117,10 @@ export default function ScreenshotsPage() {
     setProgress(0);
     const results: ScreenCapture[] = [];
 
-    for (let i = 0; i < MENTOR_SCREENS.length; i++) {
-      const screen = MENTOR_SCREENS[i];
+    for (let i = 0; i < activeScreens.length; i++) {
+      const screen = activeScreens[i];
       setCurrentScreen(screen.label);
-      setProgress(Math.round(((i + 1) / MENTOR_SCREENS.length) * 100));
+      setProgress(Math.round(((i + 1) / activeScreens.length) * 100));
 
       try {
         const dataUrl = await captureScreen(screen.path);
@@ -105,7 +129,6 @@ export default function ScreenshotsPage() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erro desconhecido';
         toast.error(`Falha ao capturar ${screen.label}: ${msg}`);
-        // If popup blocked, stop the whole process
         if (msg.includes('Popup')) break;
       }
     }
@@ -115,7 +138,7 @@ export default function ScreenshotsPage() {
     if (results.length > 0) {
       toast.success(`${results.length} telas capturadas!`);
     }
-  }, [captureScreen]);
+  }, [captureScreen, activeScreens]);
 
   const downloadPNG = useCallback((capture: ScreenCapture) => {
     const a = document.createElement('a');
@@ -155,14 +178,14 @@ export default function ScreenshotsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">Screenshots</h1>
           <p className="text-muted-foreground text-sm">
-            Capture todas as telas do mentor para showcase, documentação ou monitoramento.
+            Capture todas as telas do mentor e mentorado para showcase, documentação ou monitoramento.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Tenant Selector */}
           <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-[200px]">
               <Building2 className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
               <SelectValue placeholder={tenantsLoading ? 'Carregando...' : 'Selecione o Tenant'} />
             </SelectTrigger>
@@ -175,6 +198,18 @@ export default function ScreenshotsPage() {
             </SelectContent>
           </Select>
 
+          {/* Group Selector */}
+          <Select value={selectedGroup} onValueChange={(v) => setSelectedGroup(v as ScreenGroup)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas ({MENTOR_SCREENS.length + MENTORADO_SCREENS.length})</SelectItem>
+              <SelectItem value="mentor">Mentor ({MENTOR_SCREENS.length})</SelectItem>
+              <SelectItem value="mentorado">Mentorado ({MENTORADO_SCREENS.length})</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button onClick={captureAll} disabled={isCapturing}>
             {isCapturing ? (
               <>
@@ -184,7 +219,7 @@ export default function ScreenshotsPage() {
             ) : (
               <>
                 <Camera className="h-4 w-4 mr-2" />
-                Capturar ({MENTOR_SCREENS.length} telas)
+                Capturar ({activeScreens.length} telas)
               </>
             )}
           </Button>
