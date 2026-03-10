@@ -79,12 +79,14 @@ describe('Auth System', () => {
   });
 
   describe('useAuth hook', () => {
-    it('throws error when used outside AuthProvider', () => {
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      expect(() => {
-        render(<AuthTestConsumer />);
-      }).toThrow('useAuth must be used within an AuthProvider');
+    it('returns fallback when used outside AuthProvider', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const spy2 = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<AuthTestConsumer />);
+      // useAuth now returns a fallback instead of throwing
+      expect(screen.getByTestId('loading').textContent).toBe('true');
       spy.mockRestore();
+      spy2.mockRestore();
     });
 
     it('starts with no user after loading', async () => {
