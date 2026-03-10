@@ -223,6 +223,7 @@ function AppRoutes() {
           <Route path="popups" element={<Popups />} />
           <Route path="whatsapp" element={<WhatsAppCampaigns />} />
           <Route path="formularios" element={<FormulariosPage />} />
+          <Route path="projetos" element={<MentorProjectsPage />} />
         </Route>
 
         {/* Mentorado Routes */}
