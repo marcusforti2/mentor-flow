@@ -149,16 +149,28 @@ describe('Auth System', () => {
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
 
-      const chainable: any = {};
-      ['select', 'eq', 'neq', 'in', 'not', 'order', 'limit', 'range', 'filter'].forEach(m => {
-        chainable[m] = vi.fn().mockReturnValue(chainable);
+      // Mock from() to return different data based on table
+      mockSupabase.from.mockImplementation((table: string) => {
+        const chainable: any = {};
+        ['select', 'eq', 'neq', 'in', 'not', 'order', 'limit', 'range', 'filter'].forEach(m => {
+          chainable[m] = vi.fn().mockReturnValue(chainable);
+        });
+        chainable.single = vi.fn().mockResolvedValue({ data: null, error: null });
+        if (table === 'profiles') {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({
+            data: { user_id: 'mentor-id', full_name: 'Mentor', email: 'mentor@test.com' },
+            error: null,
+          });
+        } else if (table === 'memberships') {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({
+            data: { role: 'mentor' },
+            error: null,
+          });
+        } else {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+        }
+        return chainable;
       });
-      chainable.single = vi.fn().mockResolvedValue({
-        data: { user_id: 'mentor-id', full_name: 'Mentor', email: 'mentor@test.com' },
-        error: null,
-      });
-      mockSupabase.from.mockReturnValue(chainable);
-      mockSupabase.rpc.mockResolvedValue({ data: 'mentor', error: null });
 
       renderWithAuth(<AuthTestConsumer />);
 
