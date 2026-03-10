@@ -60,9 +60,10 @@ export default function ScreenshotsPage() {
   const [captures, setCaptures] = useState<ScreenCapture[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('');
-  const [progress, setProgress] = useState(0);
+  const [selectedGroup, setSelectedGroup] = useState<ScreenGroup>('all');
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
+  const activeScreens = SCREEN_GROUPS[selectedGroup].screens;
 
   const captureScreen = useCallback(
     (path: string): Promise<string> =>
