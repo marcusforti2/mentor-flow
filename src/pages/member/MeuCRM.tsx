@@ -168,7 +168,7 @@ export default function MeuCRM() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-xl bg-muted/30 border">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Users className="w-4 h-4" />
