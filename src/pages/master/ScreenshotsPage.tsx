@@ -27,6 +27,28 @@ const MENTOR_SCREENS = [
   { label: 'Propriedade Intelectual', path: '/mentor/propriedade-intelectual' },
 ];
 
+const MENTORADO_SCREENS = [
+  { label: 'Dashboard', path: '/mentorado' },
+  { label: 'Trilhas', path: '/mentorado/trilhas' },
+  { label: 'Meu CRM', path: '/mentorado/meu-crm' },
+  { label: 'Calendário', path: '/mentorado/calendario' },
+  { label: 'Centro SOS', path: '/mentorado/sos' },
+  { label: 'Perfil', path: '/mentorado/perfil' },
+  { label: 'Ferramentas IA', path: '/mentorado/ferramentas' },
+  { label: 'Meus Arquivos', path: '/mentorado/meus-arquivos' },
+  { label: 'Tarefas', path: '/mentorado/tarefas' },
+  { label: 'Playbooks', path: '/mentorado/playbooks' },
+  { label: 'Métricas', path: '/mentorado/metricas' },
+];
+
+type ScreenGroup = 'mentor' | 'mentorado' | 'all';
+
+const SCREEN_GROUPS: Record<ScreenGroup, { label: string; screens: typeof MENTOR_SCREENS }> = {
+  mentor: { label: 'Mentor', screens: MENTOR_SCREENS },
+  mentorado: { label: 'Mentorado', screens: MENTORADO_SCREENS },
+  all: { label: 'Todas', screens: [...MENTOR_SCREENS, ...MENTORADO_SCREENS] },
+};
+
 interface ScreenCapture {
   label: string;
   dataUrl: string;
