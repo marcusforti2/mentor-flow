@@ -41,12 +41,12 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
     }) => {
       if (!membershipId || !tenantId) throw new Error("Missing IDs");
       const { data, error } = await supabase
-        .from("crm_stage_automations" as any)
+        .from("crm_stage_automations")
         .insert({
           tenant_id: tenantId,
           membership_id: membershipId,
           ...input,
-        } as any)
+        })
         .select()
         .single();
 
