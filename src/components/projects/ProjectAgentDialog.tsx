@@ -122,10 +122,16 @@ export function ProjectAgentDialog({ onProjectCreated, compact }: Props) {
   return (
     <Dialog open={open} onOpenChange={v => v ? setOpen(true) : handleClose()}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 shadow-lg shadow-primary/20">
-          <Sparkles className="h-4 w-4" />
-          Criar com a Elo
-        </Button>
+        {compact ? (
+          <Button variant="ghost" size="icon" className="h-6 w-6" title="Criar com a Elo">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+          </Button>
+        ) : (
+          <Button className="gap-2 bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 shadow-lg shadow-primary/20">
+            <Sparkles className="h-4 w-4" />
+            Criar com a Elo
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden max-h-[85vh]">
         <DialogHeader className="p-4 pb-3 border-b border-border/50 bg-gradient-to-r from-primary/5 to-violet-500/5">
