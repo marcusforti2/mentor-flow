@@ -60,6 +60,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+// Screenshot gallery with signed URLs for private bucket
+function ScreenshotGallery({ urls, onImageClick }: { urls: string[] | null; onImageClick: (url: string) => void }) {
+  const [signedUrls, setSignedUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!urls || urls.length === 0) return;
+    const fetchSigned = async () => {
+      const { data } = await supabase.storage
+        .from("lead-screenshots")
+        .createSignedUrls(urls, 3600);
+      if (data) setSignedUrls(data.map((d) => d.signedUrl));
+    };
+    fetchSigned();
+  }, [urls]);
+
+  if (!urls || urls.length === 0 || signedUrls.length === 0) return null;
+
+  return (
+    <>
+      <Separator />
+      <div className="space-y-3">
+        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+          <ImageIcon className="w-3 h-3" />
+          Screenshots ({urls.length})
+        </Label>
+        <div className="grid grid-cols-3 gap-2">
+          {signedUrls.map((url, idx) => (
+            <img
+              key={idx}
+              src={url}
+              alt=""
+              className="aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border"
+              onClick={() => onImageClick(url)}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 interface LeadDetailSheetProps {
   lead: Lead | null;
   open: boolean;
