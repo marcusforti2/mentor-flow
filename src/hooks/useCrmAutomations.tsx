@@ -22,13 +22,13 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
     queryKey: ["crm-stage-automations", membershipId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("crm_stage_automations" as any)
+        .from("crm_stage_automations")
         .select("*")
         .eq("membership_id", membershipId!)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return (data || []) as unknown as CrmStageAutomation[];
+      return (data || []) as CrmStageAutomation[];
     },
     enabled: !!membershipId,
   });
