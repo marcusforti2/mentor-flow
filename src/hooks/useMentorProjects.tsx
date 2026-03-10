@@ -871,6 +871,7 @@ export function useMentorProjects() {
     projects: projectsQuery.data || [],
     isLoadingProjects: projectsQuery.isLoading,
     createProject,
+    updateProject,
     deleteProject,
     useStatuses,
     useTasks,
