@@ -21,6 +21,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { MenteeWelcomeTour } from '@/components/onboarding/MenteeWelcomeTour';
 
 export default function MemberDashboard() {
   const { profile, user } = useAuth();
@@ -83,6 +84,7 @@ export default function MemberDashboard() {
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <MenteeWelcomeTour userId={user?.id} />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
