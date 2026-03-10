@@ -146,7 +146,7 @@ serve(async (req) => {
 
     const { messages, membership_id, tenant_id } = await req.json();
 
-    // Call AI
+    // Call AI (no streaming - need to inspect tool calls)
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -160,66 +160,34 @@ serve(async (req) => {
           ...messages,
         ],
         tools: [CREATE_PROJECT_TOOL],
-        stream: true,
       }),
     });
 
     if (!aiResp.ok) {
-      if (aiResp.status === 429) {
+      const status = aiResp.status;
+      if (status === 429) {
         return new Response(JSON.stringify({ error: "Limite de requisições excedido." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResp.status === 402) {
+      if (status === 402) {
         return new Response(JSON.stringify({ error: "Créditos esgotados." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const txt = await aiResp.text();
-      console.error("AI error:", aiResp.status, txt);
-      throw new Error("AI gateway error");
+      console.error("AI error:", status, txt);
+      throw new Error(`AI gateway error: ${status}`);
     }
 
-    // Read full response (need to check for tool calls)
-    const reader = aiResp.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let fullContent = "";
-    let toolCallArgs = "";
-    let toolCallName = "";
-    let hasToolCall = false;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      let idx: number;
-      while ((idx = buffer.indexOf("\n")) !== -1) {
-        let line = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 1);
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (!line.startsWith("data: ")) continue;
-        const json = line.slice(6).trim();
-        if (json === "[DONE]") continue;
-
-        try {
-          const parsed = JSON.parse(json);
-          const delta = parsed.choices?.[0]?.delta;
-          if (delta?.content) fullContent += delta.content;
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              if (tc.function?.name) toolCallName = tc.function.name;
-              if (tc.function?.arguments) toolCallArgs += tc.function.arguments;
-              hasToolCall = true;
-            }
-          }
-        } catch {}
-      }
-    }
+    const aiData = await aiResp.json();
+    const choice = aiData.choices?.[0];
+    const fullContent = choice?.message?.content || "";
+    const toolCalls = choice?.message?.tool_calls;
 
     // If tool call, execute it
-    if (hasToolCall && toolCallName === "create_full_project") {
+    if (toolCalls?.length && toolCalls[0].function?.name === "create_full_project") {
+      const toolCallArgs = toolCalls[0].function.arguments;
       const args = JSON.parse(toolCallArgs);
       const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
