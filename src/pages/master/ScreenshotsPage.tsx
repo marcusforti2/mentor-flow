@@ -177,14 +177,14 @@ export default function ScreenshotsPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">Screenshots</h1>
           <p className="text-muted-foreground text-sm">
-            Capture todas as telas do mentor para showcase, documentação ou monitoramento.
+            Capture todas as telas do mentor e mentorado para showcase, documentação ou monitoramento.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Tenant Selector */}
           <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-[200px]">
               <Building2 className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
               <SelectValue placeholder={tenantsLoading ? 'Carregando...' : 'Selecione o Tenant'} />
             </SelectTrigger>
@@ -194,6 +194,18 @@ export default function ScreenshotsPage() {
                   {tenant.name}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          {/* Group Selector */}
+          <Select value={selectedGroup} onValueChange={(v) => setSelectedGroup(v as ScreenGroup)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas ({MENTOR_SCREENS.length + MENTORADO_SCREENS.length})</SelectItem>
+              <SelectItem value="mentor">Mentor ({MENTOR_SCREENS.length})</SelectItem>
+              <SelectItem value="mentorado">Mentorado ({MENTORADO_SCREENS.length})</SelectItem>
             </SelectContent>
           </Select>
 
