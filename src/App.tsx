@@ -93,6 +93,7 @@ const Automacoes = lazyRetry(() => import("./pages/admin/Automacoes"));
 const Popups = lazyRetry(() => import("./pages/admin/Popups"));
 const WhatsAppCampaigns = lazyRetry(() => import("./pages/admin/WhatsAppCampaigns"));
 const FormulariosPage = lazyRetry(() => import("./pages/admin/OnboardingBuilder"));
+const MentorProjectsPage = lazyRetry(() => import("./pages/admin/MentorProjectsPage"));
 
 
 // Member Pages
