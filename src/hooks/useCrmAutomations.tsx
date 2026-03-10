@@ -65,8 +65,8 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
   const updateAutomation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CrmStageAutomation> }) => {
       const { error } = await supabase
-        .from("crm_stage_automations" as any)
-        .update(updates as any)
+        .from("crm_stage_automations")
+        .update(updates)
         .eq("id", id);
 
       if (error) throw error;
