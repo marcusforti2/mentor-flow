@@ -79,12 +79,14 @@ describe('Auth System', () => {
   });
 
   describe('useAuth hook', () => {
-    it('throws error when used outside AuthProvider', () => {
-      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      expect(() => {
-        render(<AuthTestConsumer />);
-      }).toThrow('useAuth must be used within an AuthProvider');
+    it('returns fallback when used outside AuthProvider', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const spy2 = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<AuthTestConsumer />);
+      // useAuth now returns a fallback instead of throwing
+      expect(screen.getByTestId('loading').textContent).toBe('true');
       spy.mockRestore();
+      spy2.mockRestore();
     });
 
     it('starts with no user after loading', async () => {
@@ -147,16 +149,28 @@ describe('Auth System', () => {
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
 
-      const chainable: any = {};
-      ['select', 'eq', 'neq', 'in', 'not', 'order', 'limit', 'range', 'filter'].forEach(m => {
-        chainable[m] = vi.fn().mockReturnValue(chainable);
+      // Mock from() to return different data based on table
+      mockSupabase.from.mockImplementation((table: string) => {
+        const chainable: any = {};
+        ['select', 'eq', 'neq', 'in', 'not', 'order', 'limit', 'range', 'filter'].forEach(m => {
+          chainable[m] = vi.fn().mockReturnValue(chainable);
+        });
+        chainable.single = vi.fn().mockResolvedValue({ data: null, error: null });
+        if (table === 'profiles') {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({
+            data: { user_id: 'mentor-id', full_name: 'Mentor', email: 'mentor@test.com' },
+            error: null,
+          });
+        } else if (table === 'memberships') {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({
+            data: { role: 'mentor' },
+            error: null,
+          });
+        } else {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+        }
+        return chainable;
       });
-      chainable.single = vi.fn().mockResolvedValue({
-        data: { user_id: 'mentor-id', full_name: 'Mentor', email: 'mentor@test.com' },
-        error: null,
-      });
-      mockSupabase.from.mockReturnValue(chainable);
-      mockSupabase.rpc.mockResolvedValue({ data: 'mentor', error: null });
 
       renderWithAuth(<AuthTestConsumer />);
 
@@ -180,16 +194,27 @@ describe('Auth System', () => {
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
 
-      const chainable: any = {};
-      ['select', 'eq', 'neq', 'in', 'not', 'order', 'limit', 'range', 'filter'].forEach(m => {
-        chainable[m] = vi.fn().mockReturnValue(chainable);
+      mockSupabase.from.mockImplementation((table: string) => {
+        const chainable: any = {};
+        ['select', 'eq', 'neq', 'in', 'not', 'order', 'limit', 'range', 'filter'].forEach(m => {
+          chainable[m] = vi.fn().mockReturnValue(chainable);
+        });
+        chainable.single = vi.fn().mockResolvedValue({ data: null, error: null });
+        if (table === 'profiles') {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({
+            data: { user_id: 'admin-id', full_name: 'Admin', email: 'admin@test.com' },
+            error: null,
+          });
+        } else if (table === 'memberships') {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({
+            data: { role: 'master_admin' },
+            error: null,
+          });
+        } else {
+          chainable.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+        }
+        return chainable;
       });
-      chainable.single = vi.fn().mockResolvedValue({
-        data: { user_id: 'admin-id', full_name: 'Admin', email: 'admin@test.com' },
-        error: null,
-      });
-      mockSupabase.from.mockReturnValue(chainable);
-      mockSupabase.rpc.mockResolvedValue({ data: 'admin_master', error: null });
 
       renderWithAuth(<AuthTestConsumer />);
 

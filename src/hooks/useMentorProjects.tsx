@@ -227,6 +227,18 @@ export function useMentorProjects() {
     onError: () => toast.error('Erro ao criar projeto'),
   });
 
+  const updateProject = useMutation({
+    mutationFn: async (input: { id: string; updates: Partial<Pick<MentorProject, 'name' | 'description' | 'color' | 'icon' | 'status'>> }) => {
+      const { error } = await supabase.from('mentor_projects').update(input.updates as any).eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['mentor-projects'] });
+      toast.success('Projeto atualizado');
+    },
+    onError: () => toast.error('Erro ao atualizar projeto'),
+  });
+
   const deleteProject = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('mentor_projects').delete().eq('id', id);
@@ -859,6 +871,7 @@ export function useMentorProjects() {
     projects: projectsQuery.data || [],
     isLoadingProjects: projectsQuery.isLoading,
     createProject,
+    updateProject,
     deleteProject,
     useStatuses,
     useTasks,
