@@ -310,7 +310,7 @@ const Mentorados = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredMentorados.map((mentorado) => {
+          {filteredMentorados.slice(0, visibleCount).map((mentorado) => {
             const journeyDay = getJourneyDay(mentorado.joined_at);
             const stage = getJourneyStage(mentorado.joined_at);
             return (
@@ -357,6 +357,13 @@ const Mentorados = () => {
             );
           })}
         </div>
+        {visibleCount < filteredMentorados.length && (
+          <div className="flex justify-center pt-4">
+            <Button variant="outline" onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}>
+              Carregar mais ({filteredMentorados.length - visibleCount} restantes)
+            </Button>
+          </div>
+        )}
       )}
 
       {/* Create Mentee Modal */}
