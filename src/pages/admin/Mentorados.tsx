@@ -366,8 +366,7 @@ const Mentorados = () => {
             </div>
           )}
         </>
-
-      {/* Create Mentee Modal */}
+      )}
       <CreateMenteeModal
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
