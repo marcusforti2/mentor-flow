@@ -11,6 +11,7 @@ import { LogOut, ArrowLeft } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { useTenant } from '@/contexts/TenantContext';
 import { PageSpinner } from '@/components/PageSpinner';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   LayoutDashboard,
   BookOpen,
