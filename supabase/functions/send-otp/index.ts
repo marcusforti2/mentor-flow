@@ -196,9 +196,14 @@ serve(async (req) => {
   }
 
   try {
-    const { email, tenant_hint, channel, phone: providedPhone } = await req.json();
+    const body = await req.json();
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const tenant_hint = typeof body.tenant_hint === 'string' ? body.tenant_hint : null;
+    const channel = typeof body.channel === 'string' && ['email', 'whatsapp'].includes(body.channel) ? body.channel : 'email';
+    const providedPhone = typeof body.phone === 'string' ? body.phone.replace(/[^\d+]/g, '') : null;
 
     if (!email) throw new Error("Email é obrigatório");
+    if (email.length > 255) throw new Error("Email muito longo");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) throw new Error("Email inválido");
