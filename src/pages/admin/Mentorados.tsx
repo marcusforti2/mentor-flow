@@ -48,6 +48,8 @@ interface Mentorado {
 type JourneyFilter = 'all' | 'week' | 'month' | 'stage';
 type StageFilter = 'all' | string;
 
+const PAGE_SIZE = 30;
+
 const Mentorados = () => {
   const navigate = useNavigate();
   const [mentorados, setMentorados] = useState<Mentorado[]>([]);
@@ -60,6 +62,7 @@ const Mentorados = () => {
   const [showFormEditor, setShowFormEditor] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { user } = useAuth();
   const { activeMembership } = useTenant();
