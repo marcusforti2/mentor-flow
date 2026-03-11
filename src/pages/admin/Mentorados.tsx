@@ -309,62 +309,63 @@ const Mentorados = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredMentorados.slice(0, visibleCount).map((mentorado) => {
-            const journeyDay = getJourneyDay(mentorado.joined_at);
-            const stage = getJourneyStage(mentorado.joined_at);
-            return (
-              <Card 
-                key={mentorado.id} 
-                className="glass-card hover:border-primary/30 transition-all cursor-pointer group"
-                onClick={() => navigate(`/mentor/mentorados/${mentorado.membership_id}`)}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className="relative">
-                      <Avatar className="h-12 w-12 border-2 border-primary/20">
-                        <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {getInitials(mentorado.profile?.full_name || null)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${stage.color} border-2 border-card`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-foreground truncate">{mentorado.profile?.full_name || "Sem nome"}</h3>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMentorados.slice(0, visibleCount).map((mentorado) => {
+              const journeyDay = getJourneyDay(mentorado.joined_at);
+              const stage = getJourneyStage(mentorado.joined_at);
+              return (
+                <Card 
+                  key={mentorado.id} 
+                  className="glass-card hover:border-primary/30 transition-all cursor-pointer group"
+                  onClick={() => navigate(`/mentor/mentorados/${mentorado.membership_id}`)}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <div className="relative">
+                        <Avatar className="h-12 w-12 border-2 border-primary/20">
+                          <AvatarImage src={mentorado.profile?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {getInitials(mentorado.profile?.full_name || null)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${stage.color} border-2 border-card`} />
                       </div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Mail className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{mentorado.profile?.email}</span>
-                      </div>
-                      {mentorado.business_profile?.business_name && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <Building2 className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{mentorado.business_profile.business_name}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-foreground truncate">{mentorado.profile?.full_name || "Sem nome"}</h3>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">Dia {journeyDay}</Badge>
-                        <Badge className={`text-xs text-white border-0 ${stage.color}`}>{stage.name}</Badge>
-                        {mentorado.onboarding_completed && <CheckCircle className="h-3 w-3 text-green-500" />}
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{mentorado.profile?.email}</span>
+                        </div>
+                        {mentorado.business_profile?.business_name && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <Building2 className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{mentorado.business_profile.business_name}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs">Dia {journeyDay}</Badge>
+                          <Badge className={`text-xs text-white border-0 ${stage.color}`}>{stage.name}</Badge>
+                          {mentorado.onboarding_completed && <CheckCircle className="h-3 w-3 text-green-500" />}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-        {visibleCount < filteredMentorados.length && (
-          <div className="flex justify-center pt-4">
-            <Button variant="outline" onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}>
-              Carregar mais ({filteredMentorados.length - visibleCount} restantes)
-            </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        )}
-      )}
+          {visibleCount < filteredMentorados.length && (
+            <div className="flex justify-center pt-4">
+              <Button variant="outline" onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}>
+                Carregar mais ({filteredMentorados.length - visibleCount} restantes)
+              </Button>
+            </div>
+          )}
+        </>
 
       {/* Create Mentee Modal */}
       <CreateMenteeModal
