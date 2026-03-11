@@ -8,6 +8,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { SOSNotificationAlert } from '@/components/admin/SOSNotificationAlert';
 import { JarvisFloatingOverlay } from '@/components/jarvis/JarvisFloatingOverlay';
 import { AlertsBell } from '@/components/admin/AlertsBell';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { AlertsPanel } from '@/components/admin/AlertsPanel';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
