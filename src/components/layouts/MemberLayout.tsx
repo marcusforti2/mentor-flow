@@ -113,29 +113,32 @@ export function MemberLayout() {
           </Link>
 
           {/* User controls on the right */}
-          <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={profile?.avatar_url || ''} />
-              <AvatarFallback className="bg-accent/20 text-accent text-sm">
-                {profile?.full_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium text-foreground hidden sm:block">
-              {profile?.full_name || 'Mentorado'}
-            </span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={signOut}
-                  className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Sair</TooltipContent>
-            </Tooltip>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <div className="glass-card flex items-center gap-3 px-3 py-2 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || ''} />
+                <AvatarFallback className="bg-accent/20 text-accent text-sm">
+                  {profile?.full_name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-foreground hidden sm:block">
+                {profile?.full_name || 'Mentorado'}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={signOut}
+                    className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sair</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </header>
       )}
