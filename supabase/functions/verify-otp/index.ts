@@ -52,10 +52,18 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { email, code, tenant_id, devMode } = await req.json();
+    const body = await req.json();
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const code = typeof body.code === 'string' ? body.code.trim() : '';
+    const tenant_id = typeof body.tenant_id === 'string' ? body.tenant_id : null;
+    const devMode = body.devMode === true;
 
     if (!email || !code) {
       return errorResponse("Email e código são obrigatórios", "otp_invalid");
+    }
+
+    if (email.length > 255 || code.length > 10) {
+      return errorResponse("Dados inválidos", "otp_invalid");
     }
 
     const normalizedCode = code.replace(/\D/g, '');

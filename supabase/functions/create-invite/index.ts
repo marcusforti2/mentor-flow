@@ -154,12 +154,32 @@ serve(async (req) => {
   }
 
   try {
-    const { tenant_id, email, full_name, phone, role } = await req.json();
+    const body = await req.json();
+    const tenant_id = typeof body.tenant_id === 'string' ? body.tenant_id.trim() : '';
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const full_name = typeof body.full_name === 'string' ? body.full_name.trim().slice(0, 200) : null;
+    const phone = typeof body.phone === 'string' ? body.phone.replace(/[^\d+() -]/g, '').slice(0, 30) : null;
+    const role = typeof body.role === 'string' ? body.role.trim() : '';
 
     // ========== VALIDATION ==========
     if (!tenant_id || !email || !role) {
       return new Response(
         JSON.stringify({ error: "tenant_id, email e role são obrigatórios" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (email.length > 255) {
+      return new Response(
+        JSON.stringify({ error: "Email muito longo" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ error: "Email inválido" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
