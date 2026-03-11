@@ -80,6 +80,7 @@ export function MemberLayout() {
 
           {/* User info on sub-pages */}
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <Avatar className="h-8 w-8">
               <AvatarImage src={profile?.avatar_url || ''} />
               <AvatarFallback className="bg-accent/20 text-accent text-sm">
