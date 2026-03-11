@@ -160,8 +160,9 @@ const menuItems: DockItem[] = [
              )}
            </div>
 
-           <div className="flex items-center gap-3">
-             <AlertsBell onClick={() => setAlertsOpen(true)} unreadCount={smartAlerts.unreadCount} />
+           <div className="flex items-center gap-2">
+              <NotificationBell />
+              <AlertsBell onClick={() => setAlertsOpen(true)} unreadCount={smartAlerts.unreadCount} />
              {isDashboard && (
                <Tooltip>
                  <TooltipTrigger asChild>
