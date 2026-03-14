@@ -362,64 +362,74 @@ const MentoradoDetail = () => {
 
         {/* === TAB: Análise IA === */}
         <TabsContent value="analysis" className="mt-6">
-          <MentoradoBehavioralAnalysis
-            menteeMembershipId={mentorado.membership_id}
-            mentorMembershipId={activeMembership.id}
-            tenantId={activeMembership.tenant_id}
-            menteeName={mentorado.profile?.full_name || "Mentorado"}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <MentoradoBehavioralAnalysis
+              menteeMembershipId={mentorado.membership_id}
+              mentorMembershipId={activeMembership.id}
+              tenantId={activeMembership.tenant_id}
+              menteeName={mentorado.profile?.full_name || "Mentorado"}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* === TAB: Reuniões === */}
         <TabsContent value="meetings" className="mt-6 space-y-6">
-          <MeetingRegistrar
-            mentoradoMembershipId={mentorado.membership_id}
-            mentorMembershipId={activeMembership.id}
-            tenantId={activeMembership.tenant_id}
-            onMeetingSaved={() => setMeetingRefreshKey(k => k + 1)}
-          />
-          <MeetingHistoryList
-            mentoradoMembershipId={mentorado.membership_id}
-            mentorMembershipId={activeMembership.id}
-            tenantId={activeMembership.tenant_id}
-            refreshKey={meetingRefreshKey}
-            onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <MeetingRegistrar
+              mentoradoMembershipId={mentorado.membership_id}
+              mentorMembershipId={activeMembership.id}
+              tenantId={activeMembership.tenant_id}
+              onMeetingSaved={() => setMeetingRefreshKey(k => k + 1)}
+            />
+            <MeetingHistoryList
+              mentoradoMembershipId={mentorado.membership_id}
+              mentorMembershipId={activeMembership.id}
+              tenantId={activeMembership.tenant_id}
+              refreshKey={meetingRefreshKey}
+              onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* === TAB: Tarefas === */}
         <TabsContent value="tasks" className="mt-6 space-y-6">
-          <TranscriptionTaskExtractor
-            mentoradoMembershipId={mentorado.membership_id}
-            mentorMembershipId={activeMembership.id}
-            tenantId={activeMembership.tenant_id}
-            onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
-          />
-          <TaskListView
-            mentoradoMembershipId={mentorado.membership_id}
-            mentorMembershipId={activeMembership.id}
-            tenantId={activeMembership.tenant_id}
-            refreshKey={campanRefreshKey}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <TranscriptionTaskExtractor
+              mentoradoMembershipId={mentorado.membership_id}
+              mentorMembershipId={activeMembership.id}
+              tenantId={activeMembership.tenant_id}
+              onTasksSaved={() => setCampanRefreshKey(k => k + 1)}
+            />
+            <TaskListView
+              mentoradoMembershipId={mentorado.membership_id}
+              mentorMembershipId={activeMembership.id}
+              tenantId={activeMembership.tenant_id}
+              refreshKey={campanRefreshKey}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* === TAB: Arquivos === */}
         <TabsContent value="files" className="mt-6">
-          <MentoradoFilesManager
-            mentoradoId={null}
-            mentorId={null}
-            mentoradoName={mentorado.profile?.full_name || "Mentorado"}
-            tenantId={activeMembership.tenant_id}
-            ownerMembershipId={mentorado.membership_id}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <MentoradoFilesManager
+              mentoradoId={null}
+              mentorId={null}
+              mentoradoName={mentorado.profile?.full_name || "Mentorado"}
+              tenantId={activeMembership.tenant_id}
+              ownerMembershipId={mentorado.membership_id}
+            />
+          </Suspense>
         </TabsContent>
 
         {/* === TAB: Métricas === */}
         <TabsContent value="metrics" className="mt-6">
-          <MentoradoMetricsDashboard
-            membershipId={mentorado.membership_id}
-            tenantId={activeMembership.tenant_id}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <MentoradoMetricsDashboard
+              membershipId={mentorado.membership_id}
+              tenantId={activeMembership.tenant_id}
+            />
+          </Suspense>
         </TabsContent>
       </Tabs>
 
