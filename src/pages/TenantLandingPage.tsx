@@ -5,10 +5,79 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, Sparkles, BookOpen, Target, Trophy, Brain, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PLATFORM } from '@/lib/platform';
 
 export default function TenantLandingPage() {
   const { slug } = useParams<{ slug: string }>();
+
+  const gradientStyles = `
+  .animated-gradient-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #ff0080, #ff8c00, #4caf50, #3f51b5, #795548);
+    background-size: 400% 400%;
+    animation: gradientAnimation 15s ease infinite;
+    z-index: -1;
+  }
+
+  @keyframes gradientAnimation {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(to right, #D4AF37, #FFD700);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-card-glow {
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1), 0 0 50px rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .hover-lift {
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-5px);
+  }
+
+  .btn-premium {
+    background: linear-gradient(to right, #D4AF37, #FFD700);
+    color: #000;
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-premium:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+  }
+`;
 
   const { data: tenant, isLoading } = useQuery({
     queryKey: ['tenant-landing', slug],
@@ -24,7 +93,6 @@ export default function TenantLandingPage() {
     enabled: !!slug,
   });
 
-  // Fetch public trails count for this tenant
   const { data: trailsCount } = useQuery({
     queryKey: ['tenant-trails-count', tenant?.id],
     queryFn: async () => {
@@ -61,6 +129,7 @@ export default function TenantLandingPage() {
   }
 
   const tenantColor = tenant.primary_color || 'hsl(160 84% 39%)';
+  const tenantLoginPath = `/login/${tenant.slug}`;
 
   const highlights = [
     { icon: Brain, title: 'IA de Vendas', desc: 'Arsenal completo de inteligência artificial treinada no seu nicho.' },
@@ -89,7 +158,7 @@ export default function TenantLandingPage() {
             )}
             <span className="font-display font-bold text-xl text-foreground">{tenant.name}</span>
           </div>
-          <Link to="/auth">
+          <Link to={tenantLoginPath}>
             <Button className="btn-premium px-6">
               <span>Acessar Plataforma</span>
             </Button>
@@ -119,7 +188,7 @@ export default function TenantLandingPage() {
             para você vender mais e melhor.
           </p>
           
-          <Link to="/auth">
+          <Link to={tenantLoginPath}>
             <Button size="lg" className="btn-premium text-lg px-10 h-14">
               <span className="flex items-center gap-2">
                 Entrar na Plataforma <ArrowRight className="w-5 h-5" />
@@ -158,7 +227,7 @@ export default function TenantLandingPage() {
             <p className="text-muted-foreground mb-8">
               Entre na plataforma e comece sua jornada com {tenant.name}.
             </p>
-            <Link to="/auth">
+            <Link to={tenantLoginPath}>
               <Button size="lg" className="btn-premium px-10 h-14">
                 <span className="flex items-center gap-2">
                   Acessar Agora <ArrowRight className="w-5 h-5" />
@@ -173,10 +242,10 @@ export default function TenantLandingPage() {
       <footer className="py-8 px-6 border-t border-border/30">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            {tenant.name} — Powered by {PLATFORM.name}
+            {tenant.name} • Ambiente oficial
           </p>
           <p className="text-xs text-muted-foreground">
-            {PLATFORM.email.footer}
+            Acesso seguro para trilhas, playbooks e operações da mentoria.
           </p>
         </div>
       </footer>

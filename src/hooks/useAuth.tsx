@@ -87,29 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setProfile(profileData);
 
-      // Derive role from memberships (replaces legacy user_roles query)
+      // Derive role from the highest-priority active membership
       const { data: membershipData } = await supabase
         .from('memberships')
         .select('role')
         .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      
-      if (membershipData) {
-        // Map membership roles to legacy AppRole type
-        const roleMap: Record<string, AppRole> = {
-          master_admin: 'admin_master',
-          admin: 'mentor',
-          mentor: 'mentor',
-          ops: 'mentor',
-          mentee: 'mentorado',
-        };
-        setRole(roleMap[membershipData.role] || null);
-      } else {
-        setRole(null);
-      }
+        .eq('status', 'active');
+
+      setRole(resolveHighestRole(membershipData || []));
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {

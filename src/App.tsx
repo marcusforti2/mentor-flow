@@ -215,7 +215,7 @@ function AppRoutes() {
           <Route path="emails" element={<EmailMarketing />} />
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="perfil" element={<MentorPerfil />} />
-          <Route path="devtools" element={<DevTools />} />
+          {isDevToolsEnabled && <Route path="devtools" element={<DevTools />} />}
           <Route path="propriedade-intelectual" element={<PropriedadeIntelectual />} />
           <Route path="playbooks" element={<PlaybooksHub />} />
           <Route path="playbooks/:playbookId" element={<PlaybookEditorPage />} />

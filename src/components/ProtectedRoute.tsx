@@ -1,7 +1,8 @@
- import { Navigate, useLocation } from 'react-router-dom';
+ import { Link, Navigate, useLocation } from 'react-router-dom';
  import { useAuth } from '@/hooks/useAuth';
  import { useTenant, MembershipRole } from '@/contexts/TenantContext';
  import { Loader2 } from 'lucide-react';
+ import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,7 +16,7 @@ export function ProtectedRoute({
   redirectTo = '/auth'
 }: ProtectedRouteProps) {
    const { user, isLoading: authLoading } = useAuth();
-   const { activeMembership, isLoading: tenantLoading } = useTenant();
+   const { tenant, activeMembership, isLoading: tenantLoading } = useTenant();
   const location = useLocation();
 
    const isLoading = authLoading || tenantLoading;
@@ -35,9 +36,24 @@ export function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-    // If no membership yet, just render children
+    // Authenticated user without membership must not access protected areas yet
     if (!activeMembership) {
-      return <>{children}</>;
+      const accessPath = tenant?.slug ? `/login/${tenant.slug}` : redirectTo;
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background px-6">
+          <div className="max-w-md text-center space-y-4">
+            <h1 className="text-2xl font-semibold text-foreground">Acesso pendente</h1>
+            <p className="text-muted-foreground">
+              Seu usuário está autenticado, mas ainda não possui um vínculo ativo com este ambiente.
+              Peça a liberação do acesso ou entre novamente pelo tenant correto.
+            </p>
+            <Link to={accessPath} state={{ from: location }} replace>
+              <Button>Voltar para o acesso</Button>
+            </Link>
+          </div>
+        </div>
+      );
     }
 
     // Admin has full access to everything

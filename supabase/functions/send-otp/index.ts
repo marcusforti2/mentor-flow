@@ -66,7 +66,7 @@ async function getTenantBranding(supabase: any, tenantId: string | null): Promis
       name: brandName,
       logoUrl: tenant.logo_url || null,
       primaryColor,
-      fromEmail: `${brandName} <noreply@equipe.aceleracaoforti.online>`,
+      fromEmail: `${brandName} <${OTP_FROM_EMAIL}>`,
     };
   } catch { return DEFAULT_BRANDING; }
 }
