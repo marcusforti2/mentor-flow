@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, Edit3, MessageCircle, Mail, Phone, Calendar, Brain, Video, ClipboardList, FolderOpen, Instagram, Linkedin, Globe, BarChart3 } from "lucide-react";
 import { DangerZoneDelete } from "@/components/admin/DangerZoneDelete";
@@ -26,20 +27,34 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { MentoradoFilesManager } from "@/components/admin/MentoradoFilesManager";
-import { MentoradoMetricsDashboard } from "@/components/admin/MentoradoMetricsDashboard";
-import { MeetingRegistrar } from "@/components/campan/MeetingRegistrar";
-import { TaskListView } from "@/components/campan/TaskListView";
-import { TranscriptionTaskExtractor } from "@/components/campan/TranscriptionTaskExtractor";
-import { MeetingHistoryList } from "@/components/campan/MeetingHistoryList";
+
+// ── Sync imports: "info" tab (default) + modals ──
 import { MentoradoProfileStats } from "@/components/admin/MentoradoProfileStats";
 import { MentoradoAIScore } from "@/components/admin/MentoradoAIScore";
 import { MentoradoBusinessSummary } from "@/components/admin/MentoradoBusinessSummary";
 import { MentoradoActivityTimeline } from "@/components/admin/MentoradoActivityTimeline";
-import { MentoradoBehavioralAnalysis } from "@/components/admin/MentoradoBehavioralAnalysis";
-import { EditMenteeModal } from "@/components/admin/EditMenteeModal";
 import { MenteeShowcaseEditor } from "@/components/admin/MenteeShowcaseEditor";
+import { EditMenteeModal } from "@/components/admin/EditMenteeModal";
 import { MenteeEmailComposer } from "@/components/admin/MenteeEmailComposer";
+
+// ── Lazy imports: non-default tabs (analysis, meetings, tasks, files, metrics) ──
+const MentoradoFilesManager = lazy(() => import("@/components/admin/MentoradoFilesManager").then(m => ({ default: m.MentoradoFilesManager })));
+const MentoradoMetricsDashboard = lazy(() => import("@/components/admin/MentoradoMetricsDashboard").then(m => ({ default: m.MentoradoMetricsDashboard })));
+const MeetingRegistrar = lazy(() => import("@/components/campan/MeetingRegistrar").then(m => ({ default: m.MeetingRegistrar })));
+const TaskListView = lazy(() => import("@/components/campan/TaskListView").then(m => ({ default: m.TaskListView })));
+const TranscriptionTaskExtractor = lazy(() => import("@/components/campan/TranscriptionTaskExtractor").then(m => ({ default: m.TranscriptionTaskExtractor })));
+const MeetingHistoryList = lazy(() => import("@/components/campan/MeetingHistoryList").then(m => ({ default: m.MeetingHistoryList })));
+const MentoradoBehavioralAnalysis = lazy(() => import("@/components/admin/MentoradoBehavioralAnalysis").then(m => ({ default: m.MentoradoBehavioralAnalysis })));
+
+function TabFallback() {
+  return (
+    <div className="space-y-4 mt-6">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+    </div>
+  );
+}
 
 interface MentoradoData {
   id: string;
