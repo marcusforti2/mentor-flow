@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -26,13 +27,25 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const WhatsAppAutomationTab = lazy(() => import("@/components/whatsapp/WhatsAppAutomationTab").then(m => ({ default: m.WhatsAppAutomationTab })));
+// ── Sync: dashboard tab (default) ──
 import { WhatsAppDashboard } from "@/components/whatsapp/WhatsAppDashboard";
-import { WhatsAppQuickSend } from "@/components/whatsapp/WhatsAppQuickSend";
-import { WhatsAppIntelligence } from "@/components/whatsapp/WhatsAppIntelligence";
-import { WhatsAppAutoReply } from "@/components/whatsapp/WhatsAppAutoReply";
-import { WhatsAppDailySummary } from "@/components/whatsapp/WhatsAppDailySummary";
-import { WhatsAppCRM } from "@/components/whatsapp/WhatsAppCRM";
+
+// ── Lazy: all other tabs ──
+const WhatsAppAutomationTab = lazy(() => import("@/components/whatsapp/WhatsAppAutomationTab").then(m => ({ default: m.WhatsAppAutomationTab })));
+const WhatsAppQuickSend = lazy(() => import("@/components/whatsapp/WhatsAppQuickSend").then(m => ({ default: m.WhatsAppQuickSend })));
+const WhatsAppIntelligence = lazy(() => import("@/components/whatsapp/WhatsAppIntelligence").then(m => ({ default: m.WhatsAppIntelligence })));
+const WhatsAppAutoReply = lazy(() => import("@/components/whatsapp/WhatsAppAutoReply").then(m => ({ default: m.WhatsAppAutoReply })));
+const WhatsAppDailySummary = lazy(() => import("@/components/whatsapp/WhatsAppDailySummary").then(m => ({ default: m.WhatsAppDailySummary })));
+const WhatsAppCRM = lazy(() => import("@/components/whatsapp/WhatsAppCRM").then(m => ({ default: m.WhatsAppCRM })));
+
+function WaTabFallback() {
+  return (
+    <div className="space-y-4 py-6">
+      <Skeleton className="h-8 w-52" />
+      <Skeleton className="h-40 w-full rounded-xl" />
+    </div>
+  );
+}
 
 interface WhatsAppConfig {
   id: string;
@@ -607,27 +620,37 @@ export default function WhatsAppCampaigns() {
 
         {/* ======= QUICK SEND TAB ======= */}
         <TabsContent value="quick_send">
-          <WhatsAppQuickSend mentees={mentees} onSent={fetchAll} />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppQuickSend mentees={mentees} onSent={fetchAll} />
+          </Suspense>
         </TabsContent>
 
         {/* ======= INTELLIGENCE TAB ======= */}
         <TabsContent value="intelligence">
-          <WhatsAppIntelligence mentees={mentees} />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppIntelligence mentees={mentees} />
+          </Suspense>
         </TabsContent>
 
         {/* ======= AUTO REPLY TAB ======= */}
         <TabsContent value="auto_reply">
-          <WhatsAppAutoReply />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppAutoReply />
+          </Suspense>
         </TabsContent>
 
         {/* ======= DAILY SUMMARY TAB ======= */}
         <TabsContent value="daily_summary">
-          <WhatsAppDailySummary />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppDailySummary />
+          </Suspense>
         </TabsContent>
 
         {/* ======= CRM TAB ======= */}
         <TabsContent value="crm">
-          <WhatsAppCRM />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppCRM />
+          </Suspense>
         </TabsContent>
 
         {/* ======= LOGS TAB ======= */}
