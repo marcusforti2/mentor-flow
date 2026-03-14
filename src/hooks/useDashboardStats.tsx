@@ -91,180 +91,77 @@ const EMPTY_MENTEE_STATS: MenteeDashboardStats = {
   totalPoints: 0, nextMeeting: null, trailProgress: [],
 };
 
-// ─── Mentor Dashboard ───────────────────────────────────────────
+// ─── Activity type mapper (same logic as before) ────────────────
+const mapActivityType = (actionType: string): ActivityItem['type'] => {
+  if (actionType.includes('closed_won') || actionType.includes('trail_completed')) return 'trail_completed';
+  if (actionType.includes('lead') || actionType.includes('prospection')) return 'prospection';
+  if (actionType.includes('ranking')) return 'ranking_up';
+  if (actionType.includes('trail_started')) return 'trail_started';
+  if (actionType.includes('meeting')) return 'meeting';
+  return 'prospection';
+};
+
+// ─── Mentor Dashboard (single RPC call) ─────────────────────────
 
 async function fetchMentorStats(tenantId: string): Promise<MentorDashboardStats> {
-  const startOfWeek = new Date();
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(endOfWeek.getDate() + 7);
-
-  // BATCH 1
-  const [membershipsRes, trailsRes, meetingsRes, sosRes, sosDetailsRes, activityRes, winsRes] = await Promise.all([
-    supabase.from('memberships').select('id, status, user_id').eq('tenant_id', tenantId).eq('role', 'mentee').eq('status', 'active'),
-    supabase.from('trails').select('id, title').eq('tenant_id', tenantId),
-    supabase.from('meetings').select('id').eq('tenant_id', tenantId)
-      .gte('scheduled_at', startOfWeek.toISOString()).lt('scheduled_at', endOfWeek.toISOString()),
-    supabase.from('sos_requests').select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId).in('status', ['pending', 'in_progress']),
-    supabase.from('sos_requests').select('id, title, priority, category, membership_id, created_at')
-      .eq('tenant_id', tenantId).in('status', ['pending', 'in_progress'])
-      .order('created_at', { ascending: false }).limit(5),
-    supabase.from('activity_logs').select('id, action_type, action_description, created_at, membership_id')
-      .eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(10),
-    supabase.from('activity_logs').select('id, action_type, action_description, created_at, membership_id')
-      .eq('tenant_id', tenantId)
-      .in('action_type', ['lead_closed_won', 'deal_closed', 'trail_completed'])
-      .order('created_at', { ascending: false }).limit(5),
-  ]);
-
-  if (membershipsRes.error) throw membershipsRes.error;
-  const menteeMemberships = membershipsRes.data || [];
-  const mentoradosCount = menteeMemberships.length;
-  const activeMentoradosCount = menteeMemberships.filter(m => m.status === 'active').length;
-  const trailsCount = trailsRes.error ? 0 : (trailsRes.data?.length || 0);
-  const meetingsThisWeek = meetingsRes.data?.length || 0;
-
-  const mapActivityType = (actionType: string): ActivityItem['type'] => {
-    if (actionType.includes('closed_won') || actionType.includes('trail_completed')) return 'trail_completed';
-    if (actionType.includes('lead') || actionType.includes('prospection')) return 'prospection';
-    if (actionType.includes('ranking')) return 'ranking_up';
-    if (actionType.includes('trail_started')) return 'trail_started';
-    if (actionType.includes('meeting')) return 'meeting';
-    return 'prospection';
-  };
-
-  // BATCH 2
-  const membershipIds = menteeMemberships.map(m => m.id);
-  const activeMembershipIds = menteeMemberships.filter(m => m.status === 'active').map(m => m.id);
-  const allUserIds = menteeMemberships.map(m => m.user_id);
-  const trailIds = (trailsRes.data || []).map(t => t.id);
-
-  const [profilesRes, rankingRes, trailModulesRes, atRiskActivityRes] = await Promise.all([
-    allUserIds.length > 0
-      ? supabase.from('profiles').select('user_id, full_name').in('user_id', allUserIds)
-      : Promise.resolve({ data: [] as { user_id: string; full_name: string }[] }),
-    membershipIds.length > 0
-      ? supabase.from('ranking_entries').select('id, membership_id, points')
-          .in('membership_id', membershipIds)
-          .order('points', { ascending: false }).limit(5)
-      : Promise.resolve({ data: [] as any[] }),
-    trailIds.length > 0
-      ? supabase.from('trail_modules').select('id, trail_id').in('trail_id', trailIds)
-      : Promise.resolve({ data: [] as any[] }),
-    activeMembershipIds.length > 0
-      ? supabase.from('activity_logs').select('membership_id, created_at')
-          .eq('tenant_id', tenantId).in('membership_id', activeMembershipIds)
-          .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] as any[] }),
-  ]);
-
-  const profileMap = new Map<string, string>(((profilesRes as any).data || []).map((p: any) => [p.user_id, p.full_name]));
-  const membershipToUser = new Map(menteeMemberships.map(m => [m.id, m.user_id]));
-
-  const recentActivity: ActivityItem[] = (activityRes.data || []).map(a => {
-    const userId = membershipToUser.get(a.membership_id || '') || '';
-    const name = profileMap.get(userId) || '';
-    return {
-      id: a.id, type: mapActivityType(a.action_type),
-      title: a.action_description || a.action_type, timestamp: a.created_at,
-      mentoradoName: name || undefined,
-    };
+  const { data, error } = await supabase.rpc('get_mentor_dashboard_stats', {
+    _tenant_id: tenantId,
   });
 
-  let topRanking: RankingItem[] = [];
-  const rankingData = (rankingRes as any).data || [];
-  if (rankingData.length > 0) {
-    topRanking = rankingData.map((r: any, idx: number) => {
-      const userId = membershipToUser.get(r.membership_id || '') || '';
-      return {
-        position: idx + 1, name: profileMap.get(userId) || 'Sem nome',
-        points: r.points || 0, mentoradoId: r.membership_id || '',
-      };
-    });
-  }
+  if (error) throw error;
+  if (!data) return EMPTY_MENTOR_STATS;
 
-  // BATCH 3 — trail progress
-  let trailProgress: TrailProgressItem[] = [];
-  const allModules = (trailModulesRes as any).data || [];
-  if (allModules.length > 0) {
-    const moduleIds = allModules.map((m: any) => m.id);
-    const [lessonsRes, progressRes] = await Promise.all([
-      supabase.from('trail_lessons').select('id, module_id').in('module_id', moduleIds),
-      supabase.from('trail_progress').select('lesson_id, completed').eq('tenant_id', tenantId),
-    ]);
-    const allLessons = lessonsRes.data || [];
-    const completedSet = new Set((progressRes.data || []).filter((p: any) => p.completed).map((p: any) => p.lesson_id));
+  const raw = data as Record<string, any>;
 
-    trailProgress = (trailsRes.data || []).slice(0, 3).map(trail => {
-      const trailModuleIds = allModules.filter((m: any) => m.trail_id === trail.id).map((m: any) => m.id);
-      const trailLessons = allLessons.filter((l: any) => trailModuleIds.includes(l.module_id));
-      const totalLessons = trailLessons.length;
-      const completedLessons = trailLessons.filter((l: any) => completedSet.has(l.id)).length;
-      return { id: trail.id, name: trail.title, progress: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0 };
-    });
-  } else if (trailsRes.data) {
-    trailProgress = trailsRes.data.slice(0, 3).map(t => ({ id: t.id, name: t.title, progress: 0 }));
-  }
-
-  // SOS details
-  let sosDetails: SOSDetail[] = [];
-  if (sosDetailsRes.data && sosDetailsRes.data.length > 0) {
-    sosDetails = sosDetailsRes.data.map(s => ({
-      id: s.id, title: s.title, priority: s.priority || 'medium',
-      category: s.category || '',
-      mentoradoName: profileMap.get(membershipToUser.get(s.membership_id || '') || '') || 'Mentorado',
-      createdAt: s.created_at,
-    }));
-  }
-
-  // At-risk
-  const threeDaysAgo = new Date();
-  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-  const lastActivityMap = new Map<string, string>();
-  ((atRiskActivityRes as any).data || []).forEach((a: any) => {
-    if (a.membership_id && !lastActivityMap.has(a.membership_id)) {
-      lastActivityMap.set(a.membership_id, a.created_at);
-    }
-  });
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const engagedCount = activeMembershipIds.filter(id => {
-    const last = lastActivityMap.get(id);
-    return last && new Date(last) >= sevenDaysAgo;
-  }).length;
-  const engagementRate = activeMentoradosCount > 0 ? Math.round((engagedCount / activeMentoradosCount) * 100) : 0;
-
-  const atRiskMembershipIds = activeMembershipIds.filter(id => {
-    const last = lastActivityMap.get(id);
-    return !last || new Date(last) < threeDaysAgo;
-  });
-  const atRiskDetails: AtRiskDetail[] = atRiskMembershipIds.slice(0, 5).map(mid => {
-    const lastAt = lastActivityMap.get(mid) || null;
-    const days = lastAt ? Math.floor((Date.now() - new Date(lastAt).getTime()) / (1000 * 60 * 60 * 24)) : 999;
-    return {
-      membershipId: mid,
-      name: profileMap.get(membershipToUser.get(mid) || '') || 'Sem nome',
-      lastActivityAt: lastAt, daysSinceActivity: days,
-    };
-  }).sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
-
-  // Recent wins
-  let recentWins: RecentWin[] = [];
-  if (winsRes.data && winsRes.data.length > 0) {
-    recentWins = winsRes.data.map(w => ({
-      id: w.id, description: w.action_description || w.action_type,
-      mentoradoName: profileMap.get(membershipToUser.get(w.membership_id || '') || '') || 'Mentorado',
-      timestamp: w.created_at,
-    }));
-  }
+  // Map recentActivity to apply the type mapper
+  const recentActivity: ActivityItem[] = (raw.recentActivity || []).map((a: any) => ({
+    id: a.id,
+    type: mapActivityType(a.type || ''),
+    title: a.title || '',
+    timestamp: a.timestamp || '',
+    mentoradoName: a.mentoradoName || undefined,
+  }));
 
   return {
-    mentoradosCount, activeMentoradosCount, atRiskCount: atRiskDetails.length,
-    sosCount: sosRes.count || 0, meetingsThisWeek, engagementRate,
-    trailsCount, recentActivity, topRanking, trailProgress,
-    sosDetails, atRiskDetails, recentWins,
+    mentoradosCount: raw.mentoradosCount || 0,
+    activeMentoradosCount: raw.activeMentoradosCount || 0,
+    atRiskCount: raw.atRiskCount || 0,
+    sosCount: raw.sosCount || 0,
+    meetingsThisWeek: raw.meetingsThisWeek || 0,
+    engagementRate: raw.engagementRate || 0,
+    trailsCount: raw.trailsCount || 0,
+    recentActivity,
+    topRanking: (raw.topRanking || []).map((r: any) => ({
+      position: r.position || 0,
+      name: r.name || 'Sem nome',
+      points: r.points || 0,
+      mentoradoId: r.mentoradoId || '',
+    })),
+    trailProgress: (raw.trailProgress || []).map((t: any) => ({
+      id: t.id || '',
+      name: t.name || '',
+      progress: t.progress || 0,
+    })),
+    sosDetails: (raw.sosDetails || []).map((s: any) => ({
+      id: s.id || '',
+      title: s.title || '',
+      priority: s.priority || 'medium',
+      category: s.category || '',
+      mentoradoName: s.mentoradoName || 'Mentorado',
+      createdAt: s.createdAt || '',
+    })),
+    atRiskDetails: (raw.atRiskDetails || []).map((a: any) => ({
+      membershipId: a.membershipId || '',
+      name: a.name || 'Sem nome',
+      lastActivityAt: a.lastActivityAt || null,
+      daysSinceActivity: a.daysSinceActivity ?? 999,
+    })),
+    recentWins: (raw.recentWins || []).map((w: any) => ({
+      id: w.id || '',
+      description: w.description || '',
+      mentoradoName: w.mentoradoName || 'Mentorado',
+      timestamp: w.timestamp || '',
+    })),
   };
 }
 
@@ -277,97 +174,42 @@ export function useMentorDashboardStats() {
     queryKey: ['mentor-dashboard-stats', tenantId],
     queryFn: () => fetchMentorStats(tenantId!),
     enabled: !!tenantId && !!user?.id,
-    staleTime: 2 * 60 * 1000, // 2 min
+    staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
   return { stats, isLoading, error: error as Error | null, refetch };
 }
 
-// ─── Mentee Dashboard ───────────────────────────────────────────
+// ─── Mentee Dashboard (single RPC call) ─────────────────────────
 
 async function fetchMenteeStats(membershipId: string, tenantId: string): Promise<MenteeDashboardStats> {
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase.rpc('get_mentee_dashboard_stats', {
+    _membership_id: membershipId,
+    _tenant_id: tenantId,
+  });
 
-  // BATCH 1
-  const [rankingEntryRes, allMenteeIdsRes, totalProspRes, monthlyProspRes, nextMeetingRes, progressRes] = await Promise.all([
-    supabase.from('ranking_entries').select('points')
-      .eq('membership_id', membershipId)
-      .order('points', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('memberships').select('id').eq('tenant_id', tenantId).eq('role', 'mentee'),
-    supabase.from('crm_prospections').select('*', { count: 'exact', head: true })
-      .eq('membership_id', membershipId),
-    supabase.from('crm_prospections').select('*', { count: 'exact', head: true })
-      .eq('membership_id', membershipId)
-      .gte('created_at', startOfMonth.toISOString()),
-    supabase.from('meetings').select('id, title, scheduled_at, meeting_url')
-      .eq('tenant_id', tenantId).gte('scheduled_at', new Date().toISOString())
-      .order('scheduled_at', { ascending: true }).limit(1).maybeSingle(),
-    supabase.from('trail_progress').select('id, lesson_id, completed')
-      .eq('membership_id', membershipId),
-  ]);
+  if (error) throw error;
+  if (!data) return EMPTY_MENTEE_STATS;
 
-  const totalPoints = rankingEntryRes.data?.points || 0;
-  const totalProspections = totalProspRes.count || 0;
-  const monthlyProspections = monthlyProspRes.count || 0;
-  const nextMeeting = nextMeetingRes.data ? {
-    id: nextMeetingRes.data.id, title: nextMeetingRes.data.title,
-    scheduledAt: nextMeetingRes.data.scheduled_at,
-    meetingUrl: nextMeetingRes.data.meeting_url || undefined,
-  } : null;
-
-  // Ranking position
-  let rankingPosition: number | null = null;
-  const allMenteeIds = allMenteeIdsRes.data || [];
-  if (allMenteeIds.length > 0) {
-    const ids = allMenteeIds.map(m => m.id);
-    const { data: allRankings } = await supabase
-      .from('ranking_entries').select('membership_id, points')
-      .in('membership_id', ids)
-      .order('points', { ascending: false });
-    if (allRankings) {
-      const idx = allRankings.findIndex(r => r.membership_id === membershipId);
-      if (idx >= 0) rankingPosition = idx + 1;
-    }
-  }
-
-  // Trail progress
-  let trailProgress: TrailProgressItem[] = [];
-  const progressData = progressRes.data || [];
-  if (progressData.length > 0) {
-    const lessonIds = progressData.map(p => p.lesson_id);
-    const { data: lessonsData } = await supabase.from('trail_lessons').select('id, module_id').in('id', lessonIds);
-    if (lessonsData && lessonsData.length > 0) {
-      const moduleIds = [...new Set(lessonsData.map(l => l.module_id))];
-      const [modulesRes, allTrailLessonsRes] = await Promise.all([
-        supabase.from('trail_modules').select('id, trail_id').in('id', moduleIds),
-        supabase.from('trail_lessons').select('id, module_id').in('module_id', moduleIds),
-      ]);
-      const modulesData = modulesRes.data || [];
-      if (modulesData.length > 0) {
-        const trailIds = [...new Set(modulesData.map(m => m.trail_id))];
-        const { data: trailsData } = await supabase.from('trails').select('id, title').in('id', trailIds).eq('tenant_id', tenantId);
-        const completedSet = new Set(progressData.filter(p => p.completed).map(p => p.lesson_id));
-        const allTrailLessons = allTrailLessonsRes.data || [];
-
-        if (trailsData) {
-          trailProgress = trailsData.map(trail => {
-            const trailModuleIds = modulesData.filter(m => m.trail_id === trail.id).map(m => m.id);
-            const trailLessons = allTrailLessons.filter(l => trailModuleIds.includes(l.module_id));
-            const totalLessons = trailLessons.length;
-            const completedLessons = trailLessons.filter(l => completedSet.has(l.id)).length;
-            return { id: trail.id, name: trail.title, progress: totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0 };
-          });
-        }
-      }
-    }
-  }
+  const raw = data as Record<string, any>;
 
   return {
-    rankingPosition, totalProspections, monthlyProspections, totalPoints,
-    nextMeeting, trailProgress,
+    rankingPosition: raw.rankingPosition ?? null,
+    totalProspections: raw.totalProspections || 0,
+    monthlyProspections: raw.monthlyProspections || 0,
+    totalPoints: raw.totalPoints || 0,
+    nextMeeting: raw.nextMeeting && raw.nextMeeting !== null ? {
+      id: raw.nextMeeting.id || '',
+      title: raw.nextMeeting.title || '',
+      scheduledAt: raw.nextMeeting.scheduledAt || '',
+      meetingUrl: raw.nextMeeting.meetingUrl || undefined,
+    } : null,
+    trailProgress: (raw.trailProgress || []).map((t: any) => ({
+      id: t.id || '',
+      name: t.name || '',
+      progress: t.progress || 0,
+    })),
   };
 }
 
