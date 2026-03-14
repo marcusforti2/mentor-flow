@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
