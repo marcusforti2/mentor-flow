@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const OTP_FROM_EMAIL = Deno.env.get("OTP_FROM_EMAIL") || "noreply@equipe.aceleracaoforti.online";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +26,7 @@ const DEFAULT_BRANDING: TenantBranding = {
   name: "MentorFlow.io",
   logoUrl: null,
   primaryColor: "#d4af37",
-  fromEmail: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
+  fromEmail: `MentorFlow.io <${OTP_FROM_EMAIL}>`,
 };
 
 function hslToHex(hslStr: string): string {
@@ -65,7 +66,7 @@ async function getTenantBranding(supabase: any, tenantId: string | null): Promis
       name: brandName,
       logoUrl: tenant.logo_url || null,
       primaryColor,
-      fromEmail: `${brandName} <noreply@equipe.aceleracaoforti.online>`,
+      fromEmail: `${brandName} <${OTP_FROM_EMAIL}>`,
     };
   } catch { return DEFAULT_BRANDING; }
 }

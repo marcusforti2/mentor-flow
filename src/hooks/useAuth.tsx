@@ -28,6 +28,26 @@ interface AuthContextType {
   isAdminMaster: boolean;
 }
 
+const MEMBERSHIP_ROLE_PRIORITY = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'] as const;
+
+function resolveHighestRole(memberships: Array<{ role: string }>): AppRole | null {
+  if (!memberships.length) return null;
+
+  const highestMembership = [...memberships].sort(
+    (a, b) => MEMBERSHIP_ROLE_PRIORITY.indexOf(a.role as typeof MEMBERSHIP_ROLE_PRIORITY[number]) - MEMBERSHIP_ROLE_PRIORITY.indexOf(b.role as typeof MEMBERSHIP_ROLE_PRIORITY[number])
+  )[0];
+
+  const roleMap: Record<string, AppRole> = {
+    master_admin: 'admin_master',
+    admin: 'mentor',
+    mentor: 'mentor',
+    ops: 'mentor',
+    mentee: 'mentorado',
+  };
+
+  return roleMap[highestMembership.role] || null;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -87,29 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setProfile(profileData);
 
-      // Derive role from memberships (replaces legacy user_roles query)
+      // Derive role from the highest-priority active membership
       const { data: membershipData } = await supabase
         .from('memberships')
         .select('role')
         .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      
-      if (membershipData) {
-        // Map membership roles to legacy AppRole type
-        const roleMap: Record<string, AppRole> = {
-          master_admin: 'admin_master',
-          admin: 'mentor',
-          mentor: 'mentor',
-          ops: 'mentor',
-          mentee: 'mentorado',
-        };
-        setRole(roleMap[membershipData.role] || null);
-      } else {
-        setRole(null);
-      }
+        .eq('status', 'active');
+
+      setRole(resolveHighestRole(membershipData || []));
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
