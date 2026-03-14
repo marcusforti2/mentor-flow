@@ -410,7 +410,7 @@ export function useMenteeDashboardStats() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeMembership?.id, activeMembership?.tenant_id, user?.id, version]);
+  }, [activeMembership?.id, activeMembership?.tenant_id, user?.id]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   return { stats, isLoading, error, refetch: fetchStats };
