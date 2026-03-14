@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
@@ -73,11 +74,7 @@ export default function MemberDashboard() {
   const isLoading = isLoadingDashboard || isLoadingGamification;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <MemberDashboardSkeleton />;
   }
 
   const hasTrailProgress = dashboardStats.trailProgress.length > 0;
@@ -364,6 +361,92 @@ function TrailCarouselSection({ trails }: { trails: { id: string; name: string; 
             </div>
           </Link>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Skeleton loader matching real MemberDashboard layout ── */
+function MemberDashboardSkeleton() {
+  return (
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-10 w-64 mt-1" />
+        </div>
+        <Skeleton className="h-12 w-44 rounded-xl" />
+      </div>
+
+      {/* Daily goal */}
+      <Skeleton className="h-16 w-full rounded-xl" />
+
+      {/* 4 KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="glass-card rounded-xl p-4 flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+            <div className="space-y-1.5 flex-1">
+              <Skeleton className="h-7 w-12" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bento grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Trail carousel (wide) */}
+        <div className="lg:col-span-2 glass-card rounded-2xl p-6 space-y-4">
+          <Skeleton className="h-5 w-48" />
+          <div className="flex gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-[240px] rounded-xl shrink-0" />
+            ))}
+          </div>
+        </div>
+
+        {/* Next meeting (sm) */}
+        <div className="glass-card rounded-2xl p-6 space-y-3">
+          <Skeleton className="h-5 w-36" />
+          <div className="flex flex-col items-center py-4 space-y-2">
+            <Skeleton className="h-8 w-8 rounded" />
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        </div>
+
+        {/* Quick actions (md) */}
+        <div className="glass-card rounded-2xl p-0 overflow-hidden">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-4 flex items-center gap-4 border-b border-border last:border-b-0">
+              <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Badges (sm) */}
+        <div className="glass-card rounded-2xl p-6 space-y-3">
+          <Skeleton className="h-5 w-28" />
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 rounded-lg" />
+            ))}
+          </div>
+        </div>
+
+        {/* Recent activity (md) */}
+        <div className="glass-card rounded-2xl p-6 space-y-3">
+          <Skeleton className="h-5 w-36" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     </div>
   );

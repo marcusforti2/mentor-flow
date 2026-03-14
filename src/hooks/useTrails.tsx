@@ -52,7 +52,7 @@ export function useTrails() {
             id, title, description, order_index, drive_folder_id,
             trail_lessons (
               id, title, description, duration_minutes, content_url, content_type,
-              text_content, file_url, file_name, order_index, drive_folder_id
+              order_index, drive_folder_id
             )
           )
         `)
@@ -85,9 +85,9 @@ export function useTrails() {
                 duration_minutes: les.duration_minutes || 0,
                 content_url: les.content_url || '',
                 content_type: (les.content_type || 'video') as 'video' | 'text' | 'file',
-                text_content: les.text_content || '',
-                file_url: les.file_url || '',
-                file_name: les.file_name || '',
+                text_content: '',
+                file_url: '',
+                file_name: '',
                 order_index: les.order_index || 0,
               })),
           })),

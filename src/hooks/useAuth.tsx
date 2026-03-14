@@ -64,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Invalidate all cached queries on auth state change (login/logout/token refresh)
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        // Invalidate cached queries only on real auth transitions (not token refresh)
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
           queryClient.invalidateQueries();
         }
         

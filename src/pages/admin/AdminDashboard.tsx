@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMentorDashboardStats } from '@/hooks/useDashboardStats';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { 
@@ -24,11 +25,7 @@ export default function AdminDashboard() {
   const { stats, isLoading } = useMentorDashboardStats();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminDashboardSkeleton />;
   }
 
   const hasData = stats.mentoradosCount > 0 || stats.trailsCount > 0;
@@ -435,4 +432,74 @@ function formatRelativeTime(dateStr: string): string {
   if (diffHours < 24) return `${diffHours}h`;
   if (diffDays < 7) return `${diffDays}d`;
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+/* ── Skeleton loader matching real layout ── */
+function AdminDashboardSkeleton() {
+  return (
+    <div className="space-y-8">
+      {/* Header skeleton */}
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+        <div>
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-5 w-80 mt-2" />
+        </div>
+        <Skeleton className="h-8 w-48 rounded-full" />
+      </div>
+
+      {/* 4 stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="glass-card rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-6 w-6 rounded" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div>
+              <Skeleton className="h-9 w-16" />
+              <Skeleton className="h-4 w-24 mt-1" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Wide card + tall card row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 glass-card rounded-2xl p-6">
+          <div className="flex gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex-1 space-y-3">
+                <Skeleton className="h-8 w-8 rounded" />
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="glass-card rounded-2xl p-6 space-y-3">
+          <Skeleton className="h-5 w-36" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+
+      {/* Two medium cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="glass-card rounded-2xl p-6 space-y-3">
+          <Skeleton className="h-5 w-40" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
+        </div>
+        <div className="glass-card rounded-2xl p-6 space-y-3">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
 }
