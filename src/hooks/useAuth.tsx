@@ -28,6 +28,26 @@ interface AuthContextType {
   isAdminMaster: boolean;
 }
 
+const MEMBERSHIP_ROLE_PRIORITY = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'] as const;
+
+function resolveHighestRole(memberships: Array<{ role: string }>): AppRole | null {
+  if (!memberships.length) return null;
+
+  const highestMembership = [...memberships].sort(
+    (a, b) => MEMBERSHIP_ROLE_PRIORITY.indexOf(a.role as typeof MEMBERSHIP_ROLE_PRIORITY[number]) - MEMBERSHIP_ROLE_PRIORITY.indexOf(b.role as typeof MEMBERSHIP_ROLE_PRIORITY[number])
+  )[0];
+
+  const roleMap: Record<string, AppRole> = {
+    master_admin: 'admin_master',
+    admin: 'mentor',
+    mentor: 'mentor',
+    ops: 'mentor',
+    mentee: 'mentorado',
+  };
+
+  return roleMap[highestMembership.role] || null;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {

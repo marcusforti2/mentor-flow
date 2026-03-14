@@ -111,6 +111,8 @@ const MentoradoPlaybooks = lazyRetry(() => import("./pages/member/Playbooks"));
 const MentoradoMetricas = lazyRetry(() => import("./pages/member/Metricas"));
 const CRMMobile = lazyRetry(() => import("./pages/member/CRMMobile"));
 
+const isDevToolsEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEVTOOLS === 'true';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
