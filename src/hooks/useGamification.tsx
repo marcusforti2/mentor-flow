@@ -53,9 +53,11 @@ interface RewardRedemption {
 
 // ─── Query functions ────────────────────────────────────────────
 
-async function fetchBadgesAndRewards() {
+async function fetchBadgesAndRewards(tenantId: string | null) {
   const [badgesRes, rewardsRes] = await Promise.all([
-    supabase.from("badges").select("*").order("points_required", { ascending: true }),
+    tenantId
+      ? supabase.from("badges").select("*").eq("tenant_id", tenantId).order("points_required", { ascending: true })
+      : supabase.from("badges").select("*").order("points_required", { ascending: true }),
     supabase.from("reward_catalog").select("*").eq("is_active", true).order("points_cost", { ascending: true }),
   ]);
   return {
@@ -104,14 +106,15 @@ export function useGamification() {
   const { user } = useAuth();
   const { activeMembership } = useTenant();
   const mentoradoId = activeMembership?.id ?? null;
+  const tenantId = activeMembership?.tenant_id ?? null;
   const queryClient = useQueryClient();
 
-  // Catalog: badges + rewards (shared, no membership needed)
+  // Catalog: badges (tenant-scoped) + rewards (global)
   const { data: catalog, isLoading: isLoadingCatalog } = useQuery({
-    queryKey: ["gamification-catalog"],
-    queryFn: fetchBadgesAndRewards,
+    queryKey: ["gamification-catalog", tenantId],
+    queryFn: () => fetchBadgesAndRewards(tenantId),
     enabled: !!user,
-    staleTime: 10 * 60 * 1000, // 10 min — rarely changes
+    staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
 
@@ -163,7 +166,6 @@ export function useGamification() {
       });
     }
 
-    // Silently refresh user data in background
     queryClient.invalidateQueries({ queryKey: ["gamification-user", mentoradoId] });
   }, [mentoradoId, queryClient]);
 

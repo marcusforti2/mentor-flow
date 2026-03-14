@@ -5953,6 +5953,14 @@ export type Database = {
           role: Database["public"]["Enums"]["membership_role"]
         }[]
       }
+      get_mentee_dashboard_stats: {
+        Args: { _membership_id: string; _tenant_id: string }
+        Returns: Json
+      }
+      get_mentor_dashboard_stats: {
+        Args: { _tenant_id: string }
+        Returns: Json
+      }
       get_user_memberships: {
         Args: { _tenant_id?: string; _user_id: string }
         Returns: {
