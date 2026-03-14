@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMentorDashboardStats } from '@/hooks/useDashboardStats';
 import { BentoGrid, BentoCard } from '@/components/BentoGrid';
 import { 
