@@ -73,11 +73,7 @@ export default function MemberDashboard() {
   const isLoading = isLoadingDashboard || isLoadingGamification;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <MemberDashboardSkeleton />;
   }
 
   const hasTrailProgress = dashboardStats.trailProgress.length > 0;

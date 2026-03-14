@@ -24,11 +24,7 @@ export default function AdminDashboard() {
   const { stats, isLoading } = useMentorDashboardStats();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminDashboardSkeleton />;
   }
 
   const hasData = stats.mentoradosCount > 0 || stats.trailsCount > 0;

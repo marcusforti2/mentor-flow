@@ -52,7 +52,7 @@ export function useTrails() {
             id, title, description, order_index, drive_folder_id,
             trail_lessons (
               id, title, description, duration_minutes, content_url, content_type,
-              text_content, file_url, file_name, order_index, drive_folder_id
+              order_index, drive_folder_id
             )
           )
         `)
