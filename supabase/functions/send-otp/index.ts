@@ -26,7 +26,7 @@ const DEFAULT_BRANDING: TenantBranding = {
   name: "MentorFlow.io",
   logoUrl: null,
   primaryColor: "#d4af37",
-  fromEmail: "MentorFlow.io <noreply@equipe.aceleracaoforti.online>",
+  fromEmail: `MentorFlow.io <${OTP_FROM_EMAIL}>`,
 };
 
 function hslToHex(hslStr: string): string {
