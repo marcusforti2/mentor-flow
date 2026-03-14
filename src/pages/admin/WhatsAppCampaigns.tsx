@@ -620,27 +620,37 @@ export default function WhatsAppCampaigns() {
 
         {/* ======= QUICK SEND TAB ======= */}
         <TabsContent value="quick_send">
-          <WhatsAppQuickSend mentees={mentees} onSent={fetchAll} />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppQuickSend mentees={mentees} onSent={fetchAll} />
+          </Suspense>
         </TabsContent>
 
         {/* ======= INTELLIGENCE TAB ======= */}
         <TabsContent value="intelligence">
-          <WhatsAppIntelligence mentees={mentees} />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppIntelligence mentees={mentees} />
+          </Suspense>
         </TabsContent>
 
         {/* ======= AUTO REPLY TAB ======= */}
         <TabsContent value="auto_reply">
-          <WhatsAppAutoReply />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppAutoReply />
+          </Suspense>
         </TabsContent>
 
         {/* ======= DAILY SUMMARY TAB ======= */}
         <TabsContent value="daily_summary">
-          <WhatsAppDailySummary />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppDailySummary />
+          </Suspense>
         </TabsContent>
 
         {/* ======= CRM TAB ======= */}
         <TabsContent value="crm">
-          <WhatsAppCRM />
+          <Suspense fallback={<WaTabFallback />}>
+            <WhatsAppCRM />
+          </Suspense>
         </TabsContent>
 
         {/* ======= LOGS TAB ======= */}
