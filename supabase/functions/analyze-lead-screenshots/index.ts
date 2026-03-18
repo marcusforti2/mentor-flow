@@ -63,16 +63,19 @@ serve(async (req) => {
 
     console.log(`Processing ${images.length} images for user ${user.id}`);
 
+    // Accept any active membership (mentee, admin, mentor, master_admin)
+    // This supports both direct usage and impersonation
     const { data: membership } = await supabase
       .from("memberships")
       .select("id, tenant_id")
       .eq("user_id", user.id)
-      .eq("role", "mentee")
       .eq("status", "active")
+      .order("role")
+      .limit(1)
       .maybeSingle();
 
     if (!membership) {
-      return new Response(JSON.stringify({ error: "Active mentee membership not found" }), {
+      return new Response(JSON.stringify({ error: "Active membership not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
