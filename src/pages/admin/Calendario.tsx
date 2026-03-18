@@ -158,11 +158,28 @@ export default function Calendario() {
           days_ahead: 60,
         },
       });
-      if (error) throw error;
-      toast({ title: "✅ Sincronizado!", description: data?.message || `${data?.synced} evento(s) importado(s)` });
+      if (error) {
+        // Check for common auth/token errors
+        const errorMsg = typeof error === 'object' ? (error as any)?.message || JSON.stringify(error) : String(error);
+        if (errorMsg.includes('token') || errorMsg.includes('Token') || errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
+          toast({ title: "Conexão expirada", description: "Reconecte seu Google Calendar no perfil para continuar sincronizando.", variant: "destructive" });
+          return;
+        }
+        throw new Error(errorMsg);
+      }
+      if (data?.error) {
+        if (data.error.includes('não conectado') || data.connected === false) {
+          toast({ title: "Google Calendar não conectado", description: "Conecte sua conta Google no perfil para sincronizar eventos.", variant: "destructive" });
+          return;
+        }
+        throw new Error(data.error);
+      }
+      const count = data?.synced ?? data?.events_synced ?? 0;
+      toast({ title: "✅ Sincronizado!", description: data?.message || `${count} evento(s) importado(s) do Google Calendar` });
       await fetchData();
     } catch (err: any) {
-      toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
+      console.error('Sync error:', err);
+      toast({ title: "Erro ao sincronizar", description: err?.message || "Falha na sincronização. Tente reconectar o Google Calendar.", variant: "destructive" });
     } finally {
       setIsSyncing(false);
     }
