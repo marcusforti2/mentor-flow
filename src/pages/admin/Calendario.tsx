@@ -1162,11 +1162,21 @@ export default function Calendario() {
             )}
           </div>
 
-          <DialogFooter className="px-6 pb-6 gap-2 sm:gap-0">
+          <DialogFooter className="px-6 pb-6 gap-2 flex-wrap sm:flex-nowrap">
             {editingEvent && (
-              <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(editingEvent.id)} className="mr-auto gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" /> Excluir
-              </Button>
+              <div className="flex items-center gap-2 mr-auto">
+                <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(editingEvent.id)} className="gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                </Button>
+                {editingEvent.is_recurring && (
+                  <Button variant="destructive" size="sm" disabled={isDeletingSeries}
+                    onClick={() => handleDeleteRecurringSeries(editingEvent)}
+                    className="gap-1.5 bg-destructive/80 hover:bg-destructive">
+                    {isDeletingSeries ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5" />}
+                    Excluir série
+                  </Button>
+                )}
+              </div>
             )}
             <Button onClick={handleCreateEvent} disabled={isSubmitting || !newEvent.title.trim()} className="gap-1.5">
               {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : editingEvent ? "Salvar alterações" : "Criar evento"}
