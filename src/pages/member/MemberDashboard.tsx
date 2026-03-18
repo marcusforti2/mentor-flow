@@ -249,6 +249,9 @@ export default function MemberDashboard() {
         </BentoCard>
       </BentoGrid>
 
+      {/* FAQ Section */}
+      <MenteeFAQ />
+
     </div>
   );
 }
