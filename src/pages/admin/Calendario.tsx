@@ -303,27 +303,63 @@ export default function Calendario() {
     }
   };
 
+  const [isDeletingSeries, setIsDeletingSeries] = useState(false);
+
   const handleDeleteEvent = async (eventId: string) => {
     try {
-      // Optimistically remove from UI
       setEvents(prev => prev.filter(e => e.id !== eventId));
       setIsDialogOpen(false);
       resetForm();
 
       const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
-      if (error) {
-        console.error('Delete error details:', JSON.stringify(error));
-        throw error;
-      }
-      console.log('Delete succeeded for event:', eventId);
+      if (error) throw error;
       toast({ title: "Excluído", description: "Evento removido." });
-      // Re-fetch to ensure consistency
       await fetchData();
     } catch (error: any) {
-      console.error('Delete event failed:', JSON.stringify(error));
+      console.error('Delete event failed:', error);
       toast({ title: "Erro ao excluir", description: error?.message || "Não foi possível excluir o evento.", variant: "destructive" });
-      // Re-fetch to restore correct state
       await fetchData();
+    }
+  };
+
+  const handleDeleteRecurringSeries = async (event: CalendarEvent) => {
+    if (!confirm(`Excluir TODOS os eventos recorrentes "${event.title}"? Esta ação não pode ser desfeita.`)) return;
+    setIsDeletingSeries(true);
+    try {
+      // Find all events with same title, type, tenant, and is_recurring = true
+      const { data: seriesEvents, error: fetchErr } = await supabase
+        .from('calendar_events')
+        .select('id')
+        .eq('tenant_id', activeMembership?.tenant_id)
+        .eq('title', event.title)
+        .eq('event_type', event.event_type)
+        .eq('is_recurring', true);
+
+      if (fetchErr) throw fetchErr;
+      if (!seriesEvents?.length) {
+        toast({ title: "Nenhum evento encontrado", variant: "destructive" });
+        return;
+      }
+
+      const ids = seriesEvents.map(e => e.id);
+
+      // Delete related reminders first
+      await supabase.from('event_mentee_reminders').delete().in('event_id', ids);
+      await supabase.from('event_reminders').delete().in('event_id', ids);
+
+      // Delete all events in the series
+      const { error: delErr } = await supabase.from('calendar_events').delete().in('id', ids);
+      if (delErr) throw delErr;
+
+      setIsDialogOpen(false);
+      resetForm();
+      toast({ title: "✅ Série excluída", description: `${ids.length} eventos recorrentes de "${event.title}" removidos.` });
+      await fetchData();
+    } catch (error: any) {
+      console.error('Delete series failed:', error);
+      toast({ title: "Erro ao excluir série", description: error?.message || "Não foi possível excluir a série.", variant: "destructive" });
+    } finally {
+      setIsDeletingSeries(false);
     }
   };
 
