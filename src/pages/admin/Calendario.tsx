@@ -158,11 +158,28 @@ export default function Calendario() {
           days_ahead: 60,
         },
       });
-      if (error) throw error;
-      toast({ title: "✅ Sincronizado!", description: data?.message || `${data?.synced} evento(s) importado(s)` });
+      if (error) {
+        // Check for common auth/token errors
+        const errorMsg = typeof error === 'object' ? (error as any)?.message || JSON.stringify(error) : String(error);
+        if (errorMsg.includes('token') || errorMsg.includes('Token') || errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
+          toast({ title: "Conexão expirada", description: "Reconecte seu Google Calendar no perfil para continuar sincronizando.", variant: "destructive" });
+          return;
+        }
+        throw new Error(errorMsg);
+      }
+      if (data?.error) {
+        if (data.error.includes('não conectado') || data.connected === false) {
+          toast({ title: "Google Calendar não conectado", description: "Conecte sua conta Google no perfil para sincronizar eventos.", variant: "destructive" });
+          return;
+        }
+        throw new Error(data.error);
+      }
+      const count = data?.synced ?? data?.events_synced ?? 0;
+      toast({ title: "✅ Sincronizado!", description: data?.message || `${count} evento(s) importado(s) do Google Calendar` });
       await fetchData();
     } catch (err: any) {
-      toast({ title: "Erro ao sincronizar", description: err.message, variant: "destructive" });
+      console.error('Sync error:', err);
+      toast({ title: "Erro ao sincronizar", description: err?.message || "Falha na sincronização. Tente reconectar o Google Calendar.", variant: "destructive" });
     } finally {
       setIsSyncing(false);
     }
@@ -303,27 +320,63 @@ export default function Calendario() {
     }
   };
 
+  const [isDeletingSeries, setIsDeletingSeries] = useState(false);
+
   const handleDeleteEvent = async (eventId: string) => {
     try {
-      // Optimistically remove from UI
       setEvents(prev => prev.filter(e => e.id !== eventId));
       setIsDialogOpen(false);
       resetForm();
 
       const { error } = await supabase.from('calendar_events').delete().eq('id', eventId);
-      if (error) {
-        console.error('Delete error details:', JSON.stringify(error));
-        throw error;
-      }
-      console.log('Delete succeeded for event:', eventId);
+      if (error) throw error;
       toast({ title: "Excluído", description: "Evento removido." });
-      // Re-fetch to ensure consistency
       await fetchData();
     } catch (error: any) {
-      console.error('Delete event failed:', JSON.stringify(error));
+      console.error('Delete event failed:', error);
       toast({ title: "Erro ao excluir", description: error?.message || "Não foi possível excluir o evento.", variant: "destructive" });
-      // Re-fetch to restore correct state
       await fetchData();
+    }
+  };
+
+  const handleDeleteRecurringSeries = async (event: CalendarEvent) => {
+    if (!confirm(`Excluir TODOS os eventos recorrentes "${event.title}"? Esta ação não pode ser desfeita.`)) return;
+    setIsDeletingSeries(true);
+    try {
+      // Find all events with same title, type, tenant, and is_recurring = true
+      const { data: seriesEvents, error: fetchErr } = await supabase
+        .from('calendar_events')
+        .select('id')
+        .eq('tenant_id', activeMembership?.tenant_id)
+        .eq('title', event.title)
+        .eq('event_type', event.event_type)
+        .eq('is_recurring', true);
+
+      if (fetchErr) throw fetchErr;
+      if (!seriesEvents?.length) {
+        toast({ title: "Nenhum evento encontrado", variant: "destructive" });
+        return;
+      }
+
+      const ids = seriesEvents.map(e => e.id);
+
+      // Delete related reminders first
+      await supabase.from('event_mentee_reminders').delete().in('event_id', ids);
+      await supabase.from('event_reminders').delete().in('event_id', ids);
+
+      // Delete all events in the series
+      const { error: delErr } = await supabase.from('calendar_events').delete().in('id', ids);
+      if (delErr) throw delErr;
+
+      setIsDialogOpen(false);
+      resetForm();
+      toast({ title: "✅ Série excluída", description: `${ids.length} eventos recorrentes de "${event.title}" removidos.` });
+      await fetchData();
+    } catch (error: any) {
+      console.error('Delete series failed:', error);
+      toast({ title: "Erro ao excluir série", description: error?.message || "Não foi possível excluir a série.", variant: "destructive" });
+    } finally {
+      setIsDeletingSeries(false);
     }
   };
 
@@ -1109,11 +1162,21 @@ export default function Calendario() {
             )}
           </div>
 
-          <DialogFooter className="px-6 pb-6 gap-2 sm:gap-0">
+          <DialogFooter className="px-6 pb-6 gap-2 flex-wrap sm:flex-nowrap">
             {editingEvent && (
-              <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(editingEvent.id)} className="mr-auto gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" /> Excluir
-              </Button>
+              <div className="flex items-center gap-2 mr-auto">
+                <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(editingEvent.id)} className="gap-1.5">
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                </Button>
+                {editingEvent.is_recurring && (
+                  <Button variant="destructive" size="sm" disabled={isDeletingSeries}
+                    onClick={() => handleDeleteRecurringSeries(editingEvent)}
+                    className="gap-1.5 bg-destructive/80 hover:bg-destructive">
+                    {isDeletingSeries ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5" />}
+                    Excluir série
+                  </Button>
+                )}
+              </div>
             )}
             <Button onClick={handleCreateEvent} disabled={isSubmitting || !newEvent.title.trim()} className="gap-1.5">
               {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : editingEvent ? "Salvar alterações" : "Criar evento"}
