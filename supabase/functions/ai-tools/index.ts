@@ -446,6 +446,7 @@ serve(async (req) => {
     // ========== IDOR CHECK: Validate caller has access to mentorado_id ==========
     if (mentorado_id) {
       // callerId already available from getClaims above
+      const { data: targetMembership } = await supabase
         .from("memberships")
         .select("user_id, tenant_id")
         .eq("id", mentorado_id)
