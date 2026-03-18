@@ -108,15 +108,29 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "prospection_id and membership_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Check if user owns this membership OR is staff in the same tenant (impersonation)
     const { data: membership } = await supabase
       .from("memberships")
       .select("id, tenant_id")
       .eq("id", membership_id)
-      .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
 
     if (!membership) {
+      return new Response(JSON.stringify({ error: "Membership not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Verify user owns this membership or is staff in the same tenant
+    const { data: callerMembership } = await supabase
+      .from("memberships")
+      .select("id, role, tenant_id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .in("tenant_id", [membership.tenant_id])
+      .limit(1)
+      .maybeSingle();
+
+    if (!callerMembership) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
