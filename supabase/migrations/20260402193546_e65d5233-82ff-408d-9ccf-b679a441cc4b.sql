@@ -1,0 +1,1 @@
+UPDATE public.tenants SET settings = COALESCE(settings, '{}'::jsonb) || '{"ai_tools_disabled": true}'::jsonb WHERE id = '683e41ac-240d-47f3-9327-c07f5cfb74e7';
