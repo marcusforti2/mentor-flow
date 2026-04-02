@@ -31,7 +31,11 @@ const tools = [
 
 export default function FerramentasIA() {
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { activeMembership } = useTenant();
+  const { activeMembership, tenant } = useTenant();
+
+  // Check if AI tools are disabled for this tenant
+  const isAiDisabled = !!(tenant?.settings as Record<string, unknown>)?.ai_tools_disabled;
+  const isMentee = activeMembership?.role === 'mentee';
 
   const mentoradoId = activeMembership?.id || null;
 
