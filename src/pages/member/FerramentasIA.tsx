@@ -31,7 +31,11 @@ const tools = [
 
 export default function FerramentasIA() {
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { activeMembership } = useTenant();
+  const { activeMembership, tenant } = useTenant();
+
+  // Check if AI tools are disabled for this tenant
+  const isAiDisabled = !!(tenant?.settings as Record<string, unknown>)?.ai_tools_disabled;
+  const isMentee = activeMembership?.role === 'mentee';
 
   const mentoradoId = activeMembership?.id || null;
 
@@ -53,6 +57,20 @@ export default function FerramentasIA() {
   };
 
   const activeToolData = tools.find(t => t.id === activeTool);
+
+  if (isAiDisabled && isMentee) {
+    return (
+      <div className="container max-w-md mx-auto px-4 py-20 text-center space-y-6">
+        <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto">
+          <ShieldCheck className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <h1 className="text-2xl font-display font-bold text-foreground">Arsenal Indisponível</h1>
+        <p className="text-muted-foreground">
+          As ferramentas de IA estão desabilitadas neste ambiente. Entre em contato com seu mentor para mais informações.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8 space-y-10">
