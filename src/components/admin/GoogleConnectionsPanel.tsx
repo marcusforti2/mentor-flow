@@ -132,6 +132,47 @@ export function GoogleConnectionsPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Alert className="cursor-pointer hover:bg-muted/50 transition-colors border-amber-500/30 bg-amber-500/5">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTitle className="text-sm font-medium flex items-center gap-2">
+                <span>Como conectar o Google Drive</span>
+                <Info className="h-3 w-3 text-muted-foreground" />
+              </AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground">
+                Clique para ver o passo a passo completo
+              </AlertDescription>
+            </Alert>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-3 p-4 rounded-lg border border-border bg-muted/30 space-y-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">📋 Passo a passo para conectar:</p>
+              <ol className="list-decimal list-inside space-y-2">
+                <li>Clique no botão <strong className="text-foreground">"Conectar"</strong> ao lado do Google Drive abaixo.</li>
+                <li>Uma janela do Google será aberta para você fazer login com sua conta.</li>
+                <li>
+                  <strong className="text-amber-500">⚠️ ATENÇÃO:</strong> O Google vai exibir um aviso dizendo que{" "}
+                  <strong className="text-foreground">"Este app não foi verificado"</strong> — isso é <strong className="text-foreground">normal e esperado</strong>.
+                  Como nosso aplicativo ainda não passou pela verificação do Google, esse aviso aparece para todos.
+                </li>
+                <li>
+                  Para prosseguir, clique em <strong className="text-foreground">"Avançado"</strong> (ou "Advanced") e depois em{" "}
+                  <strong className="text-foreground">"Ir para [nome do app] (não seguro)"</strong>.
+                </li>
+                <li>Conceda as permissões solicitadas clicando em <strong className="text-foreground">"Permitir"</strong>.</li>
+                <li>Pronto! A janela vai fechar automaticamente e o status mudará para <strong className="text-green-500">Conectado ✓</strong>.</li>
+              </ol>
+              <div className="mt-2 p-3 rounded-md bg-background/60 border border-border">
+                <p className="text-xs">
+                  <strong className="text-foreground">🔒 Sua segurança:</strong> Nós solicitamos apenas permissão para ler e gerenciar arquivos que o app criar. 
+                  Seus arquivos pessoais não são acessados. A conexão pode ser desfeita a qualquer momento clicando em "Desconectar".
+                </p>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
         {services.map(({ key, label, description, icon: Icon, status, color }) => (
           <div
             key={key}
