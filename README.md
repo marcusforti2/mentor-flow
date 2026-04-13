@@ -1,5 +1,7 @@
 # Welcome to your Lovable project
 
+Test sync marker: OpenClaw sync test on 2026-04-13 16:02 BRT.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
