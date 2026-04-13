@@ -4,7 +4,9 @@ import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, HardDrive, Check, Loader2, Unplug, ExternalLink } from "lucide-react";
+import { Calendar, HardDrive, Check, Loader2, Unplug, ExternalLink, AlertTriangle, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
 interface TokenStatus {
