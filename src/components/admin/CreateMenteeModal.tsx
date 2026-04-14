@@ -89,6 +89,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     login_url: string;
   } | null>(null);
 
+  const callerIsMentor = activeMembership?.role === 'mentor';
   const effectiveTenantForMentors = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
   // Fetch mentors when tenant changes or modal opens
