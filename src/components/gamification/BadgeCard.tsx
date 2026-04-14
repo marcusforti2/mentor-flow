@@ -158,6 +158,43 @@ export function BadgeCard({
       </div>
     </div>
   );
+
+  // Wrap with tooltip if requirement or description exists for locked badges
+  if (requirement || (!unlocked && description)) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {badgeContent}
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px]">
+          <p className="font-medium text-sm">{name}</p>
+          {requirement && (
+            <p className="text-xs text-muted-foreground mt-1">🔓 {requirement}</p>
+          )}
+          {badgeProgress !== undefined && progressMax && !unlocked && (
+            <div className="mt-1.5">
+              <Progress value={(badgeProgress / progressMax) * 100} className="h-1" />
+              <p className="text-xs text-muted-foreground mt-0.5">{badgeProgress}/{progressMax}</p>
+            </div>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return badgeContent;
+}
+
+export function BadgeGrid({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid grid-cols-3 gap-3", className)}>{children}</div>
+  );
 }
 
 export function BadgeGrid({
