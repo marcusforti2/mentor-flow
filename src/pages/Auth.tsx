@@ -60,27 +60,27 @@ const Auth = () => {
 
   // Bootstrap function: Use get-bootstrap Edge Function for reliable post-auth
   const bootstrapAfterAuth = async (redirectHint?: string) => {
-    console.log('[Auth] Starting bootstrap after OTP verification...');
-    
-    // Wait for Supabase auth state to fully propagate
-    // This is critical because onAuthStateChange may not have fired yet
-    let session = null;
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    while (!session && attempts < maxAttempts) {
-      const { data } = await supabase.auth.getSession();
-      session = data.session;
-      if (!session) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        attempts++;
-      }
-    }
-    
-    console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id, attempts });
+    // Wait for Supabase auth state using onAuthStateChange instead of polling
+    const session = await new Promise<any>((resolve) => {
+      // Check current session first
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          resolve(data.session);
+          return;
+        }
+        // If no session yet, listen for auth state change (max 5s timeout)
+        const timeout = setTimeout(() => resolve(null), 5000);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) {
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+            resolve(session);
+          }
+        });
+      });
+    });
     
     if (!session?.user) {
-      console.error('[Auth] No session after verification');
       toast({
         title: "Erro de sessão",
         description: "Não foi possível estabelecer a sessão. Tente novamente.",
@@ -94,21 +94,14 @@ const Auth = () => {
       const { data: bootstrap, error: bootstrapError } = await supabase.functions.invoke('get-bootstrap');
       
       if (bootstrapError) {
-        console.error('[Auth] Bootstrap error:', bootstrapError);
         throw bootstrapError;
       }
       
-      console.log('[Auth] Bootstrap result:', { 
-        hasMemberships: bootstrap.has_memberships,
-        redirectPath: bootstrap.redirect_path,
-        role: bootstrap.active_membership?.role
-      });
-      
       if (!bootstrap.has_memberships) {
-        console.warn('[Auth] No memberships found, user may need to wait for invite acceptance');
+        setAccessPending(true);
         toast({
           title: "Acesso pendente",
-          description: "Sua conta foi autenticada, mas o acesso ainda está sendo configurado. Tente novamente em alguns segundos.",
+          description: "Sua conta foi autenticada, mas o acesso ainda está sendo configurado.",
           variant: "destructive",
         });
         return;
@@ -116,21 +109,12 @@ const Auth = () => {
       
       // Use redirect hint from verify-otp if available, otherwise use bootstrap result
       const targetPath = redirectHint || bootstrap.redirect_path || '/mentorado';
-      console.log('[Auth] Redirecting to:', targetPath);
       
-      // Wait for TenantContext to pick up the new session via onAuthStateChange
-      // This ensures activeMembership is populated before navigation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Force refresh memberships in context — pass userId to avoid race condition
+      // Force refresh memberships in context
       await refreshMembershipsAndWait(session.user.id);
-      
-      // Small additional delay for React state to settle
-      await new Promise(resolve => setTimeout(resolve, 100));
       
       navigate(targetPath, { replace: true });
     } catch (err) {
-      console.error('[Auth] Bootstrap failed:', err);
       toast({
         title: "Erro ao carregar perfil",
         description: "Não foi possível carregar suas permissões. Tente fazer login novamente.",
