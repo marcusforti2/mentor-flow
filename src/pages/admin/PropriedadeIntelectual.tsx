@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,31 +36,22 @@ interface Fingerprint {
 }
 
 export default function PropriedadeIntelectual() {
-  const [fingerprints, setFingerprints] = useState<Fingerprint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    fetchFingerprints();
-  }, []);
-
-  const fetchFingerprints = async () => {
-    try {
+  const { data: fingerprints = [], isLoading: loading } = useQuery({
+    queryKey: ["system-fingerprints"],
+    queryFn: async () => {
       // Note: system_fingerprints is a global/admin table, no tenant_id filter needed
       const { data, error } = await supabase
         .from("system_fingerprints")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-      setFingerprints((data as Fingerprint[]) || []);
-    } catch (error) {
-      console.error("Error fetching fingerprints:", error);
-      toast.error("Erro ao carregar registros");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return (data as Fingerprint[]) || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const generateNewFingerprint = async () => {
     setGenerating(true);
@@ -71,7 +63,7 @@ export default function PropriedadeIntelectual() {
       if (response.error) throw response.error;
 
       toast.success("Novo fingerprint gerado com sucesso!");
-      fetchFingerprints();
+      queryClient.invalidateQueries({ queryKey: ["system-fingerprints"] });
     } catch (error) {
       console.error("Error generating fingerprint:", error);
       toast.error("Erro ao gerar fingerprint");
