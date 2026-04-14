@@ -68,6 +68,7 @@ export function usePlaybookFolders() {
       return data as PlaybookFolder[];
     },
     enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -127,6 +128,7 @@ export function usePlaybooks(folderId?: string | null) {
       })) as Playbook[];
     },
     enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -144,6 +146,7 @@ export function usePlaybookPages(playbookId: string | null) {
       return data as PlaybookPage[];
     },
     enabled: !!playbookId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -425,6 +428,7 @@ export function useRecentPlaybooks(limit = 5) {
       return (pbs || []).sort((a, b) => (orderMap.get(a.id) ?? 99) - (orderMap.get(b.id) ?? 99)) as Playbook[];
     },
     enabled: !!tenantId && !!membershipId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -478,5 +482,6 @@ export function usePlaybookAnalytics() {
       return { totalViews, uniqueViewers, topPlaybooks, recentViews };
     },
     enabled: !!tenantId,
+    staleTime: 5 * 60 * 1000,
   });
 }

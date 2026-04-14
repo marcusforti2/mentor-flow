@@ -29,6 +29,7 @@ export function useMemberships(tenantFilter?: string) {
 
   const membershipsQuery = useQuery({
     queryKey: ['all-memberships', tenantFilter],
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       // Fetch memberships
       const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
