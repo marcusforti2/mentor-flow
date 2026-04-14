@@ -1,10 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { isRateLimited } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const BodySchema = z.object({
+  type: z.enum(["training_analysis", "call_analysis", "behavioral_report", "chat"]),
+  analysis_type: z.enum(["transcricao", "prints"]).optional(),
+  transcription: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  pdf_base64: z.string().optional(),
+  data: z.object({
+    transcript: z.string().optional(),
+    responses: z.any().optional(),
+    message: z.string().optional(),
+  }).optional(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -31,8 +46,24 @@ serve(async (req) => {
       });
     }
 
-    const body = await req.json();
-    const { type, data, analysis_type, transcription, images, pdf_base64 } = body;
+    const userId = claimsData.claims.sub as string;
+    const limited = await isRateLimited(userId, "ai-analysis", 20, 60); // 20 req/hora
+    if (limited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const rawBody = await req.json().catch(() => null);
+    const parsed = BodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body", details: parsed.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { type, data, analysis_type, transcription, images, pdf_base64 } = parsed.data;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {

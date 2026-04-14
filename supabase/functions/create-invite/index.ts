@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+
+const BodySchema = z.object({
+  tenant_id: z.string().min(1),
+  email: z.string().email(),
+  role: z.string().min(1),
+  full_name: z.string().optional(),
+  phone: z.string().optional(),
+});
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
@@ -151,35 +160,19 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const tenant_id = typeof body.tenant_id === 'string' ? body.tenant_id.trim() : '';
-    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-    const full_name = typeof body.full_name === 'string' ? body.full_name.trim().slice(0, 200) : null;
-    const phone = typeof body.phone === 'string' ? body.phone.replace(/[^\d+() -]/g, '').slice(0, 30) : null;
-    const role = typeof body.role === 'string' ? body.role.trim() : '';
-
-    // ========== VALIDATION ==========
-    if (!tenant_id || !email || !role) {
+    const rawBody = await req.json().catch(() => null);
+    const parsedBody = BodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
       return new Response(
-        JSON.stringify({ error: "tenant_id, email e role são obrigatórios" }),
+        JSON.stringify({ error: "Invalid request body", details: parsedBody.error.flatten() }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    if (email.length > 255) {
-      return new Response(
-        JSON.stringify({ error: "Email muito longo" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({ error: "Email inválido" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    const tenant_id = parsedBody.data.tenant_id.trim();
+    const email = parsedBody.data.email.trim().toLowerCase();
+    const full_name = parsedBody.data.full_name ? parsedBody.data.full_name.trim().slice(0, 200) : null;
+    const phone = parsedBody.data.phone ? parsedBody.data.phone.replace(/[^\d+() -]/g, '').slice(0, 30) : null;
+    const role = parsedBody.data.role.trim();
 
     // Block admin/master_admin creation via this endpoint
     if (['admin', 'master_admin', 'ops'].includes(role)) {

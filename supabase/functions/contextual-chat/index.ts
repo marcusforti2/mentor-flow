@@ -1,6 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+
+const BodySchema = z.object({
+  membership_id: z.string().min(1),
+  message: z.string().min(1),
+  conversation_id: z.string().optional(),
+  lead_context: z.string().optional(),
+});
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -35,8 +43,15 @@ serve(async (req) => {
       });
     }
 
-    const { membership_id, conversation_id, message, lead_context } = await req.json();
-    if (!membership_id || !message) throw new Error("membership_id and message required");
+    const rawBody = await req.json().catch(() => null);
+    const parsed = BodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body", details: parsed.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { membership_id, conversation_id, message, lead_context } = parsed.data;
 
     // Resolve tenant
     const { data: membership } = await supabase

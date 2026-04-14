@@ -1,5 +1,21 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+
+const BodySchema = z.object({
+  tenant_id: z.string().min(1),
+  email: z.string().email(),
+  role: z.string().min(1),
+  full_name: z.string().optional(),
+  phone: z.string().optional(),
+  mentor_membership_id: z.string().optional(),
+  joined_at: z.string().optional(),
+  business_name: z.string().optional(),
+  instagram: z.string().optional(),
+  linkedin: z.string().optional(),
+  website: z.string().optional(),
+  notes: z.string().optional(),
+});
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
@@ -129,15 +145,15 @@ serve(async (req) => {
   }
 
   try {
-    const { tenant_id, email, full_name, phone, role, mentor_membership_id, joined_at, business_name, instagram, linkedin, website, notes } = await req.json();
-
-    // ========== VALIDATION ==========
-    if (!tenant_id || !email || !role) {
+    const rawBody = await req.json().catch(() => null);
+    const parsedBody = BodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
       return new Response(
-        JSON.stringify({ error: "tenant_id, email e role são obrigatórios" }),
+        JSON.stringify({ error: "Invalid request body", details: parsedBody.error.flatten() }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+    const { tenant_id, email, full_name, phone, role, mentor_membership_id, joined_at, business_name, instagram, linkedin, website, notes } = parsedBody.data;
 
     // Block admin/master_admin creation via this endpoint
     if (['admin', 'master_admin', 'ops'].includes(role)) {
