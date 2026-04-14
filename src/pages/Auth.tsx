@@ -264,7 +264,6 @@ const Auth = () => {
         });
 
         if (verifyError) {
-          console.error("[Auth] verifyOtp error:", verifyError);
           throw { message: "Erro ao estabelecer sessão. Tente novamente.", error_type: 'internal' };
         }
 
