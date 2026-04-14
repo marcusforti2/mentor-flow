@@ -32,6 +32,7 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; code?: string }>({});
   const [countdown, setCountdown] = useState(0);
   const [otpChannel, setOtpChannel] = useState<"email" | "whatsapp">("email");
+  const [accessPending, setAccessPending] = useState(false);
   
   // Multi-tenant selection state
   const [availableTenants, setAvailableTenants] = useState<TenantOption[]>([]);
@@ -60,27 +61,27 @@ const Auth = () => {
 
   // Bootstrap function: Use get-bootstrap Edge Function for reliable post-auth
   const bootstrapAfterAuth = async (redirectHint?: string) => {
-    console.log('[Auth] Starting bootstrap after OTP verification...');
-    
-    // Wait for Supabase auth state to fully propagate
-    // This is critical because onAuthStateChange may not have fired yet
-    let session = null;
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    while (!session && attempts < maxAttempts) {
-      const { data } = await supabase.auth.getSession();
-      session = data.session;
-      if (!session) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        attempts++;
-      }
-    }
-    
-    console.log('[Auth] Session check:', { hasSession: !!session, userId: session?.user?.id, attempts });
+    // Wait for Supabase auth state using onAuthStateChange instead of polling
+    const session = await new Promise<any>((resolve) => {
+      // Check current session first
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          resolve(data.session);
+          return;
+        }
+        // If no session yet, listen for auth state change (max 5s timeout)
+        const timeout = setTimeout(() => resolve(null), 5000);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (session) {
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+            resolve(session);
+          }
+        });
+      });
+    });
     
     if (!session?.user) {
-      console.error('[Auth] No session after verification');
       toast({
         title: "Erro de sessão",
         description: "Não foi possível estabelecer a sessão. Tente novamente.",
@@ -94,21 +95,14 @@ const Auth = () => {
       const { data: bootstrap, error: bootstrapError } = await supabase.functions.invoke('get-bootstrap');
       
       if (bootstrapError) {
-        console.error('[Auth] Bootstrap error:', bootstrapError);
         throw bootstrapError;
       }
       
-      console.log('[Auth] Bootstrap result:', { 
-        hasMemberships: bootstrap.has_memberships,
-        redirectPath: bootstrap.redirect_path,
-        role: bootstrap.active_membership?.role
-      });
-      
       if (!bootstrap.has_memberships) {
-        console.warn('[Auth] No memberships found, user may need to wait for invite acceptance');
+        setAccessPending(true);
         toast({
           title: "Acesso pendente",
-          description: "Sua conta foi autenticada, mas o acesso ainda está sendo configurado. Tente novamente em alguns segundos.",
+          description: "Sua conta foi autenticada, mas o acesso ainda está sendo configurado.",
           variant: "destructive",
         });
         return;
@@ -116,21 +110,12 @@ const Auth = () => {
       
       // Use redirect hint from verify-otp if available, otherwise use bootstrap result
       const targetPath = redirectHint || bootstrap.redirect_path || '/mentorado';
-      console.log('[Auth] Redirecting to:', targetPath);
       
-      // Wait for TenantContext to pick up the new session via onAuthStateChange
-      // This ensures activeMembership is populated before navigation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Force refresh memberships in context — pass userId to avoid race condition
+      // Force refresh memberships in context
       await refreshMembershipsAndWait(session.user.id);
-      
-      // Small additional delay for React state to settle
-      await new Promise(resolve => setTimeout(resolve, 100));
       
       navigate(targetPath, { replace: true });
     } catch (err) {
-      console.error('[Auth] Bootstrap failed:', err);
       toast({
         title: "Erro ao carregar perfil",
         description: "Não foi possível carregar suas permissões. Tente fazer login novamente.",
@@ -149,12 +134,11 @@ const Auth = () => {
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
-    if (!authLoading && !tenantLoading && user && activeMembership && step === 'email') {
-      console.log('[Auth] Auto-redirecting logged-in user:', activeMembership.role);
+    if (!authLoading && !tenantLoading && user && activeMembership && step === 'email' && !accessPending) {
       const targetPath = getTargetPath(activeMembership.role);
       navigate(targetPath, { replace: true });
     }
-  }, [user, activeMembership, authLoading, tenantLoading, navigate, step]);
+  }, [user, activeMembership, authLoading, tenantLoading, navigate, step, accessPending]);
 
   const validateEmail = () => {
     try {
@@ -184,7 +168,6 @@ const Auth = () => {
       
       // Handle multiple tenants case (409)
       if (data.error === 'multiple_tenants' && data.tenants) {
-        console.log('[Auth] Multiple tenants found:', data.tenants);
         setAvailableTenants(data.tenants);
         setStep("selectTenant");
         setIsLoading(false);
@@ -265,7 +248,6 @@ const Auth = () => {
 
       // Handle Edge Function HTTP errors
       if (error) {
-        console.error("[Auth] Edge function error:", error);
         throw { message: "Erro de conexão. Tente novamente.", error_type: 'internal' };
       }
       
@@ -282,7 +264,6 @@ const Auth = () => {
         });
 
         if (verifyError) {
-          console.error("[Auth] verifyOtp error:", verifyError);
           throw { message: "Erro ao estabelecer sessão. Tente novamente.", error_type: 'internal' };
         }
 
@@ -387,6 +368,79 @@ const Auth = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center theme-light">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Access pending state - user authenticated but no membership yet
+  if (accessPending && user) {
+    const handleRetryAccess = async () => {
+      setIsLoading(true);
+      try {
+        const { data: bootstrap } = await supabase.functions.invoke('get-bootstrap');
+        if (bootstrap?.has_memberships) {
+          setAccessPending(false);
+          const targetPath = bootstrap.redirect_path || '/mentorado';
+          await refreshMembershipsAndWait(user.id);
+          navigate(targetPath, { replace: true });
+        } else {
+          toast({
+            title: "Ainda pendente",
+            description: "Seu acesso ainda está sendo configurado. Tente novamente em alguns segundos.",
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: "Erro",
+          description: "Não foi possível verificar. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 theme-light">
+        <Card className="w-full max-w-md bg-card border-border">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <BrandLogo variant="compact" size="lg" />
+            </div>
+            <CardTitle className="text-xl text-foreground">Acesso Pendente</CardTitle>
+            <CardDescription>
+              Sua conta foi autenticada, mas o perfil ainda está sendo configurado. Isso pode levar alguns segundos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={handleRetryAccess}
+              disabled={isLoading}
+              className="w-full gradient-gold text-primary-foreground"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                "Tentar novamente"
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setAccessPending(false);
+                setStep("email");
+              }}
+              className="w-full"
+            >
+              Sair e voltar
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

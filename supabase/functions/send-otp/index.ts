@@ -258,8 +258,13 @@ serve(async (req) => {
 
     if (!permission?.allowed) {
       if (permission?.reason === 'multiple_invites') {
+        // Mask tenant names to prevent organizational enumeration pre-auth
+        const maskedTenants = (permission.tenants || []).map((t: any, i: number) => ({
+          id: t.id,
+          name: `Programa ${i + 1}`,
+        }));
         return new Response(
-          JSON.stringify({ error: 'multiple_tenants', tenants: permission.tenants, message: 'Selecione o programa que deseja acessar' }),
+          JSON.stringify({ error: 'multiple_tenants', tenants: maskedTenants, message: 'Selecione o programa que deseja acessar' }),
           { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
