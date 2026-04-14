@@ -134,12 +134,11 @@ const Auth = () => {
 
   // Redirect based on role when user is authenticated
   useEffect(() => {
-    if (!authLoading && !tenantLoading && user && activeMembership && step === 'email') {
-      console.log('[Auth] Auto-redirecting logged-in user:', activeMembership.role);
+    if (!authLoading && !tenantLoading && user && activeMembership && step === 'email' && !accessPending) {
       const targetPath = getTargetPath(activeMembership.role);
       navigate(targetPath, { replace: true });
     }
-  }, [user, activeMembership, authLoading, tenantLoading, navigate, step]);
+  }, [user, activeMembership, authLoading, tenantLoading, navigate, step, accessPending]);
 
   const validateEmail = () => {
     try {
