@@ -330,27 +330,29 @@ Estou aqui para ajudar! 🚀`;
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="mentor" className="text-slate-200">Mentor Responsável *</Label>
-              <Select value={selectedMentorId} onValueChange={setSelectedMentorId} required>
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
-                  <SelectValue placeholder={mentorsLoading ? "Carregando mentores..." : "Selecione o mentor"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {mentorsLoading ? (
-                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                  ) : mentorOptions.length === 0 ? (
-                    <SelectItem value="none" disabled>Nenhum mentor neste programa</SelectItem>
-                  ) : (
-                    mentorOptions.map((mentor) => (
-                      <SelectItem key={mentor.membership_id} value={mentor.membership_id}>
-                        {mentor.full_name} ({mentor.email})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            {!callerIsMentor && (
+              <div className="space-y-2">
+                <Label htmlFor="mentor" className="text-slate-200">Mentor Responsável *</Label>
+                <Select value={selectedMentorId} onValueChange={setSelectedMentorId} required>
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                    <SelectValue placeholder={mentorsLoading ? "Carregando mentores..." : "Selecione o mentor"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mentorsLoading ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : mentorOptions.length === 0 ? (
+                      <SelectItem value="none" disabled>Nenhum mentor neste programa</SelectItem>
+                    ) : (
+                      mentorOptions.map((mentor) => (
+                        <SelectItem key={mentor.membership_id} value={mentor.membership_id}>
+                          {mentor.full_name} ({mentor.email})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="fullName" className="text-slate-200">Nome Completo *</Label>
