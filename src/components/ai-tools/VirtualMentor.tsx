@@ -90,11 +90,35 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
     }
   }, [mentoradoId]);
 
-  // Load conversations on mount
-  useEffect(() => { fetchConversations(); }, [fetchConversations]);
+  // Load conversations on mount; cancel if mentoradoId changes before response
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!mentoradoId) return;
+      setIsLoadingConversations(true);
+      try {
+        const { data, error } = await supabase
+          .from('chat_conversations')
+          .select('id, title, created_at, updated_at')
+          .eq('membership_id', mentoradoId)
+          .order('updated_at', { ascending: false })
+          .limit(50);
+        if (cancelled) return;
+        if (error) throw error;
+        setConversations(data || []);
+      } catch (e) {
+        if (!cancelled) console.error('Error fetching conversations:', e);
+      } finally {
+        if (!cancelled) setIsLoadingConversations(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [mentoradoId]);
 
   // Load messages when conversation changes
   useEffect(() => {
+    let cancelled = false;
     const loadMessages = async () => {
       if (!activeConversationId) { setMessages([]); return; }
       try {
@@ -103,17 +127,20 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
           .select('role, content')
           .eq('conversation_id', activeConversationId)
           .order('created_at', { ascending: true });
+        if (cancelled) return;
         if (error) throw error;
         setMessages((data || []).filter(m => m.role !== 'system') as Message[]);
       } catch (e) {
-        console.error('Error loading messages:', e);
+        if (!cancelled) console.error('Error loading messages:', e);
       }
     };
     loadMessages();
+    return () => { cancelled = true; };
   }, [activeConversationId]);
 
   // Fetch leads
   useEffect(() => {
+    let cancelled = false;
     const fetchLeads = async () => {
       if (!mentoradoId) return;
       setIsLoadingLeads(true);
@@ -124,15 +151,17 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
           .eq('membership_id', mentoradoId)
           .order('updated_at', { ascending: false })
           .limit(50);
+        if (cancelled) return;
         if (error) throw error;
         setLeads(data || []);
       } catch (error) {
-        console.error('Error fetching leads:', error);
+        if (!cancelled) console.error('Error fetching leads:', error);
       } finally {
-        setIsLoadingLeads(false);
+        if (!cancelled) setIsLoadingLeads(false);
       }
     };
     fetchLeads();
+    return () => { cancelled = true; };
   }, [mentoradoId]);
 
   useEffect(() => {
@@ -472,9 +501,9 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
                     `Objeções esperadas de ${selectedLead.contact_name}?`,
                     `Estratégia de follow-up para esse lead`,
                     `Como fechar com esse perfil?`,
-                  ] : quickQuestions).map((question, index) => (
+                  ] : quickQuestions).map((question) => (
                     <Button
-                      key={index}
+                      key={question}
                       variant="outline"
                       size="sm"
                       className="text-xs h-auto py-2 px-3 text-left justify-start hover:bg-primary/10 hover:border-primary/50"
@@ -490,7 +519,7 @@ export function VirtualMentor({ mentoradoId }: VirtualMentorProps) {
             <ScrollArea className="flex-1 pr-4 -mr-4" ref={scrollRef}>
               <div className="space-y-4 pb-4">
                 {messages.map((message, index) => (
-                  <div key={index} className={cn('flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+                  <div key={`${message.role}-${index}-${message.content.slice(0, 8)}`} className={cn('flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
                     {message.role === 'assistant' && (
                       <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0 shadow-md">
                         <Bot className="h-4 w-4 text-primary-foreground" />

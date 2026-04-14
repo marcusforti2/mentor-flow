@@ -14,7 +14,8 @@ export function useGuidedTour(userId: string | undefined) {
     setHasCompleted(completed);
 
     if (!completed) {
-      setTimeout(() => setIsOpen(true), 1500);
+      const timer = setTimeout(() => setIsOpen(true), 1500);
+      return () => clearTimeout(timer);
     }
   }, [userId]);
 

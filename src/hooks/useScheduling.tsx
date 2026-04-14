@@ -97,7 +97,7 @@ export function useScheduling() {
   useEffect(() => {
     if (!membershipId) return;
     const channel = supabase
-      .channel('bookings-realtime')
+      .channel(`bookings-${membershipId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

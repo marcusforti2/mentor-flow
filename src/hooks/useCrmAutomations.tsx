@@ -54,7 +54,7 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["crm-stage-automations"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-stage-automations", membershipId] });
       toast({ title: "Automação criada! ✓" });
     },
     onError: () => {
@@ -72,7 +72,7 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["crm-stage-automations"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-stage-automations", membershipId] });
     },
   });
 
@@ -86,7 +86,7 @@ export function useCrmAutomations(membershipId?: string, tenantId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["crm-stage-automations"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-stage-automations", membershipId] });
       toast({ title: "Automação removida! ✓" });
     },
   });

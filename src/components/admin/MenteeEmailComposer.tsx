@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -254,7 +255,7 @@ export function MenteeEmailComposer({ open, onOpenChange, menteeEmail, menteeNam
                     <p className="text-xs text-muted-foreground mb-2">Pré-visualização:</p>
                     <div
                       className="text-sm prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: singleDraft.body_html }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(singleDraft.body_html) }}
                     />
                   </div>
 
@@ -369,7 +370,7 @@ export function MenteeEmailComposer({ open, onOpenChange, menteeEmail, menteeNam
                       />
                       <div
                         className="text-xs text-muted-foreground bg-muted/50 rounded p-2 max-h-20 overflow-y-auto"
-                        dangerouslySetInnerHTML={{ __html: draft.body_html }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(draft.body_html) }}
                       />
                     </CardContent>
                   </Card>

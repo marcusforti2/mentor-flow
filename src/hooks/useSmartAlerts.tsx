@@ -51,7 +51,7 @@ export function useSmartAlerts() {
     if (!tenantId) return;
 
     const channel = supabase
-      .channel('smart-alerts-realtime')
+      .channel(`smart-alerts-${tenantId}`)
       .on(
         'postgres_changes',
         {

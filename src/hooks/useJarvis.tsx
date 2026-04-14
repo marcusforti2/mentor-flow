@@ -35,6 +35,7 @@ export function useJarvis() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load conversations list
   const loadConversations = useCallback(async () => {
@@ -52,6 +53,13 @@ export function useJarvis() {
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  // Cleanup refresh timer on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, []);
 
   // Load a specific conversation
   const loadConversation = useCallback(async (convId: string) => {
@@ -119,7 +127,8 @@ export function useJarvis() {
         setConversationId(newConvId);
         // Refresh conversations list when new conversation is created
         if (!conversationId) {
-          setTimeout(() => loadConversations(), 1000);
+          if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+          refreshTimerRef.current = setTimeout(() => loadConversations(), 1000);
         }
       }
 

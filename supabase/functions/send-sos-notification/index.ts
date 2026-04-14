@@ -76,7 +76,14 @@ serve(async (req) => {
         if (profiles) for (const p of profiles) { if (p.email) mentorEmails.push(p.email); }
       }
     }
-    if (mentorEmails.length === 0) mentorEmails.push("jacob@marcusforti.online", "mari@marcusforti.online");
+    if (mentorEmails.length === 0) {
+      const fallbackEmail = Deno.env.get("SOS_FALLBACK_EMAIL");
+      if (fallbackEmail) {
+        mentorEmails.push(fallbackEmail);
+      } else {
+        console.warn("SOS: No mentor emails found and SOS_FALLBACK_EMAIL is not set. Notification may not be delivered.");
+      }
+    }
 
     const priorityColors: Record<string, string> = { urgente: "#ef4444", alta: "#f97316", "média": "#eab308", baixa: "#22c55e" };
     const priorityColor = priorityColors[sosPriority] || "#6b7280";

@@ -85,8 +85,8 @@ export function PostCard({ post, currentMembershipId, onLike, onDelete }: PostCa
       {/* Tags */}
       {post.tags && post.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {post.tags.map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
+          {post.tags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-xs">
               #{tag}
             </Badge>
           ))}
