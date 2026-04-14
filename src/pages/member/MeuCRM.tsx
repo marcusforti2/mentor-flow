@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,7 +79,7 @@ export default function MeuCRM() {
     }
   };
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = useCallback(async (leadId: string, newStatus: string) => {
     if (!leadId || !newStatus) {
       console.error("handleStatusChange: missing leadId or newStatus", { leadId, newStatus });
       return;
@@ -117,18 +117,33 @@ export default function MeuCRM() {
       loadLeads();
       toast({ title: "Erro ao mover lead", variant: "destructive" });
     }
-  };
+  }, [membershipId, tenantId, leads, loadLeads]);
 
-  const handleLeadClick = (lead: Lead) => {
+  const handleLeadClick = useCallback((lead: Lead) => {
     setSelectedLead(lead);
     setDetailSheetOpen(true);
-  };
+  }, []);
 
-  const filteredLeads = leads.filter(
-    (lead) =>
-      lead.contact_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.company?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredLeads = useMemo(
+    () =>
+      leads.filter(
+        (lead) =>
+          lead.contact_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lead.company?.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [leads, searchQuery]
   );
+
+  // Pre-group leads by status so KanbanColumn receives a stable array reference
+  const leadsByStatus = useMemo(() => {
+    const map: Record<string, Lead[]> = {};
+    for (const lead of filteredLeads) {
+      const key = lead.status || "";
+      if (!map[key]) map[key] = [];
+      map[key].push(lead);
+    }
+    return map;
+  }, [filteredLeads]);
 
   // Stats
   const totalLeads = leads.length;
@@ -220,7 +235,7 @@ export default function MeuCRM() {
                 title={col.title}
                 status={col.status}
                 color={col.color}
-                leads={filteredLeads.filter((lead) => lead.status === col.status)}
+                leads={leadsByStatus[col.status] ?? []}
                 onLeadClick={handleLeadClick}
                 onStatusChange={handleStatusChange}
               />

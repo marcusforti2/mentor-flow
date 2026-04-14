@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Play, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -121,38 +121,48 @@ export default function Trilhas() {
   });
 
   // Featured trail (primeira com is_featured=true ou primeira da lista)
-  const featuredTrail = trails.find(t => t.is_featured) || trails[0];
-  
+  const featuredTrail = useMemo(
+    () => trails.find(t => t.is_featured) || trails[0],
+    [trails]
+  );
+
   // Trails with progress (continue watching)
-  const continueWatching = trails.filter(t => {
-    const allLessonIds = t.modules.flatMap(m => m.lessons.map(l => l.id));
-    const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
-    return completed > 0 && completed < allLessonIds.length;
-  });
+  const continueWatching = useMemo(
+    () =>
+      trails.filter(t => {
+        const allLessonIds = t.modules.flatMap(m => m.lessons.map(l => l.id));
+        const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
+        return completed > 0 && completed < allLessonIds.length;
+      }),
+    [trails, completedLessonIds]
+  );
 
   // Calculate progress for a trail
-  const getTrailProgress = (trail: Trail) => {
-    const allLessonIds = trail.modules.flatMap(m => m.lessons.map(l => l.id));
-    if (allLessonIds.length === 0) return 0;
-    const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
-    return Math.round((completed / allLessonIds.length) * 100);
-  };
+  const getTrailProgress = useCallback(
+    (trail: Trail) => {
+      const allLessonIds = trail.modules.flatMap(m => m.lessons.map(l => l.id));
+      if (allLessonIds.length === 0) return 0;
+      const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
+      return Math.round((completed / allLessonIds.length) * 100);
+    },
+    [completedLessonIds]
+  );
 
-  const handleTrailClick = (trail: Trail) => {
+  const handleTrailClick = useCallback((trail: Trail) => {
     setSelectedTrail(trail);
     setIsDetailOpen(true);
-  };
+  }, []);
 
-  const handleLessonClick = (lesson: TrailLesson) => {
+  const handleLessonClick = useCallback((lesson: TrailLesson) => {
     setSelectedLesson(lesson);
     setIsDetailOpen(false);
     setIsVideoOpen(true);
-  };
+  }, []);
 
-  const handleCloseVideo = () => {
+  const handleCloseVideo = useCallback(() => {
     setIsVideoOpen(false);
     setSelectedLesson(null);
-  };
+  }, []);
 
   const handleCompleteLesson = async () => {
     if (!selectedLesson || !activeMembership) return;
