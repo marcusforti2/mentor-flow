@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +90,13 @@ export default function Relatorios() {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            onClick={() => exportCSV(menteeScores, stats)}
+            onClick={() => {
+              if (menteeScores.length === 0) {
+                toast.error("Nenhum dado para exportar. Ajuste os filtros.");
+                return;
+              }
+              exportCSV(menteeScores, stats);
+            }}
             disabled={menteeScoresLoading}
           >
             <Download className="h-4 w-4" />

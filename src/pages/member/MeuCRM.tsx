@@ -177,7 +177,7 @@ export default function MeuCRM() {
           </Button>
           <Button onClick={() => setUploadModalOpen(true)}>
             <Sparkles className="w-4 h-4 mr-2" />
-            Novo Lead com IA
+            Analisar Perfil com IA
           </Button>
         </div>
       </div>

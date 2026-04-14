@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Play, Clock, BookOpen, ChevronDown, Award } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ export function TrailDetailSheet({
   completedLessonIds = []
 }: TrailDetailSheetProps) {
   const [openModules, setOpenModules] = useState<string[]>([]);
+  const nextLessonRef = useRef<HTMLDivElement>(null);
 
   if (!trail) return null;
 
@@ -177,16 +178,23 @@ export function TrailDetailSheet({
                       <div className="mt-2 space-y-1 pl-4">
                         {module.lessons.map((lesson, lessonIndex) => {
                           const completed = isLessonCompleted(lesson.id);
+                          const isNext = nextLesson?.id === lesson.id;
                           return (
-                            <LessonCard
-                              key={lesson.id}
-                              lesson={lesson}
-                              index={lessonIndex}
-                              isCompleted={completed}
-                              isInProgress={false}
-                              progress={0}
-                              onClick={() => onLessonClick(lesson)}
-                            />
+                            <div key={lesson.id} ref={isNext ? nextLessonRef : undefined} className="relative">
+                              {isNext && (
+                                <Badge variant="outline" className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full text-xs border-primary text-primary whitespace-nowrap hidden md:inline-flex">
+                                  Próxima
+                                </Badge>
+                              )}
+                              <LessonCard
+                                lesson={lesson}
+                                index={lessonIndex}
+                                isCompleted={completed}
+                                isInProgress={isNext}
+                                progress={0}
+                                onClick={() => onLessonClick(lesson)}
+                              />
+                            </div>
                           );
                         })}
                       </div>

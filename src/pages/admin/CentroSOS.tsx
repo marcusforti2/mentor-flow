@@ -10,7 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, CheckCircle, Clock, MessageSquare, User, Bot, Send, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertCircle, CheckCircle, CheckCircle2, Clock, MessageSquare, User, Bot, Send, Loader2 } from "lucide-react";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -126,6 +136,8 @@ export default function AdminCentroSOS() {
     await fetchResponses(request.id);
   };
 
+  const [pendingResolveId, setPendingResolveId] = useState<string | null>(null);
+
   const updateStatus = async (requestId: string, newStatus: string) => {
     try {
       const updateData: Record<string, unknown> = { status: newStatus };
@@ -133,8 +145,10 @@ export default function AdminCentroSOS() {
       const { error } = await supabase.from("sos_requests").update(updateData).eq("id", requestId);
       if (error) throw error;
       toast.success("Status atualizado!");
+      setNewResponse("");
       fetchSOSRequests();
       if (selectedRequest?.id === requestId) setSelectedRequest({ ...selectedRequest, status: newStatus });
+      setPendingResolveId(null);
     } catch { toast.error("Erro ao atualizar status"); }
   };
 
@@ -200,7 +214,15 @@ export default function AdminCentroSOS() {
       {isLoading ? (
         <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
       ) : filteredRequests.length === 0 ? (
-        <Card><CardContent className="py-12 text-center"><CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" /><p className="text-muted-foreground">{statusFilter === "all" ? "Nenhum chamado SOS no momento." : `Nenhum chamado com status "${statusFilter}".`}</p></CardContent></Card>
+        <Card className="border-dashed">
+          <CardContent className="py-16 text-center">
+            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500/50 mb-4" />
+            <h3 className="font-semibold text-foreground mb-1">Nenhum SOS pendente</h3>
+            <p className="text-sm text-muted-foreground">
+              {statusFilter === "all" ? "Todos os mentorados estão bem! Novos pedidos aparecerão aqui." : `Nenhum chamado com status "${statusFilter}".`}
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           {filteredRequests.map((request) => (
@@ -246,7 +268,13 @@ export default function AdminCentroSOS() {
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium">Status:</span>
-                  <Select value={selectedRequest.status} onValueChange={(value) => updateStatus(selectedRequest.id, value)}>
+                  <Select value={selectedRequest.status} onValueChange={(value) => {
+                    if (value === "resolved") {
+                      setPendingResolveId(selectedRequest.id);
+                    } else {
+                      updateStatus(selectedRequest.id, value);
+                    }
+                  }}>
                     <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Aguardando</SelectItem>
@@ -256,6 +284,22 @@ export default function AdminCentroSOS() {
                   </Select>
                   {selectedRequest.priority && getPriorityBadge(selectedRequest.priority)}
                 </div>
+
+                {/* Resolve confirmation dialog */}
+                <AlertDialog open={pendingResolveId === selectedRequest.id} onOpenChange={(open) => !open && setPendingResolveId(null)}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Marcar como Resolvido?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Isso fechará o SOS de {selectedRequest.mentorado_name}. O mentorado será notificado.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => updateStatus(selectedRequest.id, "resolved")}>Confirmar Resolução</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 {selectedRequest.ai_analysis?.summaryForMentor && (
                   <Card className="border-primary/50 bg-primary/5"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Bot className="w-4 h-4" />Resumo da IA</CardTitle></CardHeader><CardContent><p className="text-sm whitespace-pre-wrap">{selectedRequest.ai_analysis.summaryForMentor}</p></CardContent></Card>
                 )}
