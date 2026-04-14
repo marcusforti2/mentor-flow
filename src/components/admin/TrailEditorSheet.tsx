@@ -296,6 +296,7 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                   placeholder="Ex: Fundamentos do High Ticket"
                   className={cn("bg-muted/50", titleError && "border-destructive")}
                 />
+                {titleError && <p className="text-xs text-destructive mt-1">{titleError}</p>}
               </div>
 
               <div className="space-y-2">

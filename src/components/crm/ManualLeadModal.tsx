@@ -40,6 +40,7 @@ export function ManualLeadModal({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({
     contact_name: "",
     contact_phone: "",
@@ -55,6 +56,7 @@ export function ManualLeadModal({
   });
 
   const resetForm = () => {
+    setStep(1);
     setForm({
       contact_name: "", contact_phone: "", contact_email: "", company: "",
       position: "", temperature: "cold", instagram_url: "", linkedin_url: "",
@@ -146,173 +148,200 @@ export function ManualLeadModal({
       <DialogContent className="sm:max-w-lg max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Cadastro Manual de Lead</DialogTitle>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mt-2">
+            <div className={cn("flex items-center gap-1.5 text-xs", step === 1 ? "text-primary font-medium" : "text-muted-foreground")}>
+              <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold", step === 1 ? "bg-primary text-primary-foreground" : "bg-muted")}>1</div>
+              Básico
+            </div>
+            <div className="h-px w-4 bg-border" />
+            <div className={cn("flex items-center gap-1.5 text-xs", step === 2 ? "text-primary font-medium" : "text-muted-foreground")}>
+              <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold", step === 2 ? "bg-primary text-primary-foreground" : "bg-muted")}>2</div>
+              Detalhes
+            </div>
+          </div>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
           <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
-            {/* Nome */}
-            <div className="space-y-2">
-              <Label htmlFor="contact_name">Nome do Contato *</Label>
-              <Input
-                id="contact_name"
-                placeholder="Nome completo"
-                value={form.contact_name}
-                onChange={(e) => setForm((f) => ({ ...f, contact_name: e.target.value }))}
-                required
-              />
-            </div>
+            {step === 1 && (
+              <>
+                {/* Nome */}
+                <div className="space-y-2">
+                  <Label htmlFor="contact_name">Nome do Contato *</Label>
+                  <Input
+                    id="contact_name"
+                    placeholder="Nome completo"
+                    value={form.contact_name}
+                    onChange={(e) => setForm((f) => ({ ...f, contact_name: e.target.value }))}
+                    required
+                  />
+                </div>
 
-            {/* Telefone + Email */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="contact_phone">Telefone</Label>
-                <Input
-                  id="contact_phone"
-                  placeholder="(11) 99999-9999"
-                  value={form.contact_phone}
-                  onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact_email">Email</Label>
-                <Input
-                  id="contact_email"
-                  type="email"
-                  placeholder="email@exemplo.com"
-                  value={form.contact_email}
-                  onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))}
-                />
-              </div>
-            </div>
+                {/* Empresa + Cargo */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="company">
+                      <Briefcase className="inline h-3.5 w-3.5 mr-1" />
+                      Empresa
+                    </Label>
+                    <Input
+                      id="company"
+                      placeholder="Nome da empresa"
+                      value={form.company}
+                      onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="position">Cargo</Label>
+                    <Input
+                      id="position"
+                      placeholder="Ex: CEO, Diretor..."
+                      value={form.position}
+                      onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
+                    />
+                  </div>
+                </div>
 
-            {/* Empresa + Cargo */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="company">
-                  <Briefcase className="inline h-3.5 w-3.5 mr-1" />
-                  Empresa
-                </Label>
-                <Input
-                  id="company"
-                  placeholder="Nome da empresa"
-                  value={form.company}
-                  onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="position">Cargo</Label>
-                <Input
-                  id="position"
-                  placeholder="Ex: CEO, Diretor..."
-                  value={form.position}
-                  onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))}
-                />
-              </div>
-            </div>
+                {/* Temperatura */}
+                <div className="space-y-2">
+                  <Label>Temperatura</Label>
+                  <Select value={form.temperature} onValueChange={(v) => setForm((f) => ({ ...f, temperature: v }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cold">❄️ Frio — Lead inicial, sem interesse claro</SelectItem>
+                      <SelectItem value="warm">🌤️ Morno — Demonstrou algum interesse</SelectItem>
+                      <SelectItem value="hot">🔥 Quente — Muito interessado, pronto para fechar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
-            {/* WhatsApp */}
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">
-                <MessageCircle className="inline h-3.5 w-3.5 mr-1 text-emerald-500" />
-                WhatsApp
-              </Label>
-              <Input
-                id="whatsapp"
-                placeholder="(11) 99999-9999 ou link wa.me/"
-                value={form.whatsapp}
-                onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
-              />
-            </div>
+            {step === 2 && (
+              <>
+                {/* Telefone + Email */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_phone">Telefone</Label>
+                    <Input
+                      id="contact_phone"
+                      placeholder="(11) 99999-9999"
+                      value={form.contact_phone}
+                      onChange={(e) => setForm((f) => ({ ...f, contact_phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_email">Email</Label>
+                    <Input
+                      id="contact_email"
+                      type="email"
+                      placeholder="email@exemplo.com"
+                      value={form.contact_email}
+                      onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))}
+                    />
+                  </div>
+                </div>
 
-            {/* Redes Sociais */}
-            <div className="space-y-3 rounded-xl border border-border/50 p-3 bg-muted/20">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Redes Sociais</p>
-              <div className="space-y-2">
-                <Label htmlFor="instagram_url" className="text-sm">
-                  <Instagram className="inline h-3.5 w-3.5 mr-1 text-pink-500" />
-                  Instagram
-                </Label>
-                <Input
-                  id="instagram_url"
-                  placeholder="https://instagram.com/perfil ou @perfil"
-                  value={form.instagram_url}
-                  onChange={(e) => setForm((f) => ({ ...f, instagram_url: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="linkedin_url" className="text-sm">
-                  <Linkedin className="inline h-3.5 w-3.5 mr-1 text-blue-500" />
-                  LinkedIn
-                </Label>
-                <Input
-                  id="linkedin_url"
-                  placeholder="https://linkedin.com/in/perfil"
-                  value={form.linkedin_url}
-                  onChange={(e) => setForm((f) => ({ ...f, linkedin_url: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="website_url" className="text-sm">
-                  <Globe className="inline h-3.5 w-3.5 mr-1 text-primary" />
-                  Website
-                </Label>
-                <Input
-                  id="website_url"
-                  placeholder="https://site.com.br"
-                  value={form.website_url}
-                  onChange={(e) => setForm((f) => ({ ...f, website_url: e.target.value }))}
-                />
-              </div>
-            </div>
+                {/* WhatsApp */}
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">
+                    <MessageCircle className="inline h-3.5 w-3.5 mr-1 text-emerald-500" />
+                    WhatsApp
+                  </Label>
+                  <Input
+                    id="whatsapp"
+                    placeholder="(11) 99999-9999 ou link wa.me/"
+                    value={form.whatsapp}
+                    onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
+                  />
+                </div>
 
-            {/* Temperatura */}
-            <div className="space-y-2">
-              <Label>Temperatura</Label>
-              <Select value={form.temperature} onValueChange={(v) => setForm((f) => ({ ...f, temperature: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cold">❄️ Frio</SelectItem>
-                  <SelectItem value="warm">🌤️ Morno</SelectItem>
-                  <SelectItem value="hot">🔥 Quente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                {/* Redes Sociais */}
+                <div className="space-y-3 rounded-xl border border-border/50 p-3 bg-muted/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Redes Sociais</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram_url" className="text-sm">
+                      <Instagram className="inline h-3.5 w-3.5 mr-1 text-pink-500" />
+                      Instagram
+                    </Label>
+                    <Input
+                      id="instagram_url"
+                      placeholder="https://instagram.com/perfil ou @perfil"
+                      value={form.instagram_url}
+                      onChange={(e) => setForm((f) => ({ ...f, instagram_url: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedin_url" className="text-sm">
+                      <Linkedin className="inline h-3.5 w-3.5 mr-1 text-blue-500" />
+                      LinkedIn
+                    </Label>
+                    <Input
+                      id="linkedin_url"
+                      placeholder="https://linkedin.com/in/perfil"
+                      value={form.linkedin_url}
+                      onChange={(e) => setForm((f) => ({ ...f, linkedin_url: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website_url" className="text-sm">
+                      <Globe className="inline h-3.5 w-3.5 mr-1 text-primary" />
+                      Website
+                    </Label>
+                    <Input
+                      id="website_url"
+                      placeholder="https://site.com.br"
+                      value={form.website_url}
+                      onChange={(e) => setForm((f) => ({ ...f, website_url: e.target.value }))}
+                    />
+                  </div>
+                </div>
 
-            {/* Notas */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
-              <Textarea
-                id="notes"
-                placeholder="Observações sobre o lead..."
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                rows={3}
-              />
-            </div>
+                {/* Notas */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notas</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Observações sobre o lead..."
+                    value={form.notes}
+                    onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
+              <Button type="button" variant="outline" onClick={() => step === 2 ? setStep(1) : onOpenChange(false)}>
+                {step === 2 ? '← Voltar' : 'Cancelar'}
               </Button>
+              {step === 1 && (
+                <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                  Próximo →
+                </Button>
+              )}
               <Button type="submit" disabled={isSubmitting || isAnalyzing}>
                 {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Cadastrar Lead
               </Button>
-              <Button 
-                type="button" 
-                disabled={isSubmitting || isAnalyzing}
-                onClick={(e) => handleSubmit(e as any, true)}
-                className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
-              >
-                {isAnalyzing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                Salvar e Analisar Perfil
-              </Button>
+              {step === 1 && (
+                <Button 
+                  type="button" 
+                  disabled={isSubmitting || isAnalyzing}
+                  onClick={(e) => handleSubmit(e as any, true)}
+                  className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                >
+                  {isAnalyzing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  Salvar e Analisar Perfil
+                </Button>
+              )}
             </div>
           </form>
         </ScrollArea>
