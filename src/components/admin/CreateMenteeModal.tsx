@@ -92,8 +92,16 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
   const callerIsMentor = activeMembership?.role === 'mentor';
   const effectiveTenantForMentors = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
-  // Fetch mentors when tenant changes or modal opens
+  // For mentor role, auto-select own membership and skip fetching other mentors
   useEffect(() => {
+    if (callerIsMentor && activeMembership?.id && open) {
+      setSelectedMentorId(activeMembership.id);
+    }
+  }, [callerIsMentor, activeMembership?.id, open]);
+
+  // Fetch mentors when tenant changes or modal opens (only for non-mentor roles)
+  useEffect(() => {
+    if (callerIsMentor) return; // mentor auto-assigns to self
     const fetchMentors = async () => {
       if (!effectiveTenantForMentors || !open) {
         if (!open) return;
@@ -144,7 +152,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     };
     
     fetchMentors();
-  }, [effectiveTenantForMentors, open]);
+  }, [effectiveTenantForMentors, open, callerIsMentor]);
 
   // Hydrate from initialData when modal opens
   useEffect(() => {
