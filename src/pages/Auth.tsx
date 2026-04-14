@@ -248,7 +248,6 @@ const Auth = () => {
 
       // Handle Edge Function HTTP errors
       if (error) {
-        console.error("[Auth] Edge function error:", error);
         throw { message: "Erro de conexão. Tente novamente.", error_type: 'internal' };
       }
       
