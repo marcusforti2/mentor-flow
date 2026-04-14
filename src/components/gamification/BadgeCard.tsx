@@ -196,15 +196,3 @@ export function BadgeGrid({
     <div className={cn("grid grid-cols-3 gap-3", className)}>{children}</div>
   );
 }
-
-export function BadgeGrid({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("grid grid-cols-3 gap-3", className)}>{children}</div>
-  );
-}
