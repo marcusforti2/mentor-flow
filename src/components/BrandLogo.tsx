@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import mentorflowLogo from '@/assets/mentorflow-logo.png';
 
@@ -11,68 +12,72 @@ interface BrandLogoProps {
   brandName?: string;
 }
 
-export function BrandLogo({ variant = 'full', size = 'md', className, logoUrl, brandName }: BrandLogoProps) {
-  const sizes = {
-    sm: { icon: 'w-8 h-8', text: 'text-lg', techText: 'text-sm' },
-    md: { icon: 'w-10 h-10', text: 'text-xl', techText: 'text-base' },
-    lg: { icon: 'w-14 h-14', text: 'text-3xl', techText: 'text-xl' },
-    xl: { icon: 'w-20 h-20', text: 'text-5xl', techText: 'text-3xl' },
-  };
+export const BrandLogo = forwardRef<HTMLDivElement, BrandLogoProps>(
+  ({ variant = 'full', size = 'md', className, logoUrl, brandName }, ref) => {
+    const sizes = {
+      sm: { icon: 'w-8 h-8', text: 'text-lg', techText: 'text-sm' },
+      md: { icon: 'w-10 h-10', text: 'text-xl', techText: 'text-base' },
+      lg: { icon: 'w-14 h-14', text: 'text-3xl', techText: 'text-xl' },
+      xl: { icon: 'w-20 h-20', text: 'text-5xl', techText: 'text-3xl' },
+    };
 
-  const currentSize = sizes[size];
-  const logoSrc = logoUrl || mentorflowLogo;
-  const hasTenantBrand = !!brandName;
+    const currentSize = sizes[size];
+    const logoSrc = logoUrl || mentorflowLogo;
+    const hasTenantBrand = !!brandName;
 
-  const LogoIcon = () => (
-    <div className={cn(currentSize.icon, 'relative flex items-center justify-center')}>
-      <img src={logoSrc} alt={brandName || 'MentorFlow Logo'} className="w-full h-full object-contain" />
-    </div>
-  );
-
-  if (variant === 'compact') {
-    return (
-      <div className={cn('flex items-center', className)}>
-        {logoUrl ? <LogoIcon /> : <LogoIcon />}
+    const LogoIcon = () => (
+      <div className={cn(currentSize.icon, 'relative flex items-center justify-center')}>
+        <img src={logoSrc} alt={brandName || 'MentorFlow Logo'} className="w-full h-full object-contain" />
       </div>
     );
-  }
 
-  if (variant === 'text') {
-    if (hasTenantBrand) {
+    if (variant === 'compact') {
       return (
-        <div className={cn('flex items-center gap-1', className)}>
-          <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>{brandName}</span>
+        <div ref={ref} className={cn('flex items-center', className)}>
+          <LogoIcon />
         </div>
       );
     }
+
+    if (variant === 'text') {
+      if (hasTenantBrand) {
+        return (
+          <div ref={ref} className={cn('flex items-center gap-1', className)}>
+            <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>{brandName}</span>
+          </div>
+        );
+      }
+      return (
+        <div ref={ref} className={cn('flex items-center gap-1', className)}>
+          <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
+          <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
+        </div>
+      );
+    }
+
+    // Full variant
+    if (hasTenantBrand) {
+      return (
+        <div ref={ref} className={cn('flex items-center gap-2 min-w-0', className)}>
+          {logoUrl && <LogoIcon />}
+          <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary truncate max-w-[140px] sm:max-w-none')}>{brandName}</span>
+        </div>
+      );
+    }
+
     return (
-      <div className={cn('flex items-center gap-1', className)}>
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
-        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
+      <div ref={ref} className={cn('flex items-center gap-2', className)}>
+        <LogoIcon />
+        <div className="flex items-baseline gap-1">
+          <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
+          <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
+        </div>
       </div>
     );
   }
+);
 
-  // Full variant
-  if (hasTenantBrand) {
-    return (
-      <div className={cn('flex items-center gap-2 min-w-0', className)}>
-        {logoUrl && <LogoIcon />}
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary truncate max-w-[140px] sm:max-w-none')}>{brandName}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <LogoIcon />
-      <div className="flex items-baseline gap-1">
-        <span className={cn(currentSize.text, 'font-bold tracking-tight text-primary')}>Mentor</span>
-        <span className={cn(currentSize.techText, 'font-semibold tracking-wider text-accent')}>Flow.io</span>
-      </div>
-    </div>
-  );
-}
+BrandLogo.displayName = 'BrandLogo';
 
 // Backward compatibility aliases
 export const LBVLogo = BrandLogo;
