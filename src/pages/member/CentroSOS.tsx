@@ -9,6 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   AlertCircle,
   Send,
@@ -354,6 +366,9 @@ export default function CentroSOS() {
     }
   };
 
+  const currentStep = !triageStarted ? 1 : triageComplete ? 3 : 2;
+  const stepLabels = ["Descreva o problema", "Análise em andamento", "Enviar para seu mentor"];
+
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -376,6 +391,20 @@ export default function CentroSOS() {
         </TabsList>
 
         <TabsContent value="novo" className="mt-6">
+          {/* Step indicator */}
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Etapa {currentStep} de 3</span>
+              <span className="font-medium text-foreground">{stepLabels[currentStep - 1]}</span>
+            </div>
+            <Progress value={(currentStep / 3) * 100} className="h-2" />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              {stepLabels.map((label, i) => (
+                <span key={i} className={i + 1 <= currentStep ? "text-primary font-medium" : ""}>{label}</span>
+              ))}
+            </div>
+          </div>
+
           {!triageStarted ? (
             <Card>
               <CardHeader>
@@ -493,19 +522,35 @@ export default function CentroSOS() {
                       <Button variant="outline" onClick={resetForm}>
                         Cancelar
                       </Button>
-                      <Button onClick={submitSOSRequest} disabled={isSubmitting}>
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Enviar para o Mentor
-                          </>
-                        )}
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button disabled={isSubmitting}>
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Enviando...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-4 h-4 mr-2" />
+                                Enviar para o Mentor
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Enviar chamado SOS?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja enviar este chamado para seu mentor? Ele será notificado por email.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={submitSOSRequest}>Confirmar Envio</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
                 </CardContent>

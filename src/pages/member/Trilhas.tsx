@@ -306,6 +306,7 @@ export default function Trilhas() {
             trails={continueWatching}
             onTrailClick={handleTrailClick}
             cardSize="large"
+            completedLessonIds={completedLessonIds}
           />
         )}
 
@@ -315,6 +316,7 @@ export default function Trilhas() {
             title="Todas as Trilhas"
             trails={trails}
             onTrailClick={handleTrailClick}
+            completedLessonIds={completedLessonIds}
           />
         )}
       </div>

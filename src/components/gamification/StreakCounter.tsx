@@ -7,6 +7,7 @@ interface StreakCounterProps {
   size?: "sm" | "md" | "lg";
   showLongest?: boolean;
   className?: string;
+  isActiveToday?: boolean;
 }
 
 export function StreakCounter({
@@ -15,6 +16,7 @@ export function StreakCounter({
   size = "md",
   showLongest = false,
   className,
+  isActiveToday = false,
 }: StreakCounterProps) {
   const sizeClasses = {
     sm: "text-sm",
@@ -73,6 +75,13 @@ export function StreakCounter({
           {days === 1 ? "dia" : "dias"} seguidos
         </p>
       </div>
+
+      {/* Active today indicator */}
+      {isActiveToday ? (
+        <p className="text-xs text-emerald-500 font-medium mt-1">✓ Ativo hoje</p>
+      ) : days > 0 ? (
+        <p className="text-xs text-amber-500 mt-1">Ative-se hoje para manter o streak!</p>
+      ) : null}
 
       {showLongest && longestStreak !== undefined && longestStreak > days && (
         <p className="text-xs text-muted-foreground mt-1">

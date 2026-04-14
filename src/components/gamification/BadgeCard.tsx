@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
 import { Lock, CheckCircle2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 
 interface BadgeCardProps {
   name: string;
@@ -10,6 +16,9 @@ interface BadgeCardProps {
   unlockedAt?: string;
   size?: "sm" | "md" | "lg";
   showPoints?: boolean;
+  requirement?: string;
+  progress?: number;
+  progressMax?: number;
 }
 
 const badgeIcons: Record<string, string> = {
@@ -45,6 +54,9 @@ export function BadgeCard({
   unlockedAt,
   size = "md",
   showPoints = true,
+  requirement,
+  progress: badgeProgress,
+  progressMax,
 }: BadgeCardProps) {
   const icon = badgeIcons[iconType] || "🏅";
 
@@ -60,7 +72,7 @@ export function BadgeCard({
     lg: "text-5xl",
   };
 
-  return (
+  const badgeContent = (
     <div
       className={cn(
         "relative group rounded-2xl transition-all duration-300",
@@ -146,6 +158,31 @@ export function BadgeCard({
       </div>
     </div>
   );
+
+  // Wrap with tooltip if requirement or description exists for locked badges
+  if (requirement || (!unlocked && description)) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {badgeContent}
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px]">
+          <p className="font-medium text-sm">{name}</p>
+          {requirement && (
+            <p className="text-xs text-muted-foreground mt-1">🔓 {requirement}</p>
+          )}
+          {badgeProgress !== undefined && progressMax && !unlocked && (
+            <div className="mt-1.5">
+              <Progress value={(badgeProgress / progressMax) * 100} className="h-1" />
+              <p className="text-xs text-muted-foreground mt-0.5">{badgeProgress}/{progressMax}</p>
+            </div>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return badgeContent;
 }
 
 export function BadgeGrid({

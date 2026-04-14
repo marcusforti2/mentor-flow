@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { LeadCard, type Lead } from "./LeadCard";
 
@@ -18,13 +19,21 @@ export function KanbanColumn({
   onLeadClick,
   onStatusChange,
 }: KanbanColumnProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragOver(false);
     const leadId = e.dataTransfer.getData("leadId");
     if (leadId) {
       onStatusChange(leadId, status);
@@ -33,8 +42,12 @@ export function KanbanColumn({
 
   return (
     <div
-      className="flex flex-col min-w-[280px] max-w-[320px] bg-muted/30 rounded-xl"
+      className={cn(
+        "flex flex-col min-w-[280px] max-w-[320px] bg-muted/30 rounded-xl transition-colors duration-150",
+        isDragOver && "bg-primary/10 ring-2 ring-primary/40 ring-dashed"
+      )}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Header */}
