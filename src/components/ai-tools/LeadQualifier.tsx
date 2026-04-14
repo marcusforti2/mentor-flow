@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -131,7 +131,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     fetchData();
   }, [mentoradoId]);
 
-  const fetchExistingLeads = async () => {
+  const fetchExistingLeads = useCallback(async () => {
     if (!mentoradoId) return;
     setIsLoadingLeads(true);
     try {
@@ -148,11 +148,11 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     } finally {
       setIsLoadingLeads(false);
     }
-  };
+  }, [mentoradoId]);
 
   useEffect(() => {
     fetchExistingLeads();
-  }, [mentoradoId]);
+  }, [fetchExistingLeads]);
 
   const handleSelectLead = (leadId: string) => {
     setSelectedLeadId(leadId);
@@ -171,7 +171,7 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     }
   };
 
-  const fetchQualificationHistory = async () => {
+  const fetchQualificationHistory = useCallback(async () => {
     if (!mentoradoId) return;
     setIsLoadingHistory(true);
     try {
@@ -193,11 +193,11 @@ export function LeadQualifier({ mentoradoId }: LeadQualifierProps) {
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, [mentoradoId]);
 
   useEffect(() => {
     fetchQualificationHistory();
-  }, [mentoradoId]);
+  }, [fetchQualificationHistory]);
 
   const loadHistoryReport = (historyItem: QualificationHistory) => {
     setReport(historyItem.ai_insights);

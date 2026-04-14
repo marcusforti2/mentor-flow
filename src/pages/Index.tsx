@@ -668,8 +668,8 @@ const Index = () => {
                 <h3 className="font-display font-bold text-foreground text-lg">O que o mercado vende</h3>
               </div>
               <div className="space-y-3">
-                {comparisons.filter(c => !c.has).map(({ label }, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-background/60 border border-border/30">
+                {comparisons.filter(c => !c.has).map(({ label }) => (
+                  <div key={label} className="flex items-center gap-3 p-3.5 rounded-xl bg-background/60 border border-border/30">
                     <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
                       <XCircle className="w-3.5 h-3.5 text-destructive" />
                     </div>
@@ -690,8 +690,8 @@ const Index = () => {
                 <h3 className="font-display font-bold text-foreground text-lg">{PLATFORM.name}</h3>
               </div>
               <div className="space-y-3 relative z-10">
-                {comparisons.filter(c => c.has).map(({ label }, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/15 group hover:border-primary/30 hover:bg-primary/10 transition-all duration-300">
+                {comparisons.filter(c => c.has).map(({ label }) => (
+                  <div key={label} className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/15 group hover:border-primary/30 hover:bg-primary/10 transition-all duration-300">
                     <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
                       <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                     </div>

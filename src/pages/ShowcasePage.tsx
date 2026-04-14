@@ -61,12 +61,13 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting && !started) { setStarted(true); obs.unobserve(el); } },
+      ([e]) => { if (e.isIntersecting) { setStarted(true); obs.unobserve(el); } },
       { threshold: 0.5 }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [started]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!started) return;
