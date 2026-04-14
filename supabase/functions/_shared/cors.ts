@@ -15,6 +15,11 @@ const allowedOrigins: Set<string> = new Set(
     .filter(Boolean)
 );
 
+const FULL_ALLOW_HEADERS =
+  "authorization, x-client-info, apikey, content-type, " +
+  "x-supabase-client-platform, x-supabase-client-platform-version, " +
+  "x-supabase-client-runtime, x-supabase-client-runtime-version";
+
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
 
@@ -25,14 +30,12 @@ export function getCorsHeaders(req: Request): Record<string, string> {
 
   return {
     "Access-Control-Allow-Origin": allowedOrigin || "null",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": FULL_ALLOW_HEADERS,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 }
 
 export const commonCorsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": FULL_ALLOW_HEADERS,
 };

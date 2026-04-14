@@ -426,15 +426,14 @@ serve(async (req) => {
     const supabaseAuthClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: authError } = await supabaseAuthClient.auth.getClaims(token);
-    if (authError || !claimsData?.claims) {
+    const { data: { user: callerUser }, error: authError } = await supabaseAuthClient.auth.getUser();
+    if (authError || !callerUser) {
       console.error("Auth error:", authError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const callerId = claimsData.claims.sub;
+    const callerId = callerUser.id;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -445,7 +444,7 @@ serve(async (req) => {
 
     // ========== IDOR CHECK: Validate caller has access to mentorado_id ==========
     if (mentorado_id) {
-      // callerId already available from getClaims above
+      // callerId available from getUser() above
       const { data: targetMembership } = await supabase
         .from("memberships")
         .select("user_id, tenant_id")
