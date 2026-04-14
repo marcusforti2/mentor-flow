@@ -9,9 +9,10 @@ interface TrailCarouselProps {
   trails: Trail[];
   onTrailClick: (trail: Trail) => void;
   cardSize?: 'default' | 'large';
+  completedLessonIds?: string[];
 }
 
-export function TrailCarousel({ title, trails, onTrailClick, cardSize = 'default' }: TrailCarouselProps) {
+export function TrailCarousel({ title, trails, onTrailClick, cardSize = 'default', completedLessonIds = [] }: TrailCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -47,14 +48,19 @@ export function TrailCarousel({ title, trails, onTrailClick, cardSize = 'default
           ref={scrollRef}
           className="trail-carousel flex gap-4 overflow-x-auto px-4 md:px-8 pb-4 scroll-smooth"
         >
-          {trails.map((trail) => (
+          {trails.map((trail) => {
+            const allLessonIds = trail.modules.flatMap(m => m.lessons.map(l => l.id));
+            const completed = allLessonIds.filter(id => completedLessonIds.includes(id)).length;
+            const trailProgress = allLessonIds.length > 0 ? Math.round((completed / allLessonIds.length) * 100) : 0;
+            return (
             <TrailCard
               key={trail.id}
               trail={trail}
               onClick={() => onTrailClick(trail)}
               size={cardSize}
+              progress={trailProgress}
             />
-          ))}
+          );})}
         </div>
 
         {/* Right arrow */}

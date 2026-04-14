@@ -235,7 +235,14 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
     updateModule(moduleId, { lessons: newLessons });
   };
 
+  const [titleError, setTitleError] = useState('');
+
   const handleSave = () => {
+    if (!formData.title.trim()) {
+      setTitleError('Título é obrigatório');
+      return;
+    }
+    setTitleError('');
     const trailInput: TrailInput = {
       id: formData.id,
       title: formData.title,
@@ -261,6 +268,7 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
       })),
     };
     onSave(trailInput);
+    toast.success('Trilha salva com sucesso!');
   };
 
   return (
@@ -284,9 +292,9 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) => { setFormData({ ...formData, title: e.target.value }); setTitleError(''); }}
                   placeholder="Ex: Fundamentos do High Ticket"
-                  className="bg-muted/50"
+                  className={cn("bg-muted/50", titleError && "border-destructive")}
                 />
               </div>
 
@@ -314,6 +322,11 @@ export function TrailEditorSheet({ open, onOpenChange, trail, onSave }: TrailEdi
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+                    if (!ALLOWED_TYPES.includes(file.type)) {
+                      toast.error('Use JPG, PNG ou WebP');
+                      return;
+                    }
                     if (file.size > 2 * 1024 * 1024) {
                       toast.error('Arquivo muito grande. Máximo 2MB.');
                       return;

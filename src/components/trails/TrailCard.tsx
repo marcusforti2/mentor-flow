@@ -1,4 +1,4 @@
-import { Play, Clock, BookOpen } from 'lucide-react';
+import { Play, Clock, BookOpen, CheckCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,9 @@ export function TrailCard({ trail, onClick, size = 'default', progress = 0 }: Tr
       onClick={onClick}
       className={cn(
         "trail-card group cursor-pointer relative",
-        size === 'large' ? 'min-w-[300px] md:min-w-[400px]' : 'min-w-[200px] md:min-w-[280px]'
+        size === 'large' ? 'min-w-[300px] md:min-w-[400px]' : 'min-w-[200px] md:min-w-[280px]',
+        progress === 100 && "ring-2 ring-emerald-500/50 rounded-lg",
+        progress > 0 && progress < 100 && "ring-2 ring-primary/30 rounded-lg"
       )}
     >
       {/* Thumbnail */}
@@ -40,6 +42,13 @@ export function TrailCard({ trail, onClick, size = 'default', progress = 0 }: Tr
             <Play className="w-8 h-8 text-primary-foreground ml-1" fill="currentColor" />
           </div>
         </div>
+
+        {/* Completed badge */}
+        {progress === 100 && (
+          <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg z-10">
+            <CheckCircle className="w-6 h-6 text-white" />
+          </div>
+        )}
 
         {/* Featured badge */}
         {trail.is_featured && (
@@ -70,9 +79,9 @@ export function TrailCard({ trail, onClick, size = 'default', progress = 0 }: Tr
             <div className="mt-3">
               <div className="flex justify-between text-xs text-muted-foreground mb-1">
                 <span>Progresso</span>
-                <span>{progress}%</span>
+                <span className="font-medium">{progress === 100 ? '✓ Concluído' : `${progress}%`}</span>
               </div>
-              <Progress value={progress} className="h-1.5" />
+              <Progress value={progress} className={cn("h-1.5", progress === 100 && "[&>div]:bg-emerald-500")} />
             </div>
           )}
         </div>
