@@ -372,6 +372,79 @@ const Auth = () => {
     );
   }
 
+  // Access pending state - user authenticated but no membership yet
+  if (accessPending && user) {
+    const handleRetryAccess = async () => {
+      setIsLoading(true);
+      try {
+        const { data: bootstrap } = await supabase.functions.invoke('get-bootstrap');
+        if (bootstrap?.has_memberships) {
+          setAccessPending(false);
+          const targetPath = bootstrap.redirect_path || '/mentorado';
+          await refreshMembershipsAndWait(user.id);
+          navigate(targetPath, { replace: true });
+        } else {
+          toast({
+            title: "Ainda pendente",
+            description: "Seu acesso ainda está sendo configurado. Tente novamente em alguns segundos.",
+            variant: "destructive",
+          });
+        }
+      } catch {
+        toast({
+          title: "Erro",
+          description: "Não foi possível verificar. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 theme-light">
+        <Card className="w-full max-w-md bg-card border-border">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <BrandLogo variant="compact" size="lg" />
+            </div>
+            <CardTitle className="text-xl text-foreground">Acesso Pendente</CardTitle>
+            <CardDescription>
+              Sua conta foi autenticada, mas o perfil ainda está sendo configurado. Isso pode levar alguns segundos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={handleRetryAccess}
+              disabled={isLoading}
+              className="w-full gradient-gold text-primary-foreground"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verificando...
+                </>
+              ) : (
+                "Tentar novamente"
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setAccessPending(false);
+                setStep("email");
+              }}
+              className="w-full"
+            >
+              Sair e voltar
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden theme-light">
       {/* Background effects */}
