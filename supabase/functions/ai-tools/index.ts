@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isRateLimited } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -434,6 +435,14 @@ serve(async (req) => {
       });
     }
     const callerId = callerUser.id;
+
+    const limited = await isRateLimited(callerId, "ai-tools", 30, 60); // 30 req/hora
+    if (limited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

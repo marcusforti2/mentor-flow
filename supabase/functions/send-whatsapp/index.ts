@@ -1,10 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const BodySchema = z.object({
+  tenant_id: z.string().min(1),
+  campaign_id: z.string().optional(),
+  // Individual send fields
+  phone: z.string().optional(),
+  message: z.string().optional(),
+  recipient_membership_id: z.string().optional(),
+  recipient_name: z.string().optional(),
+  // Campaign send fields
+  audience_type: z.enum(["all", "specific"]).optional(),
+  audience_membership_ids: z.array(z.string()).optional(),
+  message_template: z.string().optional(),
+  use_ai_personalization: z.boolean().optional(),
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -32,7 +48,14 @@ serve(async (req) => {
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const body = await req.json();
+    const rawBody = await req.json().catch(() => null);
+    const parsed = BodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body", details: parsed.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const {
       tenant_id,
       campaign_id,
@@ -46,13 +69,7 @@ serve(async (req) => {
       audience_membership_ids,
       message_template,
       use_ai_personalization,
-    } = body;
-
-    if (!tenant_id) {
-      return new Response(JSON.stringify({ error: "tenant_id obrigatório" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    } = parsed.data;
 
     // Get tenant WhatsApp config
     const { data: whatsappConfig } = await adminClient
