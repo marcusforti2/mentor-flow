@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -10,6 +10,12 @@ interface AIAnalysisResult {
 
 export function useAI() {
   const [isLoading, setIsLoading] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const analyzeCall = async (transcript: string): Promise<string | null> => {
     setIsLoading(true);
@@ -30,7 +36,7 @@ export function useAI() {
       toast.error('Erro ao analisar chamada');
       return null;
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
   };
 
@@ -53,7 +59,7 @@ export function useAI() {
       toast.error('Erro ao gerar relatório comportamental');
       return null;
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
   };
 
@@ -76,7 +82,7 @@ export function useAI() {
       toast.error('Erro ao enviar mensagem');
       return null;
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
   };
 

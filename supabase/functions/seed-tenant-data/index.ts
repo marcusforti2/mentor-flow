@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       // Create auth user
       const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.createUser({
         email: m.email,
-        password: "demo123456",
+        password: Deno.env.get("SEED_USER_PASSWORD") ?? "demo123456",
         email_confirm: true,
         user_metadata: { full_name: m.name, phone: m.phone },
       });

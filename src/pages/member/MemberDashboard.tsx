@@ -51,14 +51,12 @@ export default function MemberDashboard() {
   const { badges, stats: gamificationStats, isBadgeUnlocked, getBadgeUnlockDate, updateStreak, isLoading: isLoadingGamification, mentoradoId } = useGamification();
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalAnalyses, setTotalAnalyses] = useState(0);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => { updateStreak(); }, [updateStreak]);
 
   useEffect(() => {
     setAvgScore(null);
     setTotalAnalyses(0);
-    setIsLoadingStats(false);
   }, [user, activeMembership, mentoradoId]);
 
   const getScoreColor = (score: number) => {

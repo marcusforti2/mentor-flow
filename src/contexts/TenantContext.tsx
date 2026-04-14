@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -58,7 +58,9 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 const ACTIVE_MEMBERSHIP_KEY = 'active_membership_id';
 const IMPERSONATION_LOG_KEY = 'impersonation_log_id';
+const IMPERSONATION_EXPIRES_KEY = 'impersonation_expires_at';
 const CACHED_BRANDING_KEY = 'cached_tenant_branding';
+const IMPERSONATION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
 
 // Role priority order (highest privilege first)
 const ROLE_ORDER: MembershipRole[] = ['master_admin', 'admin', 'ops', 'mentor', 'mentee'];
@@ -329,6 +331,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       const domainTenantId = await detectTenantByDomain();
       
       // Check for stored active membership (for impersonation persistence)
+      // Expire impersonation after TTL to prevent stale sessions
+      const impersonationExpiresAt = localStorage.getItem(IMPERSONATION_EXPIRES_KEY);
+      if (impersonationExpiresAt && Date.now() > parseInt(impersonationExpiresAt, 10)) {
+        localStorage.removeItem(ACTIVE_MEMBERSHIP_KEY);
+        localStorage.removeItem(IMPERSONATION_LOG_KEY);
+        localStorage.removeItem(IMPERSONATION_EXPIRES_KEY);
+      }
       const storedMembershipId = localStorage.getItem(ACTIVE_MEMBERSHIP_KEY);
       const storedLogId = localStorage.getItem(IMPERSONATION_LOG_KEY);
       
@@ -489,9 +498,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         .single();
       if (tenantData) setTenant(tenantData);
       
-      // Persist for page refresh
+      // Persist for page refresh (with TTL to auto-expire after 8 hours)
       localStorage.setItem(ACTIVE_MEMBERSHIP_KEY, membershipId);
       localStorage.setItem(IMPERSONATION_LOG_KEY, logId);
+      localStorage.setItem(IMPERSONATION_EXPIRES_KEY, String(Date.now() + IMPERSONATION_TTL_MS));
 
       // Navigate to appropriate dashboard
       const targetPath = getTargetPath(targetMembership.role);
@@ -527,6 +537,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       // Clear storage
       localStorage.removeItem(ACTIVE_MEMBERSHIP_KEY);
       localStorage.removeItem(IMPERSONATION_LOG_KEY);
+      localStorage.removeItem(IMPERSONATION_EXPIRES_KEY);
 
       // Navigate to appropriate dashboard
       const targetPath = getTargetPath(realMembership.role);
@@ -569,7 +580,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (tenantData) setTenant(tenantData);
   }, [activeMembership?.tenant_id]);
 
-  const value: TenantContextType = {
+  const value: TenantContextType = useMemo(() => ({
     tenant,
     memberships,
     activeMembership,
@@ -590,7 +601,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     isMasterAdmin: hasRole('master_admin'),
     // master_admin and admin can always impersonate
     canImpersonate: realMembership?.role === 'admin' || realMembership?.role === 'master_admin' || realMembership?.can_impersonate || false,
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [tenant, memberships, activeMembership, realMembership, isImpersonating, impersonationLogId, isLoading, switchMembership, endImpersonation, refreshTenant, hasRole]);
 
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
 }

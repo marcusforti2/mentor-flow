@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
 
@@ -25,6 +25,12 @@ export function useJourneyStages(tenantId?: string, journeyId?: string) {
   const [stages, setStages] = useState<JourneyStage[]>(DEFAULT_JOURNEY_STAGES);
   const [isLoading, setIsLoading] = useState(true);
   const [isCustom, setIsCustom] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const loadStages = useCallback(async () => {
     if (!tenantId) {
@@ -44,6 +50,7 @@ export function useJourneyStages(tenantId?: string, journeyId?: string) {
 
       const { data, error } = await query.order("position", { ascending: true });
 
+      if (!mountedRef.current) return;
       if (error) throw error;
 
       if (data && (data as any[]).length > 0) {
@@ -65,9 +72,9 @@ export function useJourneyStages(tenantId?: string, journeyId?: string) {
       }
     } catch (error) {
       console.error("Error loading journey stages:", error);
-      setStages(DEFAULT_JOURNEY_STAGES);
+      if (mountedRef.current) setStages(DEFAULT_JOURNEY_STAGES);
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
   }, [tenantId, journeyId]);
 

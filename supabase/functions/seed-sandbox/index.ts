@@ -22,7 +22,7 @@ const periodEnd = () => new Date(new Date().getFullYear(), new Date().getMonth()
 
 async function getOrCreateUser(admin: any, email: string, name: string) {
   const { data, error } = await admin.auth.admin.createUser({
-    email, password: 'Demo2026!', email_confirm: true,
+    email, password: Deno.env.get("SEED_USER_PASSWORD") ?? 'Demo2026!', email_confirm: true,
     user_metadata: { full_name: name },
   })
   if (!error) return data.user.id

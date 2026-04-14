@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface PipelineStage {
@@ -30,18 +30,19 @@ export function usePipelineStages(tenantId?: string, membershipId?: string) {
   const [stages, setStages] = useState<PipelineStage[]>(DEFAULT_STAGES);
   const [isLoading, setIsLoading] = useState(true);
   const [isCustom, setIsCustom] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const loadStages = useCallback(async () => {
     if (!tenantId) {
       setStages(DEFAULT_STAGES);
       setIsLoading(false);
       return;
     }
-    loadStages();
-  }, [tenantId, membershipId]);
-
-  const loadStages = async () => {
-    if (!tenantId) return;
     try {
       const { data, error } = await supabase
         .from("crm_pipeline_stages")
@@ -49,10 +50,10 @@ export function usePipelineStages(tenantId?: string, membershipId?: string) {
         .eq("tenant_id", tenantId)
         .order("position", { ascending: true });
 
+      if (!mountedRef.current) return;
       if (error) throw error;
 
       if (data && data.length > 0) {
-        // Priority: per-mentee > tenant-wide > default
         const menteeStages = membershipId
           ? data.filter((s) => s.membership_id === membershipId)
           : [];
@@ -74,11 +75,15 @@ export function usePipelineStages(tenantId?: string, membershipId?: string) {
       }
     } catch (error) {
       console.error("Error loading pipeline stages:", error);
-      setStages(DEFAULT_STAGES);
+      if (mountedRef.current) setStages(DEFAULT_STAGES);
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
-  };
+  }, [tenantId, membershipId]);
+
+  useEffect(() => {
+    loadStages();
+  }, [loadStages]);
 
   const statusConfigMap = stages.reduce((acc, stage) => {
     acc[stage.status_key] = { label: stage.name, color: stage.color };

@@ -35,7 +35,7 @@ export function useNotifications() {
       return (data || []) as Notification[];
     },
     enabled: !!membershipId,
-    refetchInterval: 30000, // fallback polling every 30s
+    refetchInterval: false, // Realtime subscription handles live updates
   });
 
   // Realtime subscription

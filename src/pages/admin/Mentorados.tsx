@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
@@ -129,8 +129,8 @@ const Mentorados = () => {
   const getJourneyStage = (joinedAt: string | null) => getStageForDay(joinedAt);
   const getInitials = (name: string | null) => name ? name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "?";
 
-  const filteredMentorados = mentorados.filter(m => {
-    const matchesSearch = 
+  const filteredMentorados = useMemo(() => mentorados.filter(m => {
+    const matchesSearch =
       (m.profile?.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (m.profile?.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (m.business_profile?.business_name?.toLowerCase() || "").includes(searchTerm.toLowerCase());
@@ -139,7 +139,7 @@ const Mentorados = () => {
     if (journeyFilter === 'month' && monthFilter !== 'all' && getJourneyMonth(m.joined_at) !== parseInt(monthFilter)) return false;
     if (journeyFilter === 'stage' && stageFilter !== 'all' && getJourneyStage(m.joined_at).stage_key !== stageFilter) return false;
     return true;
-  });
+  }), [mentorados, searchTerm, journeyFilter, weekFilter, monthFilter, stageFilter, getJourneyStage]);
 
   const avgDays = mentorados.length > 0 
     ? Math.round(mentorados.reduce((acc, m) => acc + getJourneyDay(m.joined_at), 0) / mentorados.length) : 0;

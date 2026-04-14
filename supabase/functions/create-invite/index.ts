@@ -1,14 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SANDBOX_TENANT_ID = 'b0000000-0000-0000-0000-000000000002';
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 // ── White-label branding helper ──
 interface TenantBranding { name: string; logoUrl: string | null; primaryColor: string; fromEmail: string; }
@@ -149,6 +144,11 @@ async function createAuditLog(
 // MAIN HANDLER
 // ============================================
 serve(async (req) => {
+  const corsHeaders = {
+    ...getCorsHeaders(req),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  };
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
