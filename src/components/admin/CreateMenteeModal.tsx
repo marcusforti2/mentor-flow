@@ -89,10 +89,19 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     login_url: string;
   } | null>(null);
 
+  const callerIsMentor = activeMembership?.role === 'mentor';
   const effectiveTenantForMentors = propTenantId || selectedTenantId || (isMasterAdmin ? undefined : activeMembership?.tenant_id);
 
-  // Fetch mentors when tenant changes or modal opens
+  // For mentor role, auto-select own membership and skip fetching other mentors
   useEffect(() => {
+    if (callerIsMentor && activeMembership?.id && open) {
+      setSelectedMentorId(activeMembership.id);
+    }
+  }, [callerIsMentor, activeMembership?.id, open]);
+
+  // Fetch mentors when tenant changes or modal opens (only for non-mentor roles)
+  useEffect(() => {
+    if (callerIsMentor) return; // mentor auto-assigns to self
     const fetchMentors = async () => {
       if (!effectiveTenantForMentors || !open) {
         if (!open) return;
@@ -143,7 +152,7 @@ export function CreateMenteeModal({ open, onOpenChange, onSuccess, tenantId: pro
     };
     
     fetchMentors();
-  }, [effectiveTenantForMentors, open]);
+  }, [effectiveTenantForMentors, open, callerIsMentor]);
 
   // Hydrate from initialData when modal opens
   useEffect(() => {
@@ -321,27 +330,29 @@ Estou aqui para ajudar! 🚀`;
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="mentor" className="text-slate-200">Mentor Responsável *</Label>
-              <Select value={selectedMentorId} onValueChange={setSelectedMentorId} required>
-                <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
-                  <SelectValue placeholder={mentorsLoading ? "Carregando mentores..." : "Selecione o mentor"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {mentorsLoading ? (
-                    <SelectItem value="loading" disabled>Carregando...</SelectItem>
-                  ) : mentorOptions.length === 0 ? (
-                    <SelectItem value="none" disabled>Nenhum mentor neste programa</SelectItem>
-                  ) : (
-                    mentorOptions.map((mentor) => (
-                      <SelectItem key={mentor.membership_id} value={mentor.membership_id}>
-                        {mentor.full_name} ({mentor.email})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            {!callerIsMentor && (
+              <div className="space-y-2">
+                <Label htmlFor="mentor" className="text-slate-200">Mentor Responsável *</Label>
+                <Select value={selectedMentorId} onValueChange={setSelectedMentorId} required>
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                    <SelectValue placeholder={mentorsLoading ? "Carregando mentores..." : "Selecione o mentor"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mentorsLoading ? (
+                      <SelectItem value="loading" disabled>Carregando...</SelectItem>
+                    ) : mentorOptions.length === 0 ? (
+                      <SelectItem value="none" disabled>Nenhum mentor neste programa</SelectItem>
+                    ) : (
+                      mentorOptions.map((mentor) => (
+                        <SelectItem key={mentor.membership_id} value={mentor.membership_id}>
+                          {mentor.full_name} ({mentor.email})
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="fullName" className="text-slate-200">Nome Completo *</Label>

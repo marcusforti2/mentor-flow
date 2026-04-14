@@ -48,16 +48,58 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // --- Auth: validate caller ---
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAuth = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    }
+    const callerId = claimsData.claims.sub as string;
+
     const { tenant_id } = await req.json().catch(() => ({}));
+
+    // --- Authorization: caller must be admin/master_admin in the requested tenant ---
+    if (tenant_id) {
+      const { data: callerMembership } = await supabase
+        .from("memberships")
+        .select("role")
+        .eq("user_id", callerId)
+        .eq("tenant_id", tenant_id)
+        .eq("status", "active")
+        .in("role", ["admin", "master_admin"])
+        .maybeSingle();
+
+      if (!callerMembership) {
+        return new Response(JSON.stringify({ error: "Forbidden: you are not an admin for this tenant" }), { status: 403, headers: corsHeaders });
+      }
+    } else {
+      // No tenant_id: only master_admin can run across all tenants
+      const { data: masterCheck } = await supabase
+        .from("memberships")
+        .select("id")
+        .eq("user_id", callerId)
+        .eq("role", "master_admin")
+        .eq("status", "active")
+        .limit(1);
+
+      if (!masterCheck?.length) {
+        return new Response(JSON.stringify({ error: "Forbidden: only master_admin can run without tenant_id" }), { status: 403, headers: corsHeaders });
+      }
+    }
+
     const tenants = tenant_id ? [{ id: tenant_id }] : ((await supabase.from("tenants").select("id")).data || []);
     let totalSuggestions = 0;
 
@@ -75,8 +117,16 @@ Deno.serve(async (req) => {
       const { data: mentees } = await supabase.from("memberships").select("id, user_id").eq("tenant_id", tenant.id).eq("role", "mentee").eq("status", "active");
       if (!mentees?.length) continue;
 
-      // Get current assignments
-      const { data: assignments } = await supabase.from("mentor_mentee_assignments").select("mentor_membership_id, mentee_membership_id").eq("status", "active");
+      // Get current assignments — FIXED: filter by tenant mentee/mentor IDs only
+      const mentorIds = mentors.map(m => m.id);
+      const menteeIds = mentees.map(m => m.id);
+      const { data: assignments } = await supabase
+        .from("mentor_mentee_assignments")
+        .select("mentor_membership_id, mentee_membership_id")
+        .eq("status", "active")
+        .in("mentor_membership_id", mentorIds)
+        .in("mentee_membership_id", menteeIds);
+
       const assignedMentees = new Set((assignments || []).map(a => a.mentee_membership_id));
 
       // Build mentor profiles
