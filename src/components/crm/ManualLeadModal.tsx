@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/hooks/useActivityLog";
 import { Loader2, Sparkles, Instagram, Linkedin, Globe, MessageCircle, Briefcase } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface ManualLeadModalProps {
   open: boolean;
