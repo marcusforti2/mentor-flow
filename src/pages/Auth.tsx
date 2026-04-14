@@ -168,7 +168,6 @@ const Auth = () => {
       
       // Handle multiple tenants case (409)
       if (data.error === 'multiple_tenants' && data.tenants) {
-        console.log('[Auth] Multiple tenants found:', data.tenants);
         setAvailableTenants(data.tenants);
         setStep("selectTenant");
         setIsLoading(false);
